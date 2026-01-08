@@ -1,0 +1,20 @@
+############################
+# Visual Studio / IDE files
+############################
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+
+############################
+# Build outputs
+############################
+*.exe
+*.app
