@@ -624,7 +624,9 @@
         "dependencies": {
           "Engine.Core": "1.0.0",
           "Silk.NET.Input": "2.22.0",
-          "Silk.NET.Windowing": "2.22.0"
+          "Silk.NET.Windowing": "2.22.0",
+          "Veldrid": "4.9.0",
+          "Veldrid.StartupUtilities": "4.9.0"
         },
         "compile": {
           "bin/placeholder/Engine.Platform.dll": {}

@@ -201,6 +201,14 @@
             "Silk.NET.Windowing": {
               "target": "Package",
               "version": "[2.22.0, )"
+            },
+            "Veldrid": {
+              "target": "Package",
+              "version": "[4.9.0, )"
+            },
+            "Veldrid.StartupUtilities": {
+              "target": "Package",
+              "version": "[4.9.0, )"
             }
           },
           "imports": [

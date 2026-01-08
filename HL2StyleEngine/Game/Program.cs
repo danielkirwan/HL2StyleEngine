@@ -1,6 +1,10 @@
-﻿using Engine.Core;
+﻿namespace Game;
 
-Console.WriteLine("Game started!");
-Console.WriteLine($"Engine core loaded: {EngineVersion.Version}");
-Console.WriteLine("Press any key to exit...");
-Console.ReadKey();
+internal static class Program
+{
+    private static void Main()
+    {
+        using var app = new GameApp();
+        app.Run();
+    }
+}
