@@ -1,0 +1,16 @@
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\bin\Debug\net8.0\Engine.Render.deps.json
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\bin\Debug\net8.0\Engine.Render.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\bin\Debug\net8.0\Engine.Render.pdb
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\bin\Debug\net8.0\Engine.Core.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\bin\Debug\net8.0\Engine.Core.pdb
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.Render.csproj.AssemblyReference.cache
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.Render.GeneratedMSBuildEditorConfig.editorconfig
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.Render.AssemblyInfoInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.Render.AssemblyInfo.cs
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.Render.csproj.CoreCompileInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.Render.sourcelink.json
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.R.AAB35477.Up2Date
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.Render.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\refint\Engine.Render.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.Render.pdb
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\ref\Engine.Render.dll
