@@ -1,4 +1,5 @@
-﻿using Veldrid.Sdl2;
+﻿using System.Numerics;
+using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
 
 namespace Engine.Platform;
@@ -19,5 +20,19 @@ public sealed class GameWindow
         };
 
         Window = VeldridStartup.CreateWindow(ref wci);
+    }
+
+    public void SetMouseCaptured(bool captured)
+    {
+        Window.CursorVisible = !captured;
+    }
+
+    public Vector2 GetWindowCenter()
+        => new(Window.Width / 2f, Window.Height / 2f);
+
+    public void WarpMouseToCenter()
+    {
+        var c = GetWindowCenter();
+        Window.SetMousePosition((int)c.X, (int)c.Y);
     }
 }
