@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
+using static Veldrid.Sdl2.Sdl2Native;
 
 namespace Engine.Platform;
 
@@ -20,11 +21,18 @@ public sealed class GameWindow
         };
 
         Window = VeldridStartup.CreateWindow(ref wci);
+        Maximize();
+
     }
 
     public void SetMouseCaptured(bool captured)
     {
         Window.CursorVisible = !captured;
+    }
+
+    public void Maximize()
+    {
+        SDL_MaximizeWindow(Window.SdlWindowHandle);
     }
 
     public Vector2 GetWindowCenter()
