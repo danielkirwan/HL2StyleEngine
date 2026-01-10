@@ -13,6 +13,7 @@
         "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
         "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\obj\\",
         "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
@@ -49,6 +50,20 @@
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
+          "dependencies": {
+            "opticfluorine.Veldrid": {
+              "target": "Package",
+              "version": "[4.9.6, )",
+              "versionCentrallyManaged": true
+            }
+          },
+          "centralPackageVersions": {
+            "ImGui.NET": "1.91.6.1",
+            "opticfluorine.Veldrid": "4.9.6",
+            "opticfluorine.Veldrid.ImGui": "5.89.2-g2842068585",
+            "opticfluorine.Veldrid.SDL2": "4.9.6",
+            "opticfluorine.Veldrid.StartupUtilities": "4.9.6"
+          },
           "imports": [
             "net461",
             "net462",
@@ -78,6 +93,7 @@
         "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
         "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\obj\\",
         "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
@@ -119,22 +135,23 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
-            "Silk.NET.Input": {
+            "opticfluorine.Veldrid.SDL2": {
               "target": "Package",
-              "version": "[2.22.0, )"
+              "version": "[4.9.6, )",
+              "versionCentrallyManaged": true
             },
-            "Silk.NET.Windowing": {
+            "opticfluorine.Veldrid.StartupUtilities": {
               "target": "Package",
-              "version": "[2.22.0, )"
-            },
-            "Veldrid": {
-              "target": "Package",
-              "version": "[4.9.0, )"
-            },
-            "Veldrid.StartupUtilities": {
-              "target": "Package",
-              "version": "[4.9.0, )"
+              "version": "[4.9.6, )",
+              "versionCentrallyManaged": true
             }
+          },
+          "centralPackageVersions": {
+            "ImGui.NET": "1.91.6.1",
+            "opticfluorine.Veldrid": "4.9.6",
+            "opticfluorine.Veldrid.ImGui": "5.89.2-g2842068585",
+            "opticfluorine.Veldrid.SDL2": "4.9.6",
+            "opticfluorine.Veldrid.StartupUtilities": "4.9.6"
           },
           "imports": [
             "net461",
@@ -165,6 +182,7 @@
         "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
         "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\obj\\",
         "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
@@ -206,18 +224,33 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
-            "Veldrid": {
+            "ImGui.NET": {
               "target": "Package",
-              "version": "[4.9.0, )"
+              "version": "[1.91.6.1, )",
+              "versionCentrallyManaged": true
             },
-            "Veldrid.SPIRV": {
+            "opticfluorine.Veldrid": {
               "target": "Package",
-              "version": "[1.0.15, )"
+              "version": "[4.9.6, )",
+              "versionCentrallyManaged": true
             },
-            "Veldrid.StartupUtilities": {
+            "opticfluorine.Veldrid.ImGui": {
               "target": "Package",
-              "version": "[4.9.0, )"
+              "version": "[5.89.2-g2842068585, )",
+              "versionCentrallyManaged": true
+            },
+            "opticfluorine.Veldrid.StartupUtilities": {
+              "target": "Package",
+              "version": "[4.9.6, )",
+              "versionCentrallyManaged": true
             }
+          },
+          "centralPackageVersions": {
+            "ImGui.NET": "1.91.6.1",
+            "opticfluorine.Veldrid": "4.9.6",
+            "opticfluorine.Veldrid.ImGui": "5.89.2-g2842068585",
+            "opticfluorine.Veldrid.SDL2": "4.9.6",
+            "opticfluorine.Veldrid.StartupUtilities": "4.9.6"
           },
           "imports": [
             "net461",
@@ -239,15 +272,16 @@
         }
       }
     },
-    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj": {
+    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
-        "projectName": "Game",
-        "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
+        "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj",
+        "projectName": "Engine.Runtime",
+        "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj",
         "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-        "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\obj\\",
+        "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\obj\\",
         "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
@@ -295,10 +329,95 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
-            "Veldrid.ImGui": {
+            "opticfluorine.Veldrid": {
               "target": "Package",
-              "version": "[5.72.0, )"
+              "version": "[4.9.6, )",
+              "versionCentrallyManaged": true
             }
+          },
+          "centralPackageVersions": {
+            "ImGui.NET": "1.91.6.1",
+            "opticfluorine.Veldrid": "4.9.6",
+            "opticfluorine.Veldrid.ImGui": "5.89.2-g2842068585",
+            "opticfluorine.Veldrid.SDL2": "4.9.6",
+            "opticfluorine.Veldrid.StartupUtilities": "4.9.6"
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
+        "projectName": "Game",
+        "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
+        "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
+        "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\obj\\",
+        "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\danie\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj": {
+                "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "centralPackageVersions": {
+            "ImGui.NET": "1.91.6.1",
+            "opticfluorine.Veldrid": "4.9.6",
+            "opticfluorine.Veldrid.ImGui": "5.89.2-g2842068585",
+            "opticfluorine.Veldrid.SDL2": "4.9.6",
+            "opticfluorine.Veldrid.StartupUtilities": "4.9.6"
           },
           "imports": [
             "net461",

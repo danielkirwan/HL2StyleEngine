@@ -1,0 +1,12 @@
+<Project>
+  <ItemGroup>
+    <!-- Veldrid fork (all matching versions) -->
+    <PackageVersion Include="opticfluorine.Veldrid" Version="4.9.6" />
+    <PackageVersion Include="opticfluorine.Veldrid.SDL2" Version="4.9.6" />
+    <PackageVersion Include="opticfluorine.Veldrid.StartupUtilities" Version="4.9.6" />
+
+    <!-- ImGui -->
+    <PackageVersion Include="ImGui.NET" Version="1.91.6.1" />
+    <PackageVersion Include="opticfluorine.Veldrid.ImGui" Version="5.89.2-g2842068585" />
+  </ItemGroup>
+</Project>

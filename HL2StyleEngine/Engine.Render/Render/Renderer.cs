@@ -1,30 +1,24 @@
-﻿using Veldrid;
-using Veldrid.Sdl2;
-using Veldrid.StartupUtilities;
+﻿using System;
+using Veldrid;
 
 namespace Engine.Render;
 
 public sealed class Renderer : IDisposable
 {
     public GraphicsDevice GraphicsDevice { get; }
+    public ResourceFactory Factory => GraphicsDevice.ResourceFactory;
     public CommandList CommandList { get; }
 
-    public Renderer(Sdl2Window window)
+    public Renderer(GraphicsDevice graphicsDevice)
     {
-        GraphicsDevice = VeldridStartup.CreateGraphicsDevice(
-            window,
-            new GraphicsDeviceOptions(
-                debug: true,
-                swapchainDepthFormat: null,
-                syncToVerticalBlank: true));
-
-        CommandList = GraphicsDevice.ResourceFactory.CreateCommandList();
+        GraphicsDevice = graphicsDevice;
+        CommandList = Factory.CreateCommandList();
     }
 
     public void BeginFrame()
     {
         CommandList.Begin();
-        CommandList.SetFramebuffer(GraphicsDevice.SwapchainFramebuffer);
+        CommandList.SetFramebuffer(GraphicsDevice.MainSwapchain.Framebuffer);
         CommandList.ClearColorTarget(0, RgbaFloat.Black);
     }
 
@@ -32,7 +26,8 @@ public sealed class Renderer : IDisposable
     {
         CommandList.End();
         GraphicsDevice.SubmitCommands(CommandList);
-        GraphicsDevice.SwapBuffers();
+        GraphicsDevice.SwapBuffers(GraphicsDevice.MainSwapchain);
+        GraphicsDevice.WaitForIdle();
     }
 
     public void Dispose()

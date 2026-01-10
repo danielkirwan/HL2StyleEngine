@@ -4,6 +4,8 @@ C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\E
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Engine.Core.dll
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Engine.Platform.dll
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Engine.Render.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Engine.Runtime.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Engine.Runtime.pdb
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Engine.Core.pdb
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Engine.Platform.pdb
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Engine.Render.pdb
