@@ -18,3 +18,6 @@ C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\refint\Engine.Runtime.dll
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\Engine.Runtime.pdb
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\ref\Engine.Runtime.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\BasicPS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\BasicVS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\Basic.hlsl

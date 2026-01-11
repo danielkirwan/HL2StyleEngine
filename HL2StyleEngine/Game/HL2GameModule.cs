@@ -1,9 +1,6 @@
 ﻿using Engine.Runtime.Hosting;
 using ImGuiNET;
 using Veldrid;
-using System.Numerics;
-using Engine.Render;
-
 
 namespace Game;
 
@@ -23,10 +20,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
     private bool _jumpPressedThisFrame;
 
     private float _fps;
+    private Engine.Render.BasicWorldRenderer _world = null!;
 
     public void Initialize(EngineContext context)
     {
         _ctx = context;
+        _world = new Engine.Render.BasicWorldRenderer(_ctx.Renderer.GraphicsDevice, shaderDirRelativeToApp: "Shaders");
+
 
         _ui = new UIModeController(_ctx.Window, _input, startInGameplay: true);
 
@@ -34,7 +34,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
         _motor = new SourcePlayerMotor(_move, startFeetPos: new System.Numerics.Vector3(0, 0, -5f));
         _camera.Position = _motor.Position + new System.Numerics.Vector3(0, _move.EyeHeight, 0);
 
-        _ctx.Window.WarpMouseToCenter();
         _input.OverrideMouseDelta(System.Numerics.Vector2.Zero);
     }
 
@@ -55,17 +54,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
         bool uiWantsKeyboard = io.WantCaptureKeyboard;
         bool uiWantsMouse = io.WantCaptureMouse;
 
-        // Mouse look (warp-to-center FPS style)
         if (_ui.IsMouseCaptured && !uiWantsMouse)
         {
-            var center = _ctx.Window.GetWindowCenter();
-            var delta = _input.MousePosition - center;
-
-            _camera.AddLook(delta);
-
-            _ctx.Window.WarpMouseToCenter();
-            _input.OverrideMouseDelta(System.Numerics.Vector2.Zero);
+            var md = _ctx.Window.ConsumeRelativeMouseDelta();
+            _camera.AddLook(md);
         }
+
 
         _wishDir = System.Numerics.Vector3.Zero;
         _wishSpeed = 0f;
@@ -122,19 +116,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
             ? _ctx.Window.Window.Width / (float)_ctx.Window.Window.Height
             : 16f / 9f;
 
-        ImGui3DGrid.DrawGroundGrid(
-            viewportSize: new System.Numerics.Vector2(_ctx.Window.Window.Width, _ctx.Window.Window.Height),
-            cameraPos: _camera.Position,
-            cameraForward: _camera.Forward,
-            fovRadians: MathF.PI / 3f,   // 60 degrees
-            aspect: aspect,
-            nearPlane: 0.05f,
-            farPlane: 500f,
-            halfSize: 40,
-            spacing: 1f);
 
 
         ImGui.Begin("Debug");
+        ImGui.Text($"MouseDelta: {_input.MouseDelta.X:F2}, {_input.MouseDelta.Y:F2}");
+        ImGui.Text($"Captured: {_ui.IsMouseCaptured}  WantMouse: {ImGui.GetIO().WantCaptureMouse}");
+
         ImGui.Text($"FPS: {_fps:F1}");
 
         ImGui.Separator();
@@ -151,34 +138,32 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
         ImGui.Text($"Yaw: {_camera.Yaw:F2} rad  Pitch: {_camera.Pitch:F2} rad");
         ImGui.End();
     }
-
-    public void RenderWorld(Renderer renderer)
+    public void RenderWorld(Engine.Render.Renderer renderer)
     {
+        if (_world is null)
+            return;
+
         float aspect = _ctx.Window.Window.Height > 0
             ? _ctx.Window.Window.Width / (float)_ctx.Window.Window.Height
             : 16f / 9f;
 
-        // Basic FPS camera matrices
-        Matrix4x4 view = Matrix4x4.CreateLookAt(
+        var view = System.Numerics.Matrix4x4.CreateLookAt(
             _camera.Position,
             _camera.Position + _camera.Forward,
-            Vector3.UnitY);
+            System.Numerics.Vector3.UnitY);
 
-        Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(
-            fieldOfView: MathF.PI / 3f,   // 60 deg
-            aspectRatio: aspect,
-            nearPlaneDistance: 0.05f,
-            farPlaneDistance: 500f);
+        var proj = System.Numerics.Matrix4x4.CreatePerspectiveFieldOfView(
+            MathF.PI / 3f, aspect, 0.05f, 500f);
 
-        // Veldrid expects clip-space with Y inverted in some backends; easiest is just use this for now.
-        // If it looks upside-down later, we’ll apply a correction matrix.
+        var viewProj = view * proj;
 
-        Matrix4x4 viewProj = view * proj;
-
+        _world.UpdateCamera(viewProj);
+        _world.Draw(renderer.CommandList);
     }
 
 
     public void Dispose()
     {
+        _world?.Dispose();
     }
 }

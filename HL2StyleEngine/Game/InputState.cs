@@ -12,9 +12,6 @@ public sealed class InputState
     public Vector2 MouseDelta { get; private set; }
     public bool RightMouseDown { get; private set; }
 
-    private Vector2 _lastMousePos;
-    private bool _hasLastMousePos;
-
     public bool IsDown(Key key) => _down.Contains(key);
     public bool WasPressed(Key key) => _pressedThisFrame.Contains(key);
 
@@ -25,6 +22,7 @@ public sealed class InputState
         _pressedThisFrame.Clear();
         MouseDelta = Vector2.Zero;
 
+        // Keyboard
         foreach (var ke in snapshot.KeyEvents)
         {
             if (ke.Down)
@@ -45,11 +43,7 @@ public sealed class InputState
         }
 
         MousePosition = snapshot.MousePosition;
-
-        if (_hasLastMousePos)
-            MouseDelta = MousePosition - _lastMousePos;
-
-        _lastMousePos = MousePosition;
-        _hasLastMousePos = true;
     }
+
+
 }

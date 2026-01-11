@@ -32,17 +32,18 @@ public sealed class FpsCamera
         }
     }
 
-    public Vector3 Right => Vector3.Normalize(Vector3.Cross(Forward, Vector3.UnitY));
+    public Vector3 Right => -Vector3.Normalize(Vector3.Cross(Vector3.UnitY, Forward));
     public Vector3 Up => Vector3.UnitY;
 
     public void AddLook(Vector2 mouseDelta)
     {
-        Yaw += mouseDelta.X * MouseSensitivity;
+        Yaw -= mouseDelta.X * MouseSensitivity;
         Pitch -= mouseDelta.Y * MouseSensitivity; 
 
         
         float limit = 1.55334f; 
         Pitch = Math.Clamp(Pitch, -limit, limit);
+        Yaw = WrapAngle(Yaw);
     }
 
     public void Move(Vector3 wishDir, float dt)
@@ -51,4 +52,14 @@ public sealed class FpsCamera
         wishDir = Vector3.Normalize(wishDir);
         Position += wishDir * (MoveSpeed * dt);
     }
+
+    private static float WrapAngle(float a)
+    {
+        const float TwoPi = MathF.PI * 2f;
+        a %= TwoPi;
+        if (a <= -MathF.PI) a += TwoPi;
+        if (a > MathF.PI) a -= TwoPi;
+        return a;
+    }
+
 }

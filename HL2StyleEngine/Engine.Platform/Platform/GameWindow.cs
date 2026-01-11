@@ -2,6 +2,7 @@
 using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
 using static Veldrid.Sdl2.Sdl2Native;
+using System;
 
 namespace Engine.Platform;
 
@@ -28,7 +29,16 @@ public sealed class GameWindow
     public void SetMouseCaptured(bool captured)
     {
         Window.CursorVisible = !captured;
+
+        SDL_SetWindowGrab(Window.SdlWindowHandle, captured);
+        SDL_SetRelativeMouseMode(captured);
     }
+
+    public Vector2 ConsumeRelativeMouseDelta()
+    {
+        return Window.MouseDelta;
+    }
+
 
     public void Maximize()
     {

@@ -50,3 +50,6 @@ C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\refint\Gam
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\Game.pdb
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\Game.genruntimeconfig.cache
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\ref\Game.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Shaders\BasicPS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Shaders\BasicVS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Shaders\Basic.hlsl
