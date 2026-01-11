@@ -12,14 +12,24 @@ public sealed class HL2GameModule : IGameModule
     private readonly FpsCamera _camera = new(new System.Numerics.Vector3(0, 1.8f, -5f));
     private UIModeController _ui = null!;
 
+    private readonly SourceMovementSettings _move = new();
+    private SourcePlayerMotor _motor = null!;
+
+    private System.Numerics.Vector3 _wishDir;
+    private float _wishSpeed;
+    private bool _jumpPressedThisFrame;
+
     private float _fps;
 
     public void Initialize(EngineContext context)
     {
         _ctx = context;
 
-        // Start in gameplay mode (mouse captured)
         _ui = new UIModeController(_ctx.Window, _input, startInGameplay: true);
+
+        // Feet start at ground plane, camera is EyeHeight above
+        _motor = new SourcePlayerMotor(_move, startFeetPos: new System.Numerics.Vector3(0, 0, -5f));
+        _camera.Position = _motor.Position + new System.Numerics.Vector3(0, _move.EyeHeight, 0);
 
         _ctx.Window.WarpMouseToCenter();
         _input.OverrideMouseDelta(System.Numerics.Vector2.Zero);
@@ -31,18 +41,18 @@ public sealed class HL2GameModule : IGameModule
 
         _input.Update(snapshot);
 
-        // UI toggle (TAB) + force gameplay (F1) - matches your old GameApp behavior
+        // UI toggle
         if (_input.WasPressed(Key.Tab))
             _ui.ToggleUI();
 
         if (_input.WasPressed(Key.F1))
             _ui.CloseUI();
 
-        // Mouse look (FPS warp-to-center)
         var io = ImGui.GetIO();
         bool uiWantsKeyboard = io.WantCaptureKeyboard;
         bool uiWantsMouse = io.WantCaptureMouse;
 
+        // Mouse look (warp-to-center FPS style)
         if (_ui.IsMouseCaptured && !uiWantsMouse)
         {
             var center = _ctx.Window.GetWindowCenter();
@@ -54,27 +64,52 @@ public sealed class HL2GameModule : IGameModule
             _input.OverrideMouseDelta(System.Numerics.Vector2.Zero);
         }
 
-        // Debug free-fly movement (same as before)
+        _wishDir = System.Numerics.Vector3.Zero;
+        _wishSpeed = 0f;
+
         if (_ui.IsMouseCaptured && !uiWantsKeyboard)
         {
-            System.Numerics.Vector3 move = System.Numerics.Vector3.Zero;
+            var forward = _camera.Forward;
+            forward.Y = 0;
+            forward = forward.LengthSquared() > 0 ? System.Numerics.Vector3.Normalize(forward) : System.Numerics.Vector3.UnitZ;
 
-            if (_input.IsDown(Key.W)) move += _camera.Forward;
-            if (_input.IsDown(Key.S)) move -= _camera.Forward;
-            if (_input.IsDown(Key.D)) move += _camera.Right;
-            if (_input.IsDown(Key.A)) move -= _camera.Right;
+            var right = _camera.Right;
+            right.Y = 0;
+            right = right.LengthSquared() > 0 ? System.Numerics.Vector3.Normalize(right) : System.Numerics.Vector3.UnitX;
 
-            if (_input.IsDown(Key.Space)) move += _camera.Up;
-            if (_input.IsDown(Key.ControlLeft) || _input.IsDown(Key.ControlRight)) move -= _camera.Up;
+            if (_input.IsDown(Key.W)) _wishDir += forward;
+            if (_input.IsDown(Key.S)) _wishDir -= forward;
+            if (_input.IsDown(Key.D)) _wishDir += right;
+            if (_input.IsDown(Key.A)) _wishDir -= right;
 
-            _camera.Move(move, dt);
+            if (_wishDir.LengthSquared() > 0.0001f)
+                _wishDir = System.Numerics.Vector3.Normalize(_wishDir);
+
+            _wishSpeed = _move.MaxSpeed;
+
+            if (_input.WasPressed(Key.Space))
+                _jumpPressedThisFrame = true;
         }
     }
 
     public void FixedUpdate(float fixedDt)
     {
-        // Keep empty for now.
-        // We'll put Source-style movement + physics here later.
+        if (!_ui.IsMouseCaptured)
+        {
+            _jumpPressedThisFrame = false;
+            return;
+        }
+
+        if (_jumpPressedThisFrame)
+        {
+            _motor.PressJump();
+            _jumpPressedThisFrame = false;
+        }
+
+        _motor.Step(fixedDt, _wishDir, _wishSpeed);
+
+        // Camera follows motor feet + eye height
+        _camera.Position = _motor.Position + new System.Numerics.Vector3(0, _move.EyeHeight, 0);
     }
 
     public void DrawImGui()
@@ -88,17 +123,17 @@ public sealed class HL2GameModule : IGameModule
         ImGui.Text("F1: Force GAME mode");
 
         ImGui.Separator();
-        ImGui.Text("WASD: Move  |  Mouse: Look");
-        ImGui.Text("Space/Ctrl: Up/Down (debug)");
+        ImGui.Text($"Grounded: {_motor.Grounded}");
+        ImGui.Text($"Feet Pos: {_motor.Position.X:F2}, {_motor.Position.Y:F2}, {_motor.Position.Z:F2}");
+        ImGui.Text($"Vel: {_motor.Velocity.X:F2}, {_motor.Velocity.Y:F2}, {_motor.Velocity.Z:F2}");
 
         ImGui.Separator();
-        ImGui.Text($"Cam Pos: {_camera.Position.X:F2}, {_camera.Position.Y:F2}, {_camera.Position.Z:F2}");
         ImGui.Text($"Yaw: {_camera.Yaw:F2} rad  Pitch: {_camera.Pitch:F2} rad");
         ImGui.End();
     }
 
     public void Dispose()
     {
-        // Nothing to dispose (engine owns window/renderer/imgui)
+        // Engine owns window/renderer/imgui
     }
 }
