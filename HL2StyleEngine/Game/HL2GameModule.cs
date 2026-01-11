@@ -1,10 +1,13 @@
 ﻿using Engine.Runtime.Hosting;
 using ImGuiNET;
 using Veldrid;
+using System.Numerics;
+using Engine.Render;
+
 
 namespace Game;
 
-public sealed class HL2GameModule : IGameModule
+public sealed class HL2GameModule : IGameModule, IWorldRenderer
 {
     private EngineContext _ctx = null!;
 
@@ -114,6 +117,23 @@ public sealed class HL2GameModule : IGameModule
 
     public void DrawImGui()
     {
+        // Draw a projected 3D-ish ground grid behind the UI
+        float aspect = _ctx.Window.Window.Height > 0
+            ? _ctx.Window.Window.Width / (float)_ctx.Window.Window.Height
+            : 16f / 9f;
+
+        ImGui3DGrid.DrawGroundGrid(
+            viewportSize: new System.Numerics.Vector2(_ctx.Window.Window.Width, _ctx.Window.Window.Height),
+            cameraPos: _camera.Position,
+            cameraForward: _camera.Forward,
+            fovRadians: MathF.PI / 3f,   // 60 degrees
+            aspect: aspect,
+            nearPlane: 0.05f,
+            farPlane: 500f,
+            halfSize: 40,
+            spacing: 1f);
+
+
         ImGui.Begin("Debug");
         ImGui.Text($"FPS: {_fps:F1}");
 
@@ -132,8 +152,33 @@ public sealed class HL2GameModule : IGameModule
         ImGui.End();
     }
 
+    public void RenderWorld(Renderer renderer)
+    {
+        float aspect = _ctx.Window.Window.Height > 0
+            ? _ctx.Window.Window.Width / (float)_ctx.Window.Window.Height
+            : 16f / 9f;
+
+        // Basic FPS camera matrices
+        Matrix4x4 view = Matrix4x4.CreateLookAt(
+            _camera.Position,
+            _camera.Position + _camera.Forward,
+            Vector3.UnitY);
+
+        Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(
+            fieldOfView: MathF.PI / 3f,   // 60 deg
+            aspectRatio: aspect,
+            nearPlaneDistance: 0.05f,
+            farPlaneDistance: 500f);
+
+        // Veldrid expects clip-space with Y inverted in some backends; easiest is just use this for now.
+        // If it looks upside-down later, we’ll apply a correction matrix.
+
+        Matrix4x4 viewProj = view * proj;
+
+    }
+
+
     public void Dispose()
     {
-        // Engine owns window/renderer/imgui
     }
 }

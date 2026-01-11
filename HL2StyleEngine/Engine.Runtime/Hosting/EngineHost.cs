@@ -30,7 +30,6 @@ public sealed class EngineHost : IDisposable
         Console.WriteLine("Veldrid.ImGui loaded from: " + typeof(Veldrid.ImGuiRenderer).Assembly.Location);
         Console.WriteLine("Veldrid.ImGui version: " + typeof(Veldrid.ImGuiRenderer).Assembly.GetName().Version);
 
-        // Create GraphicsDevice here (Runtime owns this, not Render)
         var gdOptions = new GraphicsDeviceOptions(
             debug: true,
             swapchainDepthFormat: null,
@@ -39,7 +38,7 @@ public sealed class EngineHost : IDisposable
         _graphicsDevice = VeldridStartup.CreateGraphicsDevice(
             _window.Window,
             gdOptions,
-            GraphicsBackend.Direct3D11); // Windows-only for now
+            GraphicsBackend.Direct3D11); 
 
         _renderer = new Renderer(_graphicsDevice);
 
@@ -68,25 +67,27 @@ public sealed class EngineHost : IDisposable
             float dt = (float)(t - _prevTime);
             _prevTime = t;
 
-            // Clamp huge dt (breakpoints/window drag)
             if (dt > 0.1f) dt = 0.1f;
 
             Time.DeltaTime = dt;
 
-            // Per-frame update
             module.Update(dt, snapshot);
 
-            // Fixed updates
             _fixed.Update(dt, () => module.FixedUpdate(Time.FixedDeltaTime));
 
-            // ImGui update + game UI
             _imgui.Update(dt, snapshot);
             module.DrawImGui();
 
-            // Render
             _renderer.BeginFrame();
+
+            if (module is IWorldRenderer world)
+            {
+                world.RenderWorld(_renderer);
+            }
+
             _imgui.Render(_renderer.GraphicsDevice, _renderer.CommandList);
             _renderer.EndFrame();
+
         }
     }
 
@@ -94,6 +95,5 @@ public sealed class EngineHost : IDisposable
     {
         _imgui.Dispose();
         _renderer.Dispose();
-        // _graphicsDevice is disposed by Renderer.Dispose()
     }
 }
