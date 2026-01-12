@@ -53,7 +53,7 @@ Engine.Platform  → Windowing, input, OS abstraction
 Engine.Render    → Rendering, shaders, GPU resources
 Engine.Runtime   → Engine host, main loop, lifecycle
 Game             → Game-specific code (uses engine APIs)
-
+```
 ## 🎮 Runtime Flow
 
 High-level execution flow:
@@ -146,4 +146,4 @@ This project exists to:
 - Avoid black-box engines
 - Build reusable, testable systems
 - Demonstrate low-level engine knowledge for portfolio and interviews
-```
+
