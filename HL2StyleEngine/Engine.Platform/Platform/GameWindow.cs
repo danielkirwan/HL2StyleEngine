@@ -1,14 +1,16 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Numerics;
+using Veldrid;
 using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
 using static Veldrid.Sdl2.Sdl2Native;
-using System;
 
 namespace Engine.Platform;
 
 public sealed class GameWindow
 {
     public Sdl2Window Window { get; }
+    private Vector2 _cachedMouseDelta;
 
     public GameWindow(int width, int height, string title)
     {
@@ -26,6 +28,15 @@ public sealed class GameWindow
 
     }
 
+    public InputSnapshot PumpEvents()
+    {
+        var snapshot = Window.PumpEvents();
+
+        _cachedMouseDelta = Window.MouseDelta;
+
+        return snapshot;
+    }
+
     public void SetMouseCaptured(bool captured)
     {
         Window.CursorVisible = !captured;
@@ -36,9 +47,10 @@ public sealed class GameWindow
 
     public Vector2 ConsumeRelativeMouseDelta()
     {
-        return Window.MouseDelta;
+        var d = _cachedMouseDelta;
+        _cachedMouseDelta = Vector2.Zero;
+        return d;
     }
-
 
     public void Maximize()
     {

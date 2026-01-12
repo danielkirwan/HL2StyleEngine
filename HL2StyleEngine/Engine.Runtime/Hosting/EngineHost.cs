@@ -18,6 +18,9 @@ public sealed class EngineHost : IDisposable
 
     private readonly Stopwatch _sw = Stopwatch.StartNew();
     private double _prevTime;
+    private int _lastW;
+    private int _lastH;
+
 
     public EngineContext Context { get; }
 
@@ -29,11 +32,14 @@ public sealed class EngineHost : IDisposable
 
         Console.WriteLine("Veldrid.ImGui loaded from: " + typeof(Veldrid.ImGuiRenderer).Assembly.Location);
         Console.WriteLine("Veldrid.ImGui version: " + typeof(Veldrid.ImGuiRenderer).Assembly.GetName().Version);
+        _lastW = _window.Window.Width;
+        _lastH = _window.Window.Height;
+
 
         var gdOptions = new GraphicsDeviceOptions(
-            debug: true,
-            swapchainDepthFormat: null,
-            syncToVerticalBlank: true);
+         debug: true,
+         swapchainDepthFormat: PixelFormat.R32_Float, 
+         syncToVerticalBlank: true);
 
         _graphicsDevice = VeldridStartup.CreateGraphicsDevice(
             _window.Window,
@@ -59,7 +65,22 @@ public sealed class EngineHost : IDisposable
 
         while (_window.Window.Exists)
         {
-            InputSnapshot snapshot = _window.Window.PumpEvents();
+            InputSnapshot snapshot = _window.PumpEvents();
+
+            //Resizing
+            int w = _window.Window.Width;
+            int h = _window.Window.Height;
+
+            if ((w != _lastW || h != _lastH) && w > 0 && h > 0)
+            {
+                _lastW = w;
+                _lastH = h;
+
+                _graphicsDevice.MainSwapchain.Resize((uint)w, (uint)h);
+                _imgui.WindowResized(w, h);
+            }
+
+
             if (!_window.Window.Exists) break;
 
             // dt

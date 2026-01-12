@@ -12,6 +12,12 @@ public sealed class ImGuiLayer : IDisposable
         _imgui = new ImGuiRenderer(gd, output, width, height);
     }
 
+    public void WindowResized(int width, int height)
+    {
+        _imgui.WindowResized(width, height);
+    }
+
+
     public void Update(float dt, InputSnapshot snapshot) => _imgui.Update(dt, snapshot);
     public void Render(GraphicsDevice gd, CommandList cl) => _imgui.Render(gd, cl);
     public void Dispose() => _imgui.Dispose();

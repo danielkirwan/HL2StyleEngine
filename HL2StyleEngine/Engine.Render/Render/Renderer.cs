@@ -18,8 +18,14 @@ public sealed class Renderer : IDisposable
     public void BeginFrame()
     {
         CommandList.Begin();
+
+        // Use swapchain framebuffer (now includes depth)
         CommandList.SetFramebuffer(GraphicsDevice.MainSwapchain.Framebuffer);
+
         CommandList.ClearColorTarget(0, RgbaFloat.Black);
+
+        // Clear depth (only valid because swapchain has a depth target now)
+        CommandList.ClearDepthStencil(1f);
     }
 
     public void EndFrame()

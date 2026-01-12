@@ -49,7 +49,7 @@ public sealed class BasicWorldRenderer : IDisposable
         var pd = new GraphicsPipelineDescription
         {
             BlendState = BlendStateDescription.SingleOverrideBlend,
-            DepthStencilState = DepthStencilStateDescription.Disabled,
+            DepthStencilState = new DepthStencilStateDescription(depthTestEnabled: true,depthWriteEnabled: true, comparisonKind: ComparisonKind.LessEqual),
             RasterizerState = new RasterizerStateDescription(
                 FaceCullMode.None,
                 PolygonFillMode.Solid,

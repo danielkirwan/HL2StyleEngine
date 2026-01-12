@@ -119,7 +119,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
 
 
         ImGui.Begin("Debug");
-        ImGui.Text($"MouseDelta: {_input.MouseDelta.X:F2}, {_input.MouseDelta.Y:F2}");
         ImGui.Text($"Captured: {_ui.IsMouseCaptured}  WantMouse: {ImGui.GetIO().WantCaptureMouse}");
 
         ImGui.Text($"FPS: {_fps:F1}");
