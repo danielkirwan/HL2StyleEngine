@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="opticfluorine.Veldrid" />
+    <PackageReference Include="opticfluorine.Veldrid.StartupUtilities" />
+    <PackageReference Include="ImGui.NET" />
+    <PackageReference Include="opticfluorine.Veldrid.ImGui" />
+
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Engine.Core\Engine.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Shaders\**\*.cso" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Shaders\**\*.hlsl" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Shaders\" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="opticfluorine.Veldrid" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <ProjectReference Include="..\Engine.Core\Engine.Core.csproj" />
+    <ProjectReference Include="..\Engine.Platform\Engine.Platform.csproj" />
+    <ProjectReference Include="..\Engine.Render\Engine.Render.csproj" />
+  </ItemGroup>
+
+
+</Project>
