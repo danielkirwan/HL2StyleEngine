@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj": {}
+    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj": {}
   },
   "projects": {
-    "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj": {
+    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj",
+        "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj",
         "projectName": "Engine.Core",
-        "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj",
+        "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj",
         "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-        "outputPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\obj\\",
+        "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\obj\\",
         "projectStyle": "PackageReference",
         "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
@@ -27,7 +27,6 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -81,18 +80,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\Engine.Platform.csproj": {
+    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\Engine.Platform.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\Engine.Platform.csproj",
+        "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\Engine.Platform.csproj",
         "projectName": "Engine.Platform",
-        "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\Engine.Platform.csproj",
+        "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\Engine.Platform.csproj",
         "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-        "outputPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\obj\\",
+        "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\obj\\",
         "projectStyle": "PackageReference",
         "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
@@ -108,15 +107,14 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj": {
-                "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj"
+              "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj": {
+                "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj"
               }
             }
           }
@@ -171,18 +169,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj": {
+    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj",
+        "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj",
         "projectName": "Engine.Render",
-        "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj",
+        "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj",
         "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-        "outputPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\obj\\",
+        "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\obj\\",
         "projectStyle": "PackageReference",
         "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
@@ -198,15 +196,14 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj": {
-                "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj"
+              "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj": {
+                "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj"
               }
             }
           }
@@ -271,18 +268,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj": {
+    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj",
+        "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj",
         "projectName": "Engine.Runtime",
-        "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj",
+        "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj",
         "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-        "outputPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\obj\\",
+        "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\obj\\",
         "projectStyle": "PackageReference",
         "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
@@ -298,21 +295,20 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj": {
-                "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj"
+              "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj": {
+                "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj"
               },
-              "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\Engine.Platform.csproj": {
-                "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\Engine.Platform.csproj"
+              "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\Engine.Platform.csproj": {
+                "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Platform\\Engine.Platform.csproj"
               },
-              "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj": {
-                "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj"
+              "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj": {
+                "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj"
               }
             }
           }
@@ -362,18 +358,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj": {
+    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
+        "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
         "projectName": "Game",
-        "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
+        "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
         "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-        "outputPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Game\\obj\\",
+        "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\obj\\",
         "projectStyle": "PackageReference",
         "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
@@ -389,15 +385,14 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj": {
-                "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj"
+              "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj": {
+                "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj"
               }
             }
           }
@@ -440,7 +435,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

@@ -157,6 +157,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
         var proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3f, aspect, 0.05f, 500f);
         var viewProj = view * proj;
 
+        _world.BeginFrame();
         _world.UpdateCamera(viewProj);
 
         foreach (var b in _level)
