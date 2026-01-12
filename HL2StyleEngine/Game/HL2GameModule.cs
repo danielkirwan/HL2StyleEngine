@@ -1,6 +1,11 @@
 ﻿using Engine.Runtime.Hosting;
 using ImGuiNET;
 using Veldrid;
+using Game.World;
+using System.Collections.Generic;
+using System.Numerics;
+using System.Data.Common;
+
 
 namespace Game;
 
@@ -22,11 +27,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
     private float _fps;
     private Engine.Render.BasicWorldRenderer _world = null!;
 
+    private List<BoxInstance> _level = new();
+
     public void Initialize(EngineContext context)
     {
         _ctx = context;
         _world = new Engine.Render.BasicWorldRenderer(_ctx.Renderer.GraphicsDevice, shaderDirRelativeToApp: "Shaders");
-
+        _level = SimpleLevel.BuildRoom01();
 
         _ui = new UIModeController(_ctx.Window, _input, startInGameplay: true);
 
@@ -111,7 +118,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
 
     public void DrawImGui()
     {
-        // Draw a projected 3D-ish ground grid behind the UI
         float aspect = _ctx.Window.Window.Height > 0
             ? _ctx.Window.Window.Width / (float)_ctx.Window.Window.Height
             : 16f / 9f;
@@ -146,20 +152,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
             ? _ctx.Window.Window.Width / (float)_ctx.Window.Window.Height
             : 16f / 9f;
 
-        var view = System.Numerics.Matrix4x4.CreateLookAt(
-            _camera.Position,
-            _camera.Position + _camera.Forward,
-            System.Numerics.Vector3.UnitY);
+        var view = Matrix4x4.CreateLookAt(_camera.Position,_camera.Position + _camera.Forward,Vector3.UnitY);
 
-        var proj = System.Numerics.Matrix4x4.CreatePerspectiveFieldOfView(
-            MathF.PI / 3f, aspect, 0.05f, 500f);
-
+        var proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 3f, aspect, 0.05f, 500f);
         var viewProj = view * proj;
 
         _world.UpdateCamera(viewProj);
-        _world.Draw(renderer.CommandList);
-    }
 
+        foreach (var b in _level)
+        {
+            _world.DrawBox(renderer.CommandList, b.ModelMatrix, b.Color);
+        }
+    }
 
     public void Dispose()
     {

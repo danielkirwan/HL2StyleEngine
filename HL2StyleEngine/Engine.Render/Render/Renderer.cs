@@ -33,7 +33,7 @@ public sealed class Renderer : IDisposable
         CommandList.End();
         GraphicsDevice.SubmitCommands(CommandList);
         GraphicsDevice.SwapBuffers(GraphicsDevice.MainSwapchain);
-        GraphicsDevice.WaitForIdle();
+        //GraphicsDevice.WaitForIdle(); //Add back for debugging
     }
 
     public void Dispose()

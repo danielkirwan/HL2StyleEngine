@@ -25,4 +25,13 @@
   <ItemGroup>
     <Folder Include="Shaders\" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Shaders\BasicPS.cso">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Shaders\BasicVS.cso">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

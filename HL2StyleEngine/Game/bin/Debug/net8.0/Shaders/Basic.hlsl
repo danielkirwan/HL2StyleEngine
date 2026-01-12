@@ -1,12 +1,17 @@
-cbuffer CameraBuffer : register(b0)
+cbuffer Camera : register(b0)
 {
-    row_major float4x4 ViewProj;
+    float4x4 ViewProj;
+};
+
+cbuffer Object : register(b1)
+{
+    float4x4 Model;
+    float4 Color;
 };
 
 struct VSInput
 {
     float3 Position : POSITION;
-    float4 Color : COLOR0;
 };
 
 struct VSOutput
@@ -18,12 +23,15 @@ struct VSOutput
 VSOutput VSMain(VSInput input)
 {
     VSOutput o;
-    o.Position = mul(float4(input.Position, 1.0f), ViewProj);
-    o.Color = input.Color;
+
+    float4 worldPos = mul(Model, float4(input.Position, 1.0));
+    o.Position = mul(ViewProj, worldPos);
+    o.Color = Color;
+
     return o;
 }
 
-float4 PSMain(VSOutput input) : SV_Target0
+float4 PSMain(VSOutput input) : SV_TARGET
 {
     return input.Color;
 }
