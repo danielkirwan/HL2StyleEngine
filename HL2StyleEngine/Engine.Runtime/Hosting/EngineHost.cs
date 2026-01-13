@@ -67,7 +67,13 @@ public sealed class EngineHost : IDisposable
         {
             InputSnapshot snapshot = _window.PumpEvents();
 
-            //Resizing
+            if (module is IInputConsumer consumer)
+            {
+                consumer.InputState.Update(snapshot);
+                var md = _window.ConsumeRelativeMouseDelta();
+                consumer.InputState.OverrideMouseDelta(md);
+            }
+
             int w = _window.Window.Width;
             int h = _window.Window.Height;
 
@@ -83,7 +89,6 @@ public sealed class EngineHost : IDisposable
 
             if (!_window.Window.Exists) break;
 
-            // dt
             double t = _sw.Elapsed.TotalSeconds;
             float dt = (float)(t - _prevTime);
             _prevTime = t;

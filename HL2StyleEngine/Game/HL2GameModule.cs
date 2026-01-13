@@ -11,7 +11,7 @@ using Engine.Input.Devices;
 
 namespace Game;
 
-public sealed class HL2GameModule : IGameModule, IWorldRenderer
+public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 {
     private EngineContext _ctx = null!;
 
@@ -42,6 +42,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
     private Engine.Render.BasicWorldRenderer _world = null!;
     private List<Aabb> _colliders = new();
     private List<BoxInstance> _level = new();
+
+    public InputState InputState => _inputState;
 
     public void Initialize(EngineContext context)
     {
@@ -94,8 +96,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
     {
         _fps = dt > 0 ? 1f / dt : 0f;
 
-        _inputState.Update(snapshot);
-
         _inputSystem.Update();
 
         if (_toggleUi.Pressed)
@@ -110,8 +110,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
 
         if (_ui.IsMouseCaptured && !uiWantsMouse)
         {
-            var md = _ctx.Window.ConsumeRelativeMouseDelta();
-            _camera.AddLook(md);
+            _camera.AddLook(_inputState.MouseDelta);
         }
 
         _wishDir = Vector3.Zero;
