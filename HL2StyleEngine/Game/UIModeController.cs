@@ -1,6 +1,8 @@
-﻿using Engine.Platform;
-using Engine.Input;
+﻿using Engine.Input;
 using Engine.Input.Actions;
+using Engine.Input.Devices;
+using Engine.Platform;
+using System.Numerics;
 
 namespace Game;
 
@@ -8,16 +10,15 @@ public sealed class UIModeController
 {
     private readonly GameWindow _window;
 
-    // Optional: lets us “flush” actions after toggling UI, so you don’t get a stuck key edge.
-    private readonly InputSystem? _inputSystem;
+    private readonly InputState _input;
 
     public bool IsUIOpen { get; private set; }
     public bool IsMouseCaptured => !IsUIOpen;
 
-    public UIModeController(GameWindow window, InputSystem? inputSystem, bool startInGameplay = true)
+    public UIModeController(GameWindow window, InputState input, bool startInGameplay = true)
     {
         _window = window;
-        _inputSystem = inputSystem;
+        _input = input;
 
         IsUIOpen = !startInGameplay;
         ApplyMouseState();
@@ -49,11 +50,8 @@ public sealed class UIModeController
 
         _window.SetMouseCaptured(capture);
 
-        // In relative mode, warping isn't necessary, but harmless if you like it.
-        // If you ever get weird camera jumps, comment this out.
-        _window.WarpMouseToCenter();
+        _input.RelativeMouseMode = capture;
+        _input.ClearMouseDelta();
 
-        // Optional “flush” so the frame after toggling UI doesn’t read stale action edges.
-        _inputSystem?.Update();
     }
 }

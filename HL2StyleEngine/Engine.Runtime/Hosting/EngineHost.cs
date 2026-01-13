@@ -69,10 +69,11 @@ public sealed class EngineHost : IDisposable
 
             if (module is IInputConsumer consumer)
             {
-                consumer.InputState.Update(snapshot);
-                var md = _window.ConsumeRelativeMouseDelta();
-                consumer.InputState.OverrideMouseDelta(md);
+                if (consumer.InputState.RelativeMouseMode)
+                    consumer.InputState.SetRelativeMouseDelta(_window.ConsumeRelativeMouseDelta());
             }
+
+
 
             int w = _window.Window.Width;
             int h = _window.Window.Height;

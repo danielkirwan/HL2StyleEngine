@@ -61,7 +61,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         BuildActions();
 
-        _ui = new UIModeController(_ctx.Window, _inputSystem, startInGameplay: true);
+        _ui = new UIModeController(_ctx.Window, _inputState, startInGameplay: true);
 
         _motor = new SourcePlayerMotor(_move, startFeetPos: new Vector3(0, 0, -5f));
         _camera.Position = _motor.Position + new Vector3(0, _move.EyeHeight, 0);
@@ -96,6 +96,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         _fps = dt > 0 ? 1f / dt : 0f;
 
+        _inputState.Update(snapshot);
+
         _inputSystem.Update();
 
         if (_toggleUi.Pressed)
@@ -118,19 +120,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (_ui.IsMouseCaptured && !uiWantsKeyboard)
         {
-            var forward = _camera.Forward;
-            forward.Y = 0;
+            var forward = _camera.Forward; forward.Y = 0;
             if (forward.LengthSquared() > 0) forward = Vector3.Normalize(forward);
 
-            var right = _camera.Right;
-            right.Y = 0;
+            var right = _camera.Right; right.Y = 0;
             if (right.LengthSquared() > 0) right = Vector3.Normalize(right);
 
             if (_moveF.Down) _wishDir += forward;
             if (_moveB.Down) _wishDir -= forward;
             if (_moveR.Down) _wishDir += right;
             if (_moveL.Down) _wishDir -= right;
-                
+
             if (_wishDir.LengthSquared() > 0.0001f)
                 _wishDir = Vector3.Normalize(_wishDir);
 
@@ -140,6 +140,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 _jumpPressedThisFrame = true;
         }
     }
+
 
     public void FixedUpdate(float fixedDt)
     {

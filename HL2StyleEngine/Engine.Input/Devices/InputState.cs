@@ -2,11 +2,6 @@
 using Veldrid;
 
 namespace Engine.Input.Devices;
-
-/// <summary>
-/// Raw input state updated from Veldrid InputSnapshot.
-/// This is intentionally "dumb": just tracks keys/buttons and mouse.
-/// </summary>
 public sealed class InputState
 {
     private readonly HashSet<Key> _down = new();
@@ -20,16 +15,24 @@ public sealed class InputState
     private Vector2 _lastMousePos;
     private bool _hasLastMousePos;
 
+    public bool RelativeMouseMode { get; set; }
+
+    private Vector2 _pendingRelativeDelta;
+
     public bool IsDown(Key key) => _down.Contains(key);
     public bool WasPressed(Key key) => _pressedThisFrame.Contains(key);
 
-    /// <summary>Allows the host/window to override mouse delta (relative mode).</summary>
-    public void OverrideMouseDelta(Vector2 delta) => MouseDelta = delta;
+    public void SetRelativeMouseDelta(Vector2 delta) => _pendingRelativeDelta += delta;
+
+    public void ClearMouseDelta()
+    {
+        MouseDelta = Vector2.Zero;
+        _pendingRelativeDelta = Vector2.Zero;
+    }
 
     public void Update(InputSnapshot snapshot)
     {
         _pressedThisFrame.Clear();
-        MouseDelta = Vector2.Zero;
 
         // Keyboard
         foreach (var ke in snapshot.KeyEvents)
@@ -52,13 +55,27 @@ public sealed class InputState
             if (me.MouseButton == MouseButton.Left) LeftMouseDown = me.Down;
         }
 
-        // Mouse position + delta (absolute)
         MousePosition = snapshot.MousePosition;
 
-        if (_hasLastMousePos)
-            MouseDelta = MousePosition - _lastMousePos;
+        if (RelativeMouseMode)
+        {
+            // Use the delta provided by the window/host (SDL relative mode)
+            MouseDelta = _pendingRelativeDelta;
+            _pendingRelativeDelta = Vector2.Zero;
+        }
+        else
+        {
+            // Compute delta from absolute mouse pos
+            if (_hasLastMousePos)
+                MouseDelta = MousePosition - _lastMousePos;
+            else
+                MouseDelta = Vector2.Zero;
 
-        _lastMousePos = MousePosition;
-        _hasLastMousePos = true;
+            _lastMousePos = MousePosition;
+            _hasLastMousePos = true;
+
+            // Safety: drop any pending relative delta while not in relative mode
+            _pendingRelativeDelta = Vector2.Zero;
+        }
     }
 }
