@@ -84,7 +84,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _map.BindGamepadButton(_jump, GamepadButton.A);
 
         _map.BindGamepadStick(_move, GamepadStick.Left, deadzone: 0.2f, scale: 1f, invertY: true);
-        _map.BindGamepadStick(_look, GamepadStick.Right, deadzone: 0.2f, scale: 1f, invertY: true);
+        _map.BindGamepadStick(_look, GamepadStick.Right, deadzone: 0.2f, scale: 1f, invertY: false);
 
         _inputSystem = new InputSystem(_inputState, _map);
     }
@@ -103,20 +103,20 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         bool uiWantsKeyboard = io.WantCaptureKeyboard;
         bool uiWantsMouse = io.WantCaptureMouse;
 
-        if (_ui.IsMouseCaptured && !uiWantsMouse)
+        if (_ui.IsMouseCaptured)
         {
-            Vector2 look = Vector2.Zero;
-
-            if (_inputState.ActiveDevice == ActiveInputDevice.Gamepad)
+            if (!uiWantsMouse)
             {
-                look = _look.Value2D * 12f; 
-            }
-            else
-            {
-                look = _inputState.MouseDelta;
+                _camera.AddLook(_inputState.MouseDelta);
             }
 
-            _camera.AddLook(look);
+            Vector2 stick = _look.Value2D; 
+            const float lookRadPerSec = 3.0f; 
+            _camera.Yaw -= stick.X * lookRadPerSec * dt;
+            _camera.Pitch -= stick.Y * lookRadPerSec * dt;
+
+            float limit = 1.55334f;
+            _camera.Pitch = Math.Clamp(_camera.Pitch, -limit, limit);
         }
 
         _wishDir = Vector3.Zero;
@@ -180,8 +180,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     public void DrawImGui()
     {
         ImGui.Begin("Debug");
-        ImGui.Text($"Captured: {_ui.IsMouseCaptured}  WantMouse: {ImGui.GetIO().WantCaptureMouse}");
-        ImGui.Text($"FPS: {_fps:F1}");
+        ImGui.Separator();
+        ImGui.Text($"HasGamepad: {_inputState.HasGamepad}");
+        ImGui.Text($"Pad LeftStick raw: {_inputState.GetStick(Engine.Input.Actions.GamepadStick.Left, invertY: false)}");
+        ImGui.Text($"Pad RightStick raw: {_inputState.GetStick(Engine.Input.Actions.GamepadStick.Right, invertY: false)}");
+        ImGui.Text($"Axes: LX={_inputState.GetAxis(Engine.Input.Actions.GamepadAxis.LeftX):F2} LY={_inputState.GetAxis(Engine.Input.Actions.GamepadAxis.LeftY):F2} RX={_inputState.GetAxis(Engine.Input.Actions.GamepadAxis.RightX):F2} RY={_inputState.GetAxis(Engine.Input.Actions.GamepadAxis.RightY):F2}");
+
 
         ImGui.Separator();
         ImGui.Text(_ui.IsUIOpen ? "UI MODE (cursor visible)" : "GAME MODE (mouse captured)");
