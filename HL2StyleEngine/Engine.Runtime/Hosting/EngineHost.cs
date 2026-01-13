@@ -70,10 +70,11 @@ public sealed class EngineHost : IDisposable
             if (module is IInputConsumer consumer)
             {
                 if (consumer.InputState.RelativeMouseMode)
-                    consumer.InputState.SetRelativeMouseDelta(_window.ConsumeRelativeMouseDelta());
+                    consumer.InputState.SetRelativeMouseDelta(
+                        _window.ConsumeRelativeMouseDelta());
+
+                consumer.InputState.UpdateGamepads();
             }
-
-
 
             int w = _window.Window.Width;
             int h = _window.Window.Height;
@@ -86,7 +87,6 @@ public sealed class EngineHost : IDisposable
                 _graphicsDevice.MainSwapchain.Resize((uint)w, (uint)h);
                 _imgui.WindowResized(w, h);
             }
-
 
             if (!_window.Window.Exists) break;
 

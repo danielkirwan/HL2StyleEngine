@@ -24,6 +24,7 @@ public sealed class GameWindow
         };
 
         Window = VeldridStartup.CreateWindow(ref wci);
+        Sdl2ControllerBootstrap.EnsureControllersInitialized();
         Maximize();
 
     }

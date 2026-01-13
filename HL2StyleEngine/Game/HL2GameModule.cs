@@ -21,16 +21,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private InputAction _toggleUi = null!;
     private InputAction _forceGame = null!;
-    private InputAction _moveF = null!;
-    private InputAction _moveB = null!;
-    private InputAction _moveL = null!;
-    private InputAction _moveR = null!;
     private InputAction _jump = null!;
+    private InputAction _move = null!; 
+    private InputAction _look = null!;
 
     private readonly FpsCamera _camera = new(new Vector3(0, 1.8f, -5f));
     private UIModeController _ui = null!;
 
-    private readonly SourceMovementSettings _move = new();
+    private readonly SourceMovementSettings _movement = new();
     private SourcePlayerMotor _motor = null!;
 
     private Vector3 _wishDir;
@@ -63,8 +61,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         _ui = new UIModeController(_ctx.Window, _inputState, startInGameplay: true);
 
-        _motor = new SourcePlayerMotor(_move, startFeetPos: new Vector3(0, 0, -5f));
-        _camera.Position = _motor.Position + new Vector3(0, _move.EyeHeight, 0);
+        _motor = new SourcePlayerMotor(_movement, startFeetPos: new Vector3(0, 0, -5f));
+        _camera.Position = _motor.Position + new Vector3(0, _movement.EyeHeight, 0);
     }
 
     private void BuildActions()
@@ -73,21 +71,20 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         _toggleUi = _map.AddAction("ToggleUI");
         _forceGame = _map.AddAction("ForceGame");
-        _moveF = _map.AddAction("MoveForward");
-        _moveB = _map.AddAction("MoveBack");
-        _moveL = _map.AddAction("MoveLeft");
-        _moveR = _map.AddAction("MoveRight");
         _jump = _map.AddAction("Jump");
+
+        _move = _map.AddAction("Move"); 
+        _look = _map.AddAction("Look"); 
 
         _map.BindKey(_toggleUi, Key.Tab);
         _map.BindKey(_forceGame, Key.F1);
-
-        _map.BindKey(_moveF, Key.W);
-        _map.BindKey(_moveB, Key.S);
-        _map.BindKey(_moveL, Key.A);
-        _map.BindKey(_moveR, Key.D);
-
         _map.BindKey(_jump, Key.Space);
+
+        _map.BindGamepadButton(_toggleUi, GamepadButton.Start);
+        _map.BindGamepadButton(_jump, GamepadButton.A);
+
+        _map.BindGamepadStick(_move, GamepadStick.Left, deadzone: 0.2f, scale: 1f, invertY: true);
+        _map.BindGamepadStick(_look, GamepadStick.Right, deadzone: 0.2f, scale: 1f, invertY: true);
 
         _inputSystem = new InputSystem(_inputState, _map);
     }
@@ -97,14 +94,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _fps = dt > 0 ? 1f / dt : 0f;
 
         _inputState.Update(snapshot);
-
         _inputSystem.Update();
 
-        if (_toggleUi.Pressed)
-            _ui.ToggleUI();
-
-        if (_forceGame.Pressed)
-            _ui.CloseUI();
+        if (_toggleUi.Pressed) _ui.ToggleUI();
+        if (_forceGame.Pressed) _ui.CloseUI();
 
         var io = ImGui.GetIO();
         bool uiWantsKeyboard = io.WantCaptureKeyboard;
@@ -112,7 +105,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (_ui.IsMouseCaptured && !uiWantsMouse)
         {
-            _camera.AddLook(_inputState.MouseDelta);
+            Vector2 look = Vector2.Zero;
+
+            if (_inputState.ActiveDevice == ActiveInputDevice.Gamepad)
+            {
+                look = _look.Value2D * 12f; 
+            }
+            else
+            {
+                look = _inputState.MouseDelta;
+            }
+
+            _camera.AddLook(look);
         }
 
         _wishDir = Vector3.Zero;
@@ -120,27 +124,39 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (_ui.IsMouseCaptured && !uiWantsKeyboard)
         {
+            Vector2 move2 = Vector2.Zero;
+
+            if (_inputState.ActiveDevice == ActiveInputDevice.Gamepad)
+            {
+                move2 = _move.Value2D; 
+            }
+            else
+            {
+                if (_inputState.IsDown(Key.W)) move2.Y += 1f;
+                if (_inputState.IsDown(Key.S)) move2.Y -= 1f;
+                if (_inputState.IsDown(Key.D)) move2.X += 1f;
+                if (_inputState.IsDown(Key.A)) move2.X -= 1f;
+
+                if (move2.LengthSquared() > 1f) move2 = Vector2.Normalize(move2);
+            }
+
             var forward = _camera.Forward; forward.Y = 0;
             if (forward.LengthSquared() > 0) forward = Vector3.Normalize(forward);
 
             var right = _camera.Right; right.Y = 0;
             if (right.LengthSquared() > 0) right = Vector3.Normalize(right);
 
-            if (_moveF.Down) _wishDir += forward;
-            if (_moveB.Down) _wishDir -= forward;
-            if (_moveR.Down) _wishDir += right;
-            if (_moveL.Down) _wishDir -= right;
+            _wishDir = forward * move2.Y + right * move2.X;
 
             if (_wishDir.LengthSquared() > 0.0001f)
                 _wishDir = Vector3.Normalize(_wishDir);
 
-            _wishSpeed = _move.MaxSpeed;
+            _wishSpeed = _movement.MaxSpeed;
 
             if (_jump.Pressed)
                 _jumpPressedThisFrame = true;
         }
     }
-
 
     public void FixedUpdate(float fixedDt)
     {
@@ -158,7 +174,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         _motor.Step(fixedDt, _wishDir, _wishSpeed, _colliders);
 
-        _camera.Position = _motor.Position + new Vector3(0, _move.EyeHeight, 0);
+        _camera.Position = _motor.Position + new Vector3(0, _movement.EyeHeight, 0);
     }
 
     public void DrawImGui()
@@ -181,7 +197,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         ImGui.Text($"Yaw: {_camera.Yaw:F2} rad  Pitch: {_camera.Pitch:F2} rad");
 
         ImGui.Separator();
-        ImGui.Text($"Actions: W({_moveF.Down}) A({_moveL.Down}) S({_moveB.Down}) D({_moveR.Down}) Jump({_jump.Pressed})");
+        ImGui.Text($"HasGamepad: {_inputState.HasGamepad}");
+        ImGui.Text($"ActiveDevice: {_inputState.ActiveDevice}");
+        ImGui.Text($"LeftStick: {_inputState.GetStick(GamepadStick.Left, invertY: true)} RightStick: {_inputState.GetStick(GamepadStick.Right, invertY: true)}");
 
         ImGui.End();
     }

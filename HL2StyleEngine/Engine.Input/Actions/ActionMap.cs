@@ -37,6 +37,15 @@ public sealed class ActionMap
     public void BindMouse(InputAction action, MouseButton button)
         => _bindings[action].Add(InputBinding.FromMouse(button));
 
+    public void BindGamepadButton(InputAction action, GamepadButton button)
+        => _bindings[action].Add(InputBinding.FromGamepadButton(button));
+
+    public void BindGamepadAxis(InputAction action, GamepadAxis axis, float deadzone = 0.15f, float scale = 1f, bool invert = false)
+        => _bindings[action].Add(InputBinding.FromGamepadAxis(axis, deadzone, scale, invert));
+
+    public void BindGamepadStick(InputAction action, GamepadStick stick, float deadzone = 0.15f, float scale = 1f, bool invertY = true)
+        => _bindings[action].Add(InputBinding.FromGamepadStick(stick, deadzone, scale, invertY));
+
     internal IReadOnlyList<InputBinding> GetBindings(InputAction action)
         => _bindings[action];
 }
