@@ -108,3 +108,5 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\refint\Game.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\Game.pdb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\Game.genruntimeconfig.cache
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\ref\Game.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Engine.Physics.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Engine.Physics.pdb

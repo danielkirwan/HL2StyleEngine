@@ -1,10 +1,9 @@
-﻿using Engine.Runtime.Hosting;
-using ImGuiNET;
-using Veldrid;
+﻿using Engine.Physics.Collision;
+using Engine.Runtime.Hosting;
 using Game.World;
-using System.Collections.Generic;
+using ImGuiNET;
 using System.Numerics;
-using System.Data.Common;
+using Veldrid;
 
 
 namespace Game;
@@ -27,6 +26,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
     private float _fps;
     private Engine.Render.BasicWorldRenderer _world = null!;
 
+    private List<Aabb> _colliders = new();
     private List<BoxInstance> _level = new();
 
     public void Initialize(EngineContext context)
@@ -34,6 +34,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
         _ctx = context;
         _world = new Engine.Render.BasicWorldRenderer(_ctx.Renderer.GraphicsDevice, shaderDirRelativeToApp: "Shaders");
         _level = SimpleLevel.BuildRoom01();
+        _colliders.Clear();
+        foreach (var b in _level)
+        {
+            var half = b.Size * 0.5f;
+            _colliders.Add(new Aabb(b.Position - half, b.Position + half));
+        }
 
         _ui = new UIModeController(_ctx.Window, _input, startInGameplay: true);
 
@@ -110,7 +116,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
             _jumpPressedThisFrame = false;
         }
 
-        _motor.Step(fixedDt, _wishDir, _wishSpeed);
+        _motor.Step(fixedDt, _wishDir, _wishSpeed, _colliders);
 
         // Camera follows motor feet + eye height
         _camera.Position = _motor.Position + new System.Numerics.Vector3(0, _move.EyeHeight, 0);
@@ -141,6 +147,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
 
         ImGui.Separator();
         ImGui.Text($"Yaw: {_camera.Yaw:F2} rad  Pitch: {_camera.Pitch:F2} rad");
+
+
+
         ImGui.End();
     }
     public void RenderWorld(Engine.Render.Renderer renderer)

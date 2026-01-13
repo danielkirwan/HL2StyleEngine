@@ -1,0 +1,12 @@
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\bin\Debug\net8.0\Engine.Physics.deps.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\bin\Debug\net8.0\Engine.Physics.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\bin\Debug\net8.0\Engine.Physics.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\obj\Debug\net8.0\Engine.Physics.GeneratedMSBuildEditorConfig.editorconfig
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\obj\Debug\net8.0\Engine.Physics.AssemblyInfoInputs.cache
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\obj\Debug\net8.0\Engine.Physics.AssemblyInfo.cs
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\obj\Debug\net8.0\Engine.Physics.csproj.CoreCompileInputs.cache
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\obj\Debug\net8.0\Engine.Physics.sourcelink.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\obj\Debug\net8.0\Engine.Physics.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\obj\Debug\net8.0\refint\Engine.Physics.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\obj\Debug\net8.0\Engine.Physics.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Physics\obj\Debug\net8.0\ref\Engine.Physics.dll

@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using Engine.Physics.Collision;
+using System.Numerics;
 
 namespace Game;
 
@@ -6,13 +7,20 @@ public sealed class SourcePlayerMotor
 {
     private readonly SourceMovementSettings _s;
 
-    public Vector3 Position;  
+    public Vector3 Position;
     public Vector3 Velocity;
 
     public bool Grounded { get; private set; }
 
     private float _timeSinceGrounded;
     private float _timeSinceJumpPressed;
+
+    public float Radius = 0.32f;
+    public float HalfHeight = 0.9f; 
+
+
+    // Player collision shape (feet position is center-ish for now)
+    public Vector3 PlayerExtents = new(0.32f, 0.9f, 0.32f);
 
     public SourcePlayerMotor(SourceMovementSettings settings, Vector3 startFeetPos)
     {
@@ -24,21 +32,12 @@ public sealed class SourcePlayerMotor
         _timeSinceJumpPressed = 999f;
     }
 
-    public void PressJump()
-    {
-        _timeSinceJumpPressed = 0f;
-    }
+    public void PressJump() => _timeSinceJumpPressed = 0f;
 
-    /// <summary>
-    /// Source-like movement on a flat ground plane (Y=0). 
-    /// wishDir should be normalized (or zero). wishSpeed in m/s.
-    /// </summary>
-    public void Step(float dt, Vector3 wishDir, float wishSpeed)
+    public void Step(float dt, Vector3 wishDir, float wishSpeed, IReadOnlyList<Aabb> world)
     {
         _timeSinceJumpPressed += dt;
         _timeSinceGrounded += dt;
-
-        ResolveGroundPlane(ref Position, ref Velocity);
 
         if (Grounded)
         {
@@ -46,7 +45,6 @@ public sealed class SourcePlayerMotor
 
             ApplyFriction(dt);
             Accelerate(dt, wishDir, wishSpeed, _s.Accel);
-
             TryConsumeJump();
         }
         else
@@ -57,19 +55,31 @@ public sealed class SourcePlayerMotor
 
         Position += Velocity * dt;
 
+        Vector3 extents = new Vector3(Radius, HalfHeight, Radius);
+        Vector3 center = Position + new Vector3(0f, HalfHeight, 0f);
+
+        var (newCenter, newVel, grounded) = StaticCollision.ResolvePlayerAabb(
+            center, Velocity, extents, world);
+
+        Velocity = newVel;
+        Grounded = grounded;
+
+        Position = newCenter - new Vector3(0f, HalfHeight, 0f);
+
         ResolveGroundPlane(ref Position, ref Velocity);
     }
+
 
     private void TryConsumeJump()
     {
         bool buffered = _timeSinceJumpPressed <= _s.JumpBuffer;
-        bool coyoteOk = _timeSinceGrounded <= _s.CoyoteTime; 
+        bool coyoteOk = _timeSinceGrounded <= _s.CoyoteTime;
 
         if (buffered && coyoteOk)
         {
             Velocity = new Vector3(Velocity.X, _s.JumpSpeed, Velocity.Z);
             Grounded = false;
-            _timeSinceJumpPressed = 999f; 
+            _timeSinceJumpPressed = 999f;
         }
     }
 
@@ -97,7 +107,6 @@ public sealed class SourcePlayerMotor
         if (wishSpeed <= 0f) return;
         if (wishDir.LengthSquared() < 0.0001f) return;
 
-        // Clamp wish speed to max
         if (wishSpeed > _s.MaxSpeed) wishSpeed = _s.MaxSpeed;
 
         Vector3 lateralVel = new(Velocity.X, 0f, Velocity.Z);
@@ -136,13 +145,8 @@ public sealed class SourcePlayerMotor
         if (pos.Y <= 0f + _s.GroundEpsilon)
         {
             pos = new Vector3(pos.X, 0f, pos.Z);
-
             if (vel.Y < 0f) vel = new Vector3(vel.X, 0f, vel.Z);
             Grounded = true;
-        }
-        else
-        {
-            Grounded = false;
         }
     }
 }

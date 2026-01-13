@@ -903,6 +903,16 @@
           "bin/placeholder/Engine.Core.dll": {}
         }
       },
+      "Engine.Physics/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/Engine.Physics.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Engine.Physics.dll": {}
+        }
+      },
       "Engine.Platform/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
@@ -940,6 +950,7 @@
         "framework": ".NETCoreApp,Version=v8.0",
         "dependencies": {
           "Engine.Core": "1.0.0",
+          "Engine.Physics": "1.0.0",
           "Engine.Platform": "1.0.0",
           "Engine.Render": "1.0.0",
           "opticfluorine.Veldrid": "4.9.6"
@@ -3133,6 +3144,11 @@
       "path": "../Engine.Core/Engine.Core.csproj",
       "msbuildProject": "../Engine.Core/Engine.Core.csproj"
     },
+    "Engine.Physics/1.0.0": {
+      "type": "project",
+      "path": "../Engine.Physics/Engine.Physics.csproj",
+      "msbuildProject": "../Engine.Physics/Engine.Physics.csproj"
+    },
     "Engine.Platform/1.0.0": {
       "type": "project",
       "path": "../Engine.Platform/Engine.Platform.csproj",
@@ -3161,11 +3177,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Editor\\Engine.Editor.csproj",
+      "projectUniqueName": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Editor\\Engine.Editor.csproj",
       "projectName": "Engine.Editor",
-      "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Editor\\Engine.Editor.csproj",
+      "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Editor\\Engine.Editor.csproj",
       "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-      "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Editor\\obj\\",
+      "outputPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Editor\\obj\\",
       "projectStyle": "PackageReference",
       "centralPackageVersionsManagementEnabled": true,
       "fallbackFolders": [
@@ -3181,14 +3197,15 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj": {
-              "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj"
+            "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj": {
+              "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj"
             }
           }
         }
@@ -3231,7 +3248,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

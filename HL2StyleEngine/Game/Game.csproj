@@ -8,5 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Engine.Runtime\Engine.Runtime.csproj" />
+    <ProjectReference Include="..\Engine.Physics\Engine.Physics.csproj" />
   </ItemGroup>
 </Project>
