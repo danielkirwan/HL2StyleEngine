@@ -9,6 +9,7 @@
       "Engine.Runtime/1.0.0": {
         "dependencies": {
           "Engine.Core": "1.0.0",
+          "Engine.Input": "1.0.0",
           "Engine.Physics": "1.0.0",
           "Engine.Platform": "1.0.0",
           "Engine.Render": "1.0.0",
@@ -552,6 +553,18 @@
           }
         }
       },
+      "Engine.Input/1.0.0": {
+        "dependencies": {
+          "opticfluorine.Veldrid": "4.9.6",
+          "opticfluorine.Veldrid.SDL2": "4.9.6"
+        },
+        "runtime": {
+          "Engine.Input.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
       "Engine.Physics/1.0.0": {
         "runtime": {
           "Engine.Physics.dll": {
@@ -968,6 +981,11 @@
       "hashPath": "vortice.mathematics.1.4.25.nupkg.sha512"
     },
     "Engine.Core/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Engine.Input/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

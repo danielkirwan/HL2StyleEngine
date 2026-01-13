@@ -903,6 +903,20 @@
           "bin/placeholder/Engine.Core.dll": {}
         }
       },
+      "Engine.Input/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "opticfluorine.Veldrid": "4.9.6",
+          "opticfluorine.Veldrid.SDL2": "4.9.6"
+        },
+        "compile": {
+          "bin/placeholder/Engine.Input.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Engine.Input.dll": {}
+        }
+      },
       "Engine.Physics/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
@@ -950,6 +964,7 @@
         "framework": ".NETCoreApp,Version=v8.0",
         "dependencies": {
           "Engine.Core": "1.0.0",
+          "Engine.Input": "1.0.0",
           "Engine.Physics": "1.0.0",
           "Engine.Platform": "1.0.0",
           "Engine.Render": "1.0.0",
@@ -3143,6 +3158,11 @@
       "type": "project",
       "path": "../Engine.Core/Engine.Core.csproj",
       "msbuildProject": "../Engine.Core/Engine.Core.csproj"
+    },
+    "Engine.Input/1.0.0": {
+      "type": "project",
+      "path": "../Engine.Input/Engine.Input.csproj",
+      "msbuildProject": "../Engine.Input/Engine.Input.csproj"
     },
     "Engine.Physics/1.0.0": {
       "type": "project",
