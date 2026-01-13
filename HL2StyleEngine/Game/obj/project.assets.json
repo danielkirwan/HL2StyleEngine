@@ -3199,11 +3199,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
+      "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
       "projectName": "Game",
-      "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
+      "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\Game.csproj",
       "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-      "outputPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Game\\obj\\",
+      "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Game\\obj\\",
       "projectStyle": "PackageReference",
       "centralPackageVersionsManagementEnabled": true,
       "fallbackFolders": [
@@ -3219,21 +3219,20 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Input\\Engine.Input.csproj": {
-              "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Input\\Engine.Input.csproj"
+            "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Input\\Engine.Input.csproj": {
+              "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Input\\Engine.Input.csproj"
             },
-            "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj": {
-              "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj"
+            "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj": {
+              "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj"
             },
-            "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj": {
-              "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj"
+            "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj": {
+              "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Runtime\\Engine.Runtime.csproj"
             }
           }
         }
@@ -3276,7 +3275,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

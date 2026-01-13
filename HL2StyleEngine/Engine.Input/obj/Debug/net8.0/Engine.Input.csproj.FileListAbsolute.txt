@@ -11,3 +11,16 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\Engine.Inpu
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\refint\Engine.Input.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\Engine.Input.pdb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\ref\Engine.Input.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\bin\Debug\net8.0\Engine.Input.deps.json
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\bin\Debug\net8.0\Engine.Input.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\bin\Debug\net8.0\Engine.Input.pdb
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\Engine.Input.csproj.AssemblyReference.cache
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\Engine.Input.GeneratedMSBuildEditorConfig.editorconfig
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\Engine.Input.AssemblyInfoInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\Engine.Input.AssemblyInfo.cs
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\Engine.Input.csproj.CoreCompileInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\Engine.Input.sourcelink.json
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\Engine.Input.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\refint\Engine.Input.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\Engine.Input.pdb
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\obj\Debug\net8.0\ref\Engine.Input.dll

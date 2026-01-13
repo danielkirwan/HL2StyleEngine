@@ -48,3 +48,7 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\Engine.Ru
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\ref\Engine.Runtime.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Engine.Input.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Engine.Input.pdb
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Engine.Input.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Engine.Physics.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Engine.Physics.pdb
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Engine.Input.pdb

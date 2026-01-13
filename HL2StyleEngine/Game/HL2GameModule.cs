@@ -15,12 +15,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
 {
     private EngineContext _ctx = null!;
 
-    // Raw device state + action system
     private readonly InputState _inputState = new();
     private ActionMap _map = null!;
     private InputSystem _inputSystem = null!;
 
-    // Actions we care about
     private InputAction _toggleUi = null!;
     private InputAction _forceGame = null!;
     private InputAction _moveF = null!;
@@ -96,13 +94,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
     {
         _fps = dt > 0 ? 1f / dt : 0f;
 
-        // Update raw input first
         _inputState.Update(snapshot);
 
-        // Then resolve actions
         _inputSystem.Update();
 
-        // UI toggles
         if (_toggleUi.Pressed)
             _ui.ToggleUI();
 
@@ -113,14 +108,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer
         bool uiWantsKeyboard = io.WantCaptureKeyboard;
         bool uiWantsMouse = io.WantCaptureMouse;
 
-        // Mouse look (relative)
         if (_ui.IsMouseCaptured && !uiWantsMouse)
         {
             var md = _ctx.Window.ConsumeRelativeMouseDelta();
             _camera.AddLook(md);
         }
 
-        // Build wish dir from actions
         _wishDir = Vector3.Zero;
         _wishSpeed = 0f;
 
