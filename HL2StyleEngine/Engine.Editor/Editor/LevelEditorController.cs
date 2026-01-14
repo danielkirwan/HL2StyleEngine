@@ -51,14 +51,11 @@ public sealed class LevelEditorController
     private float _axisGrabT;
     private Vector3 _entityPosAtGrab;
 
-    // (kept because you have it in your UI already, but not required anymore)
     private bool _layoutDockedOnce = false;
 
-    // Undo / redo
     private readonly Stack<string> _undoStack = new();
     private readonly Stack<string> _redoStack = new();
 
-    // "one undo per edit" handling
     private bool _editInProgress;
     private string _editStartSnapshot = "";
 
@@ -214,9 +211,6 @@ public sealed class LevelEditorController
         };
     }
 
-    // ----------------------------
-    // ImGui Panels
-    // ----------------------------
     public void DrawToolbarPanel(ref bool mouseOverUi, ref bool keyboardOverUi)
     {
         ImGui.Begin("Toolbar");
@@ -342,7 +336,6 @@ public sealed class LevelEditorController
         ImGui.Separator();
         ImGui.Text("Transform");
 
-        // Position
         Vector3 pos = ent.Position;
         if (ImGui.DragFloat3("Position", ref pos, 0.05f))
         {
@@ -360,7 +353,6 @@ public sealed class LevelEditorController
 
         if (showRotScale)
         {
-            // Rotation
             Vector3 rot = ent.RotationEulerDeg;
             if (ImGui.DragFloat3("Rotation (deg)", ref rot, 1f))
             {
@@ -681,9 +673,6 @@ public sealed class LevelEditorController
         handle = EditorDrawBox.AxisAligned(handleCenter, handleSize, handleCol);
     }
 
-    // ----------------------------
-    // Runtime rebuild
-    // ----------------------------
     public void RebuildRuntimeFromLevel()
     {
         DrawBoxes.Clear();
@@ -703,7 +692,6 @@ public sealed class LevelEditorController
 
                 DrawBoxes.Add(new EditorDrawBox(pos, size, (Vector4)e.Color, rot));
 
-                // Physics currently uses AABB that encloses the rotated box
                 Vector3 halfAabb = OrientedBoxAabbHalfExtents(size * 0.5f, rot);
                 SolidColliders.Add(new Aabb(pos - halfAabb, pos + halfAabb));
             }
@@ -740,7 +728,6 @@ public sealed class LevelEditorController
 
                 DrawBoxes.Add(new EditorDrawBox(pos, size, new Vector4(0.9f, 0.2f, 0.6f, 1f), rot));
 
-                // If you want rigidbodies to collide for now, keep AABB too:
                 Vector3 halfAabb = OrientedBoxAabbHalfExtents(size * 0.5f, rot);
                 SolidColliders.Add(new Aabb(pos - halfAabb, pos + halfAabb));
             }
@@ -751,9 +738,6 @@ public sealed class LevelEditorController
         }
     }
 
-    // ----------------------------
-    // Picking / Dragging
-    // ----------------------------
     private bool TryPickEntity(EditorPicking.Ray ray, out int hitIndex, out Vector3 hitPoint)
     {
         hitIndex = -1;
@@ -887,9 +871,6 @@ public sealed class LevelEditorController
         return pos;
     }
 
-    // ----------------------------
-    // Math helpers
-    // ----------------------------
     private static Quaternion EulerDegToQuat(Vector3 eulerDeg)
     {
         float yaw = MathF.PI / 180f * eulerDeg.Y;
@@ -916,9 +897,6 @@ public sealed class LevelEditorController
 
     private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
 
-    // ----------------------------
-    // Add entity helpers
-    // ----------------------------
     private void AddBox()
     {
         PushUndoSnapshot();

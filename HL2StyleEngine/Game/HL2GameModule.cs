@@ -205,11 +205,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         bool ctrl = _inputState.IsDown(Key.ControlLeft) || _inputState.IsDown(Key.ControlRight);
         bool shift = _inputState.IsDown(Key.ShiftLeft) || _inputState.IsDown(Key.ShiftRight);
 
-        // Duplicate
         if (ctrl && _inputState.WasPressed(Key.D))
             _editor.DuplicateSelected();
 
-        // Undo / Redo
         if (ctrl && _inputState.WasPressed(Key.Z))
         {
             if (shift) _editor.Redo();
