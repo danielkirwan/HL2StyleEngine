@@ -137,6 +137,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return;
         }
 
+        // Gameplay camera + movement
         var io = ImGui.GetIO();
         bool uiWantsKeyboard = io.WantCaptureKeyboard;
         bool uiWantsMouse = io.WantCaptureMouse;
@@ -210,6 +211,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         bool uiWantsMouse = io.WantCaptureMouse;
         bool uiWantsKeyboard = io.WantCaptureKeyboard;
 
+        // RMB look
         if (_inputState.RightMouseDown && !uiWantsMouse)
         {
             _camera.AddLook(_inputState.MouseDelta);
@@ -217,6 +219,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _camera.Pitch = Math.Clamp(_camera.Pitch, -limit, limit);
         }
 
+        // WASD + Q/E move
         if (!uiWantsKeyboard)
         {
             float speed = (_inputState.IsDown(Key.ShiftLeft) || _inputState.IsDown(Key.ShiftRight))
@@ -318,17 +321,53 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     public void DrawImGui()
     {
+        DrawDebugWindow();
+
+        if (_editorEnabled)
+        {
+            uint dockId = DrawEditorDockspaceWindow();
+            _editor.DrawToolbarPanel(dockId);
+            _editor.DrawHierarchyPanel(dockId);
+            _editor.DrawInspectorPanel(dockId);
+
+        }
+    }
+
+    private void DrawDebugWindow()
+    {
         ImGui.Begin("Debug");
         ImGui.Text($"FPS: {_fps:F1}");
-        ImGui.Text($"Editor: {(_editorEnabled ? "ON" : "OFF")}  Dirty: {(_editor.Dirty ? "YES" : "NO")}");
+        ImGui.Text($"Editor: {(_editorEnabled ? "ON" : "OFF")}");
+        ImGui.Text($"Dirty: {(_editor.Dirty ? "YES" : "NO")}");
         ImGui.Text($"Level: {_editor.LevelPath}");
         ImGui.Text($"Selected: {_editor.SelectedEntityIndex}");
         if (!string.IsNullOrWhiteSpace(_editor.LastTriggerEvent))
             ImGui.Text($"Last Trigger: {_editor.LastTriggerEvent}");
         ImGui.End();
+    }
 
-        if (_editorEnabled)
-            _editor.DrawImGui();
+    private static uint DrawEditorDockspaceWindow()
+    {
+        ImGui.SetNextWindowSize(new Vector2(520, 720), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowPos(new Vector2(30, 30), ImGuiCond.FirstUseEver);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.MenuBar;
+
+        ImGui.Begin("Editor", flags);
+
+        uint dockspaceId = ImGui.GetID("EditorDockspace");
+        ImGui.DockSpace(dockspaceId, Vector2.Zero, ImGuiDockNodeFlags.None);
+
+        if (ImGui.BeginMenuBar())
+        {
+            ImGui.Text("HL2 Editor");
+            ImGui.EndMenuBar();
+        }
+
+        ImGui.End();
+        return dockspaceId;
     }
 
     public void RenderWorld(Renderer renderer)
@@ -350,7 +389,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _world.BeginFrame();
         _world.UpdateCamera(viewProj);
 
-        // Draw entities/markers with rotation
         for (int i = 0; i < _editor.DrawBoxes.Count; i++)
         {
             var d = _editor.DrawBoxes[i];
@@ -362,7 +400,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             DrawEditorBox(renderer, d.Position, d.Size, d.Rotation, color);
         }
 
-        // Draw gizmo (axis-aligned)
         if (_editorEnabled && _editor.HasGizmo(out var xLine, out var xHandle,
                                               out var yLine, out var yHandle,
                                               out var zLine, out var zHandle))
@@ -380,7 +417,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private void DrawEditorBox(Renderer renderer, Vector3 pos, Vector3 size, Quaternion rot, Vector4 color)
     {
-        // Assumes the debug cube is centered at origin and spans [-0.5..+0.5] in local space.
         var model =
             Matrix4x4.CreateScale(size) *
             Matrix4x4.CreateFromQuaternion(rot) *

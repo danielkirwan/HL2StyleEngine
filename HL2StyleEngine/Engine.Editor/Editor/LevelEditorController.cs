@@ -167,23 +167,28 @@ public sealed class LevelEditorController
         };
     }
 
-    public void DrawImGui()
+
+    public void DrawToolbarPanel(uint dockspaceId)
     {
-        ImGui.Begin("Level Editor");
+        ImGui.SetNextWindowDockID(dockspaceId, ImGuiCond.FirstUseEver);
+
+        ImGui.Begin("Toolbar");
 
         if (ImGui.Button("Save")) Save();
         ImGui.SameLine();
         if (ImGui.Button("Reload")) Reload();
 
+        ImGui.SameLine();
+        ImGui.TextDisabled(Dirty ? "Dirty: YES" : "Dirty: NO");
+
         ImGui.Separator();
 
-        ImGui.Checkbox("Gizmo Enabled", ref GizmoEnabled);
+        ImGui.Checkbox("Gizmo", ref GizmoEnabled);
         ImGui.SameLine();
         ImGui.Checkbox("Snap", ref SnapEnabled);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(100);
         ImGui.DragFloat("Step", ref SnapStep, 0.01f, 0.01f, 10f);
-        ImGui.Text("Tip: Hold Ctrl while dragging to temporarily disable snapping.");
 
         ImGui.Separator();
 
@@ -199,15 +204,15 @@ public sealed class LevelEditorController
         ImGui.SameLine();
         if (ImGui.Button("Add RigidBody")) AddRigidBody();
 
-        bool hasSelection = SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count;
-
         ImGui.Separator();
 
+        bool hasSelection = SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count;
+
         if (!hasSelection) ImGui.BeginDisabled();
-        if (ImGui.Button("Duplicate Selected (Ctrl+D)"))
+        if (ImGui.Button("Duplicate (Ctrl+D)"))
             DuplicateSelected();
         ImGui.SameLine();
-        if (ImGui.Button("Delete Selected"))
+        if (ImGui.Button("Delete"))
         {
             LevelFile.Entities.RemoveAt(SelectedEntityIndex);
             SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
@@ -216,9 +221,20 @@ public sealed class LevelEditorController
         }
         if (!hasSelection) ImGui.EndDisabled();
 
+        ImGui.End();
+    }
+
+    public void DrawHierarchyPanel(uint dockspaceId)
+    {
+        ImGui.SetNextWindowDockID(dockspaceId, ImGuiCond.FirstUseEver);
+
+        ImGui.Begin("Hierarchy");
+
+        ImGui.Text($"Level: {LevelPath}");
         ImGui.Separator();
 
-        ImGui.BeginChild("entity_list", new Vector2(320, 0), ImGuiChildFlags.Borders);
+
+        ImGui.BeginChild("entity_list", new Vector2(0, 0), ImGuiChildFlags.Borders);
 
         for (int i = 0; i < LevelFile.Entities.Count; i++)
         {
@@ -231,20 +247,32 @@ public sealed class LevelEditorController
         }
 
         ImGui.EndChild();
+        ImGui.End();
+    }
 
-        ImGui.SameLine();
+    public void DrawInspectorPanel(uint dockspaceId)
+    {
+        ImGui.SetNextWindowDockID(dockspaceId, ImGuiCond.FirstUseEver);
 
-        ImGui.BeginChild("entity_inspector", new Vector2(0, 0), ImGuiChildFlags.Borders);
+        ImGui.Begin("Inspector");
 
+        bool hasSelection = SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count;
         if (!hasSelection)
         {
             ImGui.Text("Select an entity.");
-            ImGui.EndChild();
+            ImGui.Separator();
+            DrawHelp();
             ImGui.End();
             return;
         }
 
         var ent = LevelFile.Entities[SelectedEntityIndex];
+
+        ImGui.Text($"Selected: {SelectedEntityIndex}");
+        ImGui.Text($"Type: {ent.Type}");
+        ImGui.Text($"Id: {ent.Id}");
+
+        ImGui.Separator();
 
         string name = ent.Name ?? "";
         if (ImGui.InputText("Name", ref name, 128))
@@ -276,7 +304,7 @@ public sealed class LevelEditorController
             {
                 ent.RotationEulerDeg = rot;
                 Dirty = true;
-                RebuildRuntimeFromLevel(); 
+                RebuildRuntimeFromLevel();
             }
 
             Vector3 scl = ent.Scale;
@@ -293,23 +321,23 @@ public sealed class LevelEditorController
         }
 
         ImGui.Separator();
-        ImGui.Text($"Type: {ent.Type}");
-        ImGui.Text($"Id: {ent.Id}");
-        ImGui.Separator();
-
         DrawTypeSpecificInspector(ent);
 
         ImGui.Separator();
+        DrawHelp();
+
+        ImGui.End();
+    }
+
+    private static void DrawHelp()
+    {
         ImGui.Text("Controls:");
         ImGui.BulletText("LMB on entity marker: XZ drag");
         ImGui.BulletText("LMB on axis handle: axis drag (X/Y/Z)");
         ImGui.BulletText("RMB: look  |  WASD/QE: move  |  Shift: fast");
+        ImGui.BulletText("Snap: checkbox, hold Ctrl to disable");
         ImGui.BulletText("Duplicate: Ctrl+D");
-
-        ImGui.EndChild();
-        ImGui.End();
     }
-
     private void DrawTypeSpecificInspector(LevelEntityDef ent)
     {
         if (ent.Type == EntityTypes.Box)
@@ -532,8 +560,7 @@ public sealed class LevelEditorController
 
         Vector3 lineCenter = origin + dir * (GizmoAxisLen * 0.5f);
 
-        Vector3 size =
-            dir == Vector3.UnitY ? new Vector3(GizmoAxisThickness, GizmoAxisLen, GizmoAxisThickness) :
+        Vector3 size = dir == Vector3.UnitY ? new Vector3(GizmoAxisThickness, GizmoAxisLen, GizmoAxisThickness) :
             dir == Vector3.UnitX ? new Vector3(GizmoAxisLen, GizmoAxisThickness, GizmoAxisThickness) :
                                    new Vector3(GizmoAxisThickness, GizmoAxisThickness, GizmoAxisLen);
 
@@ -621,6 +648,7 @@ public sealed class LevelEditorController
             var inst = DrawBoxes[i];
 
             Vector3 half = inst.Size * 0.5f;
+
             Vector3 halfAabb = OrientedBoxAabbHalfExtents(half, inst.Rotation);
             Vector3 mn = inst.Position - halfAabb;
             Vector3 mx = inst.Position + halfAabb;
@@ -749,7 +777,6 @@ public sealed class LevelEditorController
 
     private static Vector3 OrientedBoxAabbHalfExtents(Vector3 halfExtents, Quaternion rotation)
     {
-
         Matrix4x4 m = Matrix4x4.CreateFromQuaternion(rotation);
 
         float r00 = MathF.Abs(m.M11), r01 = MathF.Abs(m.M12), r02 = MathF.Abs(m.M13);
