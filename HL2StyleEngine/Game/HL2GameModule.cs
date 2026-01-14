@@ -1,5 +1,6 @@
 ﻿using Editor.Editor;
 using Engine.Editor.Editor;
+using Engine.Editor.Level;
 using Engine.Input;
 using Engine.Input.Actions;
 using Engine.Input.Devices;
@@ -47,6 +48,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private float _editorMoveSpeed = 5f;
     private float _editorFastSpeed = 12f;
+
     private bool _mouseOverEditorUi;
     private bool _keyboardOverEditorUi;
 
@@ -139,7 +141,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return;
         }
 
-        // Gameplay camera + movement
         var io = ImGui.GetIO();
         bool uiWantsKeyboard = io.WantCaptureKeyboard;
         bool uiWantsMouse = io.WantCaptureMouse;
@@ -202,9 +203,21 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return;
 
         bool ctrl = _inputState.IsDown(Key.ControlLeft) || _inputState.IsDown(Key.ControlRight);
+        bool shift = _inputState.IsDown(Key.ShiftLeft) || _inputState.IsDown(Key.ShiftRight);
 
+        // Duplicate
         if (ctrl && _inputState.WasPressed(Key.D))
             _editor.DuplicateSelected();
+
+        // Undo / Redo
+        if (ctrl && _inputState.WasPressed(Key.Z))
+        {
+            if (shift) _editor.Redo();
+            else _editor.Undo();
+        }
+
+        if (ctrl && _inputState.WasPressed(Key.Y))
+            _editor.Redo();
     }
 
     private void EditorCameraUpdate(float dt)
@@ -321,8 +334,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         _mouseOverEditorUi = false;
         _keyboardOverEditorUi = false;
-        DrawMainDockspaceHost(); 
 
+        DrawMainDockspaceHost();
         DrawDebugWindow();
 
         if (_editorEnabled)
@@ -332,7 +345,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _editor.DrawInspectorPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
         }
     }
-
 
     private void DrawDebugWindow()
     {
@@ -362,13 +374,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             ImGuiWindowFlags.NoBringToFrontOnFocus |
             ImGuiWindowFlags.NoNavFocus |
             ImGuiWindowFlags.NoDocking |
-            ImGuiWindowFlags.NoInputs |    
+            ImGuiWindowFlags.NoInputs |
             ImGuiWindowFlags.MenuBar;
 
         ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0f);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, 0); 
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, 0);
 
         ImGui.Begin("MainDockspaceHost", hostFlags);
 
@@ -376,13 +388,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         ImGui.PopStyleVar(3);
 
         uint dockspaceId = ImGui.GetID("MainDockspace");
-        ImGui.DockSpace(dockspaceId, Vector2.Zero,
-            ImGuiDockNodeFlags.PassthruCentralNode);
+        ImGui.DockSpace(dockspaceId, Vector2.Zero, ImGuiDockNodeFlags.PassthruCentralNode);
+
         ImGui.End();
     }
-
-
-
 
     public void RenderWorld(Renderer renderer)
     {
@@ -427,6 +436,154 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             DrawEditorBox(renderer, zLine.Position, zLine.Size, zLine.Rotation, zLine.Color);
             DrawEditorBox(renderer, zHandle.Position, zHandle.Size, zHandle.Rotation, zHandle.Color);
         }
+
+        if (_editorEnabled && _editor.ShowColliders)
+        {
+            for (int i = 0; i < _editor.LevelFile.Entities.Count; i++)
+            {
+                var e = _editor.LevelFile.Entities[i];
+
+                bool hasCollider =
+                    e.Type == EntityTypes.Box ||
+                    e.Type == EntityTypes.RigidBody;
+
+                if (!hasCollider)
+                    continue;
+
+                Vector3 pos = e.Position;
+                Vector3 size = Mul((Vector3)e.Size, (Vector3)e.Scale);
+
+                Quaternion rot = Quaternion.CreateFromYawPitchRoll(
+                    MathF.PI / 180f * e.RotationEulerDeg.Y,
+                    MathF.PI / 180f * e.RotationEulerDeg.X,
+                    MathF.PI / 180f * e.RotationEulerDeg.Z);
+
+                bool selected = (i == _editor.SelectedEntityIndex);
+
+                Vector4 col = selected
+                    ? new Vector4(0.2f, 1f, 0.2f, 1f)
+                    : new Vector4(0.1f, 0.8f, 0.1f, 1f);
+
+                DrawWireObb(renderer, pos, size, rot, col, _editor.ColliderLineThickness);
+
+                if (_editor.ShowColliderCorners)
+                {
+                    float cs = selected ? _editor.CornerSize * 1.25f : _editor.CornerSize;
+                    DrawObbCorners(renderer, pos, size, rot, col, cs);
+                }
+            }
+        }
+
+        if (_editorEnabled && _editor.ShowPhysicsAabbs)
+        {
+            Vector4 aabbCol = new Vector4(0.2f, 0.9f, 1f, 1f);
+            float t = _editor.ColliderLineThickness;
+
+            foreach (var aabb in _editor.SolidColliders)
+            {
+                Vector3 center = (aabb.Min + aabb.Max) * 0.5f;
+                Vector3 size = (aabb.Max - aabb.Min);
+                DrawWireObb(renderer, center, size, Quaternion.Identity, aabbCol, t);
+            }
+        }
+    }
+
+    private void DrawObbCorners(Renderer renderer, Vector3 center, Vector3 size, Quaternion rot, Vector4 color, float cornerSize)
+    {
+        Vector3 he = size * 0.5f;
+
+        Span<Vector3> corners = stackalloc Vector3[8];
+        corners[0] = new Vector3(-he.X, -he.Y, -he.Z);
+        corners[1] = new Vector3(he.X, -he.Y, -he.Z);
+        corners[2] = new Vector3(he.X, -he.Y, he.Z);
+        corners[3] = new Vector3(-he.X, -he.Y, he.Z);
+        corners[4] = new Vector3(-he.X, he.Y, -he.Z);
+        corners[5] = new Vector3(he.X, he.Y, -he.Z);
+        corners[6] = new Vector3(he.X, he.Y, he.Z);
+        corners[7] = new Vector3(-he.X, he.Y, he.Z);
+
+        Vector3 cube = new Vector3(cornerSize, cornerSize, cornerSize);
+
+        for (int i = 0; i < 8; i++)
+        {
+            Vector3 w = Vector3.Transform(corners[i], rot) + center;
+            DrawEditorBox(renderer, w, cube, Quaternion.Identity, color);
+        }
+    }
+
+    private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
+
+    private void DrawWireObb(Renderer renderer, Vector3 center, Vector3 size, Quaternion rot, Vector4 color, float thickness)
+    {
+        Vector3 he = size * 0.5f;
+
+        Span<Vector3> c = stackalloc Vector3[8];
+        c[0] = new Vector3(-he.X, -he.Y, -he.Z);
+        c[1] = new Vector3(he.X, -he.Y, -he.Z);
+        c[2] = new Vector3(he.X, -he.Y, he.Z);
+        c[3] = new Vector3(-he.X, -he.Y, he.Z);
+        c[4] = new Vector3(-he.X, he.Y, -he.Z);
+        c[5] = new Vector3(he.X, he.Y, -he.Z);
+        c[6] = new Vector3(he.X, he.Y, he.Z);
+        c[7] = new Vector3(-he.X, he.Y, he.Z);
+
+        for (int i = 0; i < 8; i++)
+            c[i] = Vector3.Transform(c[i], rot) + center;
+
+        Span<(int a, int b)> edges = stackalloc (int, int)[12]
+        {
+            (0,1),(1,2),(2,3),(3,0),
+            (4,5),(5,6),(6,7),(7,4),
+            (0,4),(1,5),(2,6),(3,7)
+        };
+
+        for (int i = 0; i < edges.Length; i++)
+        {
+            var (a, b) = edges[i];
+            DrawEdgeBox(renderer, c[a], c[b], thickness, color);
+        }
+    }
+
+    private void DrawEdgeBox(Renderer renderer, Vector3 a, Vector3 b, float thickness, Vector4 color)
+    {
+        Vector3 mid = (a + b) * 0.5f;
+        Vector3 dir = b - a;
+        float len = dir.Length();
+        if (len < 0.0001f) return;
+
+        dir /= len;
+
+        Quaternion rot = FromToRotation(Vector3.UnitZ, dir);
+
+        Vector3 size = new Vector3(thickness, thickness, len);
+        DrawEditorBox(renderer, mid, size, rot, color);
+    }
+
+    private static Quaternion FromToRotation(Vector3 from, Vector3 to)
+    {
+        from = Vector3.Normalize(from);
+        to = Vector3.Normalize(to);
+
+        float dot = Vector3.Dot(from, to);
+
+        if (dot > 0.9999f)
+            return Quaternion.Identity;
+
+        if (dot < -0.9999f)
+        {
+            Vector3 axis = Vector3.Cross(from, Vector3.UnitX);
+            if (axis.LengthSquared() < 0.0001f)
+                axis = Vector3.Cross(from, Vector3.UnitY);
+
+            axis = Vector3.Normalize(axis);
+            return Quaternion.CreateFromAxisAngle(axis, MathF.PI);
+        }
+
+        Vector3 cross = Vector3.Cross(from, to);
+        float angle = MathF.Acos(Math.Clamp(dot, -1f, 1f));
+        cross = Vector3.Normalize(cross);
+
+        return Quaternion.CreateFromAxisAngle(cross, angle);
     }
 
     private void DrawEditorBox(Renderer renderer, Vector3 pos, Vector3 size, Quaternion rot, Vector4 color)

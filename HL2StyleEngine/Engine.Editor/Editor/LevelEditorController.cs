@@ -3,6 +3,7 @@ using Engine.Editor.Level;
 using Engine.Physics.Collision;
 using ImGuiNET;
 using System.Numerics;
+using System.Text.Json;
 
 namespace Engine.Editor.Editor;
 
@@ -31,6 +32,13 @@ public sealed class LevelEditorController
     public float MarkerSmall = 0.25f;
     public float MarkerMedium = 0.35f;
 
+    // Debug draw
+    public bool ShowColliders = true;
+    public bool ShowColliderCorners = true;
+    public bool ShowPhysicsAabbs = true;
+    public float ColliderLineThickness = 0.03f;
+    public float CornerSize = 0.08f;
+
     private enum GizmoAxis { None, X, Y, Z }
 
     private bool _dragging;
@@ -42,7 +50,17 @@ public sealed class LevelEditorController
     private Vector3 _axisOriginAtGrab;
     private float _axisGrabT;
     private Vector3 _entityPosAtGrab;
+
+    // (kept because you have it in your UI already, but not required anymore)
     private bool _layoutDockedOnce = false;
+
+    // Undo / redo
+    private readonly Stack<string> _undoStack = new();
+    private readonly Stack<string> _redoStack = new();
+
+    // "one undo per edit" handling
+    private bool _editInProgress;
+    private string _editStartSnapshot = "";
 
     public void LoadOrCreate(string path, Func<LevelFile> createDefault)
     {
@@ -51,8 +69,14 @@ public sealed class LevelEditorController
 
         Dirty = false;
         SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
+
         _dragging = false;
         _dragAxis = GizmoAxis.None;
+
+        _undoStack.Clear();
+        _redoStack.Clear();
+        _editInProgress = false;
+        _editStartSnapshot = "";
 
         RebuildRuntimeFromLevel();
     }
@@ -63,8 +87,14 @@ public sealed class LevelEditorController
         Dirty = false;
 
         SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
+
         _dragging = false;
         _dragAxis = GizmoAxis.None;
+
+        _undoStack.Clear();
+        _redoStack.Clear();
+        _editInProgress = false;
+        _editStartSnapshot = "";
 
         RebuildRuntimeFromLevel();
     }
@@ -116,6 +146,8 @@ public sealed class LevelEditorController
         if (SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
             return false;
 
+        PushUndoSnapshot();
+
         var src = LevelFile.Entities[SelectedEntityIndex];
         var copy = CloneEntity(src);
 
@@ -123,6 +155,21 @@ public sealed class LevelEditorController
 
         LevelFile.Entities.Add(copy);
         SelectedEntityIndex = LevelFile.Entities.Count - 1;
+
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+        return true;
+    }
+
+    public bool DeleteSelected()
+    {
+        if (SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
+            return false;
+
+        PushUndoSnapshot();
+
+        LevelFile.Entities.RemoveAt(SelectedEntityIndex);
+        SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
 
         Dirty = true;
         RebuildRuntimeFromLevel();
@@ -167,26 +214,19 @@ public sealed class LevelEditorController
         };
     }
 
-
+    // ----------------------------
+    // ImGui Panels
+    // ----------------------------
     public void DrawToolbarPanel(ref bool mouseOverUi, ref bool keyboardOverUi)
     {
-
         ImGui.Begin("Toolbar");
         mouseOverUi |= ImGui.IsWindowHovered();
         keyboardOverUi |= ImGui.IsWindowFocused();
-        if (!_layoutDockedOnce)
-        {
-            ImGui.SameLine();
-            if (ImGui.Button("Lock Layout"))
-                _layoutDockedOnce = true;
-        }
-        else
-        {
-            ImGui.SameLine();
-            if (ImGui.Button("Reset Layout"))
-                _layoutDockedOnce = false;
-        }
 
+        if (ImGui.Button("Undo")) Undo();
+        ImGui.SameLine();
+        if (ImGui.Button("Redo")) Redo();
+        ImGui.Separator();
         if (ImGui.Button("Save")) Save();
         ImGui.SameLine();
         if (ImGui.Button("Reload")) Reload();
@@ -202,6 +242,14 @@ public sealed class LevelEditorController
         ImGui.SameLine();
         ImGui.SetNextItemWidth(100);
         ImGui.DragFloat("Step", ref SnapStep, 0.01f, 0.01f, 10f);
+
+        ImGui.Separator();
+        ImGui.Text("Debug Draw");
+        ImGui.Checkbox("Show Colliders (OBB)", ref ShowColliders);
+        ImGui.SameLine();
+        ImGui.Checkbox("Corners", ref ShowColliderCorners);
+        ImGui.SameLine();
+        ImGui.Checkbox("Physics AABBs", ref ShowPhysicsAabbs);
 
         ImGui.Separator();
 
@@ -226,12 +274,7 @@ public sealed class LevelEditorController
             DuplicateSelected();
         ImGui.SameLine();
         if (ImGui.Button("Delete"))
-        {
-            LevelFile.Entities.RemoveAt(SelectedEntityIndex);
-            SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
-            Dirty = true;
-            RebuildRuntimeFromLevel();
-        }
+            DeleteSelected();
         if (!hasSelection) ImGui.EndDisabled();
 
         ImGui.End();
@@ -243,10 +286,8 @@ public sealed class LevelEditorController
         mouseOverUi |= ImGui.IsWindowHovered();
         keyboardOverUi |= ImGui.IsWindowFocused();
 
-
         ImGui.Text($"Level: {LevelPath}");
         ImGui.Separator();
-
 
         ImGui.BeginChild("entity_list", new Vector2(0, 0), ImGuiChildFlags.Borders);
 
@@ -270,7 +311,6 @@ public sealed class LevelEditorController
         mouseOverUi |= ImGui.IsWindowHovered();
         keyboardOverUi |= ImGui.IsWindowFocused();
 
-
         bool hasSelection = SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count;
         if (!hasSelection)
         {
@@ -289,16 +329,20 @@ public sealed class LevelEditorController
 
         ImGui.Separator();
 
+        // Name
         string name = ent.Name ?? "";
         if (ImGui.InputText("Name", ref name, 128))
         {
             ent.Name = name;
             Dirty = true;
         }
+        if (ImGui.IsItemActivated()) BeginEdit();
+        if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
         ImGui.Separator();
         ImGui.Text("Transform");
 
+        // Position
         Vector3 pos = ent.Position;
         if (ImGui.DragFloat3("Position", ref pos, 0.05f))
         {
@@ -306,6 +350,8 @@ public sealed class LevelEditorController
             Dirty = true;
             RebuildRuntimeFromLevel();
         }
+        if (ImGui.IsItemActivated()) BeginEdit();
+        if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
         bool showRotScale =
             ent.Type == EntityTypes.Box ||
@@ -314,6 +360,7 @@ public sealed class LevelEditorController
 
         if (showRotScale)
         {
+            // Rotation
             Vector3 rot = ent.RotationEulerDeg;
             if (ImGui.DragFloat3("Rotation (deg)", ref rot, 1f))
             {
@@ -321,7 +368,10 @@ public sealed class LevelEditorController
                 Dirty = true;
                 RebuildRuntimeFromLevel();
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
+            // Scale
             Vector3 scl = ent.Scale;
             if (ImGui.DragFloat3("Scale", ref scl, 0.01f))
             {
@@ -333,6 +383,8 @@ public sealed class LevelEditorController
                 Dirty = true;
                 RebuildRuntimeFromLevel();
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
 
         ImGui.Separator();
@@ -352,7 +404,9 @@ public sealed class LevelEditorController
         ImGui.BulletText("RMB: look  |  WASD/QE: move  |  Shift: fast");
         ImGui.BulletText("Snap: checkbox, hold Ctrl to disable");
         ImGui.BulletText("Duplicate: Ctrl+D");
+        ImGui.BulletText("Undo: Ctrl+Z  |  Redo: Ctrl+Y / Ctrl+Shift+Z");
     }
+
     private void DrawTypeSpecificInspector(LevelEntityDef ent)
     {
         if (ent.Type == EntityTypes.Box)
@@ -368,6 +422,8 @@ public sealed class LevelEditorController
                 Dirty = true;
                 RebuildRuntimeFromLevel();
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             Vector4 col = ent.Color;
             if (ImGui.ColorEdit4("Color", ref col))
@@ -376,6 +432,8 @@ public sealed class LevelEditorController
                 Dirty = true;
                 RebuildRuntimeFromLevel();
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
         else if (ent.Type == EntityTypes.PlayerSpawn)
         {
@@ -385,6 +443,8 @@ public sealed class LevelEditorController
                 ent.YawDeg = yaw;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
         else if (ent.Type == EntityTypes.PointLight)
         {
@@ -395,6 +455,8 @@ public sealed class LevelEditorController
                 Dirty = true;
                 RebuildRuntimeFromLevel();
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             float intensity = ent.Intensity;
             if (ImGui.DragFloat("Intensity", ref intensity, 0.1f, 0f, 100f))
@@ -402,6 +464,8 @@ public sealed class LevelEditorController
                 ent.Intensity = intensity;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             float range = ent.Range;
             if (ImGui.DragFloat("Range", ref range, 0.1f, 0.1f, 1000f))
@@ -409,6 +473,8 @@ public sealed class LevelEditorController
                 ent.Range = range;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
         else if (ent.Type == EntityTypes.Prop)
         {
@@ -418,6 +484,8 @@ public sealed class LevelEditorController
                 ent.MeshPath = mesh;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             string mat = ent.MaterialPath ?? "";
             if (ImGui.InputText("MaterialPath", ref mat, 256))
@@ -425,6 +493,8 @@ public sealed class LevelEditorController
                 ent.MaterialPath = mat;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
         else if (ent.Type == EntityTypes.TriggerVolume)
         {
@@ -439,6 +509,8 @@ public sealed class LevelEditorController
                 Dirty = true;
                 RebuildRuntimeFromLevel();
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             string evt = ent.TriggerEvent ?? "";
             if (ImGui.InputText("TriggerEvent", ref evt, 128))
@@ -446,6 +518,8 @@ public sealed class LevelEditorController
                 ent.TriggerEvent = evt;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
         else if (ent.Type == EntityTypes.RigidBody)
         {
@@ -455,6 +529,8 @@ public sealed class LevelEditorController
                 ent.Shape = shape;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             float mass = ent.Mass;
             if (ImGui.DragFloat("Mass", ref mass, 0.1f, 0f, 100000f))
@@ -462,6 +538,8 @@ public sealed class LevelEditorController
                 ent.Mass = mass;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             float fr = ent.Friction;
             if (ImGui.DragFloat("Friction", ref fr, 0.01f, 0f, 10f))
@@ -469,6 +547,8 @@ public sealed class LevelEditorController
                 ent.Friction = fr;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             float rest = ent.Restitution;
             if (ImGui.DragFloat("Restitution", ref rest, 0.01f, 0f, 1f))
@@ -476,6 +556,8 @@ public sealed class LevelEditorController
                 ent.Restitution = rest;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             bool kin = ent.IsKinematic;
             if (ImGui.Checkbox("IsKinematic", ref kin))
@@ -483,6 +565,8 @@ public sealed class LevelEditorController
                 ent.IsKinematic = kin;
                 Dirty = true;
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             Vector3 size = ent.Size;
             if (ImGui.DragFloat3("Size", ref size, 0.05f))
@@ -495,11 +579,14 @@ public sealed class LevelEditorController
                 Dirty = true;
                 RebuildRuntimeFromLevel();
             }
+            if (ImGui.IsItemActivated()) BeginEdit();
+            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
     }
 
     public void OnMousePressed(EditorPicking.Ray ray, bool ctrlDown)
     {
+        BeginEdit();
         if (GizmoEnabled && SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count)
         {
             Vector3 p = LevelFile.Entities[SelectedEntityIndex].Position;
@@ -519,6 +606,8 @@ public sealed class LevelEditorController
 
             _dragging = true;
             _dragAxis = GizmoAxis.None;
+
+            BeginEdit(); 
         }
         else
         {
@@ -544,8 +633,12 @@ public sealed class LevelEditorController
 
     public void OnMouseReleased()
     {
+        if (_dragging)
+            EndEditIfAny();
+
         _dragging = false;
         _dragAxis = GizmoAxis.None;
+        EndEditIfAny();
     }
 
     public bool HasGizmo(out EditorDrawBox xLine, out EditorDrawBox xHandle,
@@ -588,6 +681,9 @@ public sealed class LevelEditorController
         handle = EditorDrawBox.AxisAligned(handleCenter, handleSize, handleCol);
     }
 
+    // ----------------------------
+    // Runtime rebuild
+    // ----------------------------
     public void RebuildRuntimeFromLevel()
     {
         DrawBoxes.Clear();
@@ -607,6 +703,7 @@ public sealed class LevelEditorController
 
                 DrawBoxes.Add(new EditorDrawBox(pos, size, (Vector4)e.Color, rot));
 
+                // Physics currently uses AABB that encloses the rotated box
                 Vector3 halfAabb = OrientedBoxAabbHalfExtents(size * 0.5f, rot);
                 SolidColliders.Add(new Aabb(pos - halfAabb, pos + halfAabb));
             }
@@ -642,6 +739,10 @@ public sealed class LevelEditorController
                 Quaternion rot = EulerDegToQuat((Vector3)e.RotationEulerDeg);
 
                 DrawBoxes.Add(new EditorDrawBox(pos, size, new Vector4(0.9f, 0.2f, 0.6f, 1f), rot));
+
+                // If you want rigidbodies to collide for now, keep AABB too:
+                Vector3 halfAabb = OrientedBoxAabbHalfExtents(size * 0.5f, rot);
+                SolidColliders.Add(new Aabb(pos - halfAabb, pos + halfAabb));
             }
             else
             {
@@ -650,6 +751,9 @@ public sealed class LevelEditorController
         }
     }
 
+    // ----------------------------
+    // Picking / Dragging
+    // ----------------------------
     private bool TryPickEntity(EditorPicking.Ray ray, out int hitIndex, out Vector3 hitPoint)
     {
         hitIndex = -1;
@@ -719,6 +823,8 @@ public sealed class LevelEditorController
             tLine = 0f;
 
         _axisGrabT = tLine;
+
+        BeginEdit();
     }
 
     private void ContinueAxisDrag(EditorPicking.Ray ray, bool ctrlDown)
@@ -781,6 +887,9 @@ public sealed class LevelEditorController
         return pos;
     }
 
+    // ----------------------------
+    // Math helpers
+    // ----------------------------
     private static Quaternion EulerDegToQuat(Vector3 eulerDeg)
     {
         float yaw = MathF.PI / 180f * eulerDeg.Y;
@@ -807,8 +916,13 @@ public sealed class LevelEditorController
 
     private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
 
+    // ----------------------------
+    // Add entity helpers
+    // ----------------------------
     private void AddBox()
     {
+        PushUndoSnapshot();
+
         LevelFile.Entities.Add(new LevelEntityDef
         {
             Type = EntityTypes.Box,
@@ -827,6 +941,8 @@ public sealed class LevelEditorController
 
     private void AddLight()
     {
+        PushUndoSnapshot();
+
         LevelFile.Entities.Add(new LevelEntityDef
         {
             Type = EntityTypes.PointLight,
@@ -844,6 +960,8 @@ public sealed class LevelEditorController
 
     private void AddSpawn()
     {
+        PushUndoSnapshot();
+
         LevelFile.Entities.Add(new LevelEntityDef
         {
             Type = EntityTypes.PlayerSpawn,
@@ -859,6 +977,8 @@ public sealed class LevelEditorController
 
     private void AddTrigger()
     {
+        PushUndoSnapshot();
+
         LevelFile.Entities.Add(new LevelEntityDef
         {
             Type = EntityTypes.TriggerVolume,
@@ -875,6 +995,8 @@ public sealed class LevelEditorController
 
     private void AddProp()
     {
+        PushUndoSnapshot();
+
         LevelFile.Entities.Add(new LevelEntityDef
         {
             Type = EntityTypes.Prop,
@@ -893,6 +1015,8 @@ public sealed class LevelEditorController
 
     private void AddRigidBody()
     {
+        PushUndoSnapshot();
+
         LevelFile.Entities.Add(new LevelEntityDef
         {
             Type = EntityTypes.RigidBody,
@@ -909,5 +1033,61 @@ public sealed class LevelEditorController
         SelectedEntityIndex = LevelFile.Entities.Count - 1;
         Dirty = true;
         RebuildRuntimeFromLevel();
+    }
+    private string Snapshot()
+    {
+        return JsonSerializer.Serialize(LevelFile);
+    }
+
+    private void RestoreSnapshot(string json)
+    {
+        LevelFile = JsonSerializer.Deserialize<LevelFile>(json)!;
+        Dirty = true;
+        SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
+        RebuildRuntimeFromLevel();
+    }
+
+    private void PushUndoSnapshot()
+    {
+        _undoStack.Push(Snapshot());
+        _redoStack.Clear();
+    }
+
+    public bool Undo()
+    {
+        if (_undoStack.Count == 0) return false;
+        _redoStack.Push(Snapshot());
+        RestoreSnapshot(_undoStack.Pop());
+        return true;
+    }
+
+    public bool Redo()
+    {
+        if (_redoStack.Count == 0) return false;
+        _undoStack.Push(Snapshot());
+        RestoreSnapshot(_redoStack.Pop());
+        return true;
+    }
+
+    private void BeginEdit()
+    {
+        if (_editInProgress) return;
+        _editInProgress = true;
+        _editStartSnapshot = Snapshot();
+    }
+
+    private void EndEditIfAny()
+    {
+        if (!_editInProgress) return;
+        _editInProgress = false;
+
+        string now = Snapshot();
+        if (_editStartSnapshot != now)
+        {
+            _undoStack.Push(_editStartSnapshot);
+            _redoStack.Clear();
+        }
+
+        _editStartSnapshot = "";
     }
 }
