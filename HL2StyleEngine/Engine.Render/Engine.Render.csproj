@@ -10,7 +10,6 @@
     <PackageReference Include="opticfluorine.Veldrid.StartupUtilities" />
     <PackageReference Include="ImGui.NET" />
     <PackageReference Include="opticfluorine.Veldrid.ImGui" />
-
   </ItemGroup>
 
   <ItemGroup>
@@ -33,5 +32,13 @@
     <None Update="Shaders\BasicVS.cso">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+
+    <None Update="Shaders\PresentVS.cso">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Shaders\PresentPS.cso">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+   
   </ItemGroup>
 </Project>

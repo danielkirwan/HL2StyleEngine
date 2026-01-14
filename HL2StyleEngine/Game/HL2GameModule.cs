@@ -1,13 +1,13 @@
-﻿using Engine.Physics.Collision;
+﻿using Engine.Input;
+using Engine.Input.Actions;
+using Engine.Input.Devices;
+using Engine.Physics.Collision;
+using Engine.Render;
 using Engine.Runtime.Hosting;
 using Game.World;
 using ImGuiNET;
 using System.Numerics;
 using Veldrid;
-
-using Engine.Input;
-using Engine.Input.Actions;
-using Engine.Input.Devices;
 
 namespace Game;
 
@@ -47,7 +47,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         _ctx = context;
 
-        _world = new Engine.Render.BasicWorldRenderer(_ctx.Renderer.GraphicsDevice, shaderDirRelativeToApp: "Shaders");
+        _world = new BasicWorldRenderer(_ctx.Renderer.GraphicsDevice, _ctx.Renderer.WorldOutputDescription, shaderDirRelativeToApp: "Shaders");
+
         _level = SimpleLevel.BuildRoom01();
 
         _colliders.Clear();

@@ -29,8 +29,8 @@ public sealed class BasicWorldRenderer : IDisposable
     private readonly Pipeline _pipeline;
 
     // Ring config
-    private const uint MaxObjectsPerFrame = 4096; 
-    private readonly uint _objectStride;          
+    private const uint MaxObjectsPerFrame = 4096;
+    private readonly uint _objectStride;
     private uint _objectWriteIndex;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -40,12 +40,11 @@ public sealed class BasicWorldRenderer : IDisposable
         public Vector4 Color;
     }
 
-    public BasicWorldRenderer(GraphicsDevice gd, string shaderDirRelativeToApp)
+    public BasicWorldRenderer(GraphicsDevice gd, OutputDescription output, string shaderDirRelativeToApp)
     {
         _gd = gd;
         _factory = gd.ResourceFactory;
 
-        // Geometry
         var vertices = CreateCubeVertices();
         var indices = CreateCubeIndices();
         _indexCount = (uint)indices.Length;
@@ -70,8 +69,8 @@ public sealed class BasicWorldRenderer : IDisposable
 
         _cameraSet = _factory.CreateResourceSet(new ResourceSetDescription(_cameraLayout, _cameraBuffer));
 
-        uint objectDataSize = (uint)Marshal.SizeOf<ObjectData>(); // typically 80
-        _objectStride = AlignUp(objectDataSize, 256);
+        uint objectDataSize = (uint)Marshal.SizeOf<ObjectData>(); 
+        _objectStride = AlignUp(objectDataSize, 256);             
 
         _objectRingBuffer = _factory.CreateBuffer(new BufferDescription(
             _objectStride * MaxObjectsPerFrame,
@@ -110,7 +109,7 @@ public sealed class BasicWorldRenderer : IDisposable
                 depthWriteEnabled: true,
                 comparisonKind: ComparisonKind.LessEqual),
             RasterizerState = new RasterizerStateDescription(
-                FaceCullMode.None, 
+                FaceCullMode.None,
                 PolygonFillMode.Solid,
                 FrontFace.Clockwise,
                 depthClipEnabled: true,
@@ -118,13 +117,12 @@ public sealed class BasicWorldRenderer : IDisposable
             PrimitiveTopology = PrimitiveTopology.TriangleList,
             ResourceLayouts = new[] { _cameraLayout, _objectLayout },
             ShaderSet = new ShaderSetDescription(new[] { vertexLayout }, _shaders),
-            Outputs = gd.MainSwapchain.Framebuffer.OutputDescription
+            Outputs = output
         };
 
         _pipeline = _factory.CreateGraphicsPipeline(pd);
     }
 
-    /// <summary>Call once per frame before drawing any objects.</summary>
     public void BeginFrame()
     {
         _objectWriteIndex = 0;
@@ -138,7 +136,7 @@ public sealed class BasicWorldRenderer : IDisposable
     public void DrawBox(CommandList cl, Matrix4x4 model, Vector4 color)
     {
         if (_objectWriteIndex >= MaxObjectsPerFrame)
-            return; 
+            return;
 
         ObjectData obj = new ObjectData { Model = model, Color = color };
 
