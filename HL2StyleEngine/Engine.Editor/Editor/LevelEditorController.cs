@@ -32,7 +32,6 @@ public sealed class LevelEditorController
     public float MarkerSmall = 0.25f;
     public float MarkerMedium = 0.35f;
 
-    // Debug draw
     public bool ShowColliders = true;
     public bool ShowColliderCorners = true;
     public bool ShowPhysicsAabbs = true;
@@ -323,7 +322,6 @@ public sealed class LevelEditorController
 
         ImGui.Separator();
 
-        // Name
         string name = ent.Name ?? "";
         if (ImGui.InputText("Name", ref name, 128))
         {
@@ -363,7 +361,6 @@ public sealed class LevelEditorController
             if (ImGui.IsItemActivated()) BeginEdit();
             if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
-            // Scale
             Vector3 scl = ent.Scale;
             if (ImGui.DragFloat3("Scale", ref scl, 0.01f))
             {

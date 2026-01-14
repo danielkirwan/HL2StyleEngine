@@ -397,10 +397,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             ? _ctx.Window.Window.Width / (float)_ctx.Window.Window.Height
             : 16f / 9f;
 
-        var view = Matrix4x4.CreateLookAt(
-            _camera.Position,
-            _camera.Position + _camera.Forward,
-            Vector3.UnitY);
+        var view = Matrix4x4.CreateLookAt(_camera.Position, _camera.Position + _camera.Forward, Vector3.UnitY);
 
         var proj = Matrix4x4.CreatePerspectiveFieldOfView(
             MathF.PI / 3f, aspect, 0.05f, 500f);
@@ -421,9 +418,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             DrawEditorBox(renderer, d.Position, d.Size, d.Rotation, color);
         }
 
-        if (_editorEnabled && _editor.HasGizmo(out var xLine, out var xHandle,
-                                              out var yLine, out var yHandle,
-                                              out var zLine, out var zHandle))
+        if (_editorEnabled && _editor.HasGizmo(out var xLine, out var xHandle, out var yLine, out var yHandle, out var zLine, out var zHandle))
         {
             DrawEditorBox(renderer, xLine.Position, xLine.Size, xLine.Rotation, xLine.Color);
             DrawEditorBox(renderer, xHandle.Position, xHandle.Size, xHandle.Rotation, xHandle.Color);
@@ -441,9 +436,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             {
                 var e = _editor.LevelFile.Entities[i];
 
-                bool hasCollider =
-                    e.Type == EntityTypes.Box ||
-                    e.Type == EntityTypes.RigidBody;
+                bool hasCollider = e.Type == EntityTypes.Box || e.Type == EntityTypes.RigidBody;
 
                 if (!hasCollider)
                     continue;
@@ -586,10 +579,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private void DrawEditorBox(Renderer renderer, Vector3 pos, Vector3 size, Quaternion rot, Vector4 color)
     {
-        var model =
-            Matrix4x4.CreateScale(size) *
-            Matrix4x4.CreateFromQuaternion(rot) *
-            Matrix4x4.CreateTranslation(pos);
+        var model = Matrix4x4.CreateScale(size) *  Matrix4x4.CreateFromQuaternion(rot) * Matrix4x4.CreateTranslation(pos);
 
         _world.DrawBox(renderer.CommandList, model, color);
     }
