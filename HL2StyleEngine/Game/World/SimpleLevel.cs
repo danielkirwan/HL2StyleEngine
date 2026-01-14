@@ -70,4 +70,28 @@ public static class SimpleLevel
 
         return boxes;
     }
+
+    /// <summary>
+    /// Pure-data version of the default room, suitable for saving to JSON.
+    /// </summary>
+    public static LevelFile BuildRoom01File()
+    {
+        var instances = BuildRoom01();
+
+        var level = new LevelFile { Version = 1 };
+
+        int i = 0;
+        foreach (var b in instances)
+        {
+            level.Boxes.Add(new BoxDef
+            {
+                Name = $"Box_{i++}",
+                Position = b.Position,
+                Size = b.Size,
+                Color = b.Color
+            });
+        }
+
+        return level;
+    }
 }
