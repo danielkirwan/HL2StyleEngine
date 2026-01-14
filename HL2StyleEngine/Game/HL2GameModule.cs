@@ -1,7 +1,8 @@
-﻿using Engine.Input;
+﻿using Editor.Editor;
+using Engine.Editor.Editor;
+using Engine.Input;
 using Engine.Input.Actions;
 using Engine.Input.Devices;
-using Engine.Physics.Collision;
 using Engine.Render;
 using Engine.Runtime.Hosting;
 using Game.World;
@@ -37,23 +38,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private float _fps;
 
-    private Engine.Render.BasicWorldRenderer _world = null!;
-    private readonly List<Aabb> _colliders = new();
-    private readonly List<BoxInstance> _level = new();
+    private BasicWorldRenderer _world = null!;
 
     private bool _editorEnabled;
-    private int _selectedBoxIndex = -1;
-    private bool _levelDirty;
-
-    private string _levelPath = "";
-    private LevelFile _levelFile = null!;
-
     private bool _prevLeftMouseDown;
-    private bool _prevRightMouseDown;
 
-    private bool _dragging;
-    private Vector3 _dragOffset;
-    private float _dragPlaneY;
+    private readonly LevelEditorController _editor = new();
 
     private float _editorMoveSpeed = 5f;
     private float _editorFastSpeed = 12f;
@@ -64,17 +54,34 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         _ctx = context;
 
-        _world = new BasicWorldRenderer(_ctx.Renderer.GraphicsDevice, _ctx.Renderer.WorldOutputDescription, shaderDirRelativeToApp: "Shaders");
-
-        _levelPath = Path.Combine(AppContext.BaseDirectory, "Content", "Levels", "room01.json");
-        _levelFile = LevelIO.LoadOrCreate(_levelPath, SimpleLevel.BuildRoom01File);
-        RebuildRuntimeWorldFromLevelFile();
+        _world = new BasicWorldRenderer(
+            _ctx.Renderer.GraphicsDevice,
+            _ctx.Renderer.WorldOutputDescription,
+            shaderDirRelativeToApp: "Shaders");
 
         BuildActions();
 
         _ui = new UIModeController(_ctx.Window, _inputState, startInGameplay: true);
 
         _motor = new SourcePlayerMotor(_movement, startFeetPos: new Vector3(0, 0, -5f));
+
+        string levelPath = Path.Combine(AppContext.BaseDirectory, "Content", "Levels", "room01.json");
+        _editor.LoadOrCreate(levelPath, SimpleLevel.BuildRoom01File);
+
+        ApplySpawnFromEditor(forceResetVelocity: true);
+    }
+
+    private void ApplySpawnFromEditor(bool forceResetVelocity)
+    {
+        if (_editor.TryGetPlayerSpawn(out Vector3 feetPos, out float yawDeg))
+        {
+            _motor.Position = feetPos;
+            if (forceResetVelocity) _motor.Velocity = Vector3.Zero;
+
+            _camera.Yaw = MathF.PI / 180f * yawDeg;
+            _camera.Pitch = 0f;
+        }
+
         _camera.Position = _motor.Position + new Vector3(0, _movement.EyeHeight, 0);
     }
 
@@ -112,31 +119,21 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         if (_inputState.WasPressed(Key.F2))
         {
             _editorEnabled = !_editorEnabled;
-            _dragging = false;
-
-            if (_editorEnabled)
-                _ui.OpenUI(); 
+            if (_editorEnabled) _ui.OpenUI();
         }
 
         if (_toggleUi.Pressed) _ui.ToggleUI();
         if (_forceGame.Pressed) _ui.CloseUI();
 
-        bool leftDown = _inputState.LeftMouseDown;
-        bool rightDown = _inputState.RightMouseDown;
-
-        bool leftPressed = leftDown && !_prevLeftMouseDown;
-        bool leftReleased = !leftDown && _prevLeftMouseDown;
-
         if (_editorEnabled)
         {
-            EditorUpdate(dt, leftDown, rightDown, leftPressed, leftReleased);
+            EditorCameraUpdate(dt);
+            EditorMouseUpdate();
+            EditorHotkeys();
 
             _wishDir = Vector3.Zero;
             _wishSpeed = 0f;
             _jumpPressedThisFrame = false;
-
-            _prevLeftMouseDown = leftDown;
-            _prevRightMouseDown = rightDown;
             return;
         }
 
@@ -147,9 +144,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         if (_ui.IsMouseCaptured)
         {
             if (!uiWantsMouse)
-            {
                 _camera.AddLook(_inputState.MouseDelta);
-            }
 
             Vector2 stick = _look.Value2D;
             const float lookRadPerSec = 3.0f;
@@ -188,30 +183,36 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (right.LengthSquared() > 0) right = Vector3.Normalize(right);
 
             _wishDir = forward * move2.Y + right * move2.X;
-
-            if (_wishDir.LengthSquared() > 0.0001f)
-                _wishDir = Vector3.Normalize(_wishDir);
+            if (_wishDir.LengthSquared() > 0.0001f) _wishDir = Vector3.Normalize(_wishDir);
 
             _wishSpeed = _movement.MaxSpeed;
 
             if (_jump.Pressed)
                 _jumpPressedThisFrame = true;
         }
-
-        _prevLeftMouseDown = leftDown;
-        _prevRightMouseDown = rightDown;
     }
 
-    private void EditorUpdate(float dt, bool leftDown, bool rightDown, bool leftPressed, bool leftReleased)
+    private void EditorHotkeys()
+    {
+        var io = ImGui.GetIO();
+        if (io.WantCaptureKeyboard)
+            return;
+
+        bool ctrl = _inputState.IsDown(Key.ControlLeft) || _inputState.IsDown(Key.ControlRight);
+
+        if (ctrl && _inputState.WasPressed(Key.D))
+            _editor.DuplicateSelected();
+    }
+
+    private void EditorCameraUpdate(float dt)
     {
         var io = ImGui.GetIO();
         bool uiWantsMouse = io.WantCaptureMouse;
         bool uiWantsKeyboard = io.WantCaptureKeyboard;
 
-        if (rightDown && !uiWantsMouse)
+        if (_inputState.RightMouseDown && !uiWantsMouse)
         {
             _camera.AddLook(_inputState.MouseDelta);
-
             float limit = 1.55334f;
             _camera.Pitch = Math.Clamp(_camera.Pitch, -limit, limit);
         }
@@ -238,49 +239,57 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 _camera.Position += move * speed * dt;
             }
         }
-        if (uiWantsMouse)
-            return; 
+    }
 
-        if (leftPressed)
+    private void EditorMouseUpdate()
+    {
+        var io = ImGui.GetIO();
+        bool uiWantsMouse = io.WantCaptureMouse;
+
+        bool leftDown = _inputState.LeftMouseDown;
+        bool leftPressed = leftDown && !_prevLeftMouseDown;
+        bool leftReleased = !leftDown && _prevLeftMouseDown;
+
+        bool ctrlDown = _inputState.IsDown(Key.ControlLeft) || _inputState.IsDown(Key.ControlRight);
+
+        if (!uiWantsMouse)
         {
-            if (TryPickBoxUnderMouse(out int hitIndex, out Vector3 hitPoint))
-            {
-                _selectedBoxIndex = hitIndex;
+            if (leftPressed)
+                _editor.OnMousePressed(GetMouseRay(), ctrlDown);
 
-                _dragPlaneY = hitPoint.Y;
+            if (leftDown)
+                _editor.OnMouseHeld(GetMouseRay(), leftDown: true, ctrlDown);
 
-                Vector3 boxPos = _levelFile.Boxes[_selectedBoxIndex].Position;
-                _dragOffset = hitPoint - boxPos;
-
-                _dragging = true;
-            }
-            else
-            {
-                _selectedBoxIndex = -1;
-                _dragging = false;
-            }
+            if (leftReleased)
+                _editor.OnMouseReleased();
+        }
+        else
+        {
+            if (leftReleased)
+                _editor.OnMouseReleased();
         }
 
-        if (_dragging && leftDown && _selectedBoxIndex >= 0)
-        {
-            if (TryGetMouseRay(out var ray))
-            {
-                if (EditorPicking.RayIntersectsPlane(ray, Vector3.UnitY, _dragPlaneY, out float t))
-                {
-                    Vector3 hit = ray.GetPoint(t);
-                    Vector3 newPos = hit - _dragOffset;
+        _prevLeftMouseDown = leftDown;
+    }
 
-                    var def = _levelFile.Boxes[_selectedBoxIndex];
-                    def.Position = newPos;
+    private EditorPicking.Ray GetMouseRay()
+    {
+        float w = _ctx.Window.Window.Width;
+        float h = _ctx.Window.Window.Height;
 
-                    _levelDirty = true;
-                    ApplyBoxDefToRuntime(_selectedBoxIndex);
-                }
-            }
-        }
+        float aspect = h > 0 ? w / h : 16f / 9f;
 
-        if (_dragging && leftReleased)
-            _dragging = false;
+        var view = Matrix4x4.CreateLookAt(
+            _camera.Position,
+            _camera.Position + _camera.Forward,
+            Vector3.UnitY);
+
+        var proj = Matrix4x4.CreatePerspectiveFieldOfView(
+            MathF.PI / 3f, aspect, 0.05f, 500f);
+
+        Vector2 mousePx = _inputState.MousePosition;
+
+        return EditorPicking.ScreenPointToRay(mousePx, w, h, view, proj);
     }
 
     public void FixedUpdate(float fixedDt)
@@ -300,268 +309,29 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _jumpPressedThisFrame = false;
         }
 
-        _motor.Step(fixedDt, _wishDir, _wishSpeed, _colliders);
+        _motor.Step(fixedDt, _wishDir, _wishSpeed, _editor.SolidColliders);
+
+        _editor.TickTriggers(_motor.Position);
 
         _camera.Position = _motor.Position + new Vector3(0, _movement.EyeHeight, 0);
     }
 
     public void DrawImGui()
     {
-        DrawDebugWindow();
+        ImGui.Begin("Debug");
+        ImGui.Text($"FPS: {_fps:F1}");
+        ImGui.Text($"Editor: {(_editorEnabled ? "ON" : "OFF")}  Dirty: {(_editor.Dirty ? "YES" : "NO")}");
+        ImGui.Text($"Level: {_editor.LevelPath}");
+        ImGui.Text($"Selected: {_editor.SelectedEntityIndex}");
+        if (!string.IsNullOrWhiteSpace(_editor.LastTriggerEvent))
+            ImGui.Text($"Last Trigger: {_editor.LastTriggerEvent}");
+        ImGui.End();
 
         if (_editorEnabled)
-            DrawLevelEditorWindow();
+            _editor.DrawImGui();
     }
 
-    private void DrawDebugWindow()
-    {
-        ImGui.Begin("Debug");
-        ImGui.Separator();
-        ImGui.Text($"FPS: {_fps:F1}");
-
-        ImGui.Separator();
-        ImGui.Text(_ui.IsUIOpen ? "UI MODE (cursor visible)" : "GAME MODE (mouse captured)");
-        ImGui.Text("TAB: Toggle UI mode");
-        ImGui.Text("F1: Force GAME mode");
-        ImGui.Text("F2: Toggle EDITOR mode");
-
-        ImGui.Separator();
-        ImGui.Text($"Editor: {(_editorEnabled ? "ON" : "OFF")}  Dirty: {(_levelDirty ? "YES" : "NO")}");
-        ImGui.Text($"Level: {_levelPath}");
-        ImGui.Text($"Selected: {_selectedBoxIndex}");
-
-        ImGui.End();
-    }
-
-    private void DrawLevelEditorWindow()
-    {
-        ImGui.Begin("Level Editor");
-
-        if (ImGui.Button("Save"))
-        {
-            LevelIO.Save(_levelPath, _levelFile);
-            _levelDirty = false;
-        }
-        ImGui.SameLine();
-
-        if (ImGui.Button("Reload"))
-        {
-            _levelFile = LevelIO.Load(_levelPath);
-            _levelDirty = false;
-            _selectedBoxIndex = Math.Clamp(_selectedBoxIndex, -1, _levelFile.Boxes.Count - 1);
-            RebuildRuntimeWorldFromLevelFile();
-        }
-        ImGui.SameLine();
-
-        if (ImGui.Button("Add Box"))
-        {
-            _levelFile.Boxes.Add(new BoxDef
-            {
-                Name = $"Box_{_levelFile.Boxes.Count}",
-                Position = new Vector3(0, 0.5f, 0),
-                Size = new Vector3(1, 1, 1),
-                Color = new Vector4(0.6f, 0.6f, 0.6f, 1f)
-            });
-
-            _selectedBoxIndex = _levelFile.Boxes.Count - 1;
-            _levelDirty = true;
-            RebuildRuntimeWorldFromLevelFile();
-        }
-        ImGui.SameLine();
-
-        bool canDelete = _selectedBoxIndex >= 0 && _selectedBoxIndex < _levelFile.Boxes.Count;
-        if (!canDelete) ImGui.BeginDisabled();
-        if (ImGui.Button("Delete Selected"))
-        {
-            _levelFile.Boxes.RemoveAt(_selectedBoxIndex);
-            _selectedBoxIndex = Math.Clamp(_selectedBoxIndex, -1, _levelFile.Boxes.Count - 1);
-            _levelDirty = true;
-            RebuildRuntimeWorldFromLevelFile();
-        }
-        if (!canDelete) ImGui.EndDisabled();
-
-        ImGui.Separator();
-
-        ImGui.BeginChild("box_list", new Vector2(260, 0), ImGuiChildFlags.Borders);
-
-        for (int i = 0; i < _levelFile.Boxes.Count; i++)
-        {
-            var b = _levelFile.Boxes[i];
-            bool selected = i == _selectedBoxIndex;
-            string label = $"{i:00}  {b.Name}##{b.Id}";
-
-            if (ImGui.Selectable(label, selected))
-                _selectedBoxIndex = i;
-        }
-
-        ImGui.EndChild();
-
-        ImGui.SameLine();
-
-        ImGui.BeginChild("box_inspector", new Vector2(0, 0), ImGuiChildFlags.Borders);
-
-        if (_selectedBoxIndex < 0 || _selectedBoxIndex >= _levelFile.Boxes.Count)
-        {
-            ImGui.Text("Select a box to edit.");
-            ImGui.EndChild();
-            ImGui.End();
-            return;
-        }
-
-        var box = _levelFile.Boxes[_selectedBoxIndex];
-
-        string name = box.Name ?? "";
-        if (ImGui.InputText("Name", ref name, 128))
-        {
-            box.Name = name;
-            MarkDirtyAndRebuild();
-        }
-
-        Vector3 pos = box.Position;
-        if (ImGui.DragFloat3("Position", ref pos, 0.05f))
-        {
-            box.Position = pos;
-            MarkDirtyAndApplySelected();
-        }
-
-        Vector3 size = box.Size;
-        if (ImGui.DragFloat3("Size", ref size, 0.05f))
-        {
-            size.X = MathF.Max(0.01f, size.X);
-            size.Y = MathF.Max(0.01f, size.Y);
-            size.Z = MathF.Max(0.01f, size.Z);
-
-            box.Size = size;
-            MarkDirtyAndApplySelected();
-        }
-
-        Vector4 col = box.Color;
-        if (ImGui.ColorEdit4("Color", ref col))
-        {
-            box.Color = col;
-            MarkDirtyAndApplySelected();
-        }
-
-        ImGui.Separator();
-        ImGui.Text($"Id: {box.Id}");
-        ImGui.Text("Editor controls:");
-        ImGui.BulletText("RMB: look around");
-        ImGui.BulletText("WASD: move   Q/E: down/up   Shift: faster");
-        ImGui.BulletText("LMB on box: select + drag");
-
-        ImGui.EndChild();
-        ImGui.End();
-    }
-
-    private void MarkDirtyAndRebuild()
-    {
-        _levelDirty = true;
-        RebuildRuntimeWorldFromLevelFile();
-    }
-
-    private void MarkDirtyAndApplySelected()
-    {
-        _levelDirty = true;
-
-        if (_selectedBoxIndex >= 0 && _selectedBoxIndex < _levelFile.Boxes.Count)
-            ApplyBoxDefToRuntime(_selectedBoxIndex);
-        else
-            RebuildRuntimeWorldFromLevelFile();
-    }
-
-    private void RebuildRuntimeWorldFromLevelFile()
-    {
-        _level.Clear();
-        _colliders.Clear();
-
-        foreach (var def in _levelFile.Boxes)
-        {
-            var inst = def.ToBoxInstance();
-            _level.Add(inst);
-
-            var half = inst.Size * 0.5f;
-            _colliders.Add(new Aabb(inst.Position - half, inst.Position + half));
-        }
-    }
-
-    private void ApplyBoxDefToRuntime(int index)
-    {
-        if (index < 0 || index >= _levelFile.Boxes.Count)
-            return;
-
-        if (_level.Count != _levelFile.Boxes.Count || _colliders.Count != _levelFile.Boxes.Count)
-        {
-            RebuildRuntimeWorldFromLevelFile();
-            return;
-        }
-
-        var inst = _levelFile.Boxes[index].ToBoxInstance();
-        _level[index] = inst;
-
-        var half = inst.Size * 0.5f;
-        _colliders[index] = new Aabb(inst.Position - half, inst.Position + half);
-    }
-
-    private bool TryGetMouseRay(out EditorPicking.Ray ray)
-    {
-        ray = default;
-
-        float w = _ctx.Window.Window.Width;
-        float h = _ctx.Window.Window.Height;
-        if (w <= 1 || h <= 1)
-            return false;
-
-        float aspect = h > 0 ? w / h : 16f / 9f;
-
-        var view = Matrix4x4.CreateLookAt(
-            _camera.Position,
-            _camera.Position + _camera.Forward,
-            Vector3.UnitY);
-
-        var proj = Matrix4x4.CreatePerspectiveFieldOfView(
-            MathF.PI / 3f, aspect, 0.05f, 500f);
-
-        Vector2 mousePx = _inputState.MousePosition;
-
-        ray = EditorPicking.ScreenPointToRay(mousePx, w, h, view, proj);
-        return true;
-    }
-
-    private bool TryPickBoxUnderMouse(out int hitIndex, out Vector3 hitPoint)
-    {
-        hitIndex = -1;
-        hitPoint = default;
-
-        if (!TryGetMouseRay(out var ray))
-            return false;
-
-        float bestT = float.PositiveInfinity;
-        int bestIndex = -1;
-
-        for (int i = 0; i < _colliders.Count; i++)
-        {
-            Vector3 mn = _colliders[i].Min;
-            Vector3 mx = _colliders[i].Max;
-
-            if (EditorPicking.RayIntersectsAabb(ray, mn, mx, out float t))
-            {
-                if (t < bestT)
-                {
-                    bestT = t;
-                    bestIndex = i;
-                }
-            }
-        }
-
-        if (bestIndex == -1)
-            return false;
-
-        hitIndex = bestIndex;
-        hitPoint = ray.GetPoint(bestT);
-        return true;
-    }
-
-    public void RenderWorld(Engine.Render.Renderer renderer)
+    public void RenderWorld(Renderer renderer)
     {
         float aspect = _ctx.Window.Window.Height > 0
             ? _ctx.Window.Window.Width / (float)_ctx.Window.Window.Height
@@ -580,16 +350,43 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _world.BeginFrame();
         _world.UpdateCamera(viewProj);
 
-        for (int i = 0; i < _level.Count; i++)
+        // Draw entities/markers with rotation
+        for (int i = 0; i < _editor.DrawBoxes.Count; i++)
         {
-            var b = _level[i];
+            var d = _editor.DrawBoxes[i];
 
-            Vector4 color = b.Color;
-            if (_editorEnabled && i == _selectedBoxIndex)
+            Vector4 color = d.Color;
+            if (_editorEnabled && i == _editor.SelectedEntityIndex)
                 color = new Vector4(1f, 1f, 0.1f, 1f);
 
-            _world.DrawBox(renderer.CommandList, b.ModelMatrix, color);
+            DrawEditorBox(renderer, d.Position, d.Size, d.Rotation, color);
         }
+
+        // Draw gizmo (axis-aligned)
+        if (_editorEnabled && _editor.HasGizmo(out var xLine, out var xHandle,
+                                              out var yLine, out var yHandle,
+                                              out var zLine, out var zHandle))
+        {
+            DrawEditorBox(renderer, xLine.Position, xLine.Size, xLine.Rotation, xLine.Color);
+            DrawEditorBox(renderer, xHandle.Position, xHandle.Size, xHandle.Rotation, xHandle.Color);
+
+            DrawEditorBox(renderer, yLine.Position, yLine.Size, yLine.Rotation, yLine.Color);
+            DrawEditorBox(renderer, yHandle.Position, yHandle.Size, yHandle.Rotation, yHandle.Color);
+
+            DrawEditorBox(renderer, zLine.Position, zLine.Size, zLine.Rotation, zLine.Color);
+            DrawEditorBox(renderer, zHandle.Position, zHandle.Size, zHandle.Rotation, zHandle.Color);
+        }
+    }
+
+    private void DrawEditorBox(Renderer renderer, Vector3 pos, Vector3 size, Quaternion rot, Vector4 color)
+    {
+        // Assumes the debug cube is centered at origin and spans [-0.5..+0.5] in local space.
+        var model =
+            Matrix4x4.CreateScale(size) *
+            Matrix4x4.CreateFromQuaternion(rot) *
+            Matrix4x4.CreateTranslation(pos);
+
+        _world.DrawBox(renderer.CommandList, model, color);
     }
 
     public void Dispose()

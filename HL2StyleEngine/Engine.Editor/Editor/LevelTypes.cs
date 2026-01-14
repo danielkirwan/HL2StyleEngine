@@ -1,0 +1,103 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace Engine.Editor.Level;
+
+public sealed class LevelFile
+{
+    public int Version { get; set; } = 2;
+
+    // New unified list
+    public List<LevelEntityDef> Entities { get; set; } = new();
+
+    // Backward compat (if you still have old JSON)
+    public List<BoxDef>? Boxes { get; set; }
+}
+
+public static class EntityTypes
+{
+    public const string Box = "Box";
+    public const string PlayerSpawn = "PlayerSpawn";
+    public const string PointLight = "PointLight";
+    public const string Prop = "Prop";
+    public const string TriggerVolume = "TriggerVolume";
+    public const string RigidBody = "RigidBody";
+}
+
+public sealed class LevelEntityDef
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Type { get; set; } = EntityTypes.Box;
+    public string Name { get; set; } = "Entity";
+
+    public SerVec3 Position { get; set; } = new(0, 0, 0);
+
+    public SerVec3 RotationEulerDeg { get; set; } = new(0, 0, 0);
+    public SerVec3 Scale { get; set; } = new(1, 1, 1);
+
+    // Box fields
+    public SerVec3 Size { get; set; } = new(1, 1, 1);
+    public SerVec4 Color { get; set; } = new(0.6f, 0.6f, 0.6f, 1f);
+
+    // PlayerSpawn
+    public float YawDeg { get; set; } = 0f;
+
+    // PointLight
+    public SerVec4 LightColor { get; set; } = new(1f, 1f, 1f, 1f);
+    public float Intensity { get; set; } = 3f;
+    public float Range { get; set; } = 8f;
+
+    // Prop
+    public string MeshPath { get; set; } = "";
+    public string MaterialPath { get; set; } = "";
+
+    // Trigger
+    public SerVec3 TriggerSize { get; set; } = new(2, 2, 2);
+    public string TriggerEvent { get; set; } = "OnEnter";
+
+    // RigidBody placeholder
+    public string Shape { get; set; } = "Box";
+    public float Mass { get; set; } = 10f;
+    public float Friction { get; set; } = 0.8f;
+    public float Restitution { get; set; } = 0.05f;
+    public bool IsKinematic { get; set; } = false;
+
+    public float Radius { get; set; } = 0.5f;
+    public float Height { get; set; } = 1.0f;
+}
+
+public sealed class BoxDef
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = "Box";
+
+    public SerVec3 Position { get; set; } = new(0, 0, 0);
+    public SerVec3 Size { get; set; } = new(1, 1, 1);
+    public SerVec4 Color { get; set; } = new(0.6f, 0.6f, 0.6f, 1f);
+}
+
+public readonly struct SerVec3
+{
+    public float X { get; init; }
+    public float Y { get; init; }
+    public float Z { get; init; }
+
+    public SerVec3(float x, float y, float z) { X = x; Y = y; Z = z; }
+
+    public static implicit operator Vector3(SerVec3 v) => new(v.X, v.Y, v.Z);
+    public static implicit operator SerVec3(Vector3 v) => new(v.X, v.Y, v.Z);
+}
+
+public readonly struct SerVec4
+{
+    public float X { get; init; }
+    public float Y { get; init; }
+    public float Z { get; init; }
+    public float W { get; init; }
+
+    public SerVec4(float x, float y, float z, float w) { X = x; Y = y; Z = z; W = w; }
+
+    public static implicit operator Vector4(SerVec4 v) => new(v.X, v.Y, v.Z, v.W);
+    public static implicit operator SerVec4(Vector4 v) => new(v.X, v.Y, v.Z, v.W);
+}

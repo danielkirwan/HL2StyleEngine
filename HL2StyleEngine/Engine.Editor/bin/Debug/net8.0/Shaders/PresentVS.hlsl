@@ -15,8 +15,9 @@ VSOut VSMain(VSIn input)
     VSOut o;
     o.Position = float4(input.Position, 0, 1);
 
-    float2 uv = input.TexCoord * 0.5f;
-    uv.y = 1.0f - uv.y;
+    float2 uv = input.TexCoord;
+
+    //uv.y = 1.0f - uv.y;
 
     o.TexCoord = uv;
     return o;

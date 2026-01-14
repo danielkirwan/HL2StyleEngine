@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Numerics;
 
-namespace Game.World;
+namespace Editor.Editor;
 
 public static class EditorPicking
 {
@@ -56,14 +56,11 @@ public static class EditorPicking
         float tmin = float.NegativeInfinity;
         float tmax = float.PositiveInfinity;
 
-        // X
         if (!Slab(ray.Origin.X, ray.Dir.X, aabbMin.X, aabbMax.X, ref tmin, ref tmax)) return false;
-        // Y
         if (!Slab(ray.Origin.Y, ray.Dir.Y, aabbMin.Y, aabbMax.Y, ref tmin, ref tmax)) return false;
-        // Z
         if (!Slab(ray.Origin.Z, ray.Dir.Z, aabbMin.Z, aabbMax.Z, ref tmin, ref tmax)) return false;
 
-        if (tmax < 0f) return false; 
+        if (tmax < 0f) return false;
 
         tHit = (tmin >= 0f) ? tmin : tmax;
         return true;
@@ -74,9 +71,7 @@ public static class EditorPicking
         const float EPS = 1e-8f;
 
         if (MathF.Abs(rd) < EPS)
-        {
             return ro >= mn && ro <= mx;
-        }
 
         float t1 = (mn - ro) / rd;
         float t2 = (mx - ro) / rd;
@@ -101,5 +96,32 @@ public static class EditorPicking
 
         t = (planeD - Vector3.Dot(planeNormal, ray.Origin)) / denom;
         return t >= 0f;
+    }
+
+    public static bool ClosestTOnLineToRay(
+        Vector3 lineOrigin,
+        Vector3 lineDirUnit,
+        Ray ray,
+        out float tLine)
+    {
+        tLine = 0f;
+
+        Vector3 u = Vector3.Normalize(lineDirUnit);
+        Vector3 v = Vector3.Normalize(ray.Dir);
+        Vector3 w0 = lineOrigin - ray.Origin;
+
+        float a = Vector3.Dot(u, u);      
+        float b = Vector3.Dot(u, v);
+        float c = Vector3.Dot(v, v);      
+        float d = Vector3.Dot(u, w0);
+        float e = Vector3.Dot(v, w0);
+
+        float denom = (a * c) - (b * b);
+        if (MathF.Abs(denom) < 1e-8f)
+            return false; 
+
+        float aParam = (b * e - c * d) / denom;
+        tLine = aParam;
+        return true;
     }
 }

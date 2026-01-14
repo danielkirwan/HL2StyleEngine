@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text.Json;
 
-namespace Game.World;
+namespace Engine.Editor.Level;
 
 public static class LevelIO
 {
@@ -24,8 +24,26 @@ public static class LevelIO
         if (level is null)
             throw new InvalidDataException($"Failed to deserialize level: {path}");
 
-        if (level.Boxes is null)
-            level.Boxes = new();
+        level.Entities ??= new();
+
+        // Migrate v1 "Boxes" format -> Entities
+        if (level.Entities.Count == 0 && level.Boxes is not null && level.Boxes.Count > 0)
+        {
+            foreach (var b in level.Boxes)
+            {
+                level.Entities.Add(new LevelEntityDef
+                {
+                    Id = b.Id,
+                    Type = EntityTypes.Box,
+                    Name = b.Name,
+                    Position = b.Position,
+                    Size = b.Size,
+                    Color = b.Color
+                });
+            }
+
+            level.Version = Math.Max(level.Version, 2);
+        }
 
         return level;
     }

@@ -1,5 +1,887 @@
 {
-  "Version": 1,
+  "Version": 2,
+  "Entities": [
+    {
+      "Id": "eb32ac3f4d5e476da3cd8254d36becb6",
+      "Type": "Box",
+      "Name": "Box_0",
+      "Position": {
+        "X": -0.0072426796,
+        "Y": -0.1,
+        "Z": -0.004880905
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 18,
+        "Y": 0.2,
+        "Z": 18
+      },
+      "Color": {
+        "X": 0.25,
+        "Y": 0.25,
+        "Z": 0.25,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "c15c2df2a6734592ba7ccd80a7addbff",
+      "Type": "Box",
+      "Name": "Box_1",
+      "Position": {
+        "X": 0,
+        "Y": 2,
+        "Z": 9
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 18,
+        "Y": 4,
+        "Z": 0.4
+      },
+      "Color": {
+        "X": 0.45,
+        "Y": 0.45,
+        "Z": 0.5,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "68fad0aa4920418eb066db6f03dbdef8",
+      "Type": "Box",
+      "Name": "Box_2",
+      "Position": {
+        "X": 0,
+        "Y": 2,
+        "Z": -9
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 18,
+        "Y": 4,
+        "Z": 0.4
+      },
+      "Color": {
+        "X": 0.45,
+        "Y": 0.45,
+        "Z": 0.5,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "cd483aeceefa444abef6026194863c87",
+      "Type": "Box",
+      "Name": "Box_3",
+      "Position": {
+        "X": 9,
+        "Y": 2,
+        "Z": 0
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 0.4,
+        "Y": 4,
+        "Z": 18
+      },
+      "Color": {
+        "X": 0.45,
+        "Y": 0.45,
+        "Z": 0.5,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "cca2077c87ca4ac893aa667f91e7f432",
+      "Type": "Box",
+      "Name": "Box_4",
+      "Position": {
+        "X": -9,
+        "Y": 2,
+        "Z": 0
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 0.4,
+        "Y": 4,
+        "Z": 18
+      },
+      "Color": {
+        "X": 0.45,
+        "Y": 0.45,
+        "Z": 0.5,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "61f8707fa8c345559a21f4ab8f27e68a",
+      "Type": "Box",
+      "Name": "Box_5",
+      "Position": {
+        "X": 0.6116071,
+        "Y": 0.5,
+        "Z": 2.5854678
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.45,
+        "Z": 0.25,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "3ac7e137823e475785de7dccf8f48a5a",
+      "Type": "Box",
+      "Name": "Box_7",
+      "Position": {
+        "X": 2.2959197,
+        "Y": 0.49999994,
+        "Z": -3.3240302
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.45,
+        "Z": 0.25,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "5812a576437649748b08c21cda40baf8",
+      "Type": "Box",
+      "Name": "Box_8",
+      "Position": {
+        "X": 5,
+        "Y": 2,
+        "Z": 5
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 0.8,
+        "Y": 4,
+        "Z": 0.8
+      },
+      "Color": {
+        "X": 0.35,
+        "Y": 0.35,
+        "Z": 0.35,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "89e62a8af2af4899a613b903389b6ddc",
+      "Type": "Box",
+      "Name": "Box_9",
+      "Position": {
+        "X": -5,
+        "Y": 2,
+        "Z": 5
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 0.8,
+        "Y": 4,
+        "Z": 0.8
+      },
+      "Color": {
+        "X": 0.35,
+        "Y": 0.35,
+        "Z": 0.35,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "de29d4f109a444f78d03b87d6ed5f6ac",
+      "Type": "Box",
+      "Name": "Box_10",
+      "Position": {
+        "X": 5,
+        "Y": 2,
+        "Z": -5
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 0.8,
+        "Y": 4,
+        "Z": 0.8
+      },
+      "Color": {
+        "X": 0.35,
+        "Y": 0.35,
+        "Z": 0.35,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "7600362f115840b8a01b92b59c41ddda",
+      "Type": "Box",
+      "Name": "Box_11",
+      "Position": {
+        "X": 0,
+        "Y": 0.25,
+        "Z": 6
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 4,
+        "Y": 0.5,
+        "Z": 3
+      },
+      "Color": {
+        "X": 0.2,
+        "Y": 0.4,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "75b3e16ebb134ac2b01752df41f2c6db",
+      "Type": "Box",
+      "Name": "Box_12",
+      "Position": {
+        "X": -1.9061569,
+        "Y": 1.25,
+        "Z": -2.65
+      },
+      "RotationEulerDeg": {
+        "X": 31,
+        "Y": 18,
+        "Z": -14
+      },
+      "Scale": {
+        "X": 1.14,
+        "Y": 0.7,
+        "Z": 2.62
+      },
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.45,
+        "Z": 0.25,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "8e05f07660504a22a4cd6e13105a6d48",
+      "Type": "Box",
+      "Name": "Box_13",
+      "Position": {
+        "X": -5,
+        "Y": 2,
+        "Z": -5
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 0.8,
+        "Y": 4,
+        "Z": 0.8
+      },
+      "Color": {
+        "X": 0.35,
+        "Y": 0.35,
+        "Z": 0.35,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "6ab2c022256345e19f1c8a3ab9cfef9e",
+      "Type": "Box",
+      "Name": "Box_14",
+      "Position": {
+        "X": 3.7533073,
+        "Y": 0.5,
+        "Z": 0.3239138
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.4509804,
+        "Z": 0.2509804,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "4c78b174593a48dba38f49f53837b6f6",
+      "Type": "Box",
+      "Name": "Box_15",
+      "Position": {
+        "X": 0.09599599,
+        "Y": 0.86881185,
+        "Z": -1.164877
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.89215684,
+        "Y": 0.1705594,
+        "Z": 0.1705594,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "af9673a56a454b25b02945ffc4f92a17",
+      "Type": "PlayerSpawn",
+      "Name": "Spawn_16",
+      "Position": {
+        "X": -4.9970217,
+        "Y": 0,
+        "Z": -7.7883887
+      },
+      "RotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    }
+  ],
   "Boxes": [
     {
       "Id": "eb32ac3f4d5e476da3cd8254d36becb6",
