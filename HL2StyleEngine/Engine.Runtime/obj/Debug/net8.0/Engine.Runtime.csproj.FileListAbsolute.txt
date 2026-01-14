@@ -56,3 +56,7 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\Engine.Ru
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\refint\Engine.Runtime.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\Engine.Runtime.pdb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\ref\Engine.Runtime.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\PresentPS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\PresentVS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\PresentPS.hlsl
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\PresentVS.hlsl

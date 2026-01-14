@@ -20,7 +20,6 @@ public sealed class LevelEditorController
 
     public string LastTriggerEvent { get; private set; } = "";
 
-    // Gizmo / snap
     public bool GizmoEnabled = true;
     public bool SnapEnabled = false;
     public float SnapStep = 0.25f;
@@ -43,6 +42,7 @@ public sealed class LevelEditorController
     private Vector3 _axisOriginAtGrab;
     private float _axisGrabT;
     private Vector3 _entityPosAtGrab;
+    private bool _layoutDockedOnce = false;
 
     public void LoadOrCreate(string path, Func<LevelFile> createDefault)
     {
@@ -168,11 +168,24 @@ public sealed class LevelEditorController
     }
 
 
-    public void DrawToolbarPanel(uint dockspaceId)
+    public void DrawToolbarPanel(ref bool mouseOverUi, ref bool keyboardOverUi)
     {
-        ImGui.SetNextWindowDockID(dockspaceId, ImGuiCond.FirstUseEver);
 
         ImGui.Begin("Toolbar");
+        mouseOverUi |= ImGui.IsWindowHovered();
+        keyboardOverUi |= ImGui.IsWindowFocused();
+        if (!_layoutDockedOnce)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("Lock Layout"))
+                _layoutDockedOnce = true;
+        }
+        else
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("Reset Layout"))
+                _layoutDockedOnce = false;
+        }
 
         if (ImGui.Button("Save")) Save();
         ImGui.SameLine();
@@ -224,11 +237,12 @@ public sealed class LevelEditorController
         ImGui.End();
     }
 
-    public void DrawHierarchyPanel(uint dockspaceId)
+    public void DrawHierarchyPanel(ref bool mouseOverUi, ref bool keyboardOverUi)
     {
-        ImGui.SetNextWindowDockID(dockspaceId, ImGuiCond.FirstUseEver);
-
         ImGui.Begin("Hierarchy");
+        mouseOverUi |= ImGui.IsWindowHovered();
+        keyboardOverUi |= ImGui.IsWindowFocused();
+
 
         ImGui.Text($"Level: {LevelPath}");
         ImGui.Separator();
@@ -250,11 +264,12 @@ public sealed class LevelEditorController
         ImGui.End();
     }
 
-    public void DrawInspectorPanel(uint dockspaceId)
+    public void DrawInspectorPanel(ref bool mouseOverUi, ref bool keyboardOverUi)
     {
-        ImGui.SetNextWindowDockID(dockspaceId, ImGuiCond.FirstUseEver);
-
         ImGui.Begin("Inspector");
+        mouseOverUi |= ImGui.IsWindowHovered();
+        keyboardOverUi |= ImGui.IsWindowFocused();
+
 
         bool hasSelection = SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count;
         if (!hasSelection)

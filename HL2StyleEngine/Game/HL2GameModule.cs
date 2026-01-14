@@ -47,6 +47,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private float _editorMoveSpeed = 5f;
     private float _editorFastSpeed = 12f;
+    private bool _mouseOverEditorUi;
+    private bool _keyboardOverEditorUi;
 
     public InputState InputState => _inputState;
 
@@ -207,11 +209,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private void EditorCameraUpdate(float dt)
     {
-        var io = ImGui.GetIO();
-        bool uiWantsMouse = io.WantCaptureMouse;
-        bool uiWantsKeyboard = io.WantCaptureKeyboard;
+        bool uiWantsMouse = _mouseOverEditorUi;
+        bool uiWantsKeyboard = _keyboardOverEditorUi;
 
-        // RMB look
         if (_inputState.RightMouseDown && !uiWantsMouse)
         {
             _camera.AddLook(_inputState.MouseDelta);
@@ -219,7 +219,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _camera.Pitch = Math.Clamp(_camera.Pitch, -limit, limit);
         }
 
-        // WASD + Q/E move
         if (!uiWantsKeyboard)
         {
             float speed = (_inputState.IsDown(Key.ShiftLeft) || _inputState.IsDown(Key.ShiftRight))
@@ -246,8 +245,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private void EditorMouseUpdate()
     {
-        var io = ImGui.GetIO();
-        bool uiWantsMouse = io.WantCaptureMouse;
+        bool uiWantsMouse = _mouseOverEditorUi;
 
         bool leftDown = _inputState.LeftMouseDown;
         bool leftPressed = leftDown && !_prevLeftMouseDown;
@@ -321,17 +319,20 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     public void DrawImGui()
     {
+        _mouseOverEditorUi = false;
+        _keyboardOverEditorUi = false;
+        DrawMainDockspaceHost(); 
+
         DrawDebugWindow();
 
         if (_editorEnabled)
         {
-            uint dockId = DrawEditorDockspaceWindow();
-            _editor.DrawToolbarPanel(dockId);
-            _editor.DrawHierarchyPanel(dockId);
-            _editor.DrawInspectorPanel(dockId);
-
+            _editor.DrawToolbarPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
+            _editor.DrawHierarchyPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
+            _editor.DrawInspectorPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
         }
     }
+
 
     private void DrawDebugWindow()
     {
@@ -346,29 +347,42 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         ImGui.End();
     }
 
-    private static uint DrawEditorDockspaceWindow()
+    private static void DrawMainDockspaceHost()
     {
-        ImGui.SetNextWindowSize(new Vector2(520, 720), ImGuiCond.FirstUseEver);
-        ImGui.SetNextWindowPos(new Vector2(30, 30), ImGuiCond.FirstUseEver);
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(viewport.Pos);
+        ImGui.SetNextWindowSize(viewport.Size);
+        ImGui.SetNextWindowViewport(viewport.ID);
 
-        ImGuiWindowFlags flags =
+        ImGuiWindowFlags hostFlags =
+            ImGuiWindowFlags.NoTitleBar |
             ImGuiWindowFlags.NoCollapse |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoBringToFrontOnFocus |
+            ImGuiWindowFlags.NoNavFocus |
+            ImGuiWindowFlags.NoDocking |
+            ImGuiWindowFlags.NoInputs |    
             ImGuiWindowFlags.MenuBar;
 
-        ImGui.Begin("Editor", flags);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, 0); 
 
-        uint dockspaceId = ImGui.GetID("EditorDockspace");
-        ImGui.DockSpace(dockspaceId, Vector2.Zero, ImGuiDockNodeFlags.None);
+        ImGui.Begin("MainDockspaceHost", hostFlags);
 
-        if (ImGui.BeginMenuBar())
-        {
-            ImGui.Text("HL2 Editor");
-            ImGui.EndMenuBar();
-        }
+        ImGui.PopStyleColor();
+        ImGui.PopStyleVar(3);
 
+        uint dockspaceId = ImGui.GetID("MainDockspace");
+        ImGui.DockSpace(dockspaceId, Vector2.Zero,
+            ImGuiDockNodeFlags.PassthruCentralNode);
         ImGui.End();
-        return dockspaceId;
     }
+
+
+
 
     public void RenderWorld(Renderer renderer)
     {
