@@ -63,23 +63,17 @@ public static class ImGui3DGrid
 
     private static bool TryProject(Matrix4x4 viewProj, Vector3 world, float w, float h, out Vector2 screen)
     {
-        // Transform to clip space
         Vector4 clip = Vector4.Transform(new Vector4(world, 1f), viewProj);
 
-        // Behind camera or too close to w=0
         if (clip.W <= 0.0001f)
         {
             screen = default;
             return false;
         }
 
-        // NDC
         float invW = 1f / clip.W;
         float ndcX = clip.X * invW;
         float ndcY = clip.Y * invW;
-
-        // If completely off-screen, you can cull it (optional). We'll keep it simple:
-        // Map NDC (-1..1) to screen (0..w/h). Flip Y for screen space.
         float sx = (ndcX * 0.5f + 0.5f) * w;
         float sy = (1f - (ndcY * 0.5f + 0.5f)) * h;
 
