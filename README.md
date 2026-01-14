@@ -31,7 +31,7 @@ This project explores how **FPS-style engines are structured internally**, inspi
 Key goals:
 
 - **No engine–game coupling**  
-  Games consume engine APIs — they never modify engine internals.
+  Games consume engine APIs they never modify engine internals.
 - **Fast iteration**  
   Small rebuilds, minimal recompiles, clear module boundaries.
 - **Explicit systems**  
