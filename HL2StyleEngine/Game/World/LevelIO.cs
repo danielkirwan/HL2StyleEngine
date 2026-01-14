@@ -40,9 +40,6 @@ public static class LevelIO
         File.WriteAllText(path, json);
     }
 
-    /// <summary>
-    /// Loads a level if it exists, otherwise creates it using factory and saves it immediately.
-    /// </summary>
     public static LevelFile LoadOrCreate(string path, Func<LevelFile> createDefault)
     {
         if (File.Exists(path))

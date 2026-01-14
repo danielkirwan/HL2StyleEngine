@@ -4,20 +4,12 @@ using System.Numerics;
 
 namespace Game.World;
 
-/// <summary>
-/// Pure-data level file. No runtime-only types in here.
-/// </summary>
 public sealed class LevelFile
 {
     public int Version { get; set; } = 1;
     public List<BoxDef> Boxes { get; set; } = new();
 }
 
-/// <summary>
-/// Serializable box definition (pure data).
-/// Uses lightweight serializable vector structs instead of System.Numerics.Vector3/4,
-/// because System.Text.Json doesn't support those by default.
-/// </summary>
 public sealed class BoxDef
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");

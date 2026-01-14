@@ -19,10 +19,6 @@ public static class EditorPicking
         public Vector3 GetPoint(float t) => Origin + Dir * t;
     }
 
-    /// <summary>
-    /// Builds a world-space ray from a screen pixel coordinate.
-    /// screenPos is in pixels with origin at top-left (ImGui/InputSnapshot style).
-    /// </summary>
     public static Ray ScreenPointToRay(
         Vector2 screenPos,
         float viewportWidth,
@@ -30,11 +26,9 @@ public static class EditorPicking
         Matrix4x4 view,
         Matrix4x4 proj)
     {
-        // Convert to NDC [-1,1], note Y flip (top-left -> bottom-left)
         float x = (2f * screenPos.X / viewportWidth) - 1f;
         float y = 1f - (2f * screenPos.Y / viewportHeight);
 
-        // Unproject near/far
         Matrix4x4 viewProj = view * proj;
         if (!Matrix4x4.Invert(viewProj, out var invViewProj))
             return new Ray(Vector3.Zero, Vector3.UnitZ);
@@ -55,9 +49,6 @@ public static class EditorPicking
         return new Ray(nearWorld, dir);
     }
 
-    /// <summary>
-    /// Ray vs AABB slab test. Returns true and nearest hit t if intersects.
-    /// </summary>
     public static bool RayIntersectsAabb(Ray ray, Vector3 aabbMin, Vector3 aabbMax, out float tHit)
     {
         tHit = 0f;
@@ -72,7 +63,7 @@ public static class EditorPicking
         // Z
         if (!Slab(ray.Origin.Z, ray.Dir.Z, aabbMin.Z, aabbMax.Z, ref tmin, ref tmax)) return false;
 
-        if (tmax < 0f) return false; // box is behind ray
+        if (tmax < 0f) return false; 
 
         tHit = (tmin >= 0f) ? tmin : tmax;
         return true;
@@ -84,7 +75,6 @@ public static class EditorPicking
 
         if (MathF.Abs(rd) < EPS)
         {
-            // Ray parallel: must be within slab
             return ro >= mn && ro <= mx;
         }
 
@@ -100,9 +90,6 @@ public static class EditorPicking
 
     public static bool RayIntersectsPlane(Ray ray, Vector3 planeNormal, float planeD, out float t)
     {
-        // Plane equation: dot(n, p) = d
-        // Ray: p = o + t*dir
-        // => dot(n, o + t*dir) = d => t = (d - dot(n,o))/dot(n,dir)
         const float EPS = 1e-8f;
         float denom = Vector3.Dot(planeNormal, ray.Dir);
 
