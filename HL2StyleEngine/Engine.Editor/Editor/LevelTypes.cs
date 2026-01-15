@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Text.Json.Serialization;
 
 namespace Engine.Editor.Level;
 
@@ -27,14 +28,23 @@ public static class EntityTypes
 
 public sealed class LevelEntityDef
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString("N");
-    public string Type { get; set; } = EntityTypes.Box;
-    public string Name { get; set; } = "Entity";
+    public string Id { get; set; } = "";
+    public string Type { get; set; } = "";
+    public string? Name { get; set; }
 
-    public SerVec3 Position { get; set; } = new(0, 0, 0);
+    // Parent relationship (null/empty = root)
+    [JsonPropertyName("Parent")]
+    public string? ParentId { get; set; }
 
-    public SerVec3 RotationEulerDeg { get; set; } = new(0, 0, 0);
-    public SerVec3 Scale { get; set; } = new(1, 1, 1);
+    // LOCAL transform (stored with your existing JSON property names for compatibility)
+    [JsonPropertyName("LocalPosition")]
+    public SerVec3 LocalPosition { get; set; } = Vector3.Zero;
+
+    [JsonPropertyName("LocalRotationEulerDeg")]
+    public SerVec3 LocalRotationEulerDeg { get; set; } = Vector3.Zero;
+
+    [JsonPropertyName("LocalScale")]
+    public SerVec3 LocalScale { get; set; } = Vector3.One;
 
     // Box fields
     public SerVec3 Size { get; set; } = new(1, 1, 1);

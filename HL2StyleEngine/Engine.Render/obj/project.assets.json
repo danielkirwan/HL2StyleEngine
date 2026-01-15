@@ -3104,11 +3104,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj",
+      "projectUniqueName": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj",
       "projectName": "Engine.Render",
-      "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj",
+      "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj",
       "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-      "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\obj\\",
+      "outputPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\obj\\",
       "projectStyle": "PackageReference",
       "centralPackageVersionsManagementEnabled": true,
       "fallbackFolders": [
@@ -3124,14 +3124,15 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj": {
-              "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj"
+            "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj": {
+              "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Core\\Engine.Core.csproj"
             }
           }
         }
@@ -3196,7 +3197,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

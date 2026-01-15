@@ -49,17 +49,19 @@ public static class SimpleLevel
 
         level.Entities.Add(new LevelEntityDef
         {
+            Id = Guid.NewGuid().ToString("N"),
             Type = EntityTypes.PlayerSpawn,
             Name = "PlayerSpawn",
-            Position = new Vector3(0, 0, -5f),
+            LocalPosition = new Vector3(0, 0, -5f),
             YawDeg = 0f
         });
 
         level.Entities.Add(new LevelEntityDef
         {
+            Id = Guid.NewGuid().ToString("N"),
             Type = EntityTypes.PointLight,
             Name = "Light_Main",
-            Position = new Vector3(0, 3.5f, 0),
+            LocalPosition = new Vector3(0, 3.5f, 0),
             LightColor = new Vector4(1f, 0.95f, 0.8f, 1f),
             Intensity = 4f,
             Range = 12f
@@ -67,29 +69,32 @@ public static class SimpleLevel
 
         level.Entities.Add(new LevelEntityDef
         {
+            Id = Guid.NewGuid().ToString("N"),
             Type = EntityTypes.TriggerVolume,
             Name = "Trigger_Test",
-            Position = new Vector3(0, 1f, 2f),
+            LocalPosition = new Vector3(0, 1f, 2f),
             TriggerSize = new Vector3(2f, 2f, 2f),
             TriggerEvent = "OnEnter_TestTrigger"
         });
 
         level.Entities.Add(new LevelEntityDef
         {
+            Id = Guid.NewGuid().ToString("N"),
             Type = EntityTypes.Prop,
             Name = "Prop_CratePlaceholder",
-            Position = new Vector3(3f, 0.5f, -2f),
+            LocalPosition = new Vector3(3f, 0.5f, -2f),
             MeshPath = "Content/Meshes/crate01.mesh",
             MaterialPath = "Content/Materials/crate01.mat",
-            RotationEulerDeg = new Vector3(0, 0, 0),
-            Scale = new Vector3(1, 1, 1)
+            LocalRotationEulerDeg = new Vector3(0, 0, 0),
+            LocalScale = new Vector3(1, 1, 1)
         });
 
         level.Entities.Add(new LevelEntityDef
         {
+            Id = Guid.NewGuid().ToString("N"),
             Type = EntityTypes.RigidBody,
             Name = "RB_Test",
-            Position = new Vector3(-3f, 0.5f, -2f),
+            LocalPosition = new Vector3(-3f, 0.5f, -2f),
             Shape = "Box",
             Size = new Vector3(1, 1, 1),
             Mass = 10f,
@@ -103,9 +108,10 @@ public static class SimpleLevel
         {
             level.Entities.Add(new LevelEntityDef
             {
+                Id = Guid.NewGuid().ToString("N"),
                 Type = EntityTypes.Box,
                 Name = $"Box_{i++}",
-                Position = b.Position,
+                LocalPosition = b.Position,
                 Size = b.Size,
                 Color = b.Color
             });

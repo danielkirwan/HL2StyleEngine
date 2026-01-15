@@ -341,6 +341,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _editor.DrawToolbarPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
             _editor.DrawHierarchyPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
             _editor.DrawInspectorPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
+            if (_editor.FrameSelectionRequested)
+            {
+                if (_editor.TryGetSelectedWorldPosition(out var p))
+                {
+                    Vector3 dir = _camera.Forward;
+                    if (dir.LengthSquared() < 0.0001f) dir = Vector3.UnitZ;
+
+                    _camera.Position = p - dir * 6f + Vector3.UnitY * 2.0f;
+                }
+
+                _editor.ConsumeFrameRequest();
+            }
         }
     }
 
@@ -351,6 +363,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         ImGui.Text($"Editor: {(_editorEnabled ? "ON" : "OFF")}");
         ImGui.Text($"Dirty: {(_editor.Dirty ? "YES" : "NO")}");
         ImGui.Text($"Level: {_editor.LevelPath}");
+        Console.WriteLine(_editor.LevelPath); 
         ImGui.Text($"Selected: {_editor.SelectedEntityIndex}");
         if (!string.IsNullOrWhiteSpace(_editor.LastTriggerEvent))
             ImGui.Text($"Last Trigger: {_editor.LastTriggerEvent}");
@@ -441,13 +454,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 if (!hasCollider)
                     continue;
 
-                Vector3 pos = e.Position;
-                Vector3 size = Mul((Vector3)e.Size, (Vector3)e.Scale);
+                Vector3 pos = e.LocalPosition;
+                Vector3 size = Mul((Vector3)e.Size, (Vector3)e.LocalScale);
 
                 Quaternion rot = Quaternion.CreateFromYawPitchRoll(
-                    MathF.PI / 180f * e.RotationEulerDeg.Y,
-                    MathF.PI / 180f * e.RotationEulerDeg.X,
-                    MathF.PI / 180f * e.RotationEulerDeg.Z);
+                    MathF.PI / 180f * e.LocalRotationEulerDeg.Y,
+                    MathF.PI / 180f * e.LocalRotationEulerDeg.X,
+                    MathF.PI / 180f * e.LocalRotationEulerDeg.Z);
 
                 bool selected = (i == _editor.SelectedEntityIndex);
 

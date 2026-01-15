@@ -36,7 +36,7 @@ public static class LevelIO
                     Id = b.Id,
                     Type = EntityTypes.Box,
                     Name = b.Name,
-                    Position = b.Position,
+                    LocalPosition = b.Position,
                     Size = b.Size,
                     Color = b.Color
                 });

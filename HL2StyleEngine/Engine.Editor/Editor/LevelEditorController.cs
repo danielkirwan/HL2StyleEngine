@@ -3,7 +3,8 @@ using Engine.Editor.Level;
 using Engine.Physics.Collision;
 using ImGuiNET;
 using System.Numerics;
-using System.Text.Json;
+using System.Text;
+using System.Runtime.InteropServices;
 
 namespace Engine.Editor.Editor;
 
@@ -32,12 +33,6 @@ public sealed class LevelEditorController
     public float MarkerSmall = 0.25f;
     public float MarkerMedium = 0.35f;
 
-    public bool ShowColliders = true;
-    public bool ShowColliderCorners = true;
-    public bool ShowPhysicsAabbs = true;
-    public float ColliderLineThickness = 0.03f;
-    public float CornerSize = 0.08f;
-
     private enum GizmoAxis { None, X, Y, Z }
 
     private bool _dragging;
@@ -52,27 +47,38 @@ public sealed class LevelEditorController
 
     private bool _layoutDockedOnce = false;
 
+    public bool ShowColliders = true;
+    public bool ShowColliderCorners = true;
+    public bool ShowPhysicsAabbs = true;
+    public float ColliderLineThickness = 0.03f;
+    public float CornerSize = 0.08f;
+
     private readonly Stack<string> _undoStack = new();
     private readonly Stack<string> _redoStack = new();
-
     private bool _editInProgress;
     private string _editStartSnapshot = "";
+
+    private string _hierarchyFilter = "";
+    private bool _hierarchyWindowFocused;
+
+    private enum TransformSpace { Local, World }
+    private TransformSpace _inspectorSpace = TransformSpace.Local;
+
+    public bool FrameSelectionRequested { get; private set; }
+    private static bool IsZero(Vector3 v) => MathF.Abs(v.X) < 0.0001f && MathF.Abs(v.Y) < 0.0001f && MathF.Abs(v.Z) < 0.0001f;
+
+    public void ConsumeFrameRequest() => FrameSelectionRequested = false;
 
     public void LoadOrCreate(string path, Func<LevelFile> createDefault)
     {
         LevelPath = path;
         LevelFile = LevelIO.LoadOrCreate(path, createDefault);
-
+        FixupLoadedEntities();
+        RebuildRuntimeFromLevel();
         Dirty = false;
         SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
-
         _dragging = false;
         _dragAxis = GizmoAxis.None;
-
-        _undoStack.Clear();
-        _redoStack.Clear();
-        _editInProgress = false;
-        _editStartSnapshot = "";
 
         RebuildRuntimeFromLevel();
     }
@@ -80,17 +86,13 @@ public sealed class LevelEditorController
     public void Reload()
     {
         LevelFile = LevelIO.Load(LevelPath);
+        FixupLoadedEntities();
+        RebuildRuntimeFromLevel();
         Dirty = false;
 
         SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
-
         _dragging = false;
         _dragAxis = GizmoAxis.None;
-
-        _undoStack.Clear();
-        _redoStack.Clear();
-        _editInProgress = false;
-        _editStartSnapshot = "";
 
         RebuildRuntimeFromLevel();
     }
@@ -101,6 +103,139 @@ public sealed class LevelEditorController
         Dirty = false;
     }
 
+    // ----------------------------
+    // Parenting + transforms
+    // ----------------------------
+    private int FindIndexById(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return -1;
+        for (int i = 0; i < LevelFile.Entities.Count; i++)
+            if (LevelFile.Entities[i].Id == id) return i;
+        return -1;
+    }
+
+    private Matrix4x4 GetLocalMatrix(LevelEntityDef e)
+    {
+        Quaternion r = EulerDegToQuat(e.LocalRotationEulerDeg);
+        return
+            Matrix4x4.CreateScale(e.LocalScale) *
+            Matrix4x4.CreateFromQuaternion(r) *
+            Matrix4x4.CreateTranslation(e.LocalPosition);
+    }
+
+    private Matrix4x4 GetWorldMatrix(int entityIndex)
+    {
+        if (entityIndex < 0 || entityIndex >= LevelFile.Entities.Count)
+            return Matrix4x4.Identity;
+
+        var e = LevelFile.Entities[entityIndex];
+        Matrix4x4 local = GetLocalMatrix(e);
+
+        int parentIndex = FindIndexById(e.ParentId);
+        if (parentIndex < 0)
+            return local;
+
+        const int maxDepth = 128;
+        int depth = 0;
+
+        Matrix4x4 parentChain = Matrix4x4.Identity;
+        int cur = parentIndex;
+
+        while (cur >= 0 && depth++ < maxDepth)
+        {
+            var p = LevelFile.Entities[cur];
+
+            parentChain = parentChain * GetLocalMatrix(p);
+
+            cur = FindIndexById(p.ParentId);
+        }
+
+        return local * parentChain;
+    }
+
+
+    private bool IsDescendant(string childId, string potentialAncestorId)
+    {
+        int idx = FindIndexById(childId);
+        const int maxDepth = 256;
+        int depth = 0;
+
+        while (idx >= 0 && depth++ < maxDepth)
+        {
+            var e = LevelFile.Entities[idx];
+            if (string.IsNullOrWhiteSpace(e.ParentId)) return false;
+            if (e.ParentId == potentialAncestorId) return true;
+            idx = FindIndexById(e.ParentId);
+        }
+        return false;
+    }
+
+    private void SetParentKeepWorld(int childIndex, int newParentIndex)
+    {
+        if (childIndex < 0 || childIndex >= LevelFile.Entities.Count) return;
+        if (newParentIndex < 0 || newParentIndex >= LevelFile.Entities.Count) return;
+        if (childIndex == newParentIndex) return;
+
+        var child = LevelFile.Entities[childIndex];
+        var newParent = LevelFile.Entities[newParentIndex];
+
+        // Prevent cycles
+        if (IsDescendant(newParent.Id, child.Id))
+            return;
+
+        BeginEdit();
+
+        Matrix4x4 childWorld = GetWorldMatrix(childIndex);
+        Matrix4x4 newParentWorld = GetWorldMatrix(newParentIndex);
+
+        if (!Matrix4x4.Invert(newParentWorld, out var invParentWorld))
+            invParentWorld = Matrix4x4.Identity;
+
+        Matrix4x4 newLocal = childWorld * invParentWorld;
+
+        if (Matrix4x4.Decompose(newLocal, out Vector3 s, out Quaternion r, out Vector3 t))
+        {
+            child.ParentId = newParent.Id;
+            child.LocalPosition = t;
+            child.LocalScale = s;
+            child.LocalRotationEulerDeg = QuatToEulerDeg(r);
+
+            Dirty = true;
+            RebuildRuntimeFromLevel();
+        }
+
+        EndEditIfAny();
+    }
+
+    private void ClearParentKeepWorld(int childIndex)
+    {
+        if (childIndex < 0 || childIndex >= LevelFile.Entities.Count) return;
+
+        var child = LevelFile.Entities[childIndex];
+        if (string.IsNullOrWhiteSpace(child.ParentId))
+            return;
+
+        BeginEdit();
+
+        Matrix4x4 childWorld = GetWorldMatrix(childIndex);
+
+        if (Matrix4x4.Decompose(childWorld, out Vector3 s, out Quaternion r, out Vector3 t))
+        {
+            child.ParentId = null;
+            child.LocalPosition = t;
+            child.LocalScale = s;
+            child.LocalRotationEulerDeg = QuatToEulerDeg(r);
+
+            Dirty = true;
+            RebuildRuntimeFromLevel();
+        }
+
+        EndEditIfAny();
+    }
+
+    // ----------------------------
+    // Spawn / triggers etc (your existing)
+    // ----------------------------
     public bool TryGetPlayerSpawn(out Vector3 feetPos, out float yawDeg)
     {
         for (int i = 0; i < LevelFile.Entities.Count; i++)
@@ -108,7 +243,7 @@ public sealed class LevelEditorController
             var e = LevelFile.Entities[i];
             if (e.Type == EntityTypes.PlayerSpawn)
             {
-                feetPos = (Vector3)e.Position;
+                feetPos = e.LocalPosition; // spawn uses local pos (root)
                 yawDeg = e.YawDeg;
                 return true;
             }
@@ -137,38 +272,28 @@ public sealed class LevelEditorController
         }
     }
 
+    // ----------------------------
+    // Duplicate (updated for local)
+    // ----------------------------
     public bool DuplicateSelected()
     {
         if (SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
             return false;
 
-        PushUndoSnapshot();
+        BeginEdit();
 
         var src = LevelFile.Entities[SelectedEntityIndex];
         var copy = CloneEntity(src);
 
-        copy.Position = (Vector3)copy.Position + new Vector3(0.5f, 0f, 0.5f);
+        copy.LocalPosition = copy.LocalPosition + new Vector3(0.5f, 0f, 0.5f);
 
         LevelFile.Entities.Add(copy);
         SelectedEntityIndex = LevelFile.Entities.Count - 1;
 
         Dirty = true;
         RebuildRuntimeFromLevel();
-        return true;
-    }
 
-    public bool DeleteSelected()
-    {
-        if (SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
-            return false;
-
-        PushUndoSnapshot();
-
-        LevelFile.Entities.RemoveAt(SelectedEntityIndex);
-        SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
-
-        Dirty = true;
-        RebuildRuntimeFromLevel();
+        EndEditIfAny();
         return true;
     }
 
@@ -180,9 +305,11 @@ public sealed class LevelEditorController
             Type = src.Type,
             Name = (src.Name ?? "Entity") + "_copy",
 
-            Position = src.Position,
-            RotationEulerDeg = src.RotationEulerDeg,
-            Scale = src.Scale,
+            ParentId = src.ParentId,
+
+            LocalPosition = src.LocalPosition,
+            LocalRotationEulerDeg = src.LocalRotationEulerDeg,
+            LocalScale = src.LocalScale,
 
             Size = src.Size,
             Color = src.Color,
@@ -210,19 +337,38 @@ public sealed class LevelEditorController
         };
     }
 
+    // ----------------------------
+    // Panels
+    // ----------------------------
     public void DrawToolbarPanel(ref bool mouseOverUi, ref bool keyboardOverUi)
     {
         ImGui.Begin("Toolbar");
         mouseOverUi |= ImGui.IsWindowHovered();
         keyboardOverUi |= ImGui.IsWindowFocused();
 
-        if (ImGui.Button("Undo")) Undo();
-        ImGui.SameLine();
-        if (ImGui.Button("Redo")) Redo();
-        ImGui.Separator();
+        if (!_layoutDockedOnce)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("Lock Layout"))
+                _layoutDockedOnce = true;
+        }
+        else
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("Reset Layout"))
+                _layoutDockedOnce = false;
+        }
+
         if (ImGui.Button("Save")) Save();
         ImGui.SameLine();
         if (ImGui.Button("Reload")) Reload();
+
+        ImGui.Separator();
+        if (ImGui.Button("Undo")) Undo();
+        ImGui.SameLine();
+        if (ImGui.Button("Redo")) Redo();
+        
+        ImGui.Separator();
 
         ImGui.SameLine();
         ImGui.TextDisabled(Dirty ? "Dirty: YES" : "Dirty: NO");
@@ -267,7 +413,18 @@ public sealed class LevelEditorController
             DuplicateSelected();
         ImGui.SameLine();
         if (ImGui.Button("Delete"))
-            DeleteSelected();
+        {
+            BeginEdit();
+
+            // Optional: delete children too? (You said you might want this later)
+            LevelFile.Entities.RemoveAt(SelectedEntityIndex);
+            SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
+
+            Dirty = true;
+            RebuildRuntimeFromLevel();
+
+            EndEditIfAny();
+        }
         if (!hasSelection) ImGui.EndDisabled();
 
         ImGui.End();
@@ -278,24 +435,211 @@ public sealed class LevelEditorController
         ImGui.Begin("Hierarchy");
         mouseOverUi |= ImGui.IsWindowHovered();
         keyboardOverUi |= ImGui.IsWindowFocused();
+        _hierarchyWindowFocused = ImGui.IsWindowFocused();
 
-        ImGui.Text($"Level: {LevelPath}");
+        // Filter UI
+        ImGui.SetNextItemWidth(-1);
+        ImGui.InputTextWithHint("##hierFilter", "Search... (name contains)  |  t:box  t:prop  etc", ref _hierarchyFilter, 256);
         ImGui.Separator();
 
-        ImGui.BeginChild("entity_list", new Vector2(0, 0), ImGuiChildFlags.Borders);
+        // F to frame when hierarchy focused
+        if (_hierarchyWindowFocused && ImGui.IsKeyPressed(ImGuiKey.F, false))
+        {
+            if (SelectedEntityIndex >= 0)
+                FrameSelectionRequested = true;
+        }
 
+        // Build children lists (by index)
+        var children = BuildChildrenMap();
+
+        // Determine roots
+        List<int> roots = new();
         for (int i = 0; i < LevelFile.Entities.Count; i++)
         {
             var e = LevelFile.Entities[i];
-            bool selected = i == SelectedEntityIndex;
-            string label = $"{i:00} [{e.Type}] {e.Name}##{e.Id}";
-
-            if (ImGui.Selectable(label, selected))
-                SelectedEntityIndex = i;
+            if (FindIndexById(e.ParentId) < 0)
+                roots.Add(i);
         }
+
+        // Draw tree
+        ImGui.BeginChild("entity_tree", new Vector2(0, 0), ImGuiChildFlags.Borders);
+
+        for (int r = 0; r < roots.Count; r++)
+            DrawHierarchyNodeRecursive(roots[r], children, parentVisibleBecauseChildMatches: false);
 
         ImGui.EndChild();
         ImGui.End();
+    }
+
+    private Dictionary<int, List<int>> BuildChildrenMap()
+    {
+        var map = new Dictionary<int, List<int>>();
+        for (int i = 0; i < LevelFile.Entities.Count; i++)
+            map[i] = new List<int>();
+
+        for (int i = 0; i < LevelFile.Entities.Count; i++)
+        {
+            int p = FindIndexById(LevelFile.Entities[i].ParentId);
+            if (p >= 0)
+                map[p].Add(i);
+        }
+
+        return map;
+    }
+
+    private void DrawHierarchyNodeRecursive(
+        int index,
+        Dictionary<int, List<int>> children,
+        bool parentVisibleBecauseChildMatches)
+    {
+        if (index < 0 || index >= LevelFile.Entities.Count) return;
+
+        var e = LevelFile.Entities[index];
+        var kids = children.TryGetValue(index, out var list) ? list : null;
+
+        bool selfMatches = MatchesFilter(e);
+        bool anyChildMatches = false;
+
+        if (kids != null && kids.Count > 0)
+        {
+            for (int i = 0; i < kids.Count; i++)
+            {
+                if (SubtreeMatches(kids[i], children))
+                {
+                    anyChildMatches = true;
+                    break;
+                }
+            }
+        }
+
+        bool shouldShow = selfMatches || anyChildMatches || parentVisibleBecauseChildMatches || string.IsNullOrWhiteSpace(_hierarchyFilter);
+        if (!shouldShow)
+            return;
+
+        bool selected = index == SelectedEntityIndex;
+
+        ImGui.PushID(e.Id);
+
+        ImGuiTreeNodeFlags flags =
+            ImGuiTreeNodeFlags.OpenOnArrow |
+            ImGuiTreeNodeFlags.SpanFullWidth;
+
+        if (selected) flags |= ImGuiTreeNodeFlags.Selected;
+        if (kids == null || kids.Count == 0) flags |= ImGuiTreeNodeFlags.Leaf | ImGuiTreeNodeFlags.NoTreePushOnOpen;
+
+        string label = $"{e.Name ?? "Entity"}  [{e.Type}]##node";
+
+        bool open = ImGui.TreeNodeEx(label, flags);
+
+        // Selection
+        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+            SelectedEntityIndex = index;
+
+        // Drag source
+        if (ImGui.BeginDragDropSource())
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(e.Id);
+
+            var handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+            try
+            {
+                ImGui.SetDragDropPayload("ENTITY_ID", handle.AddrOfPinnedObject(), (uint)bytes.Length);
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            ImGui.Text($"Move: {e.Name ?? e.Id}");
+            ImGui.EndDragDropSource();
+        }
+
+        // Drop target (reparent)
+        if (ImGui.BeginDragDropTarget())
+        {
+            var payload = ImGui.AcceptDragDropPayload("ENTITY_ID");
+
+            // In some ImGui.NET versions payload.NativePtr doesn't exist; Data/Size are enough.
+            if (payload.Data != IntPtr.Zero && payload.DataSize > 0)
+            {
+                // Copy bytes from unmanaged memory into managed array
+                byte[] bytes = new byte[payload.DataSize];
+                Marshal.Copy(payload.Data, bytes, 0, payload.DataSize);
+
+                string draggedId = Encoding.UTF8.GetString(bytes);
+
+                int childIndex = FindIndexById(draggedId);
+                if (childIndex >= 0 && childIndex != index)
+                    SetParentKeepWorld(childIndex, index);
+            }
+
+            ImGui.EndDragDropTarget();
+        }
+
+        if (open && !(flags.HasFlag(ImGuiTreeNodeFlags.Leaf) || flags.HasFlag(ImGuiTreeNodeFlags.NoTreePushOnOpen)))
+        {
+            for (int i = 0; i < kids!.Count; i++)
+                DrawHierarchyNodeRecursive(kids[i], children, parentVisibleBecauseChildMatches: selfMatches);
+
+            ImGui.TreePop();
+        }
+
+        ImGui.PopID();
+    }
+
+    private bool SubtreeMatches(int index, Dictionary<int, List<int>> children)
+    {
+        if (index < 0 || index >= LevelFile.Entities.Count) return false;
+        var e = LevelFile.Entities[index];
+        if (MatchesFilter(e)) return true;
+
+        if (!children.TryGetValue(index, out var kids)) return false;
+        for (int i = 0; i < kids.Count; i++)
+            if (SubtreeMatches(kids[i], children)) return true;
+
+        return false;
+    }
+
+    private bool MatchesFilter(LevelEntityDef e)
+    {
+        if (string.IsNullOrWhiteSpace(_hierarchyFilter))
+            return true;
+
+        string f = _hierarchyFilter.Trim();
+
+        // Token support: t:type
+        string typeToken = "";
+        string nameToken = f;
+
+        // very simple parse: allow multiple tokens, but we only care about first t:
+        var parts = f.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var nameParts = new List<string>();
+
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (parts[i].StartsWith("t:", StringComparison.OrdinalIgnoreCase))
+                typeToken = parts[i].Substring(2);
+            else
+                nameParts.Add(parts[i]);
+        }
+
+        nameToken = string.Join(' ', nameParts);
+
+        if (!string.IsNullOrWhiteSpace(typeToken))
+        {
+            if (string.IsNullOrWhiteSpace(e.Type)) return false;
+            if (!e.Type.Contains(typeToken, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(nameToken))
+        {
+            string n = e.Name ?? "";
+            if (!n.Contains(nameToken, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        return true;
     }
 
     public void DrawInspectorPanel(ref bool mouseOverUi, ref bool keyboardOverUi)
@@ -322,27 +666,65 @@ public sealed class LevelEditorController
 
         ImGui.Separator();
 
+        // Parent controls
+        string parentLabel = "(none)";
+        int parentIndex = FindIndexById(ent.ParentId);
+        if (parentIndex >= 0)
+            parentLabel = LevelFile.Entities[parentIndex].Name ?? LevelFile.Entities[parentIndex].Id;
+
+        ImGui.Text($"Parent: {parentLabel}");
+        if (parentIndex >= 0)
+        {
+            ImGui.SameLine();
+            if (ImGui.Button("Clear Parent"))
+                ClearParentKeepWorld(SelectedEntityIndex);
+        }
+
+        ImGui.Separator();
+
         string name = ent.Name ?? "";
         if (ImGui.InputText("Name", ref name, 128))
         {
+            BeginEdit();
             ent.Name = name;
             Dirty = true;
+            EndEditIfAny();
         }
-        if (ImGui.IsItemActivated()) BeginEdit();
-        if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
         ImGui.Separator();
         ImGui.Text("Transform");
 
-        Vector3 pos = ent.Position;
-        if (ImGui.DragFloat3("Position", ref pos, 0.05f))
+        // Space toggle
+        string spaceLabel = _inspectorSpace == TransformSpace.Local ? "Space: Local" : "Space: World";
+        if (ImGui.Button(spaceLabel))
+            _inspectorSpace = _inspectorSpace == TransformSpace.Local ? TransformSpace.World : TransformSpace.Local;
+
+        // Get current values based on space
+        Vector3 pos, rotDeg, scl;
+
+        if (_inspectorSpace == TransformSpace.Local)
         {
-            ent.Position = ApplySnapping(pos, GizmoAxis.None, ctrlDown: false);
-            Dirty = true;
-            RebuildRuntimeFromLevel();
+            pos = ent.LocalPosition;
+            rotDeg = ent.LocalRotationEulerDeg;
+            scl = ent.LocalScale;
         }
-        if (ImGui.IsItemActivated()) BeginEdit();
-        if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
+        else
+        {
+            Matrix4x4 w = GetWorldMatrix(SelectedEntityIndex);
+            if (!Matrix4x4.Decompose(w, out Vector3 ws, out Quaternion wr, out Vector3 wt))
+            {
+                ws = Vector3.One;
+                wr = Quaternion.Identity;
+                wt = Vector3.Zero;
+            }
+            pos = wt;
+            scl = ws;
+            rotDeg = QuatToEulerDeg(wr);
+        }
+
+        bool posChanged = ImGui.DragFloat3("Position", ref pos, 0.05f);
+        bool rotChanged = false;
+        bool sclChanged = false;
 
         bool showRotScale =
             ent.Type == EntityTypes.Box ||
@@ -351,29 +733,53 @@ public sealed class LevelEditorController
 
         if (showRotScale)
         {
-            Vector3 rot = ent.RotationEulerDeg;
-            if (ImGui.DragFloat3("Rotation (deg)", ref rot, 1f))
-            {
-                ent.RotationEulerDeg = rot;
-                Dirty = true;
-                RebuildRuntimeFromLevel();
-            }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
+            rotChanged = ImGui.DragFloat3("Rotation (deg)", ref rotDeg, 1f);
+            sclChanged = ImGui.DragFloat3("Scale", ref scl, 0.01f);
+        }
 
-            Vector3 scl = ent.Scale;
-            if (ImGui.DragFloat3("Scale", ref scl, 0.01f))
-            {
-                scl.X = MathF.Max(0.01f, scl.X);
-                scl.Y = MathF.Max(0.01f, scl.Y);
-                scl.Z = MathF.Max(0.01f, scl.Z);
+        if (posChanged || rotChanged || sclChanged)
+        {
+            BeginEdit();
 
-                ent.Scale = scl;
-                Dirty = true;
-                RebuildRuntimeFromLevel();
+            scl.X = MathF.Max(0.01f, scl.X);
+            scl.Y = MathF.Max(0.01f, scl.Y);
+            scl.Z = MathF.Max(0.01f, scl.Z);
+
+            if (_inspectorSpace == TransformSpace.Local)
+            {
+                ent.LocalPosition = ApplySnapping(pos, GizmoAxis.None, ctrlDown: false);
+                ent.LocalRotationEulerDeg = rotDeg;
+                ent.LocalScale = scl;
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
+            else
+            {
+                // convert world->local relative to parent
+                Matrix4x4 desiredWorld =
+                    Matrix4x4.CreateScale(scl) *
+                    Matrix4x4.CreateFromQuaternion(EulerDegToQuat(rotDeg)) *
+                    Matrix4x4.CreateTranslation(ApplySnapping(pos, GizmoAxis.None, ctrlDown: false));
+
+                Matrix4x4 parentWorld = Matrix4x4.Identity;
+                if (parentIndex >= 0)
+                    parentWorld = GetWorldMatrix(parentIndex);
+
+                if (!Matrix4x4.Invert(parentWorld, out var invParent))
+                    invParent = Matrix4x4.Identity;
+
+                Matrix4x4 desiredLocal = desiredWorld * invParent;
+
+                if (Matrix4x4.Decompose(desiredLocal, out Vector3 ls, out Quaternion lr, out Vector3 lt))
+                {
+                    ent.LocalPosition = lt;
+                    ent.LocalScale = ls;
+                    ent.LocalRotationEulerDeg = QuatToEulerDeg(lr);
+                }
+            }
+
+            Dirty = true;
+            RebuildRuntimeFromLevel();
+
+            EndEditIfAny();
         }
 
         ImGui.Separator();
@@ -393,9 +799,12 @@ public sealed class LevelEditorController
         ImGui.BulletText("RMB: look  |  WASD/QE: move  |  Shift: fast");
         ImGui.BulletText("Snap: checkbox, hold Ctrl to disable");
         ImGui.BulletText("Duplicate: Ctrl+D");
-        ImGui.BulletText("Undo: Ctrl+Z  |  Redo: Ctrl+Y / Ctrl+Shift+Z");
+        ImGui.BulletText("Hierarchy: search name contains, t:type, drag-drop to parent, F to frame");
     }
 
+    // ----------------------------
+    // Type inspector (mostly unchanged; just update fields if you reference Position -> LocalPosition elsewhere)
+    // ----------------------------
     private void DrawTypeSpecificInspector(LevelEntityDef ent)
     {
         if (ent.Type == EntityTypes.Box)
@@ -403,6 +812,8 @@ public sealed class LevelEditorController
             Vector3 size = ent.Size;
             if (ImGui.DragFloat3("Size", ref size, 0.05f))
             {
+                BeginEdit();
+
                 size.X = MathF.Max(0.01f, size.X);
                 size.Y = MathF.Max(0.01f, size.Y);
                 size.Z = MathF.Max(0.01f, size.Z);
@@ -410,86 +821,88 @@ public sealed class LevelEditorController
 
                 Dirty = true;
                 RebuildRuntimeFromLevel();
+
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             Vector4 col = ent.Color;
             if (ImGui.ColorEdit4("Color", ref col))
             {
+                BeginEdit();
                 ent.Color = col;
                 Dirty = true;
                 RebuildRuntimeFromLevel();
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
         else if (ent.Type == EntityTypes.PlayerSpawn)
         {
             float yaw = ent.YawDeg;
             if (ImGui.DragFloat("YawDeg", ref yaw, 1f))
             {
+                BeginEdit();
                 ent.YawDeg = yaw;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
         else if (ent.Type == EntityTypes.PointLight)
         {
             Vector4 lc = ent.LightColor;
             if (ImGui.ColorEdit4("LightColor", ref lc))
             {
+                BeginEdit();
                 ent.LightColor = lc;
                 Dirty = true;
                 RebuildRuntimeFromLevel();
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             float intensity = ent.Intensity;
             if (ImGui.DragFloat("Intensity", ref intensity, 0.1f, 0f, 100f))
             {
+                BeginEdit();
                 ent.Intensity = intensity;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             float range = ent.Range;
             if (ImGui.DragFloat("Range", ref range, 0.1f, 0.1f, 1000f))
             {
+                BeginEdit();
                 ent.Range = range;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
         else if (ent.Type == EntityTypes.Prop)
         {
             string mesh = ent.MeshPath ?? "";
             if (ImGui.InputText("MeshPath", ref mesh, 256))
             {
+                BeginEdit();
                 ent.MeshPath = mesh;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             string mat = ent.MaterialPath ?? "";
             if (ImGui.InputText("MaterialPath", ref mat, 256))
             {
+                BeginEdit();
                 ent.MaterialPath = mat;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
         else if (ent.Type == EntityTypes.TriggerVolume)
         {
             Vector3 tsize = ent.TriggerSize;
             if (ImGui.DragFloat3("TriggerSize", ref tsize, 0.05f))
             {
+                BeginEdit();
+
                 tsize.X = MathF.Max(0.01f, tsize.X);
                 tsize.Y = MathF.Max(0.01f, tsize.Y);
                 tsize.Z = MathF.Max(0.01f, tsize.Z);
@@ -497,69 +910,71 @@ public sealed class LevelEditorController
 
                 Dirty = true;
                 RebuildRuntimeFromLevel();
+
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             string evt = ent.TriggerEvent ?? "";
             if (ImGui.InputText("TriggerEvent", ref evt, 128))
             {
+                BeginEdit();
                 ent.TriggerEvent = evt;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
         else if (ent.Type == EntityTypes.RigidBody)
         {
             string shape = ent.Shape ?? "Box";
             if (ImGui.InputText("Shape", ref shape, 32))
             {
+                BeginEdit();
                 ent.Shape = shape;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             float mass = ent.Mass;
             if (ImGui.DragFloat("Mass", ref mass, 0.1f, 0f, 100000f))
             {
+                BeginEdit();
                 ent.Mass = mass;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             float fr = ent.Friction;
             if (ImGui.DragFloat("Friction", ref fr, 0.01f, 0f, 10f))
             {
+                BeginEdit();
                 ent.Friction = fr;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             float rest = ent.Restitution;
             if (ImGui.DragFloat("Restitution", ref rest, 0.01f, 0f, 1f))
             {
+                BeginEdit();
                 ent.Restitution = rest;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             bool kin = ent.IsKinematic;
             if (ImGui.Checkbox("IsKinematic", ref kin))
             {
+                BeginEdit();
                 ent.IsKinematic = kin;
                 Dirty = true;
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
 
             Vector3 size = ent.Size;
             if (ImGui.DragFloat3("Size", ref size, 0.05f))
             {
+                BeginEdit();
+
                 size.X = MathF.Max(0.01f, size.X);
                 size.Y = MathF.Max(0.01f, size.Y);
                 size.Z = MathF.Max(0.01f, size.Z);
@@ -567,18 +982,20 @@ public sealed class LevelEditorController
 
                 Dirty = true;
                 RebuildRuntimeFromLevel();
+
+                EndEditIfAny();
             }
-            if (ImGui.IsItemActivated()) BeginEdit();
-            if (ImGui.IsItemDeactivatedAfterEdit()) EndEditIfAny();
         }
     }
 
+    // ----------------------------
+    // Picking + gizmo (update to move LOCAL while keeping WORLD behavior)
+    // ----------------------------
     public void OnMousePressed(EditorPicking.Ray ray, bool ctrlDown)
     {
-        BeginEdit();
         if (GizmoEnabled && SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count)
         {
-            Vector3 p = LevelFile.Entities[SelectedEntityIndex].Position;
+            Vector3 p = GetEntityWorldPosition(SelectedEntityIndex);
 
             if (RayHitsAxisHandle(ray, p, GizmoAxis.Y)) { BeginAxisDrag(ray, p, GizmoAxis.Y); return; }
             if (RayHitsAxisHandle(ray, p, GizmoAxis.X)) { BeginAxisDrag(ray, p, GizmoAxis.X); return; }
@@ -590,13 +1007,13 @@ public sealed class LevelEditorController
             SelectedEntityIndex = hitIndex;
 
             _dragPlaneY = hitPoint.Y;
-            Vector3 pos = LevelFile.Entities[SelectedEntityIndex].Position;
+            Vector3 pos = GetEntityWorldPosition(SelectedEntityIndex);
             _dragOffset = hitPoint - pos;
+
+            BeginEdit();
 
             _dragging = true;
             _dragAxis = GizmoAxis.None;
-
-            BeginEdit(); 
         }
         else
         {
@@ -622,12 +1039,15 @@ public sealed class LevelEditorController
 
     public void OnMouseReleased()
     {
-        if (_dragging)
-            EndEditIfAny();
-
         _dragging = false;
         _dragAxis = GizmoAxis.None;
         EndEditIfAny();
+    }
+
+    private Vector3 GetEntityWorldPosition(int idx)
+    {
+        Matrix4x4 w = GetWorldMatrix(idx);
+        return new Vector3(w.M41, w.M42, w.M43);
     }
 
     public bool HasGizmo(out EditorDrawBox xLine, out EditorDrawBox xHandle,
@@ -639,7 +1059,7 @@ public sealed class LevelEditorController
         if (!GizmoEnabled || SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
             return false;
 
-        Vector3 p = LevelFile.Entities[SelectedEntityIndex].Position;
+        Vector3 p = GetEntityWorldPosition(SelectedEntityIndex);
 
         BuildAxis(p, Vector3.UnitX, out xLine, out xHandle, active: _dragAxis == GizmoAxis.X);
         BuildAxis(p, Vector3.UnitY, out yLine, out yHandle, active: _dragAxis == GizmoAxis.Y);
@@ -670,6 +1090,139 @@ public sealed class LevelEditorController
         handle = EditorDrawBox.AxisAligned(handleCenter, handleSize, handleCol);
     }
 
+    private bool RayHitsAxisHandle(EditorPicking.Ray ray, Vector3 entityPos, GizmoAxis axis)
+    {
+        Vector3 dir = axis switch
+        {
+            GizmoAxis.X => Vector3.UnitX,
+            GizmoAxis.Y => Vector3.UnitY,
+            GizmoAxis.Z => Vector3.UnitZ,
+            _ => Vector3.UnitY
+        };
+
+        Vector3 handleCenter = entityPos + dir * GizmoAxisLen;
+        Vector3 half = new Vector3(GizmoHandleSize * 0.5f);
+
+        return EditorPicking.RayIntersectsAabb(ray, handleCenter - half, handleCenter + half, out _);
+    }
+
+    private void BeginAxisDrag(EditorPicking.Ray ray, Vector3 entityWorldPos, GizmoAxis axis)
+    {
+        _dragging = true;
+        _dragAxis = axis;
+
+        _axisOriginAtGrab = entityWorldPos;
+        _entityPosAtGrab = entityWorldPos;
+
+        Vector3 axisDir = axis switch
+        {
+            GizmoAxis.X => Vector3.UnitX,
+            GizmoAxis.Y => Vector3.UnitY,
+            GizmoAxis.Z => Vector3.UnitZ,
+            _ => Vector3.UnitY
+        };
+
+        if (!EditorPicking.ClosestTOnLineToRay(_axisOriginAtGrab, axisDir, ray, out float tLine))
+            tLine = 0f;
+
+        _axisGrabT = tLine;
+    }
+
+    private void ContinueAxisDrag(EditorPicking.Ray ray, bool ctrlDown)
+    {
+        Vector3 axisDir = _dragAxis switch
+        {
+            GizmoAxis.X => Vector3.UnitX,
+            GizmoAxis.Y => Vector3.UnitY,
+            GizmoAxis.Z => Vector3.UnitZ,
+            _ => Vector3.UnitY
+        };
+
+        if (!EditorPicking.ClosestTOnLineToRay(_axisOriginAtGrab, axisDir, ray, out float tLine))
+            return;
+
+        float deltaT = tLine - _axisGrabT;
+        Vector3 newWorldPos = _entityPosAtGrab + axisDir * deltaT;
+
+        newWorldPos = ApplySnapping(newWorldPos, _dragAxis, ctrlDown);
+
+        SetEntityWorldPosition(SelectedEntityIndex, newWorldPos);
+    }
+
+    private void ContinueXZDrag(EditorPicking.Ray ray, bool ctrlDown)
+    {
+        if (!EditorPicking.RayIntersectsPlane(ray, Vector3.UnitY, _dragPlaneY, out float t))
+            return;
+
+        Vector3 hit = ray.GetPoint(t);
+        Vector3 newWorldPos = hit - _dragOffset;
+
+        newWorldPos = ApplySnapping(newWorldPos, GizmoAxis.None, ctrlDown);
+
+        SetEntityWorldPosition(SelectedEntityIndex, newWorldPos);
+    }
+
+    private void SetEntityWorldPosition(int idx, Vector3 desiredWorldPos)
+    {
+        if (idx < 0 || idx >= LevelFile.Entities.Count) return;
+
+        var ent = LevelFile.Entities[idx];
+
+        int parentIndex = FindIndexById(ent.ParentId);
+        if (parentIndex < 0)
+        {
+            ent.LocalPosition = desiredWorldPos;
+        }
+        else
+        {
+            Matrix4x4 parentWorld = GetWorldMatrix(parentIndex);
+            if (!Matrix4x4.Invert(parentWorld, out var invParent))
+                invParent = Matrix4x4.Identity;
+
+            Matrix4x4 currentWorld = GetWorldMatrix(idx);
+            Matrix4x4.Decompose(currentWorld, out Vector3 ws, out Quaternion wr, out _);
+
+            Matrix4x4 desiredWorld =
+                Matrix4x4.CreateScale(ws) *
+                Matrix4x4.CreateFromQuaternion(wr) *
+                Matrix4x4.CreateTranslation(desiredWorldPos);
+
+            Matrix4x4 desiredLocal = desiredWorld * invParent;
+
+            if (Matrix4x4.Decompose(desiredLocal, out Vector3 ls, out Quaternion lr, out Vector3 lt))
+            {
+                ent.LocalPosition = lt;
+                ent.LocalScale = ls;
+                ent.LocalRotationEulerDeg = QuatToEulerDeg(lr);
+            }
+        }
+
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+    }
+
+    private Vector3 ApplySnapping(Vector3 pos, GizmoAxis axis, bool ctrlDown)
+    {
+        if (!SnapEnabled || ctrlDown || SnapStep <= 0.0001f)
+            return pos;
+
+        float Snap(float v) => MathF.Round(v / SnapStep) * SnapStep;
+
+        if (axis == GizmoAxis.None)
+        {
+            pos.X = Snap(pos.X);
+            pos.Y = Snap(pos.Y);
+            pos.Z = Snap(pos.Z);
+            return pos;
+        }
+
+        if (axis == GizmoAxis.X) pos.X = Snap(pos.X);
+        if (axis == GizmoAxis.Y) pos.Y = Snap(pos.Y);
+        if (axis == GizmoAxis.Z) pos.Z = Snap(pos.Z);
+
+        return pos;
+    }
+
     public void RebuildRuntimeFromLevel()
     {
         DrawBoxes.Clear();
@@ -679,58 +1232,55 @@ public sealed class LevelEditorController
         Vector3 markerSmall = new(MarkerSmall, MarkerSmall, MarkerSmall);
         Vector3 markerMed = new(MarkerMedium, MarkerMedium, MarkerMedium);
 
-        foreach (var e in LevelFile.Entities)
+        for (int i = 0; i < LevelFile.Entities.Count; i++)
         {
+            var e = LevelFile.Entities[i];
+            Matrix4x4 world = GetWorldMatrix(i);
+
+            if (!Matrix4x4.Decompose(world, out Vector3 ws, out Quaternion wr, out Vector3 wt))
+            {
+                ws = Vector3.One;
+                wr = Quaternion.Identity;
+                wt = Vector3.Zero;
+            }
+
             if (e.Type == EntityTypes.Box)
             {
-                Vector3 pos = e.Position;
-                Vector3 size = Mul((Vector3)e.Size, (Vector3)e.Scale);
-                Quaternion rot = EulerDegToQuat((Vector3)e.RotationEulerDeg);
+                Vector3 size = Mul(e.Size, ws);
+                DrawBoxes.Add(new EditorDrawBox(wt, size, e.Color, wr));
 
-                DrawBoxes.Add(new EditorDrawBox(pos, size, (Vector4)e.Color, rot));
-
-                Vector3 halfAabb = OrientedBoxAabbHalfExtents(size * 0.5f, rot);
-                SolidColliders.Add(new Aabb(pos - halfAabb, pos + halfAabb));
+                Vector3 halfAabb = OrientedBoxAabbHalfExtents(size * 0.5f, wr);
+                SolidColliders.Add(new Aabb(wt - halfAabb, wt + halfAabb));
             }
             else if (e.Type == EntityTypes.TriggerVolume)
             {
-                Vector3 pos = e.Position;
-                DrawBoxes.Add(EditorDrawBox.AxisAligned(pos, markerMed, new Vector4(0.1f, 0.9f, 0.1f, 1f)));
+                DrawBoxes.Add(EditorDrawBox.AxisAligned(wt, markerMed, new Vector4(0.1f, 0.9f, 0.1f, 1f)));
 
-                Vector3 half = ((Vector3)e.TriggerSize) * 0.5f;
-                var aabb = new Aabb(pos - half, pos + half);
-                Triggers.Add((e.TriggerEvent, aabb, false));
+                Vector3 half = ((Vector3)e.TriggerSize * 0.5f);
+                var aabb = new Aabb(wt - half, wt + half);
+                Triggers.Add((e.TriggerEvent ?? "", aabb, false));
             }
             else if (e.Type == EntityTypes.PointLight)
             {
-                DrawBoxes.Add(EditorDrawBox.AxisAligned((Vector3)e.Position, markerSmall, (Vector4)e.LightColor));
+                DrawBoxes.Add(EditorDrawBox.AxisAligned(wt, markerSmall, e.LightColor));
             }
             else if (e.Type == EntityTypes.PlayerSpawn)
             {
-                DrawBoxes.Add(EditorDrawBox.AxisAligned((Vector3)e.Position, markerMed, new Vector4(0.2f, 0.8f, 1f, 1f)));
+                DrawBoxes.Add(EditorDrawBox.AxisAligned(wt, markerMed, new Vector4(0.2f, 0.8f, 1f, 1f)));
             }
             else if (e.Type == EntityTypes.Prop)
             {
-                Vector3 pos = e.Position;
-                Vector3 size = Mul(markerMed, (Vector3)e.Scale);
-                Quaternion rot = EulerDegToQuat((Vector3)e.RotationEulerDeg);
-
-                DrawBoxes.Add(new EditorDrawBox(pos, size, new Vector4(0.8f, 0.6f, 0.2f, 1f), rot));
+                Vector3 size = Mul(markerMed, ws);
+                DrawBoxes.Add(new EditorDrawBox(wt, size, new Vector4(0.8f, 0.6f, 0.2f, 1f), wr));
             }
             else if (e.Type == EntityTypes.RigidBody)
             {
-                Vector3 pos = e.Position;
-                Vector3 size = Mul((Vector3)e.Size, (Vector3)e.Scale);
-                Quaternion rot = EulerDegToQuat((Vector3)e.RotationEulerDeg);
-
-                DrawBoxes.Add(new EditorDrawBox(pos, size, new Vector4(0.9f, 0.2f, 0.6f, 1f), rot));
-
-                Vector3 halfAabb = OrientedBoxAabbHalfExtents(size * 0.5f, rot);
-                SolidColliders.Add(new Aabb(pos - halfAabb, pos + halfAabb));
+                Vector3 size = Mul(e.Size, ws);
+                DrawBoxes.Add(new EditorDrawBox(wt, size, new Vector4(0.9f, 0.2f, 0.6f, 1f), wr));
             }
             else
             {
-                DrawBoxes.Add(EditorDrawBox.AxisAligned((Vector3)e.Position, markerSmall, new Vector4(1f, 0f, 1f, 1f)));
+                DrawBoxes.Add(EditorDrawBox.AxisAligned(wt, markerSmall, new Vector4(1f, 0f, 1f, 1f)));
             }
         }
     }
@@ -768,255 +1318,27 @@ public sealed class LevelEditorController
         return true;
     }
 
-    private bool RayHitsAxisHandle(EditorPicking.Ray ray, Vector3 entityPos, GizmoAxis axis)
+    // ----------------------------
+    // Framing (HL2GameModule uses this)
+    // ----------------------------
+    public bool TryGetSelectedWorldPosition(out Vector3 pos)
     {
-        Vector3 dir = axis switch
-        {
-            GizmoAxis.X => Vector3.UnitX,
-            GizmoAxis.Y => Vector3.UnitY,
-            GizmoAxis.Z => Vector3.UnitZ,
-            _ => Vector3.UnitY
-        };
+        pos = default;
+        if (SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
+            return false;
 
-        Vector3 handleCenter = entityPos + dir * GizmoAxisLen;
-        Vector3 half = new Vector3(GizmoHandleSize * 0.5f);
-
-        return EditorPicking.RayIntersectsAabb(ray, handleCenter - half, handleCenter + half, out _);
+        pos = GetEntityWorldPosition(SelectedEntityIndex);
+        return true;
     }
 
-    private void BeginAxisDrag(EditorPicking.Ray ray, Vector3 entityPos, GizmoAxis axis)
-    {
-        _dragging = true;
-        _dragAxis = axis;
-
-        _axisOriginAtGrab = entityPos;
-        _entityPosAtGrab = entityPos;
-
-        Vector3 axisDir = axis switch
-        {
-            GizmoAxis.X => Vector3.UnitX,
-            GizmoAxis.Y => Vector3.UnitY,
-            GizmoAxis.Z => Vector3.UnitZ,
-            _ => Vector3.UnitY
-        };
-
-        if (!EditorPicking.ClosestTOnLineToRay(_axisOriginAtGrab, axisDir, ray, out float tLine))
-            tLine = 0f;
-
-        _axisGrabT = tLine;
-
-        BeginEdit();
-    }
-
-    private void ContinueAxisDrag(EditorPicking.Ray ray, bool ctrlDown)
-    {
-        Vector3 axisDir = _dragAxis switch
-        {
-            GizmoAxis.X => Vector3.UnitX,
-            GizmoAxis.Y => Vector3.UnitY,
-            GizmoAxis.Z => Vector3.UnitZ,
-            _ => Vector3.UnitY
-        };
-
-        if (!EditorPicking.ClosestTOnLineToRay(_axisOriginAtGrab, axisDir, ray, out float tLine))
-            return;
-
-        float deltaT = tLine - _axisGrabT;
-        Vector3 newPos = _entityPosAtGrab + axisDir * deltaT;
-
-        newPos = ApplySnapping(newPos, _dragAxis, ctrlDown);
-
-        LevelFile.Entities[SelectedEntityIndex].Position = newPos;
-        Dirty = true;
-        RebuildRuntimeFromLevel();
-    }
-
-    private void ContinueXZDrag(EditorPicking.Ray ray, bool ctrlDown)
-    {
-        if (!EditorPicking.RayIntersectsPlane(ray, Vector3.UnitY, _dragPlaneY, out float t))
-            return;
-
-        Vector3 hit = ray.GetPoint(t);
-        Vector3 newPos = hit - _dragOffset;
-
-        newPos = ApplySnapping(newPos, GizmoAxis.None, ctrlDown);
-
-        LevelFile.Entities[SelectedEntityIndex].Position = newPos;
-        Dirty = true;
-        RebuildRuntimeFromLevel();
-    }
-
-    private Vector3 ApplySnapping(Vector3 pos, GizmoAxis axis, bool ctrlDown)
-    {
-        if (!SnapEnabled || ctrlDown || SnapStep <= 0.0001f)
-            return pos;
-
-        float Snap(float v) => MathF.Round(v / SnapStep) * SnapStep;
-
-        if (axis == GizmoAxis.None)
-        {
-            pos.X = Snap(pos.X);
-            pos.Y = Snap(pos.Y);
-            pos.Z = Snap(pos.Z);
-            return pos;
-        }
-
-        if (axis == GizmoAxis.X) pos.X = Snap(pos.X);
-        if (axis == GizmoAxis.Y) pos.Y = Snap(pos.Y);
-        if (axis == GizmoAxis.Z) pos.Z = Snap(pos.Z);
-
-        return pos;
-    }
-
-    private static Quaternion EulerDegToQuat(Vector3 eulerDeg)
-    {
-        float yaw = MathF.PI / 180f * eulerDeg.Y;
-        float pitch = MathF.PI / 180f * eulerDeg.X;
-        float roll = MathF.PI / 180f * eulerDeg.Z;
-
-        return Quaternion.CreateFromYawPitchRoll(yaw, pitch, roll);
-    }
-
-    private static Vector3 OrientedBoxAabbHalfExtents(Vector3 halfExtents, Quaternion rotation)
-    {
-        Matrix4x4 m = Matrix4x4.CreateFromQuaternion(rotation);
-
-        float r00 = MathF.Abs(m.M11), r01 = MathF.Abs(m.M12), r02 = MathF.Abs(m.M13);
-        float r10 = MathF.Abs(m.M21), r11 = MathF.Abs(m.M22), r12 = MathF.Abs(m.M23);
-        float r20 = MathF.Abs(m.M31), r21 = MathF.Abs(m.M32), r22 = MathF.Abs(m.M33);
-
-        return new Vector3(
-            r00 * halfExtents.X + r01 * halfExtents.Y + r02 * halfExtents.Z,
-            r10 * halfExtents.X + r11 * halfExtents.Y + r12 * halfExtents.Z,
-            r20 * halfExtents.X + r21 * halfExtents.Y + r22 * halfExtents.Z
-        );
-    }
-
-    private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
-
-    private void AddBox()
-    {
-        PushUndoSnapshot();
-
-        LevelFile.Entities.Add(new LevelEntityDef
-        {
-            Type = EntityTypes.Box,
-            Name = $"Box_{LevelFile.Entities.Count}",
-            Position = new Vector3(0, 0.5f, 0),
-            RotationEulerDeg = new Vector3(0, 0, 0),
-            Scale = new Vector3(1, 1, 1),
-            Size = new Vector3(1, 1, 1),
-            Color = new Vector4(0.6f, 0.6f, 0.6f, 1f)
-        });
-
-        SelectedEntityIndex = LevelFile.Entities.Count - 1;
-        Dirty = true;
-        RebuildRuntimeFromLevel();
-    }
-
-    private void AddLight()
-    {
-        PushUndoSnapshot();
-
-        LevelFile.Entities.Add(new LevelEntityDef
-        {
-            Type = EntityTypes.PointLight,
-            Name = $"Light_{LevelFile.Entities.Count}",
-            Position = new Vector3(0, 3f, 0),
-            LightColor = new Vector4(1, 1, 1, 1),
-            Intensity = 3f,
-            Range = 8f
-        });
-
-        SelectedEntityIndex = LevelFile.Entities.Count - 1;
-        Dirty = true;
-        RebuildRuntimeFromLevel();
-    }
-
-    private void AddSpawn()
-    {
-        PushUndoSnapshot();
-
-        LevelFile.Entities.Add(new LevelEntityDef
-        {
-            Type = EntityTypes.PlayerSpawn,
-            Name = $"Spawn_{LevelFile.Entities.Count}",
-            Position = new Vector3(0, 0, -5f),
-            YawDeg = 0f
-        });
-
-        SelectedEntityIndex = LevelFile.Entities.Count - 1;
-        Dirty = true;
-        RebuildRuntimeFromLevel();
-    }
-
-    private void AddTrigger()
-    {
-        PushUndoSnapshot();
-
-        LevelFile.Entities.Add(new LevelEntityDef
-        {
-            Type = EntityTypes.TriggerVolume,
-            Name = $"Trigger_{LevelFile.Entities.Count}",
-            Position = new Vector3(0, 1f, 0),
-            TriggerSize = new Vector3(2, 2, 2),
-            TriggerEvent = "OnEnter_Trigger"
-        });
-
-        SelectedEntityIndex = LevelFile.Entities.Count - 1;
-        Dirty = true;
-        RebuildRuntimeFromLevel();
-    }
-
-    private void AddProp()
-    {
-        PushUndoSnapshot();
-
-        LevelFile.Entities.Add(new LevelEntityDef
-        {
-            Type = EntityTypes.Prop,
-            Name = $"Prop_{LevelFile.Entities.Count}",
-            Position = new Vector3(2f, 0.5f, 0),
-            RotationEulerDeg = new Vector3(0, 0, 0),
-            Scale = new Vector3(1, 1, 1),
-            MeshPath = "Content/Meshes/prop.mesh",
-            MaterialPath = ""
-        });
-
-        SelectedEntityIndex = LevelFile.Entities.Count - 1;
-        Dirty = true;
-        RebuildRuntimeFromLevel();
-    }
-
-    private void AddRigidBody()
-    {
-        PushUndoSnapshot();
-
-        LevelFile.Entities.Add(new LevelEntityDef
-        {
-            Type = EntityTypes.RigidBody,
-            Name = $"RB_{LevelFile.Entities.Count}",
-            Position = new Vector3(-2f, 0.5f, 0),
-            RotationEulerDeg = new Vector3(0, 0, 0),
-            Scale = new Vector3(1, 1, 1),
-            Shape = "Box",
-            Size = new Vector3(1, 1, 1),
-            Mass = 10f,
-            Friction = 0.8f
-        });
-
-        SelectedEntityIndex = LevelFile.Entities.Count - 1;
-        Dirty = true;
-        RebuildRuntimeFromLevel();
-    }
-    private string Snapshot()
-    {
-        return JsonSerializer.Serialize(LevelFile);
-    }
+    // ----------------------------
+    // Undo/Redo
+    // ----------------------------
+    private string Snapshot() => System.Text.Json.JsonSerializer.Serialize(LevelFile);
 
     private void RestoreSnapshot(string json)
     {
-        LevelFile = JsonSerializer.Deserialize<LevelFile>(json)!;
+        LevelFile = System.Text.Json.JsonSerializer.Deserialize<LevelFile>(json)!;
         Dirty = true;
         SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
         RebuildRuntimeFromLevel();
@@ -1056,13 +1378,235 @@ public sealed class LevelEditorController
         if (!_editInProgress) return;
         _editInProgress = false;
 
-        string now = Snapshot();
-        if (_editStartSnapshot != now)
+        if (_editStartSnapshot != Snapshot())
         {
             _undoStack.Push(_editStartSnapshot);
             _redoStack.Clear();
         }
 
         _editStartSnapshot = "";
+    }
+
+    // ----------------------------
+    // Math helpers
+    // ----------------------------
+    private static Quaternion EulerDegToQuat(Vector3 eulerDeg)
+    {
+        float yaw = MathF.PI / 180f * eulerDeg.Y;
+        float pitch = MathF.PI / 180f * eulerDeg.X;
+        float roll = MathF.PI / 180f * eulerDeg.Z;
+
+        return Quaternion.CreateFromYawPitchRoll(yaw, pitch, roll);
+    }
+
+    private static Vector3 QuatToEulerDeg(Quaternion q)
+    {
+        // YawPitchRoll is not directly invertible; this is a standard conversion
+        // (good enough for editor use)
+        var m = Matrix4x4.CreateFromQuaternion(q);
+
+        float sy = -m.M23;
+        float cy = MathF.Sqrt(MathF.Max(0f, 1f - sy * sy));
+
+        float pitch, yaw, roll;
+
+        if (cy > 0.0001f)
+        {
+            pitch = MathF.Asin(sy);
+            yaw = MathF.Atan2(m.M13, m.M33);
+            roll = MathF.Atan2(m.M21, m.M22);
+        }
+        else
+        {
+            // gimbal lock
+            pitch = MathF.Asin(sy);
+            yaw = MathF.Atan2(-m.M31, m.M11);
+            roll = 0f;
+        }
+
+        const float rad2deg = 180f / MathF.PI;
+        return new Vector3(pitch * rad2deg, yaw * rad2deg, roll * rad2deg);
+    }
+
+    private static Vector3 OrientedBoxAabbHalfExtents(Vector3 halfExtents, Quaternion rotation)
+    {
+        Matrix4x4 m = Matrix4x4.CreateFromQuaternion(rotation);
+
+        float r00 = MathF.Abs(m.M11), r01 = MathF.Abs(m.M12), r02 = MathF.Abs(m.M13);
+        float r10 = MathF.Abs(m.M21), r11 = MathF.Abs(m.M22), r12 = MathF.Abs(m.M23);
+        float r20 = MathF.Abs(m.M31), r21 = MathF.Abs(m.M32), r22 = MathF.Abs(m.M33);
+
+        return new Vector3(
+            r00 * halfExtents.X + r01 * halfExtents.Y + r02 * halfExtents.Z,
+            r10 * halfExtents.X + r11 * halfExtents.Y + r12 * halfExtents.Z,
+            r20 * halfExtents.X + r21 * halfExtents.Y + r22 * halfExtents.Z
+        );
+    }
+
+    private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
+
+    // ----------------------------
+    // Add entity helpers (UPDATED to set LocalPosition/LocalScale/etc)
+    // ----------------------------
+    private void AddBox()
+    {
+        BeginEdit();
+
+        LevelFile.Entities.Add(new LevelEntityDef
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Type = EntityTypes.Box,
+            Name = $"Box_{LevelFile.Entities.Count}",
+            LocalPosition = new Vector3(0, 0.5f, 0),
+            LocalRotationEulerDeg = Vector3.Zero,
+            LocalScale = Vector3.One,
+            Size = new Vector3(1, 1, 1),
+            Color = new Vector4(0.6f, 0.6f, 0.6f, 1f)
+        });
+
+        SelectedEntityIndex = LevelFile.Entities.Count - 1;
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+
+        EndEditIfAny();
+    }
+
+    private void AddLight()
+    {
+        BeginEdit();
+
+        LevelFile.Entities.Add(new LevelEntityDef
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Type = EntityTypes.PointLight,
+            Name = $"Light_{LevelFile.Entities.Count}",
+            LocalPosition = new Vector3(0, 3f, 0),
+            LightColor = new Vector4(1, 1, 1, 1),
+            Intensity = 3f,
+            Range = 8f
+        });
+
+        SelectedEntityIndex = LevelFile.Entities.Count - 1;
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+
+        EndEditIfAny();
+    }
+
+    private void AddSpawn()
+    {
+        BeginEdit();
+
+        LevelFile.Entities.Add(new LevelEntityDef
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Type = EntityTypes.PlayerSpawn,
+            Name = $"Spawn_{LevelFile.Entities.Count}",
+            LocalPosition = new Vector3(0, 0, -5f),
+            YawDeg = 0f
+        });
+
+        SelectedEntityIndex = LevelFile.Entities.Count - 1;
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+
+        EndEditIfAny();
+    }
+
+    private void AddTrigger()
+    {
+        BeginEdit();
+
+        LevelFile.Entities.Add(new LevelEntityDef
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Type = EntityTypes.TriggerVolume,
+            Name = $"Trigger_{LevelFile.Entities.Count}",
+            LocalPosition = new Vector3(0, 1f, 0),
+            TriggerSize = new Vector3(2, 2, 2),
+            TriggerEvent = "OnEnter_Trigger"
+        });
+
+        SelectedEntityIndex = LevelFile.Entities.Count - 1;
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+
+        EndEditIfAny();
+    }
+
+    private void AddProp()
+    {
+        BeginEdit();
+
+        LevelFile.Entities.Add(new LevelEntityDef
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Type = EntityTypes.Prop,
+            Name = $"Prop_{LevelFile.Entities.Count}",
+            LocalPosition = new Vector3(2f, 0.5f, 0),
+            LocalRotationEulerDeg = Vector3.Zero,
+            LocalScale = Vector3.One,
+            MeshPath = "Content/Meshes/prop.mesh",
+            MaterialPath = ""
+        });
+
+        SelectedEntityIndex = LevelFile.Entities.Count - 1;
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+
+        EndEditIfAny();
+    }
+
+    private void AddRigidBody()
+    {
+        BeginEdit();
+
+        LevelFile.Entities.Add(new LevelEntityDef
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Type = EntityTypes.RigidBody,
+            Name = $"RB_{LevelFile.Entities.Count}",
+            LocalPosition = new Vector3(-2f, 0.5f, 0),
+            LocalRotationEulerDeg = Vector3.Zero,
+            LocalScale = Vector3.One,
+            Shape = "Box",
+            Size = new Vector3(1, 1, 1),
+            Mass = 10f,
+            Friction = 0.8f
+        });
+
+        SelectedEntityIndex = LevelFile.Entities.Count - 1;
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+
+        EndEditIfAny();
+    }
+
+    private void FixupLoadedEntities()
+    {
+        for (int i = 0; i < LevelFile.Entities.Count; i++)
+        {
+            var e = LevelFile.Entities[i];
+
+            Vector3 s = e.LocalScale; 
+            if (IsZero(s))
+                e.LocalScale = new Vector3(1, 1, 1);
+
+            if (e.Type == EntityTypes.Box || e.Type == EntityTypes.RigidBody)
+            {
+                Vector3 sz = e.Size;
+                if (IsZero(sz))
+                    e.Size = new Vector3(1, 1, 1);
+            }
+
+            if (e.Type == EntityTypes.TriggerVolume)
+            {
+                Vector3 ts = e.TriggerSize;
+                if (IsZero(ts))
+                    e.TriggerSize = new Vector3(1, 1, 1);
+            }
+
+            LevelFile.Entities[i] = e; 
+        }
     }
 }
