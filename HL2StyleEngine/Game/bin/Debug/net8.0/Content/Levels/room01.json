@@ -7,9 +7,9 @@
       "Name": "PlayerSpawn",
       "Parent": null,
       "LocalPosition": {
-        "X": 0,
-        "Y": 0,
-        "Z": -5
+        "X": 0.39801311,
+        "Y": 1.2351508,
+        "Z": 6.189322
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -60,11 +60,11 @@
     {
       "Id": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "Type": "Box",
-      "Name": "Box_0",
+      "Name": "Floor",
       "Parent": null,
       "LocalPosition": {
         "X": 0,
-        "Y": -0.1,
+        "Y": 0,
         "Z": 0
       },
       "LocalRotationEulerDeg": {
@@ -116,15 +116,15 @@
     {
       "Id": "99aa86d140e94142aab5befdde0f9dfd",
       "Type": "Box",
-      "Name": "Box_1",
-      "Parent": null,
+      "Name": "WallBack",
+      "Parent": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "LocalPosition": {
         "X": 0,
         "Y": 2,
         "Z": 9
       },
       "LocalRotationEulerDeg": {
-        "X": 0,
+        "X": -0,
         "Y": 0,
         "Z": 0
       },
@@ -172,15 +172,15 @@
     {
       "Id": "1ae869cfff35403bb6f9adf3820d7122",
       "Type": "Box",
-      "Name": "Box_2",
-      "Parent": null,
+      "Name": "WallFront",
+      "Parent": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "LocalPosition": {
-        "X": 0,
+        "X": -0.1241703,
         "Y": 2,
-        "Z": -9
+        "Z": -8.896815
       },
       "LocalRotationEulerDeg": {
-        "X": 0,
+        "X": -0,
         "Y": 0,
         "Z": 0
       },
@@ -228,15 +228,15 @@
     {
       "Id": "5f52d0c100b84eb3aea54a0c2e31dae3",
       "Type": "Box",
-      "Name": "Box_3",
-      "Parent": null,
+      "Name": "WallLeft",
+      "Parent": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "LocalPosition": {
-        "X": 9,
+        "X": 8.705631,
         "Y": 2,
-        "Z": 0
+        "Z": 4.7683716E-07
       },
       "LocalRotationEulerDeg": {
-        "X": 0,
+        "X": -0,
         "Y": 0,
         "Z": 0
       },
@@ -284,15 +284,15 @@
     {
       "Id": "3ab8873b1ed04813a2aead8ea3d54e4a",
       "Type": "Box",
-      "Name": "Box_4",
-      "Parent": null,
+      "Name": "WallRight",
+      "Parent": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "LocalPosition": {
-        "X": -9,
+        "X": -9.000002,
         "Y": 2,
         "Z": 0
       },
       "LocalRotationEulerDeg": {
-        "X": 0,
+        "X": -0,
         "Y": 0,
         "Z": 0
       },
@@ -340,7 +340,7 @@
     {
       "Id": "70dbf0dd8ffe4921bc8040867dab6d86",
       "Type": "Box",
-      "Name": "Box_5",
+      "Name": "Box_1",
       "Parent": null,
       "LocalPosition": {
         "X": 2,
@@ -396,7 +396,7 @@
     {
       "Id": "129af74619fb4521ae81adcfe9466452",
       "Type": "Box",
-      "Name": "Box_6",
+      "Name": "Box_2",
       "Parent": null,
       "LocalPosition": {
         "X": -3,
@@ -452,7 +452,7 @@
     {
       "Id": "450209068ac5481796f8160bd6e3fbe0",
       "Type": "Box",
-      "Name": "Box_7",
+      "Name": "Box_3",
       "Parent": null,
       "LocalPosition": {
         "X": 0,
@@ -508,12 +508,12 @@
     {
       "Id": "3e54fdf752c542af86e0b152242b78dc",
       "Type": "Box",
-      "Name": "Box_8",
+      "Name": "PillarBackLeft",
       "Parent": null,
       "LocalPosition": {
-        "X": 5,
+        "X": 5.4688063,
         "Y": 2,
-        "Z": 5
+        "Z": 5.547438
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -564,7 +564,7 @@
     {
       "Id": "c57ed537cdf84c308e96db13b8123bd5",
       "Type": "Box",
-      "Name": "Box_9",
+      "Name": "PillarBackRight",
       "Parent": null,
       "LocalPosition": {
         "X": -5,
@@ -620,7 +620,7 @@
     {
       "Id": "bee26bf95a1d46cca0b3f7160926c584",
       "Type": "Box",
-      "Name": "Box_10",
+      "Name": "PillarFrontLeft",
       "Parent": null,
       "LocalPosition": {
         "X": 5,
@@ -676,7 +676,7 @@
     {
       "Id": "2657b9dc84324fb8a7f95e0c2cae2eda",
       "Type": "Box",
-      "Name": "Box_11",
+      "Name": "PillarFrontRight",
       "Parent": null,
       "LocalPosition": {
         "X": -5,
@@ -732,7 +732,7 @@
     {
       "Id": "4074cadd0e304a288651a8f2ac1aae3c",
       "Type": "Box",
-      "Name": "Box_12",
+      "Name": "Platform",
       "Parent": null,
       "LocalPosition": {
         "X": 0,

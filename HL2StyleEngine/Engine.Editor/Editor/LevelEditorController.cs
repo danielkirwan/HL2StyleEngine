@@ -103,9 +103,6 @@ public sealed class LevelEditorController
         Dirty = false;
     }
 
-    // ----------------------------
-    // Parenting + transforms
-    // ----------------------------
     private int FindIndexById(string? id)
     {
         if (string.IsNullOrWhiteSpace(id)) return -1;
@@ -179,7 +176,6 @@ public sealed class LevelEditorController
         var child = LevelFile.Entities[childIndex];
         var newParent = LevelFile.Entities[newParentIndex];
 
-        // Prevent cycles
         if (IsDescendant(newParent.Id, child.Id))
             return;
 
@@ -233,9 +229,6 @@ public sealed class LevelEditorController
         EndEditIfAny();
     }
 
-    // ----------------------------
-    // Spawn / triggers etc (your existing)
-    // ----------------------------
     public bool TryGetPlayerSpawn(out Vector3 feetPos, out float yawDeg)
     {
         for (int i = 0; i < LevelFile.Entities.Count; i++)
@@ -243,7 +236,7 @@ public sealed class LevelEditorController
             var e = LevelFile.Entities[i];
             if (e.Type == EntityTypes.PlayerSpawn)
             {
-                feetPos = e.LocalPosition; // spawn uses local pos (root)
+                feetPos = e.LocalPosition; 
                 yawDeg = e.YawDeg;
                 return true;
             }
@@ -272,9 +265,6 @@ public sealed class LevelEditorController
         }
     }
 
-    // ----------------------------
-    // Duplicate (updated for local)
-    // ----------------------------
     public bool DuplicateSelected()
     {
         if (SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
@@ -337,9 +327,6 @@ public sealed class LevelEditorController
         };
     }
 
-    // ----------------------------
-    // Panels
-    // ----------------------------
     public void DrawToolbarPanel(ref bool mouseOverUi, ref bool keyboardOverUi)
     {
         ImGui.Begin("Toolbar");
@@ -416,7 +403,6 @@ public sealed class LevelEditorController
         {
             BeginEdit();
 
-            // Optional: delete children too? (You said you might want this later)
             LevelFile.Entities.RemoveAt(SelectedEntityIndex);
             SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
 
@@ -442,17 +428,14 @@ public sealed class LevelEditorController
         ImGui.InputTextWithHint("##hierFilter", "Search... (name contains)  |  t:box  t:prop  etc", ref _hierarchyFilter, 256);
         ImGui.Separator();
 
-        // F to frame when hierarchy focused
         if (_hierarchyWindowFocused && ImGui.IsKeyPressed(ImGuiKey.F, false))
         {
             if (SelectedEntityIndex >= 0)
                 FrameSelectionRequested = true;
         }
 
-        // Build children lists (by index)
         var children = BuildChildrenMap();
 
-        // Determine roots
         List<int> roots = new();
         for (int i = 0; i < LevelFile.Entities.Count; i++)
         {
@@ -461,7 +444,6 @@ public sealed class LevelEditorController
                 roots.Add(i);
         }
 
-        // Draw tree
         ImGui.BeginChild("entity_tree", new Vector2(0, 0), ImGuiChildFlags.Borders);
 
         for (int r = 0; r < roots.Count; r++)
@@ -531,14 +513,12 @@ public sealed class LevelEditorController
 
         bool open = ImGui.TreeNodeEx(label, flags);
 
-        // Selection
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
             SelectedEntityIndex = index;
 
-        // Drag source
         if (ImGui.BeginDragDropSource())
         {
-            byte[] bytes = Encoding.UTF8.GetBytes(e.Id);
+            byte[] bytes = Encoding.UTF8.GetBytes(e.Id + "\0");
 
             var handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
             try
@@ -554,27 +534,39 @@ public sealed class LevelEditorController
             ImGui.EndDragDropSource();
         }
 
-        // Drop target (reparent)
         if (ImGui.BeginDragDropTarget())
         {
-            var payload = ImGui.AcceptDragDropPayload("ENTITY_ID");
+            ImGuiPayloadPtr payload =
+                ImGui.AcceptDragDropPayload("ENTITY_ID", ImGuiDragDropFlags.None);
 
-            // In some ImGui.NET versions payload.NativePtr doesn't exist; Data/Size are enough.
-            if (payload.Data != IntPtr.Zero && payload.DataSize > 0)
+            unsafe
             {
-                // Copy bytes from unmanaged memory into managed array
-                byte[] bytes = new byte[payload.DataSize];
-                Marshal.Copy(payload.Data, bytes, 0, payload.DataSize);
+                if (payload.NativePtr != null && payload.Delivery)
+                {
+                    int size = payload.DataSize;
+                    nint data = payload.Data;
 
-                string draggedId = Encoding.UTF8.GetString(bytes);
+                    if (data != IntPtr.Zero && size > 0)
+                    {
+                        byte[] bytes = new byte[size];
+                        Marshal.Copy(data, bytes, 0, size);
 
-                int childIndex = FindIndexById(draggedId);
-                if (childIndex >= 0 && childIndex != index)
-                    SetParentKeepWorld(childIndex, index);
+                        string draggedId = Encoding.UTF8
+                            .GetString(bytes)
+                            .TrimEnd('\0')
+                            .Trim();
+
+                        int childIndex = FindIndexById(draggedId);
+                        if (childIndex >= 0 && childIndex != index)
+                            SetParentKeepWorld(childIndex, index);
+                    }
+                }
             }
 
             ImGui.EndDragDropTarget();
         }
+
+
 
         if (open && !(flags.HasFlag(ImGuiTreeNodeFlags.Leaf) || flags.HasFlag(ImGuiTreeNodeFlags.NoTreePushOnOpen)))
         {
@@ -607,11 +599,9 @@ public sealed class LevelEditorController
 
         string f = _hierarchyFilter.Trim();
 
-        // Token support: t:type
         string typeToken = "";
         string nameToken = f;
 
-        // very simple parse: allow multiple tokens, but we only care about first t:
         var parts = f.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var nameParts = new List<string>();
 
@@ -666,7 +656,6 @@ public sealed class LevelEditorController
 
         ImGui.Separator();
 
-        // Parent controls
         string parentLabel = "(none)";
         int parentIndex = FindIndexById(ent.ParentId);
         if (parentIndex >= 0)
@@ -694,12 +683,10 @@ public sealed class LevelEditorController
         ImGui.Separator();
         ImGui.Text("Transform");
 
-        // Space toggle
         string spaceLabel = _inspectorSpace == TransformSpace.Local ? "Space: Local" : "Space: World";
         if (ImGui.Button(spaceLabel))
             _inspectorSpace = _inspectorSpace == TransformSpace.Local ? TransformSpace.World : TransformSpace.Local;
 
-        // Get current values based on space
         Vector3 pos, rotDeg, scl;
 
         if (_inspectorSpace == TransformSpace.Local)
@@ -753,7 +740,6 @@ public sealed class LevelEditorController
             }
             else
             {
-                // convert world->local relative to parent
                 Matrix4x4 desiredWorld =
                     Matrix4x4.CreateScale(scl) *
                     Matrix4x4.CreateFromQuaternion(EulerDegToQuat(rotDeg)) *
@@ -802,9 +788,6 @@ public sealed class LevelEditorController
         ImGui.BulletText("Hierarchy: search name contains, t:type, drag-drop to parent, F to frame");
     }
 
-    // ----------------------------
-    // Type inspector (mostly unchanged; just update fields if you reference Position -> LocalPosition elsewhere)
-    // ----------------------------
     private void DrawTypeSpecificInspector(LevelEntityDef ent)
     {
         if (ent.Type == EntityTypes.Box)
@@ -988,9 +971,6 @@ public sealed class LevelEditorController
         }
     }
 
-    // ----------------------------
-    // Picking + gizmo (update to move LOCAL while keeping WORLD behavior)
-    // ----------------------------
     public void OnMousePressed(EditorPicking.Ray ray, bool ctrlDown)
     {
         if (GizmoEnabled && SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count)
@@ -1318,9 +1298,6 @@ public sealed class LevelEditorController
         return true;
     }
 
-    // ----------------------------
-    // Framing (HL2GameModule uses this)
-    // ----------------------------
     public bool TryGetSelectedWorldPosition(out Vector3 pos)
     {
         pos = default;
@@ -1331,9 +1308,6 @@ public sealed class LevelEditorController
         return true;
     }
 
-    // ----------------------------
-    // Undo/Redo
-    // ----------------------------
     private string Snapshot() => System.Text.Json.JsonSerializer.Serialize(LevelFile);
 
     private void RestoreSnapshot(string json)
@@ -1342,12 +1316,6 @@ public sealed class LevelEditorController
         Dirty = true;
         SelectedEntityIndex = Math.Clamp(SelectedEntityIndex, -1, LevelFile.Entities.Count - 1);
         RebuildRuntimeFromLevel();
-    }
-
-    private void PushUndoSnapshot()
-    {
-        _undoStack.Push(Snapshot());
-        _redoStack.Clear();
     }
 
     public bool Undo()
@@ -1387,9 +1355,6 @@ public sealed class LevelEditorController
         _editStartSnapshot = "";
     }
 
-    // ----------------------------
-    // Math helpers
-    // ----------------------------
     private static Quaternion EulerDegToQuat(Vector3 eulerDeg)
     {
         float yaw = MathF.PI / 180f * eulerDeg.Y;
@@ -1401,8 +1366,6 @@ public sealed class LevelEditorController
 
     private static Vector3 QuatToEulerDeg(Quaternion q)
     {
-        // YawPitchRoll is not directly invertible; this is a standard conversion
-        // (good enough for editor use)
         var m = Matrix4x4.CreateFromQuaternion(q);
 
         float sy = -m.M23;
@@ -1418,7 +1381,6 @@ public sealed class LevelEditorController
         }
         else
         {
-            // gimbal lock
             pitch = MathF.Asin(sy);
             yaw = MathF.Atan2(-m.M31, m.M11);
             roll = 0f;
@@ -1445,9 +1407,6 @@ public sealed class LevelEditorController
 
     private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
 
-    // ----------------------------
-    // Add entity helpers (UPDATED to set LocalPosition/LocalScale/etc)
-    // ----------------------------
     private void AddBox()
     {
         BeginEdit();
@@ -1581,6 +1540,13 @@ public sealed class LevelEditorController
 
         EndEditIfAny();
     }
+
+    public void RequestFrameSelection()
+    {
+        if (SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count)
+            FrameSelectionRequested = true;
+    }
+
 
     private void FixupLoadedEntities()
     {

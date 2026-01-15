@@ -32,11 +32,9 @@ public sealed class LevelEntityDef
     public string Type { get; set; } = "";
     public string? Name { get; set; }
 
-    // Parent relationship (null/empty = root)
     [JsonPropertyName("Parent")]
     public string? ParentId { get; set; }
 
-    // LOCAL transform (stored with your existing JSON property names for compatibility)
     [JsonPropertyName("LocalPosition")]
     public SerVec3 LocalPosition { get; set; } = Vector3.Zero;
 
@@ -46,27 +44,21 @@ public sealed class LevelEntityDef
     [JsonPropertyName("LocalScale")]
     public SerVec3 LocalScale { get; set; } = Vector3.One;
 
-    // Box fields
     public SerVec3 Size { get; set; } = new(1, 1, 1);
     public SerVec4 Color { get; set; } = new(0.6f, 0.6f, 0.6f, 1f);
 
-    // PlayerSpawn
     public float YawDeg { get; set; } = 0f;
 
-    // PointLight
     public SerVec4 LightColor { get; set; } = new(1f, 1f, 1f, 1f);
     public float Intensity { get; set; } = 3f;
     public float Range { get; set; } = 8f;
 
-    // Prop
     public string MeshPath { get; set; } = "";
     public string MaterialPath { get; set; } = "";
 
-    // Trigger
     public SerVec3 TriggerSize { get; set; } = new(2, 2, 2);
     public string TriggerEvent { get; set; } = "OnEnter";
 
-    // RigidBody placeholder
     public string Shape { get; set; } = "Box";
     public float Mass { get; set; } = 10f;
     public float Friction { get; set; } = 0.8f;

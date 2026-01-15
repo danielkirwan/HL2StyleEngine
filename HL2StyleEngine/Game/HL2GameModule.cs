@@ -216,7 +216,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (ctrl && _inputState.WasPressed(Key.Y))
             _editor.Redo();
+
+        if (_inputState.WasPressed(Key.F) && _editor.SelectedEntityIndex >= 0)
+            _editor.RequestFrameSelection();
     }
+
 
     private void EditorCameraUpdate(float dt)
     {
@@ -343,12 +347,33 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _editor.DrawInspectorPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
             if (_editor.FrameSelectionRequested)
             {
-                if (_editor.TryGetSelectedWorldPosition(out var p))
+                if (_editor.TryGetSelectedWorldPosition(out var target))
                 {
-                    Vector3 dir = _camera.Forward;
-                    if (dir.LengthSquared() < 0.0001f) dir = Vector3.UnitZ;
+                    Vector3 forward = _camera.Forward;
+                    forward.Y = 0f;
 
-                    _camera.Position = p - dir * 6f + Vector3.UnitY * 2.0f;
+                    if (forward.LengthSquared() < 0.0001f)
+                        forward = Vector3.UnitZ;
+                    else
+                        forward = Vector3.Normalize(forward);
+
+                    const float dist = 5f;
+                    const float height = 2.0f;
+
+                    Vector3 desiredPos = target - forward * dist + Vector3.UnitY * height;
+                    _camera.Position = desiredPos;
+
+                    Vector3 lookDir = target - _camera.Position;
+                    if (lookDir.LengthSquared() > 0.0001f)
+                    {
+                        lookDir = Vector3.Normalize(lookDir);
+
+                        _camera.Yaw = MathF.Atan2(lookDir.X, lookDir.Z);
+                        _camera.Pitch = MathF.Asin(-lookDir.Y);
+
+                        float limit = 1.55334f;
+                        _camera.Pitch = Math.Clamp(_camera.Pitch, -limit, limit);
+                    }
                 }
 
                 _editor.ConsumeFrameRequest();

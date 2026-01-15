@@ -26,7 +26,6 @@ public static class LevelIO
 
         level.Entities ??= new();
 
-        // Migrate v1 "Boxes" format -> Entities
         if (level.Entities.Count == 0 && level.Boxes is not null && level.Boxes.Count > 0)
         {
             foreach (var b in level.Boxes)
