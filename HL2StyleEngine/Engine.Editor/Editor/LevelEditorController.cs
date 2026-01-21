@@ -1,10 +1,12 @@
 ﻿using Editor.Editor;
 using Engine.Editor.Level;
 using Engine.Physics.Collision;
+using Engine.Runtime.Entities;
 using ImGuiNET;
 using System.Numerics;
-using System.Text;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.Json;
 
 namespace Engine.Editor.Editor;
 
@@ -60,13 +62,15 @@ public sealed class LevelEditorController
 
     private string _hierarchyFilter = "";
     private bool _hierarchyWindowFocused;
+    private int _addScriptSelectedIndex = 0;
 
     private enum TransformSpace { Local, World }
     private TransformSpace _inspectorSpace = TransformSpace.Local;
 
     public bool FrameSelectionRequested { get; private set; }
     private static bool IsZero(Vector3 v) => MathF.Abs(v.X) < 0.0001f && MathF.Abs(v.Y) < 0.0001f && MathF.Abs(v.Z) < 0.0001f;
-
+    private ScriptRegistry _scripts = null!;
+    public void SetScriptRegistry(ScriptRegistry reg) => _scripts = reg;
     public void ConsumeFrameRequest() => FrameSelectionRequested = false;
 
     public void LoadOrCreate(string path, Func<LevelFile> createDefault)
@@ -772,10 +776,114 @@ public sealed class LevelEditorController
         DrawTypeSpecificInspector(ent);
 
         ImGui.Separator();
+        DrawScriptsInspector(ent);
+
+        ImGui.Separator();
         DrawHelp();
 
         ImGui.End();
     }
+
+    private void DrawScriptsInspector(LevelEntityDef ent)
+    {
+        ImGui.Separator();
+        ImGui.Text("Scripts");
+
+        if (_scripts == null)
+        {
+            ImGui.TextDisabled("No script registry set (Game should call SetScriptRegistry).");
+            return;
+        }
+
+        var types = _scripts.Types.ToArray();
+        if (types.Length == 0)
+        {
+            ImGui.TextDisabled("No scripts registered.");
+        }
+        else
+        {
+            if (_addScriptSelectedIndex < 0 || _addScriptSelectedIndex >= types.Length)
+                _addScriptSelectedIndex = 0;
+
+            ImGui.SetNextItemWidth(200);
+            ImGui.Combo("##AddScriptCombo", ref _addScriptSelectedIndex, types, types.Length);
+
+            ImGui.SameLine();
+            if (ImGui.Button("Add Script"))
+            {
+                string type = types[_addScriptSelectedIndex];
+
+                bool alreadyHas = ent.Scripts.Any(s => s.Type == type);
+                if (!alreadyHas)
+                {
+                    BeginEdit();
+                    ent.Scripts.Add(new ScriptDef { Type = type, Json = "{}" });
+                    Dirty = true;
+                    RebuildRuntimeFromLevel();
+                    EndEditIfAny();
+                }
+            }
+        }
+
+        ImGui.Separator();
+
+        if (ent.Scripts.Count == 0)
+        {
+            ImGui.TextDisabled("No scripts attached.");
+            return;
+        }
+
+        for (int i = 0; i < ent.Scripts.Count; i++)
+        {
+            var s = ent.Scripts[i];
+
+            if (!ImGui.TreeNode($"{s.Type}##script{i}"))
+                continue;
+
+            if (ImGui.Button($"Remove##rm{i}"))
+            {
+                BeginEdit();
+                ent.Scripts.RemoveAt(i);
+                Dirty = true;
+                RebuildRuntimeFromLevel();
+                EndEditIfAny();
+                ImGui.TreePop();
+                break;
+            }
+
+            if (_scripts.TryCreateParams(s.Type, out var paramsObj))
+            {
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(s.Json))
+                    {
+                        var loaded = System.Text.Json.JsonSerializer.Deserialize(s.Json, paramsObj.GetType());
+                        if (loaded != null) paramsObj = loaded;
+                    }
+                }
+                catch { }
+
+                bool changed = ImGuiAutoInspector.DrawObject(paramsObj);
+
+                if (changed)
+                {
+                    BeginEdit();
+                    s.Json = System.Text.Json.JsonSerializer.Serialize(paramsObj, paramsObj.GetType());
+                    Dirty = true;
+                    RebuildRuntimeFromLevel();
+                    EndEditIfAny();
+                }
+            }
+            else
+            {
+                ImGui.TextDisabled("No params registered for this script.");
+            }
+
+            ImGui.TreePop();
+        }
+    }
+
+
 
     private static void DrawHelp()
     {

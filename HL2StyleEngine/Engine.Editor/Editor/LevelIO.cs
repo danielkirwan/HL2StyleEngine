@@ -30,6 +30,8 @@ public static class LevelIO
         {
             foreach (var b in level.Boxes)
             {
+                if (string.IsNullOrWhiteSpace(b.Id))
+                    b.Id = Guid.NewGuid().ToString("N");
                 level.Entities.Add(new LevelEntityDef
                 {
                     Id = b.Id,

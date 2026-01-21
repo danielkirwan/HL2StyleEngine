@@ -22,11 +22,18 @@ public static class EntityTypes
     public const string RigidBody = "RigidBody";
 }
 
+public sealed class ScriptDef
+{
+    public string Type { get; set; } = "";   
+    public string Json { get; set; } = "{}"; 
+}
+
 public sealed class LevelEntityDef
 {
     public string Id { get; set; } = "";
     public string Type { get; set; } = "";
     public string? Name { get; set; }
+    public List<ScriptDef> Scripts { get; set; } = new();
 
     [JsonPropertyName("Parent")]
     public string? ParentId { get; set; }

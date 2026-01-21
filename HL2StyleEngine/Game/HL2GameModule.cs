@@ -5,8 +5,10 @@ using Engine.Input;
 using Engine.Input.Actions;
 using Engine.Input.Devices;
 using Engine.Render;
+using Engine.Runtime.Entities;
 using Engine.Runtime.Hosting;
 using Game.World;
+using Game.World.MovingPlatform;
 using ImGuiNET;
 using System.Numerics;
 using Veldrid;
@@ -51,6 +53,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private bool _mouseOverEditorUi;
     private bool _keyboardOverEditorUi;
+    private readonly ScriptRegistry _scriptRegistry = new();
+
 
     public InputState InputState => _inputState;
 
@@ -64,7 +68,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             shaderDirRelativeToApp: "Shaders");
 
         BuildActions();
-
+        _scriptRegistry.Register<MovingPlatformParams>("MovingPlatform",e => new MovingPlatform(e));
+        _editor.SetScriptRegistry(_scriptRegistry);
         _ui = new UIModeController(_ctx.Window, _inputState, startInGameplay: true);
 
         _motor = new SourcePlayerMotor(_movement, startFeetPos: new Vector3(0, 0, -5f));

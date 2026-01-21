@@ -5,6 +5,7 @@
       "Id": "d44b2e9ccefa46f0b8bd84cf46167085",
       "Type": "PlayerSpawn",
       "Name": "PlayerSpawn",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": 0,
@@ -61,6 +62,7 @@
       "Id": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "Type": "Box",
       "Name": "Floor",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": -0.19953024,
@@ -117,6 +119,7 @@
       "Id": "99aa86d140e94142aab5befdde0f9dfd",
       "Type": "Box",
       "Name": "WallBack",
+      "Scripts": [],
       "Parent": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "LocalPosition": {
         "X": -0.06299019,
@@ -173,6 +176,7 @@
       "Id": "1ae869cfff35403bb6f9adf3820d7122",
       "Type": "Box",
       "Name": "WallFront",
+      "Scripts": [],
       "Parent": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "LocalPosition": {
         "X": -0.1241703,
@@ -229,6 +233,7 @@
       "Id": "5f52d0c100b84eb3aea54a0c2e31dae3",
       "Type": "Box",
       "Name": "WallLeft",
+      "Scripts": [],
       "Parent": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "LocalPosition": {
         "X": 8.705631,
@@ -285,6 +290,7 @@
       "Id": "3ab8873b1ed04813a2aead8ea3d54e4a",
       "Type": "Box",
       "Name": "WallRight",
+      "Scripts": [],
       "Parent": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "LocalPosition": {
         "X": -9.000002,
@@ -341,6 +347,7 @@
       "Id": "70dbf0dd8ffe4921bc8040867dab6d86",
       "Type": "Box",
       "Name": "Box_1",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": 1.1762245,
@@ -397,6 +404,7 @@
       "Id": "129af74619fb4521ae81adcfe9466452",
       "Type": "Box",
       "Name": "Box_2",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": -3,
@@ -453,6 +461,7 @@
       "Id": "450209068ac5481796f8160bd6e3fbe0",
       "Type": "Box",
       "Name": "Box_3",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": 0,
@@ -509,6 +518,7 @@
       "Id": "3e54fdf752c542af86e0b152242b78dc",
       "Type": "Box",
       "Name": "PillarBackLeft",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": 5.4688063,
@@ -565,6 +575,7 @@
       "Id": "c57ed537cdf84c308e96db13b8123bd5",
       "Type": "Box",
       "Name": "PillarBackRight",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": -5.066435,
@@ -621,6 +632,7 @@
       "Id": "bee26bf95a1d46cca0b3f7160926c584",
       "Type": "Box",
       "Name": "PillarFrontLeft",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": 5,
@@ -677,6 +689,7 @@
       "Id": "2657b9dc84324fb8a7f95e0c2cae2eda",
       "Type": "Box",
       "Name": "PillarFrontRight",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": -5,
@@ -733,6 +746,7 @@
       "Id": "4074cadd0e304a288651a8f2ac1aae3c",
       "Type": "Box",
       "Name": "Platform",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": 0.28301668,
@@ -789,6 +803,7 @@
       "Id": "121bc343b2fa4a13ad3ea9603c70e6a0",
       "Type": "Box",
       "Name": "Box_14",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": -3.835514,
@@ -845,6 +860,7 @@
       "Id": "2ddebf526a854b06a14ccf624babd559",
       "Type": "Box",
       "Name": "Box_2_copy",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": -4.222949,
@@ -901,6 +917,7 @@
       "Id": "f84e1e12ba764ea9bdf6f47e8bc17ee2",
       "Type": "Box",
       "Name": "Box_16_copy",
+      "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": 4.031501,
@@ -957,6 +974,12 @@
       "Id": "101a352514424a6181bf4816b2ff860b",
       "Type": "Box",
       "Name": "MovingPlatform",
+      "Scripts": [
+        {
+          "Type": "MovingPlatform",
+          "Json": "{\u0022PointA\u0022:{},\u0022PointB\u0022:{},\u0022Speed\u0022:1}"
+        }
+      ],
       "Parent": null,
       "LocalPosition": {
         "X": 2.039298,
