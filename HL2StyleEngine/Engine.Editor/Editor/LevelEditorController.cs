@@ -1088,6 +1088,7 @@ public sealed class LevelEditorController
 
     private void BeginAxisDrag(EditorPicking.Ray ray, Vector3 entityWorldPos, GizmoAxis axis)
     {
+        BeginEdit();
         _dragging = true;
         _dragAxis = axis;
 
@@ -1297,6 +1298,23 @@ public sealed class LevelEditorController
         hitPoint = ray.GetPoint(bestT);
         return true;
     }
+
+    public bool TryGetEntityWorldTRS(int idx, out Vector3 pos, out Quaternion rot, out Vector3 scale)
+    {
+        pos = default;
+        rot = Quaternion.Identity;
+        scale = Vector3.One;
+
+        if (idx < 0 || idx >= LevelFile.Entities.Count)
+            return false;
+
+        Matrix4x4 w = GetWorldMatrix(idx);
+        if (!Matrix4x4.Decompose(w, out scale, out rot, out pos))
+            return false;
+
+        return true;
+    }
+
 
     public bool TryGetSelectedWorldPosition(out Vector3 pos)
     {

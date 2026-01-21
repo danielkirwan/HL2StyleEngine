@@ -224,8 +224,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private void EditorCameraUpdate(float dt)
     {
-        bool uiWantsMouse = _mouseOverEditorUi;
-        bool uiWantsKeyboard = _keyboardOverEditorUi;
+        var io = ImGui.GetIO();
+        bool uiWantsMouse = io.WantCaptureMouse;
+        bool uiWantsKeyboard = io.WantCaptureKeyboard;
 
         if (_inputState.RightMouseDown && !uiWantsMouse)
         {
@@ -260,7 +261,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private void EditorMouseUpdate()
     {
-        bool uiWantsMouse = _mouseOverEditorUi;
+        var io = ImGui.GetIO();
+        bool uiWantsMouse = io.WantCaptureMouse;
 
         bool leftDown = _inputState.LeftMouseDown;
         bool leftPressed = leftDown && !_prevLeftMouseDown;
@@ -479,26 +481,23 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 if (!hasCollider)
                     continue;
 
-                Vector3 pos = e.LocalPosition;
-                Vector3 size = Mul((Vector3)e.Size, (Vector3)e.LocalScale);
-
-                Quaternion rot = Quaternion.CreateFromYawPitchRoll(
-                    MathF.PI / 180f * e.LocalRotationEulerDeg.Y,
-                    MathF.PI / 180f * e.LocalRotationEulerDeg.X,
-                    MathF.PI / 180f * e.LocalRotationEulerDeg.Z);
-
-                bool selected = (i == _editor.SelectedEntityIndex);
-
-                Vector4 col = selected
-                    ? new Vector4(0.2f, 1f, 0.2f, 1f)
-                    : new Vector4(0.1f, 0.8f, 0.1f, 1f);
-
-                DrawWireObb(renderer, pos, size, rot, col, _editor.ColliderLineThickness);
-
-                if (_editor.ShowColliderCorners)
+                if (_editor.TryGetEntityWorldTRS(i, out var pos, out var rot, out var scale))
                 {
-                    float cs = selected ? _editor.CornerSize * 1.25f : _editor.CornerSize;
-                    DrawObbCorners(renderer, pos, size, rot, col, cs);
+                    Vector3 size = Mul((Vector3)e.Size, scale);
+
+                    bool selected = (i == _editor.SelectedEntityIndex);
+
+                    Vector4 col = selected
+                        ? new Vector4(0.2f, 1f, 0.2f, 1f)
+                        : new Vector4(0.1f, 0.8f, 0.1f, 1f);
+
+                    DrawWireObb(renderer, pos, size, rot, col, _editor.ColliderLineThickness);
+
+                    if (_editor.ShowColliderCorners)
+                    {
+                        float cs = selected ? _editor.CornerSize * 1.25f : _editor.CornerSize;
+                        DrawObbCorners(renderer, pos, size, rot, col, cs);
+                    }
                 }
             }
         }

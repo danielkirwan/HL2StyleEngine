@@ -7,9 +7,9 @@
       "Name": "PlayerSpawn",
       "Parent": null,
       "LocalPosition": {
-        "X": 0.39801311,
-        "Y": 1.2351508,
-        "Z": 6.189322
+        "X": 0,
+        "Y": 0.62106395,
+        "Z": -6.7094765
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -63,9 +63,9 @@
       "Name": "Floor",
       "Parent": null,
       "LocalPosition": {
-        "X": 0,
-        "Y": 0,
-        "Z": 0
+        "X": -0.19953024,
+        "Y": 2.3841858E-07,
+        "Z": 0.25058842
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -83,9 +83,9 @@
         "Z": 18
       },
       "Color": {
-        "X": 0.25,
-        "Y": 0.25,
-        "Z": 0.25,
+        "X": 0.04837083,
+        "Y": 0.62248325,
+        "Z": 0.89705884,
         "W": 1
       },
       "YawDeg": 0,
@@ -119,9 +119,9 @@
       "Name": "WallBack",
       "Parent": "6eff04c8ae9c48d590fc3b6403aa20cd",
       "LocalPosition": {
-        "X": 0,
+        "X": -0.06299019,
         "Y": 2,
-        "Z": 9
+        "Z": 9.182815
       },
       "LocalRotationEulerDeg": {
         "X": -0,
@@ -139,9 +139,9 @@
         "Z": 0.4
       },
       "Color": {
-        "X": 0.45,
-        "Y": 0.45,
-        "Z": 0.5,
+        "X": 0.0972703,
+        "Y": 0.09727052,
+        "Z": 0.9019608,
         "W": 1
       },
       "YawDeg": 0,
@@ -343,9 +343,9 @@
       "Name": "Box_1",
       "Parent": null,
       "LocalPosition": {
-        "X": 2,
-        "Y": 0.5,
-        "Z": 2
+        "X": 1.1762245,
+        "Y": 0.56217504,
+        "Z": 2.0207162
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -400,7 +400,7 @@
       "Parent": null,
       "LocalPosition": {
         "X": -3,
-        "Y": 0.5,
+        "Y": 0.78782034,
         "Z": -1
       },
       "LocalRotationEulerDeg": {
@@ -567,9 +567,9 @@
       "Name": "PillarBackRight",
       "Parent": null,
       "LocalPosition": {
-        "X": -5,
+        "X": -5.066435,
         "Y": 2,
-        "Z": 5
+        "Z": 4.9642982
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -735,9 +735,9 @@
       "Name": "Platform",
       "Parent": null,
       "LocalPosition": {
-        "X": 0,
-        "Y": 0.25,
-        "Z": 6
+        "X": 0.28301668,
+        "Y": 0.41004467,
+        "Z": 5.657072
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -755,8 +755,232 @@
         "Z": 3
       },
       "Color": {
-        "X": 0.2,
-        "Y": 0.4,
+        "X": 0.7745098,
+        "Y": 0.21261047,
+        "Z": 0.37787512,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "121bc343b2fa4a13ad3ea9603c70e6a0",
+      "Type": "Box",
+      "Name": "Box_14",
+      "Parent": null,
+      "LocalPosition": {
+        "X": -3.835514,
+        "Y": 0.58657765,
+        "Z": 1.95189
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "2ddebf526a854b06a14ccf624babd559",
+      "Type": "Box",
+      "Name": "Box_2_copy",
+      "Parent": null,
+      "LocalPosition": {
+        "X": -4.222949,
+        "Y": 0.6046231,
+        "Z": -2.9916055
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.45,
+        "Z": 0.25,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "f84e1e12ba764ea9bdf6f47e8bc17ee2",
+      "Type": "Box",
+      "Name": "Box_16_copy",
+      "Parent": null,
+      "LocalPosition": {
+        "X": 4.031501,
+        "Y": 0.5,
+        "Z": 1.6788807
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "101a352514424a6181bf4816b2ff860b",
+      "Type": "Box",
+      "Name": "MovingPlatform",
+      "Parent": null,
+      "LocalPosition": {
+        "X": 2.039298,
+        "Y": 1.0557882,
+        "Z": -1.0485728
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Size": {
+        "X": 6.41,
+        "Y": 0.01,
+        "Z": 2.45
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
         "Z": 0.6,
         "W": 1
       },

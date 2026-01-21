@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Numerics;
+﻿using System.Numerics;
 using System.Text.Json.Serialization;
 
 namespace Engine.Editor.Level;
@@ -9,10 +7,8 @@ public sealed class LevelFile
 {
     public int Version { get; set; } = 2;
 
-    // New unified list
     public List<LevelEntityDef> Entities { get; set; } = new();
 
-    // Backward compat (if you still have old JSON)
     public List<BoxDef>? Boxes { get; set; }
 }
 

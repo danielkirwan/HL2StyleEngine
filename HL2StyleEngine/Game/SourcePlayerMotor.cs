@@ -19,7 +19,6 @@ public sealed class SourcePlayerMotor
     public float HalfHeight = 0.9f; 
 
 
-    // Player collision shape (feet position is center-ish for now)
     public Vector3 PlayerExtents = new(0.32f, 0.9f, 0.32f);
 
     public SourcePlayerMotor(SourceMovementSettings settings, Vector3 startFeetPos)

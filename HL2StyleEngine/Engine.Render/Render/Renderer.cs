@@ -12,16 +12,13 @@ public sealed class Renderer : IDisposable
     public ResourceFactory Factory => GraphicsDevice.ResourceFactory;
     public CommandList CommandList { get; }
 
-    // World (MSAA) targets
     private Framebuffer _worldFramebuffer = null!;
     private Texture _msaaColor = null!;
     private Texture _msaaDepth = null!;
 
-    // Resolved single-sample color (sampled by present pass)
     private Texture _resolveColor = null!;
     private TextureView _resolveView = null!;
 
-    // Present pass resources
     private DeviceBuffer _presentVB = null!;
     private ResourceLayout _presentLayout = null!;
     private ResourceSet _presentSet = null!;
@@ -36,10 +33,8 @@ public sealed class Renderer : IDisposable
 
     private const TextureSampleCount MsaaSamples = TextureSampleCount.Count4;
 
-    // Pipelines for world rendering must match this:
     public OutputDescription WorldOutputDescription => _worldFramebuffer.OutputDescription;
 
-    // Where the present shaders live (same pattern as BasicWorldRenderer)
     private readonly string _shaderDirRelativeToApp;
 
     public Renderer(GraphicsDevice graphicsDevice, string shaderDirRelativeToApp = "Shaders")
@@ -77,10 +72,8 @@ public sealed class Renderer : IDisposable
         var scFb = GraphicsDevice.MainSwapchain.Framebuffer;
         Texture swapchainColor = scFb.ColorTargets[0].Target;
 
-        // Match swapchain texture format exactly
         PixelFormat colorFormat = swapchainColor.Format;
 
-        // Match swapchain depth output if available
         var scOut = scFb.OutputDescription;
         PixelFormat depthFormat = scOut.DepthAttachment?.Format ?? PixelFormat.R32_Float;
 
@@ -106,7 +99,6 @@ public sealed class Renderer : IDisposable
             depthTarget: _msaaDepth,
             colorTargets: _msaaColor));
 
-        // Single-sample resolve target (must be Sampled for the present pass)
         _resolveColor = Factory.CreateTexture(TextureDescription.Texture2D(
             width: w,
             height: h,
@@ -136,10 +128,10 @@ public sealed class Renderer : IDisposable
         }
 
         var verts = new[]{
-            new PresentVertex(new Vector2(-1f, -1f), new Vector2(0f, 1f)), // bottom-left
-            new PresentVertex(new Vector2(-1f,  1f), new Vector2(0f, 0f)), // top-left
-            new PresentVertex(new Vector2( 1f,  1f), new Vector2(1f, 0f)), // top-right
-            new PresentVertex(new Vector2( 1f, -1f), new Vector2(1f, 1f)), // bottom-right
+            new PresentVertex(new Vector2(-1f, -1f), new Vector2(0f, 1f)), 
+            new PresentVertex(new Vector2(-1f,  1f), new Vector2(0f, 0f)), 
+            new PresentVertex(new Vector2( 1f,  1f), new Vector2(1f, 0f)), 
+            new PresentVertex(new Vector2( 1f, -1f), new Vector2(1f, 1f)), 
         };
 
         ushort[] indices =
@@ -215,22 +207,15 @@ public sealed class Renderer : IDisposable
     {
         CommandList.Begin();
 
-        // World into MSAA framebuffer
         CommandList.SetFramebuffer(_worldFramebuffer);
         CommandList.ClearColorTarget(0, RgbaFloat.Black);
         CommandList.ClearDepthStencil(1f);
     }
 
-    /// <summary>
-    /// Resolve MSAA -> single-sample, then draw fullscreen into swapchain.
-    /// Call after world rendering, before ImGui.
-    /// </summary>
     public void ResolveWorldToSwapchain()
     {
-        // Resolve MSAA -> _resolveColor (single-sample)
         CommandList.ResolveTexture(_msaaColor, _resolveColor);
 
-        // Now draw _resolveColor into swapchain
         var scFb = GraphicsDevice.MainSwapchain.Framebuffer;
         CommandList.SetFramebuffer(scFb);
 
