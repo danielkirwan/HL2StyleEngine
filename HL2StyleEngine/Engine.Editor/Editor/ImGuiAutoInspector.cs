@@ -1,11 +1,7 @@
-﻿using ImGuiNET;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Engine.Core.Serialization;
+using ImGuiNET;
 using System.Numerics;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Engine.Editor.Editor
 {
@@ -106,6 +102,44 @@ namespace Engine.Editor.Editor
                 if (ImGui.InputText(name, ref s, 256))
                 {
                     setter(s);
+                    return true;
+                }
+                return false;
+            }
+
+            // SerVec3
+            if (valueType == typeof(SerVec3))
+            {
+                SerVec3 sv = (SerVec3)(getter() ?? new SerVec3(0, 0, 0));
+                Vector3 v = sv; // implicit conversion
+                if (ImGui.DragFloat3(name, ref v, dragSpeed))
+                {
+                    setter((SerVec3)v);  
+                    return true;
+                }
+                return false;
+            }
+
+            // SerVec4
+            if (valueType == typeof(SerVec4))
+            {
+                SerVec4 sv = (SerVec4)(getter() ?? new SerVec4(0, 0, 0, 0));
+                Vector4 v = sv; // implicit conversion
+                if (ImGui.DragFloat4(name, ref v, dragSpeed))
+                {
+                    setter((SerVec4)v);   
+                    return true;
+                }
+                return false;
+            }
+
+            // Vector4 (handy for colors etc)
+            if (valueType == typeof(Vector4))
+            {
+                Vector4 v = (Vector4)(getter() ?? Vector4.Zero);
+                if (ImGui.DragFloat4(name, ref v, dragSpeed))
+                {
+                    setter(v);
                     return true;
                 }
                 return false;

@@ -4,8 +4,10 @@ using Engine.Editor.Level;
 using Engine.Input;
 using Engine.Input.Actions;
 using Engine.Input.Devices;
+using Engine.Physics.Collision;
 using Engine.Render;
 using Engine.Runtime.Entities;
+using Engine.Runtime.Entities.Interfaces;
 using Engine.Runtime.Hosting;
 using Game.World;
 using Game.World.MovingPlatform;
@@ -54,7 +56,22 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private bool _mouseOverEditorUi;
     private bool _keyboardOverEditorUi;
     private readonly ScriptRegistry _scriptRegistry = new();
+    private readonly List<Entity> _runtimeEntities = new();
 
+    private readonly List<Aabb> _runtimeWorldColliders = new();
+    private readonly Dictionary<string, LevelEntityDef> _defById = new();
+
+    private sealed class RuntimeRenderBox
+    {
+        public Entity Entity = null!;
+        public Vector3 Size;        
+        public Vector4 Color;
+        public Vector3 Delta;
+        public Vector3 PrevPos;
+    }
+    private readonly List<RuntimeRenderBox> _runtimeRenderBoxes = new();
+
+    private bool _runtimeDirty = true; 
 
     public InputState InputState => _inputState;
 
@@ -76,7 +93,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         string levelPath = Path.Combine(AppContext.BaseDirectory, "Content", "Levels", "room01.json");
         _editor.LoadOrCreate(levelPath, SimpleLevel.BuildRoom01File);
-
+        RebuildRuntimeWorld();
         ApplySpawnFromEditor(forceResetVelocity: true);
     }
 
@@ -129,6 +146,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         {
             _editorEnabled = !_editorEnabled;
             if (_editorEnabled) _ui.OpenUI();
+
+            if (!_editorEnabled)
+                _runtimeDirty = true;
         }
 
         if (_toggleUi.Pressed) _ui.ToggleUI();
@@ -144,6 +164,23 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _wishSpeed = 0f;
             _jumpPressedThisFrame = false;
             return;
+        }
+
+        if (!_editorEnabled)
+        {
+            for (int i = 0; i < _runtimeEntities.Count; i++)
+            {
+                var ent = _runtimeEntities[i];
+                for (int j = 0; j < ent.Components.Count; j++)
+                    ent.Components[j].Update(dt);
+            }
+            UpdatePlatformDeltas();
+        }
+
+        if (_editorEnabled && _editor.Dirty)
+        {
+            RebuildRuntimeWorld();
+            _runtimeDirty = false;
         }
 
         var io = ImGui.GetIO();
@@ -200,6 +237,151 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 _jumpPressedThisFrame = true;
         }
     }
+
+    private bool TryGetGroundPlatformDelta(out Vector3 delta)
+    {
+        delta = Vector3.Zero;
+
+        // player's AABB in the same space your collision uses
+        Vector3 extents = new Vector3(_motor.Radius, _motor.HalfHeight, _motor.Radius);
+        Vector3 center = _motor.Position + new Vector3(0f, _motor.HalfHeight, 0f);
+
+        // We want the player's feet plane
+        float feetY = center.Y - extents.Y;
+
+        const float maxStep = 0.06f; // small tolerance
+
+        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        {
+            var rr = _runtimeRenderBoxes[i];
+
+            // Only moving platforms (or just any runtime render box if you want)
+            bool isMovingPlatform = rr.Entity.Components.Any(c => c is Game.World.MovingPlatform.MovingPlatform);
+            if (!isMovingPlatform) continue;
+
+            Vector3 p = rr.Entity.Transform.Position;
+            Vector3 half = rr.Size * 0.5f;
+
+            // top face
+            float topY = p.Y + half.Y;
+
+            // Are we basically standing on its top?
+            if (MathF.Abs(feetY - topY) > maxStep)
+                continue;
+
+            // Are we horizontally overlapping?
+            bool overlapX = (center.X + extents.X) >= (p.X - half.X) && (center.X - extents.X) <= (p.X + half.X);
+            bool overlapZ = (center.Z + extents.Z) >= (p.Z - half.Z) && (center.Z - extents.Z) <= (p.Z + half.Z);
+
+            if (!overlapX || !overlapZ)
+                continue;
+
+            delta = rr.Delta;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void RebuildRuntimeWorld()
+    {
+        _runtimeEntities.Clear();
+        _runtimeRenderBoxes.Clear();
+        _runtimeWorldColliders.Clear();
+        _defById.Clear();
+
+        foreach (var def in _editor.LevelFile.Entities)
+            _defById[def.Id] = def;
+
+        foreach (var def in _editor.LevelFile.Entities)
+        {
+            var e = new Entity(def.Id, def.Type, def.Name ?? def.Type);
+
+            e.Transform.Position = def.LocalPosition;
+            e.Transform.RotationEulerDeg = def.LocalRotationEulerDeg;
+            e.Transform.Scale = def.LocalScale;
+            e.BoxSize = (Vector3)def.Size;
+            e.BoxColor = (Vector4)def.Color;
+
+            // Attach scripts
+            foreach (var s in def.Scripts)
+            {
+                if (_scriptRegistry.TryCreate(s.Type, e, out var comp))
+                {
+                    if (comp is IComponentWithJson jsonComp)
+                        jsonComp.ApplyJson(s.Json);
+
+                    e.Components.Add(comp);
+                }
+            }
+
+            _runtimeEntities.Add(e);
+
+            // -----------------------------
+            // Decide if this should be drawn/collidable in play
+            // -----------------------------
+            bool isBoxLike =
+                def.Type == EntityTypes.Box ||
+                def.Type == EntityTypes.RigidBody;
+
+            bool hasMovingPlatform =
+                def.Scripts.Any(sd => sd.Type == "MovingPlatform");
+
+            // If it’s box-like OR it has MovingPlatform, we render/collide it.
+            if (isBoxLike || hasMovingPlatform)
+            {
+                Vector3 size = (Vector3)def.Size;
+                Vector3 scale = (Vector3)def.LocalScale;
+
+                // prevent zero size making it “invisible”
+                size.X = MathF.Max(0.01f, size.X);
+                size.Y = MathF.Max(0.01f, size.Y);
+                size.Z = MathF.Max(0.01f, size.Z);
+
+                scale.X = MathF.Max(0.01f, scale.X);
+                scale.Y = MathF.Max(0.01f, scale.Y);
+                scale.Z = MathF.Max(0.01f, scale.Z);
+
+                var rr = new RuntimeRenderBox
+                {
+                    Entity = e,
+                    Size = Mul(size, scale),
+                    Color = hasMovingPlatform ? new Vector4(1f, 0.2f, 1f, 1f) : (Vector4)def.Color,
+                    PrevPos = e.Transform.Position,
+                    Delta = Vector3.Zero
+                };
+                _runtimeRenderBoxes.Add(rr);
+            }
+        }
+    }
+
+    private void BuildRuntimeCollidersThisFrame()
+    {
+        _runtimeWorldColliders.Clear();
+
+        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        {
+            var rr = _runtimeRenderBoxes[i];
+
+            Vector3 pos = rr.Entity.Transform.Position;
+            Vector3 half = rr.Size * 0.5f;
+
+            _runtimeWorldColliders.Add(new Engine.Physics.Collision.Aabb(pos - half, pos + half));
+        }
+    }
+
+    private void UpdatePlatformDeltas()
+    {
+        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        {
+            var rr = _runtimeRenderBoxes[i];
+            Vector3 cur = rr.Entity.Transform.Position;
+            rr.Delta = cur - rr.PrevPos;
+            rr.PrevPos = cur;
+        }
+    }
+
+    private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
 
     private void EditorHotkeys()
     {
@@ -332,7 +514,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _jumpPressedThisFrame = false;
         }
 
-        _motor.Step(fixedDt, _wishDir, _wishSpeed, _editor.SolidColliders);
+        // rebuild runtime colliders list: static + moving platforms at their *current* positions
+        BuildRuntimeCollidersThisFrame();
+
+        _motor.Step(fixedDt, _wishDir, _wishSpeed, _runtimeWorldColliders);
+        if (_motor.Grounded && TryGetGroundPlatformDelta(out var platDelta))
+        {
+            _motor.Position += platDelta;
+
+            // optional: also carry velocity so jumping keeps momentum
+            //_motor.Velocity += platDelta / fixedDt;
+        }
 
         _editor.TickTriggers(_motor.Position);
 
@@ -395,10 +587,19 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         ImGui.Text($"Editor: {(_editorEnabled ? "ON" : "OFF")}");
         ImGui.Text($"Dirty: {(_editor.Dirty ? "YES" : "NO")}");
         ImGui.Text($"Level: {_editor.LevelPath}");
-        Console.WriteLine(_editor.LevelPath); 
+        //Console.WriteLine(_editor.LevelPath); 
         ImGui.Text($"Selected: {_editor.SelectedEntityIndex}");
         if (!string.IsNullOrWhiteSpace(_editor.LastTriggerEvent))
             ImGui.Text($"Last Trigger: {_editor.LastTriggerEvent}");
+        ImGui.Text($"Runtime Entities: {_runtimeEntities.Count}");
+        ImGui.Text($"Runtime RenderBoxes: {_runtimeRenderBoxes.Count}");
+        ImGui.Text($"Runtime Colliders: {_runtimeWorldColliders.Count}");
+
+        if (_runtimeEntities.Count > 0)
+        {
+            var e0 = _runtimeEntities[0];
+            ImGui.Text($"E0 pos: {e0.Transform.Position}");
+        }
         ImGui.End();
     }
 
@@ -442,7 +643,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             ? _ctx.Window.Window.Width / (float)_ctx.Window.Window.Height
             : 16f / 9f;
 
-        var view = Matrix4x4.CreateLookAt(_camera.Position, _camera.Position + _camera.Forward, Vector3.UnitY);
+        var view = Matrix4x4.CreateLookAt(
+            _camera.Position,
+            _camera.Position + _camera.Forward,
+            Vector3.UnitY);
 
         var proj = Matrix4x4.CreatePerspectiveFieldOfView(
             MathF.PI / 3f, aspect, 0.05f, 500f);
@@ -452,74 +656,106 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _world.BeginFrame();
         _world.UpdateCamera(viewProj);
 
-        for (int i = 0; i < _editor.DrawBoxes.Count; i++)
+        // -----------------------------
+        // EDITOR MODE: draw editor view
+        // -----------------------------
+        if (_editorEnabled)
         {
-            var d = _editor.DrawBoxes[i];
-
-            Vector4 color = d.Color;
-            if (_editorEnabled && i == _editor.SelectedEntityIndex)
-                color = new Vector4(1f, 1f, 0.1f, 1f);
-
-            DrawEditorBox(renderer, d.Position, d.Size, d.Rotation, color);
-        }
-
-        if (_editorEnabled && _editor.HasGizmo(out var xLine, out var xHandle, out var yLine, out var yHandle, out var zLine, out var zHandle))
-        {
-            DrawEditorBox(renderer, xLine.Position, xLine.Size, xLine.Rotation, xLine.Color);
-            DrawEditorBox(renderer, xHandle.Position, xHandle.Size, xHandle.Rotation, xHandle.Color);
-
-            DrawEditorBox(renderer, yLine.Position, yLine.Size, yLine.Rotation, yLine.Color);
-            DrawEditorBox(renderer, yHandle.Position, yHandle.Size, yHandle.Rotation, yHandle.Color);
-
-            DrawEditorBox(renderer, zLine.Position, zLine.Size, zLine.Rotation, zLine.Color);
-            DrawEditorBox(renderer, zHandle.Position, zHandle.Size, zHandle.Rotation, zHandle.Color);
-        }
-
-        if (_editorEnabled && _editor.ShowColliders)
-        {
-            for (int i = 0; i < _editor.LevelFile.Entities.Count; i++)
+            for (int i = 0; i < _editor.DrawBoxes.Count; i++)
             {
-                var e = _editor.LevelFile.Entities[i];
+                var d = _editor.DrawBoxes[i];
 
-                bool hasCollider = e.Type == EntityTypes.Box || e.Type == EntityTypes.RigidBody;
+                Vector4 color = d.Color;
+                if (i == _editor.SelectedEntityIndex)
+                    color = new Vector4(1f, 1f, 0.1f, 1f);
 
-                if (!hasCollider)
-                    continue;
+                DrawEditorBox(renderer, d.Position, d.Size, d.Rotation, color);
+            }
 
-                if (_editor.TryGetEntityWorldTRS(i, out var pos, out var rot, out var scale))
+            if (_editor.HasGizmo(out var xLine, out var xHandle,
+                                 out var yLine, out var yHandle,
+                                 out var zLine, out var zHandle))
+            {
+                DrawEditorBox(renderer, xLine.Position, xLine.Size, xLine.Rotation, xLine.Color);
+                DrawEditorBox(renderer, xHandle.Position, xHandle.Size, xHandle.Rotation, xHandle.Color);
+
+                DrawEditorBox(renderer, yLine.Position, yLine.Size, yLine.Rotation, yLine.Color);
+                DrawEditorBox(renderer, yHandle.Position, yHandle.Size, yHandle.Rotation, yHandle.Color);
+
+                DrawEditorBox(renderer, zLine.Position, zLine.Size, zLine.Rotation, zLine.Color);
+                DrawEditorBox(renderer, zHandle.Position, zHandle.Size, zHandle.Rotation, zHandle.Color);
+            }
+
+            if (_editor.ShowColliders)
+            {
+                for (int i = 0; i < _editor.LevelFile.Entities.Count; i++)
                 {
-                    Vector3 size = Mul((Vector3)e.Size, scale);
+                    var e = _editor.LevelFile.Entities[i];
 
-                    bool selected = (i == _editor.SelectedEntityIndex);
+                    bool hasCollider = e.Type == EntityTypes.Box || e.Type == EntityTypes.RigidBody;
+                    if (!hasCollider) continue;
 
-                    Vector4 col = selected
-                        ? new Vector4(0.2f, 1f, 0.2f, 1f)
-                        : new Vector4(0.1f, 0.8f, 0.1f, 1f);
-
-                    DrawWireObb(renderer, pos, size, rot, col, _editor.ColliderLineThickness);
-
-                    if (_editor.ShowColliderCorners)
+                    if (_editor.TryGetEntityWorldTRS(i, out var pos, out var rot, out var scale))
                     {
-                        float cs = selected ? _editor.CornerSize * 1.25f : _editor.CornerSize;
-                        DrawObbCorners(renderer, pos, size, rot, col, cs);
+                        Vector3 size = Mul((Vector3)e.Size, scale);
+
+                        bool selected = (i == _editor.SelectedEntityIndex);
+
+                        Vector4 col = selected
+                            ? new Vector4(0.2f, 1f, 0.2f, 1f)
+                            : new Vector4(0.1f, 0.8f, 0.1f, 1f);
+
+                        DrawWireObb(renderer, pos, size, rot, col, _editor.ColliderLineThickness);
+
+                        if (_editor.ShowColliderCorners)
+                        {
+                            float cs = selected ? _editor.CornerSize * 1.25f : _editor.CornerSize;
+                            DrawObbCorners(renderer, pos, size, rot, col, cs);
+                        }
                     }
                 }
             }
+
+            if (_editor.ShowPhysicsAabbs)
+            {
+                Vector4 aabbCol = new Vector4(0.2f, 0.9f, 1f, 1f);
+                float t = _editor.ColliderLineThickness;
+
+                foreach (var aabb in _editor.SolidColliders)
+                {
+                    Vector3 center = (aabb.Min + aabb.Max) * 0.5f;
+                    Vector3 size = (aabb.Max - aabb.Min);
+                    DrawWireObb(renderer, center, size, Quaternion.Identity, aabbCol, t);
+                }
+            }
+
+            return;
         }
 
-        if (_editorEnabled && _editor.ShowPhysicsAabbs)
+        // -------------------------------------
+        // GAME MODE: draw runtime entities view
+        // -------------------------------------
+        for (int i = 0; i < _runtimeEntities.Count; i++)
         {
-            Vector4 aabbCol = new Vector4(0.2f, 0.9f, 1f, 1f);
-            float t = _editor.ColliderLineThickness;
+            var ent = _runtimeEntities[i];
 
-            foreach (var aabb in _editor.SolidColliders)
-            {
-                Vector3 center = (aabb.Min + aabb.Max) * 0.5f;
-                Vector3 size = (aabb.Max - aabb.Min);
-                DrawWireObb(renderer, center, size, Quaternion.Identity, aabbCol, t);
-            }
+            // Position comes from runtime (MovingPlatform updates this)
+            Vector3 pos = ent.Transform.Position;
+
+            // Rotation & scale from runtime (currently mostly defaults for your boxes, but supported)
+            Vector3 eulerDeg = ent.Transform.RotationEulerDeg;
+            Quaternion rot = Quaternion.CreateFromYawPitchRoll(
+                eulerDeg.Y * (MathF.PI / 180f),
+                eulerDeg.X * (MathF.PI / 180f),
+                eulerDeg.Z * (MathF.PI / 180f));
+
+            Vector3 size = Mul(ent.BoxSize, ent.Transform.Scale);
+            Vector4 col = ent.BoxColor;
+
+            DrawEditorBox(renderer, pos, size, rot, col);
         }
     }
+
 
     private void DrawObbCorners(Renderer renderer, Vector3 center, Vector3 size, Quaternion rot, Vector4 color, float cornerSize)
     {
@@ -543,8 +779,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             DrawEditorBox(renderer, w, cube, Quaternion.Identity, color);
         }
     }
-
-    private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
 
     private void DrawWireObb(Renderer renderer, Vector3 center, Vector3 size, Quaternion rot, Vector4 color, float thickness)
     {

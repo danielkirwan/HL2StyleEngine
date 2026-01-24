@@ -9,6 +9,9 @@ namespace Engine.Runtime.Entities
         public string Type { get; }        // optional, useful for debugging
         public string Name { get; set; }
 
+        public Vector3 BoxSize = Vector3.One;
+        public Vector4 BoxColor = new Vector4(0.6f, 0.6f, 0.6f, 1f);
+
         public string? ParentId { get; set; } // optional (or keep parent reference later)
 
         public Transform Transform;

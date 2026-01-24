@@ -9,6 +9,7 @@ namespace Game.World.MovingPlatform
     public sealed class MovingPlatform : IComponent, IComponentWithJson
     {
         private readonly Entity _entity;
+        private float _logTimer;
 
         public MovingPlatformParams Params { get; private set; } = new();
 
@@ -21,6 +22,12 @@ namespace Game.World.MovingPlatform
             _t += dt * Params.Speed;
             float s = 0.5f + 0.5f * MathF.Sin(_t);
             _entity.Transform.Position = Vector3.Lerp(Params.PointA, Params.PointB, s);
+            _logTimer += dt;
+            if (_logTimer > 1f)
+            {
+                _logTimer = 0f;
+                Console.WriteLine($"[MovingPlatform] '{_entity.Name}' pos={_entity.Transform.Position} A={Params.PointA} B={Params.PointB} speed={Params.Speed}");
+            }
         }
 
         public void ApplyJson(string json)

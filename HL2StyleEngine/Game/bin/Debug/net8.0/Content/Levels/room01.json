@@ -977,7 +977,7 @@
       "Scripts": [
         {
           "Type": "MovingPlatform",
-          "Json": "{\u0022PointA\u0022:{},\u0022PointB\u0022:{},\u0022Speed\u0022:1}"
+          "Json": "{\u0022PointA\u0022:{\u0022X\u0022:4,\u0022Y\u0022:1.0557882,\u0022Z\u0022:4},\u0022PointB\u0022:{\u0022X\u0022:-4,\u0022Y\u0022:1.056,\u0022Z\u0022:-4},\u0022Speed\u0022:1}"
         }
       ],
       "Parent": null,

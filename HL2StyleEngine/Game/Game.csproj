@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Engine.Core\Engine.Core.csproj" />
     <ProjectReference Include="..\Engine.Runtime\Engine.Runtime.csproj" />
     <ProjectReference Include="..\Engine.Physics\Engine.Physics.csproj" />
     <ProjectReference Include="..\Engine.Input\Engine.Input.csproj" />
