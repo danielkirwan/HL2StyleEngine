@@ -68,6 +68,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         public Vector4 Color;
         public Vector3 Delta;
         public Vector3 PrevPos;
+        public bool IsMovingPlatform;
     }
     private readonly List<RuntimeRenderBox> _runtimeRenderBoxes = new();
 
@@ -166,17 +167,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return;
         }
 
-        if (!_editorEnabled)
-        {
-            for (int i = 0; i < _runtimeEntities.Count; i++)
-            {
-                var ent = _runtimeEntities[i];
-                for (int j = 0; j < ent.Components.Count; j++)
-                    ent.Components[j].Update(dt);
-            }
-            UpdatePlatformDeltas();
-        }
-
         if (_editorEnabled && _editor.Dirty)
         {
             RebuildRuntimeWorld();
@@ -242,34 +232,29 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         delta = Vector3.Zero;
 
-        // player's AABB in the same space your collision uses
         Vector3 extents = new Vector3(_motor.Radius, _motor.HalfHeight, _motor.Radius);
         Vector3 center = _motor.Position + new Vector3(0f, _motor.HalfHeight, 0f);
-
-        // We want the player's feet plane
         float feetY = center.Y - extents.Y;
 
-        const float maxStep = 0.06f; // small tolerance
+        // If we’re going up, don’t “stick”
+        if (_motor.Velocity.Y > 0.001f)
+            return false;
+
+        const float yTolerance = 0.18f; // thin platform => larger tolerance
 
         for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
         {
             var rr = _runtimeRenderBoxes[i];
-
-            // Only moving platforms (or just any runtime render box if you want)
-            bool isMovingPlatform = rr.Entity.Components.Any(c => c is Game.World.MovingPlatform.MovingPlatform);
-            if (!isMovingPlatform) continue;
+            if (!rr.IsMovingPlatform) continue;
 
             Vector3 p = rr.Entity.Transform.Position;
             Vector3 half = rr.Size * 0.5f;
-
-            // top face
             float topY = p.Y + half.Y;
 
-            // Are we basically standing on its top?
-            if (MathF.Abs(feetY - topY) > maxStep)
+            // Feet must be close to top surface
+            if (feetY < topY - yTolerance || feetY > topY + yTolerance)
                 continue;
 
-            // Are we horizontally overlapping?
             bool overlapX = (center.X + extents.X) >= (p.X - half.X) && (center.X - extents.X) <= (p.X + half.X);
             bool overlapZ = (center.Z + extents.Z) >= (p.Z - half.Z) && (center.Z - extents.Z) <= (p.Z + half.Z);
 
@@ -347,6 +332,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                     Entity = e,
                     Size = Mul(size, scale),
                     Color = hasMovingPlatform ? new Vector4(1f, 0.2f, 1f, 1f) : (Vector4)def.Color,
+                    IsMovingPlatform = hasMovingPlatform,   
                     PrevPos = e.Transform.Position,
                     Delta = Vector3.Zero
                 };
@@ -370,16 +356,28 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
     }
 
-    private void UpdatePlatformDeltas()
+    private void SnapshotPlatformPrevPositions()
     {
         for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
         {
             var rr = _runtimeRenderBoxes[i];
-            Vector3 cur = rr.Entity.Transform.Position;
-            rr.Delta = cur - rr.PrevPos;
-            rr.PrevPos = cur;
+            if (!rr.IsMovingPlatform) continue;
+            rr.PrevPos = rr.Entity.Transform.Position;
         }
     }
+
+    private void ComputePlatformDeltasFromPrev()
+    {
+        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        {
+            var rr = _runtimeRenderBoxes[i];
+            if (!rr.IsMovingPlatform) continue;
+
+            Vector3 cur = rr.Entity.Transform.Position;
+            rr.Delta = cur - rr.PrevPos;
+        }
+    }
+
 
     private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
 
@@ -514,20 +512,46 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _jumpPressedThisFrame = false;
         }
 
-        // rebuild runtime colliders list: static + moving platforms at their *current* positions
+        // 1) Snapshot platform prev positions (fixed step)
+        SnapshotPlatformPrevPositions();
+
+        // 2) Update runtime components USING fixedDt (platform moves in fixed time)
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            var ent = _runtimeEntities[i];
+            for (int j = 0; j < ent.Components.Count; j++)
+                ent.Components[j].Update(fixedDt);
+        }
+
+        // 3) Compute platform deltas from prev -> current
+        ComputePlatformDeltasFromPrev();
+
+        // 4) Build colliders from current positions
         BuildRuntimeCollidersThisFrame();
 
+        // 5) Step player against those colliders
         _motor.Step(fixedDt, _wishDir, _wishSpeed, _runtimeWorldColliders);
+
+        // 6) If grounded on a moving platform, carry player by platform delta
         if (_motor.Grounded && TryGetGroundPlatformDelta(out var platDelta))
         {
             _motor.Position += platDelta;
 
-            // optional: also carry velocity so jumping keeps momentum
-            //_motor.Velocity += platDelta / fixedDt;
+            // IMPORTANT: re-resolve collisions after carry to avoid pops/jitter
+            Vector3 extents = new Vector3(_motor.Radius, _motor.HalfHeight, _motor.Radius);
+            Vector3 center = _motor.Position + new Vector3(0f, _motor.HalfHeight, 0f);
+
+            var (newCenter, newVel, grounded) = Engine.Physics.Collision.StaticCollision.ResolvePlayerAabb(
+                center, _motor.Velocity, extents, _runtimeWorldColliders);
+
+            _motor.Velocity = newVel;
+            // grounded stays true unless something weird happens
+            // (if you prefer, force true here)
+            // _motor.Grounded = grounded;
+            _motor.Position = newCenter - new Vector3(0f, _motor.HalfHeight, 0f);
         }
 
         _editor.TickTriggers(_motor.Position);
-
         _camera.Position = _motor.Position + new Vector3(0, _movement.EyeHeight, 0);
     }
 

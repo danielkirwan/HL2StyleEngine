@@ -29,6 +29,10 @@ namespace Game.World.MovingPlatform
                 Console.WriteLine($"[MovingPlatform] '{_entity.Name}' pos={_entity.Transform.Position} A={Params.PointA} B={Params.PointB} speed={Params.Speed}");
             }
         }
+        public void FixedUpdate(float dt)
+        {
+
+        }
 
         public void ApplyJson(string json)
             => Params = JsonSerializer.Deserialize<MovingPlatformParams>(json) ?? new();
