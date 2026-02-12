@@ -21,6 +21,7 @@ namespace Engine.Runtime.Entities
         public readonly List<IComponent> Components = new();
 
         public bool IsDynamic;
+        public bool IsHeld = false;
         public bool CanPickUp = false;
         public BoxBody? Body;
 

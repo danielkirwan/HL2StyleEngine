@@ -5,6 +5,7 @@ using Engine.Input;
 using Engine.Input.Actions;
 using Engine.Input.Devices;
 using Engine.Physics.Collision;
+using Engine.Physics.Dynamics;
 using Engine.Render;
 using Engine.Runtime.Entities;
 using Engine.Runtime.Entities.Interfaces;
@@ -148,10 +149,25 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         if (_inputState.WasPressed(Key.F2))
         {
             _editorEnabled = !_editorEnabled;
-            if (_editorEnabled) _ui.OpenUI();
 
-            if (!_editorEnabled)
-                _runtimeDirty = true;
+            if (_editorEnabled)
+            {
+                _ui.OpenUI();
+            }
+            else
+            {
+                // Leaving editor → entering play
+                RebuildRuntimeWorld();
+                ApplySpawnFromEditor(forceResetVelocity: true);
+            }
+        }
+
+        // Reload level at runtime
+        if (!_editorEnabled && _inputState.WasPressed(Key.F5))
+        {
+            _editor.LoadOrCreate(_editor.LevelPath, SimpleLevel.BuildRoom01File);
+            RebuildRuntimeWorld();
+            ApplySpawnFromEditor(forceResetVelocity: true);
         }
 
         if (_toggleUi.Pressed) _ui.ToggleUI();
@@ -229,6 +245,49 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 _jumpPressedThisFrame = true;
         }
     }
+
+    private bool TryGetPlatformDeltaForBody(BoxBody body, out Vector3 delta)
+    {
+        delta = Vector3.Zero;
+
+        Vector3 center = body.Center;
+        Vector3 extents = body.HalfExtents;
+
+        float feetY = center.Y - extents.Y;
+
+        const float yTolerance = 0.08f;
+
+        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        {
+            var rr = _runtimeRenderBoxes[i];
+            if (!rr.IsMovingPlatform) continue;
+
+            Vector3 p = rr.Entity.Transform.Position;
+            Vector3 half = rr.Size * 0.5f;
+
+            float topY = p.Y + half.Y;
+
+            if (MathF.Abs(feetY - topY) > yTolerance)
+                continue;
+
+            bool overlapX =
+                (center.X + extents.X) >= (p.X - half.X) &&
+                (center.X - extents.X) <= (p.X + half.X);
+
+            bool overlapZ =
+                (center.Z + extents.Z) >= (p.Z - half.Z) &&
+                (center.Z - extents.Z) <= (p.Z + half.Z);
+
+            if (!overlapX || !overlapZ)
+                continue;
+
+            delta = rr.Delta;
+            return true;
+        }
+
+        return false;
+    }
+
 
     private bool TryGetGroundPlatformDelta(out Vector3 delta)
     {
@@ -385,8 +444,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         {
             var rr = _runtimeRenderBoxes[i];
 
-            // If it's a dynamic pickup box, do NOT add it to static world colliders.
-            if (!includeDynamicBodies && rr.Entity.Body != null)
+            var e = rr.Entity;
+
+            if (!includeDynamicBodies && e.Body != null)
+                continue;
+
+            if (includeDynamicBodies && e.IsHeld)
                 continue;
 
             Vector3 pos = rr.Entity.Transform.Position;
@@ -395,6 +458,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _runtimeWorldColliders.Add(new Engine.Physics.Collision.Aabb(pos - half, pos + half));
         }
     }
+
 
 
 
@@ -569,6 +633,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         ComputePlatformDeltasFromPrev();
 
         // 4) Build world colliders EXCLUDING dynamic bodies
+        // (used for stepping dynamic boxes vs static world/platforms)
         BuildRuntimeCollidersThisFrame(includeDynamicBodies: false);
 
         // 5) Step dynamic pickup boxes vs world
@@ -579,19 +644,21 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             e.Body.Step(fixedDt, _runtimeWorldColliders, gravityY: _movement.Gravity);
 
+            if (TryGetPlatformDeltaForBody(e.Body, out var platformDelta))
+                e.Body.Center += platformDelta;
 
             // copy back to transform
             e.Transform.Position = e.Body.Center;
         }
 
-        // 6) Rebuild colliders again (still excluding dynamics)
-        // (platforms may have moved; dynamics moved too but we still exclude them)
-        BuildRuntimeCollidersThisFrame(includeDynamicBodies: false);
+        // 6) Build colliders INCLUDING dynamic bodies
+        // (player must collide with pickup boxes!)
+        BuildRuntimeCollidersThisFrame(includeDynamicBodies: true);
 
-        // 7) Step player
+        // 7) Step player against static + dynamic
         _motor.Step(fixedDt, _wishDir, _wishSpeed, _runtimeWorldColliders);
 
-        // 8) Carry on moving platform (your existing approach)
+        // 8) Carry player on moving platform (existing approach)
         if (_motor.Grounded && TryGetGroundPlatformDelta(out var platDelta))
         {
             _motor.Position += platDelta;
@@ -605,13 +672,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             _motor.Velocity = newVel;
             _motor.Position = newCenter - new Vector3(0f, _motor.HalfHeight, 0f);
-            // (Optional) force grounded true if you want:
-            // if (grounded) ...
         }
 
         _editor.TickTriggers(_motor.Position);
         _camera.Position = _motor.Position + new Vector3(0, _movement.EyeHeight, 0);
     }
+
 
 
     public void DrawImGui()
@@ -943,21 +1009,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _world.DrawBox(renderer.CommandList, model, color);
     }
 
-    private void BuildRuntimeCollidersThisFrame(Entity? exclude = null)
-    {
-        _runtimeWorldColliders.Clear();
-
-        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
-        {
-            var rr = _runtimeRenderBoxes[i];
-            if (exclude != null && rr.Entity == exclude) continue;
-
-            Vector3 pos = rr.Entity.Transform.Position;
-            Vector3 half = rr.Size * 0.5f;
-
-            _runtimeWorldColliders.Add(new Aabb(pos - half, pos + half));
-        }
-    }
+    
 
 
     public void Dispose()

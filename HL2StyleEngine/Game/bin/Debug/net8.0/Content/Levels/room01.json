@@ -357,7 +357,7 @@
       "Parent": null,
       "LocalPosition": {
         "X": 1.1762245,
-        "Y": 0.56217504,
+        "Y": 3.660353,
         "Z": 2.0207162
       },
       "LocalRotationEulerDeg": {
@@ -370,7 +370,7 @@
         "Y": 1,
         "Z": 1
       },
-      "CanPickUp": false,
+      "CanPickUp": true,
       "Size": {
         "X": 1,
         "Y": 1,
