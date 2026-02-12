@@ -75,4 +75,64 @@ public static class StaticCollision
 
         return (center, vel, grounded);
     }
+    public static (Vector3 center, Vector3 vel) ResolveDynamicAabb(
+    Vector3 center,
+    Vector3 vel,
+    Vector3 extents,
+    IReadOnlyList<Aabb> world,
+    int iterations = 6)
+    {
+        for (int it = 0; it < iterations; it++)
+        {
+            var boxAabb = Aabb.FromCenterExtents(center, extents);
+            bool any = false;
+
+            for (int i = 0; i < world.Count; i++)
+            {
+                var w = world[i];
+                if (!boxAabb.Overlaps(w)) continue;
+
+                any = true;
+
+                float pushPosX = w.Max.X - boxAabb.Min.X;
+                float pushNegX = boxAabb.Max.X - w.Min.X;
+                float penX = MathF.Min(pushPosX, pushNegX);
+                float dirX = (pushPosX < pushNegX) ? +1f : -1f;
+
+                float pushPosY = w.Max.Y - boxAabb.Min.Y;
+                float pushNegY = boxAabb.Max.Y - w.Min.Y;
+                float penY = MathF.Min(pushPosY, pushNegY);
+                float dirY = (pushPosY < pushNegY) ? +1f : -1f;
+
+                float pushPosZ = w.Max.Z - boxAabb.Min.Z;
+                float pushNegZ = boxAabb.Max.Z - w.Min.Z;
+                float penZ = MathF.Min(pushPosZ, pushNegZ);
+                float dirZ = (pushPosZ < pushNegZ) ? +1f : -1f;
+
+                // Push out along smallest penetration axis
+                if (penX <= penY && penX <= penZ)
+                {
+                    center.X += dirX * penX;
+                    vel.X = 0f;
+                }
+                else if (penY <= penX && penY <= penZ)
+                {
+                    center.Y += dirY * penY;
+                    vel.Y = 0f;
+                }
+                else
+                {
+                    center.Z += dirZ * penZ;
+                    vel.Z = 0f;
+                }
+
+                boxAabb = Aabb.FromCenterExtents(center, extents);
+            }
+
+            if (!any) break;
+        }
+
+        return (center, vel);
+    }
+
 }

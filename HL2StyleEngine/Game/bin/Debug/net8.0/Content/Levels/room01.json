@@ -22,6 +22,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -79,6 +80,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 18,
         "Y": 0.2,
@@ -136,6 +138,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 18,
         "Y": 4,
@@ -193,6 +196,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 18,
         "Y": 4,
@@ -250,6 +254,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 0.4,
         "Y": 4,
@@ -307,6 +312,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 0.4,
         "Y": 4,
@@ -364,6 +370,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -403,13 +410,13 @@
     {
       "Id": "129af74619fb4521ae81adcfe9466452",
       "Type": "Box",
-      "Name": "Box_2",
+      "Name": "BoxTooDrop",
       "Scripts": [],
       "Parent": null,
       "LocalPosition": {
-        "X": -3,
-        "Y": 0.78782034,
-        "Z": -1
+        "X": -3.2205412,
+        "Y": 2.2838984,
+        "Z": -0.6771376
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -421,6 +428,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": true,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -478,6 +486,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -535,6 +544,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 0.8,
         "Y": 4,
@@ -592,6 +602,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 0.8,
         "Y": 4,
@@ -649,6 +660,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 0.8,
         "Y": 4,
@@ -706,6 +718,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 0.8,
         "Y": 4,
@@ -763,6 +776,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 4,
         "Y": 0.5,
@@ -820,6 +834,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -877,6 +892,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -934,6 +950,7 @@
         "Y": 1,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -996,6 +1013,7 @@
         "Y": 9.43,
         "Z": 1
       },
+      "CanPickUp": false,
       "Size": {
         "X": 6.41,
         "Y": 0.01,

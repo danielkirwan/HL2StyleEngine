@@ -1,22 +1,28 @@
-﻿using Engine.Runtime.Entities.Interfaces;
+﻿using Engine.Physics.Collision;
+using Engine.Runtime.Entities.Interfaces;
 using System.Numerics;
+using Engine.Physics.Dynamics;
 
 namespace Engine.Runtime.Entities
 {
     public sealed class Entity
     {
         public string Id { get; }
-        public string Type { get; }        // optional, useful for debugging
+        public string Type { get; }       
         public string Name { get; set; }
 
         public Vector3 BoxSize = Vector3.One;
         public Vector4 BoxColor = new Vector4(0.6f, 0.6f, 0.6f, 1f);
 
-        public string? ParentId { get; set; } // optional (or keep parent reference later)
+        public string? ParentId { get; set; } 
 
         public Transform Transform;
 
         public readonly List<IComponent> Components = new();
+
+        public bool IsDynamic;
+        public bool CanPickUp = false;
+        public BoxBody? Body;
 
         public Entity(string id, string type, string name)
         {

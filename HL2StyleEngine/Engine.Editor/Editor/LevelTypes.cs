@@ -48,6 +48,9 @@ public sealed class LevelEntityDef
     [JsonPropertyName("LocalScale")]
     public SerVec3 LocalScale { get; set; } = Vector3.One;
 
+    [JsonPropertyName("CanPickUp")]
+    public bool CanPickUp { get; set; } = false;
+
     public SerVec3 Size { get; set; } = new(1, 1, 1);
     public SerVec4 Color { get; set; } = new(0.6f, 0.6f, 0.6f, 1f);
 

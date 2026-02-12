@@ -684,6 +684,25 @@ public sealed class LevelEditorController
             EndEditIfAny();
         }
 
+        // ----------------------------
+        // Gameplay / interaction flags
+        // ----------------------------
+        ImGui.Separator();
+        ImGui.Text("Gameplay");
+
+        bool canPickUp = ent.CanPickUp;
+        if (ImGui.Checkbox("Can Pick Up", ref canPickUp))
+        {
+            BeginEdit();
+            ent.CanPickUp = canPickUp;
+            Dirty = true;
+
+            // keep runtime mirrors in sync if you rely on them during play
+            RebuildRuntimeFromLevel();
+
+            EndEditIfAny();
+        }
+
         ImGui.Separator();
         ImGui.Text("Transform");
 
@@ -783,6 +802,7 @@ public sealed class LevelEditorController
 
         ImGui.End();
     }
+
 
     private void DrawScriptsInspector(LevelEntityDef ent)
     {
@@ -903,7 +923,16 @@ public sealed class LevelEditorController
             Vector3 size = ent.Size;
             if (ImGui.DragFloat3("Size", ref size, 0.05f))
             {
+                bool canPickUp = ent.CanPickUp;
                 BeginEdit();
+                if (ImGui.Checkbox("Can Pick Up", ref canPickUp))
+                {
+                    ent.CanPickUp = canPickUp;
+                    Dirty = true;
+                    RebuildRuntimeFromLevel();
+                }
+
+                
 
                 size.X = MathF.Max(0.01f, size.X);
                 size.Y = MathF.Max(0.01f, size.Y);

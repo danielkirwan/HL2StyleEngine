@@ -69,6 +69,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         public Vector3 Delta;
         public Vector3 PrevPos;
         public bool IsMovingPlatform;
+        public bool IsSolid;
+        public bool IsRigidBody;
     }
     private readonly List<RuntimeRenderBox> _runtimeRenderBoxes = new();
 
@@ -285,6 +287,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Transform.Position = def.LocalPosition;
             e.Transform.RotationEulerDeg = def.LocalRotationEulerDeg;
             e.Transform.Scale = def.LocalScale;
+
             e.BoxSize = (Vector3)def.Size;
             e.BoxColor = (Vector4)def.Color;
 
@@ -300,10 +303,43 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 }
             }
 
+            // -----------------------------
+            // Create a dynamic body ONLY for pickup boxes (for now)
+            // -----------------------------
+            if (def.Type == EntityTypes.Box && def.CanPickUp)
+            {
+                // AABB is center-based, your Transform.Position is also treated as center in rendering.
+                // So body.Center = entity position.
+                Vector3 scale = (Vector3)def.LocalScale;
+                Vector3 size = (Vector3)def.Size;
+
+                size.X = MathF.Max(0.01f, size.X);
+                size.Y = MathF.Max(0.01f, size.Y);
+                size.Z = MathF.Max(0.01f, size.Z);
+
+                scale.X = MathF.Max(0.01f, scale.X);
+                scale.Y = MathF.Max(0.01f, scale.Y);
+                scale.Z = MathF.Max(0.01f, scale.Z);
+
+                Vector3 worldSize = Mul(size, scale);
+                Vector3 half = worldSize * 0.5f;
+
+                e.Body = new Engine.Physics.Dynamics.BoxBody(e.Transform.Position, half)
+                {
+                    Mass = def.Mass,
+                    UseGravity = true,
+                    IsKinematic = false
+                };
+            }
+            else
+            {
+                e.Body = null;
+            }
+
             _runtimeEntities.Add(e);
 
             // -----------------------------
-            // Decide if this should be drawn/collidable in play
+            // Render list (what you draw as boxes)
             // -----------------------------
             bool isBoxLike =
                 def.Type == EntityTypes.Box ||
@@ -312,13 +348,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             bool hasMovingPlatform =
                 def.Scripts.Any(sd => sd.Type == "MovingPlatform");
 
-            // If it’s box-like OR it has MovingPlatform, we render/collide it.
             if (isBoxLike || hasMovingPlatform)
             {
                 Vector3 size = (Vector3)def.Size;
                 Vector3 scale = (Vector3)def.LocalScale;
 
-                // prevent zero size making it “invisible”
                 size.X = MathF.Max(0.01f, size.X);
                 size.Y = MathF.Max(0.01f, size.Y);
                 size.Z = MathF.Max(0.01f, size.Z);
@@ -332,7 +366,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                     Entity = e,
                     Size = Mul(size, scale),
                     Color = hasMovingPlatform ? new Vector4(1f, 0.2f, 1f, 1f) : (Vector4)def.Color,
-                    IsMovingPlatform = hasMovingPlatform,   
+                    IsMovingPlatform = hasMovingPlatform,
                     PrevPos = e.Transform.Position,
                     Delta = Vector3.Zero
                 };
@@ -341,7 +375,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
     }
 
-    private void BuildRuntimeCollidersThisFrame()
+
+
+    private void BuildRuntimeCollidersThisFrame(bool includeDynamicBodies)
     {
         _runtimeWorldColliders.Clear();
 
@@ -349,12 +385,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         {
             var rr = _runtimeRenderBoxes[i];
 
+            // If it's a dynamic pickup box, do NOT add it to static world colliders.
+            if (!includeDynamicBodies && rr.Entity.Body != null)
+                continue;
+
             Vector3 pos = rr.Entity.Transform.Position;
             Vector3 half = rr.Size * 0.5f;
 
             _runtimeWorldColliders.Add(new Engine.Physics.Collision.Aabb(pos - half, pos + half));
         }
     }
+
+
 
     private void SnapshotPlatformPrevPositions()
     {
@@ -512,10 +554,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _jumpPressedThisFrame = false;
         }
 
-        // 1) Snapshot platform prev positions (fixed step)
+        // 1) Platforms: snapshot prev positions (fixed step)
         SnapshotPlatformPrevPositions();
 
-        // 2) Update runtime components USING fixedDt (platform moves in fixed time)
+        // 2) Update components in FIXED time (moving platforms should be deterministic)
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var ent = _runtimeEntities[i];
@@ -523,21 +565,38 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 ent.Components[j].Update(fixedDt);
         }
 
-        // 3) Compute platform deltas from prev -> current
+        // 3) Compute platform deltas from prev -> current (for carry)
         ComputePlatformDeltasFromPrev();
 
-        // 4) Build colliders from current positions
-        BuildRuntimeCollidersThisFrame();
+        // 4) Build world colliders EXCLUDING dynamic bodies
+        BuildRuntimeCollidersThisFrame(includeDynamicBodies: false);
 
-        // 5) Step player against those colliders
+        // 5) Step dynamic pickup boxes vs world
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            var e = _runtimeEntities[i];
+            if (e.Body == null) continue;
+
+            e.Body.Step(fixedDt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+
+
+            // copy back to transform
+            e.Transform.Position = e.Body.Center;
+        }
+
+        // 6) Rebuild colliders again (still excluding dynamics)
+        // (platforms may have moved; dynamics moved too but we still exclude them)
+        BuildRuntimeCollidersThisFrame(includeDynamicBodies: false);
+
+        // 7) Step player
         _motor.Step(fixedDt, _wishDir, _wishSpeed, _runtimeWorldColliders);
 
-        // 6) If grounded on a moving platform, carry player by platform delta
+        // 8) Carry on moving platform (your existing approach)
         if (_motor.Grounded && TryGetGroundPlatformDelta(out var platDelta))
         {
             _motor.Position += platDelta;
 
-            // IMPORTANT: re-resolve collisions after carry to avoid pops/jitter
+            // Re-resolve after carry to avoid tiny penetration pops
             Vector3 extents = new Vector3(_motor.Radius, _motor.HalfHeight, _motor.Radius);
             Vector3 center = _motor.Position + new Vector3(0f, _motor.HalfHeight, 0f);
 
@@ -545,15 +604,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 center, _motor.Velocity, extents, _runtimeWorldColliders);
 
             _motor.Velocity = newVel;
-            // grounded stays true unless something weird happens
-            // (if you prefer, force true here)
-            // _motor.Grounded = grounded;
             _motor.Position = newCenter - new Vector3(0f, _motor.HalfHeight, 0f);
+            // (Optional) force grounded true if you want:
+            // if (grounded) ...
         }
 
         _editor.TickTriggers(_motor.Position);
         _camera.Position = _motor.Position + new Vector3(0, _movement.EyeHeight, 0);
     }
+
 
     public void DrawImGui()
     {
@@ -883,6 +942,23 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         _world.DrawBox(renderer.CommandList, model, color);
     }
+
+    private void BuildRuntimeCollidersThisFrame(Entity? exclude = null)
+    {
+        _runtimeWorldColliders.Clear();
+
+        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        {
+            var rr = _runtimeRenderBoxes[i];
+            if (exclude != null && rr.Entity == exclude) continue;
+
+            Vector3 pos = rr.Entity.Transform.Position;
+            Vector3 half = rr.Size * 0.5f;
+
+            _runtimeWorldColliders.Add(new Aabb(pos - half, pos + half));
+        }
+    }
+
 
     public void Dispose()
     {
