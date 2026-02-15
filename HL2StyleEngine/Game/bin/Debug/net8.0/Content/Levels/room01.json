@@ -486,7 +486,7 @@
         "Y": 1,
         "Z": 1
       },
-      "CanPickUp": false,
+      "CanPickUp": true,
       "Size": {
         "X": 1,
         "Y": 1,

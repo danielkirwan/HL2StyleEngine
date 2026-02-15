@@ -20,6 +20,12 @@ public sealed class InputState
 
     private Vector2 _lastMousePos;
     private bool _hasLastMousePos;
+    public bool LeftMousePressedThisFrame { get; private set; }
+    public bool RightMousePressedThisFrame { get; private set; }
+
+    private bool _prevLeftMouseDown;
+    private bool _prevRightMouseDown;
+
 
     public bool RelativeMouseMode { get; set; }
     private Vector2 _pendingRelativeDelta;
@@ -242,6 +248,12 @@ public sealed class InputState
 
             _pendingRelativeDelta = Vector2.Zero;
         }
+        LeftMousePressedThisFrame = LeftMouseDown && !_prevLeftMouseDown;
+        RightMousePressedThisFrame = RightMouseDown && !_prevRightMouseDown;
+
+        _prevLeftMouseDown = LeftMouseDown;
+        _prevRightMouseDown = RightMouseDown;
+
 
         // Active device switching based on KB/M usage
         if (_pressedThisFrame.Count > 0)
