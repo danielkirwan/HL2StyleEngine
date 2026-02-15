@@ -258,6 +258,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             if (_jump.Pressed)
                 _jumpPressedThisFrame = true;
+
+            if (_inputState.WasPressed(Key.E))
+                Console.WriteLine("[Pickup] E pressed");
+
+            if (_inputState.LeftMouseDown) // or WasPressed if you add it
+                Console.WriteLine("[Pickup] LMB down");
         }
     }
 
@@ -365,7 +371,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.BoxSize = (Vector3)def.Size;
             e.BoxColor = (Vector4)def.Color;
 
-            // Attach scripts
+            e.CanPickUp = def.CanPickUp;
+
             foreach (var s in def.Scripts)
             {
                 if (_scriptRegistry.TryCreate(s.Type, e, out var comp))
@@ -377,13 +384,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 }
             }
 
-            // -----------------------------
             // Create a dynamic body ONLY for pickup boxes (for now)
-            // -----------------------------
             if (def.Type == EntityTypes.Box && def.CanPickUp)
             {
-                // AABB is center-based, your Transform.Position is also treated as center in rendering.
-                // So body.Center = entity position.
                 Vector3 scale = (Vector3)def.LocalScale;
                 Vector3 size = (Vector3)def.Size;
 
@@ -412,9 +415,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             _runtimeEntities.Add(e);
 
-            // -----------------------------
-            // Render list (what you draw as boxes)
-            // -----------------------------
             bool isBoxLike =
                 def.Type == EntityTypes.Box ||
                 def.Type == EntityTypes.RigidBody;
@@ -444,12 +444,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                     PrevPos = e.Transform.Position,
                     Delta = Vector3.Zero
                 };
+
                 _runtimeRenderBoxes.Add(rr);
             }
         }
     }
-
-
 
     private void BuildRuntimeCollidersThisFrame(bool includeDynamicBodies, bool includeHeldBodies)
     {
@@ -1036,15 +1035,26 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         Entity? best = null;
         float bestT = maxDist;
 
+        Console.WriteLine($"[Pickup.Raycast] origin={origin} dir={dir} maxDist={maxDist}");
+        Console.WriteLine($"[Pickup.Raycast] runtimeRenderBoxes={_runtimeRenderBoxes.Count}");
+
         for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
         {
             var rr = _runtimeRenderBoxes[i];
             var e = rr.Entity;
 
-            if (e.Body == null) continue;          
-            if (!e.CanPickUp) continue;            
-            if (e.IsHeld) continue;                
-            if (e.Body.IsKinematic) continue;      
+            if (!e.CanPickUp)
+                continue;
+
+
+            if (e.Body == null)
+            {
+                Console.WriteLine($"[Pickup.Raycast] {e.Name} CanPickUp=true but Body==null (not dynamic, can't pick up)");
+                continue;
+            }
+
+            if (e.IsHeld) continue;
+            if (e.Body.IsKinematic) continue;
             if (e.Body.Mass > _pickupMaxMass) continue;
 
             Vector3 pos = e.Transform.Position;
@@ -1053,6 +1063,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             if (Engine.Physics.Collision.Raycast.RayIntersectsAabb(ray, aabb, 0.05f, bestT, out float tHit))
             {
+                Console.WriteLine($"[Pickup.Raycast] HIT {e.Name} at t={tHit}");
                 bestT = tHit;
                 best = e;
             }
@@ -1063,6 +1074,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private void TryPickupDropThrow()
     {
+        
         bool throwPressed =
             _inputState.LeftMousePressedThisFrame ||
             RightTriggerPressedThisFrame();
@@ -1079,13 +1091,24 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (pickupPressed)
         {
+            Console.WriteLine($"[Pickup] Tick (held={(_held != null ? _held.Name : "null")})  editor={_editorEnabled} mouseCaptured={_ui.IsMouseCaptured}");
             if (_held != null)
                 DropHeld();
             else
             {
-                var hit = RaycastPickable(3.0f);
-                if (hit != null)
+                Console.WriteLine("[Pickup] Trying to raycast for pickable...");
+
+                var hit = RaycastPickable(maxDist: 3.0f);
+
+                if (hit == null)
+                {
+                    Console.WriteLine("[Pickup] RaycastPickable returned NULL (no hit)");
+                }
+                else
+                {
+                    Console.WriteLine($"[Pickup] Raycast hit entity: {hit.Name} canPickUp={hit.CanPickUp} hasBody={(hit.Body != null)} pos={hit.Transform.Position}");
                     PickUp(hit);
+                }
             }
         }
     }
@@ -1093,6 +1116,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private void PickUp(Entity e)
     {
+        Console.WriteLine($"[Pickup] PickUp({e.Name}) BEFORE: grav={e.Body?.UseGravity} kin={e.Body?.IsKinematic} vel={e.Body?.Velocity}");
+
         if (e.Body == null) return;
 
         _held = e;
@@ -1101,12 +1126,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         e.Body.IsKinematic = true;
         e.Body.UseGravity = false;
         e.Body.Velocity = Vector3.Zero;
+        Console.WriteLine($"[Pickup] PickUp({e.Name}) AFTER: grav={e.Body.UseGravity} kin={e.Body.IsKinematic} vel={e.Body.Velocity}");
+
     }
 
     private void DropHeld()
     {
         if (_held == null) return;
         var e = _held;
+
+        Console.WriteLine($"[Pickup] Drop({_held.Name})");
+
 
         if (e.Body != null)
         {

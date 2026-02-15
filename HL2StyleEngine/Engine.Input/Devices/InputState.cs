@@ -18,14 +18,15 @@ public sealed class InputState
     public bool RightMouseDown { get; private set; }
     public bool LeftMouseDown { get; private set; }
 
-    private Vector2 _lastMousePos;
-    private bool _hasLastMousePos;
+    // NEW: pressed-this-frame for mouse buttons
     public bool LeftMousePressedThisFrame { get; private set; }
     public bool RightMousePressedThisFrame { get; private set; }
 
     private bool _prevLeftMouseDown;
     private bool _prevRightMouseDown;
 
+    private Vector2 _lastMousePos;
+    private bool _hasLastMousePos;
 
     public bool RelativeMouseMode { get; set; }
     private Vector2 _pendingRelativeDelta;
@@ -43,7 +44,7 @@ public sealed class InputState
         _pendingRelativeDelta = Vector2.Zero;
     }
 
-    private IntPtr _controller; 
+    private IntPtr _controller;
     private int _controllerIndex = -1;
 
     private readonly Dictionary<Engine.Input.Actions.GamepadButton, bool> _padDown = new();
@@ -222,12 +223,19 @@ public sealed class InputState
             }
         }
 
-        // Mouse buttons
+        // Mouse buttons (down state)
         foreach (var me in snapshot.MouseEvents)
         {
             if (me.MouseButton == MouseButton.Right) RightMouseDown = me.Down;
             if (me.MouseButton == MouseButton.Left) LeftMouseDown = me.Down;
         }
+
+        // NEW: pressed this frame
+        LeftMousePressedThisFrame = LeftMouseDown && !_prevLeftMouseDown;
+        RightMousePressedThisFrame = RightMouseDown && !_prevRightMouseDown;
+
+        _prevLeftMouseDown = LeftMouseDown;
+        _prevRightMouseDown = RightMouseDown;
 
         MousePosition = snapshot.MousePosition;
 
@@ -248,12 +256,6 @@ public sealed class InputState
 
             _pendingRelativeDelta = Vector2.Zero;
         }
-        LeftMousePressedThisFrame = LeftMouseDown && !_prevLeftMouseDown;
-        RightMousePressedThisFrame = RightMouseDown && !_prevRightMouseDown;
-
-        _prevLeftMouseDown = LeftMouseDown;
-        _prevRightMouseDown = RightMouseDown;
-
 
         // Active device switching based on KB/M usage
         if (_pressedThisFrame.Count > 0)
