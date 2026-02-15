@@ -405,7 +405,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 {
                     Mass = def.Mass,
                     UseGravity = true,
-                    IsKinematic = false
+                    IsKinematic = false,
+                    Friction = def.Friction,
+                    Restitution = def.Restitution,
+
+                    // optional tuning:
+                    LinearDamping = 0.02f
                 };
             }
             else
@@ -1200,11 +1205,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         BuildRuntimeCollidersThisFrame(includeDynamicBodies: false, includeHeldBodies: true);
 
-        var (resolvedCenter, resolvedVel) = Engine.Physics.Collision.StaticCollision.ResolveDynamicAabb(
-            newCenter, v, b.HalfExtents, _runtimeWorldColliders);
+        var (resolvedCenter, resolvedVel, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicAabb(
+    newCenter, v, b.HalfExtents, _runtimeWorldColliders);
+
 
         b.Center = resolvedCenter;
-        b.Velocity = resolvedVel; // keep for spring continuity
+        b.Velocity = resolvedVel; 
 
         _held.Transform.Position = b.Center;
     }

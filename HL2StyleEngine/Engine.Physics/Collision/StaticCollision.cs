@@ -27,18 +27,18 @@ public static class StaticCollision
 
                 any = true;
 
-                float pushPosX = box.Max.X - player.Min.X; 
-                float pushNegX = player.Max.X - box.Min.X; 
+                float pushPosX = box.Max.X - player.Min.X;
+                float pushNegX = player.Max.X - box.Min.X;
                 float penX = MathF.Min(pushPosX, pushNegX);
                 float dirX = (pushPosX < pushNegX) ? +1f : -1f;
 
-                float pushPosY = box.Max.Y - player.Min.Y; 
-                float pushNegY = player.Max.Y - box.Min.Y; 
+                float pushPosY = box.Max.Y - player.Min.Y;
+                float pushNegY = player.Max.Y - box.Min.Y;
                 float penY = MathF.Min(pushPosY, pushNegY);
                 float dirY = (pushPosY < pushNegY) ? +1f : -1f;
 
-                float pushPosZ = box.Max.Z - player.Min.Z; 
-                float pushNegZ = player.Max.Z - box.Min.Z; 
+                float pushPosZ = box.Max.Z - player.Min.Z;
+                float pushNegZ = player.Max.Z - box.Min.Z;
                 float penZ = MathF.Min(pushPosZ, pushNegZ);
                 float dirZ = (pushPosZ < pushNegZ) ? +1f : -1f;
 
@@ -51,6 +51,7 @@ public static class StaticCollision
                 {
                     center.Y += dirY * penY;
 
+                    // only "grounded" when we get pushed UP and we were not moving upward
                     if (dirY > 0f && vel.Y <= 0f)
                     {
                         grounded = true;
@@ -75,64 +76,84 @@ public static class StaticCollision
 
         return (center, vel, grounded);
     }
-    public static (Vector3 center, Vector3 vel) ResolveDynamicAabb(
-    Vector3 center,
-    Vector3 vel,
-    Vector3 extents,
-    IReadOnlyList<Aabb> world,
-    int iterations = 6)
+
+    // --------------------------------
+    // DYNAMIC BODY (bounce + grounded)
+    // --------------------------------
+    public static (Vector3 center, Vector3 vel, bool grounded) ResolveDynamicAabb(
+        Vector3 center,
+        Vector3 vel,
+        Vector3 extents,
+        IReadOnlyList<Aabb> world,
+        float restitution = 0.05f,
+        int iterations = 6)
     {
+        bool grounded = false;
+
         for (int it = 0; it < iterations; it++)
         {
-            var boxAabb = Aabb.FromCenterExtents(center, extents);
+            var boxA = Aabb.FromCenterExtents(center, extents);
             bool any = false;
 
             for (int i = 0; i < world.Count; i++)
             {
-                var w = world[i];
-                if (!boxAabb.Overlaps(w)) continue;
+                var boxB = world[i];
+                if (!boxA.Overlaps(boxB)) continue;
 
                 any = true;
 
-                float pushPosX = w.Max.X - boxAabb.Min.X;
-                float pushNegX = boxAabb.Max.X - w.Min.X;
+                float pushPosX = boxB.Max.X - boxA.Min.X;
+                float pushNegX = boxA.Max.X - boxB.Min.X;
                 float penX = MathF.Min(pushPosX, pushNegX);
                 float dirX = (pushPosX < pushNegX) ? +1f : -1f;
 
-                float pushPosY = w.Max.Y - boxAabb.Min.Y;
-                float pushNegY = boxAabb.Max.Y - w.Min.Y;
+                float pushPosY = boxB.Max.Y - boxA.Min.Y;
+                float pushNegY = boxA.Max.Y - boxB.Min.Y;
                 float penY = MathF.Min(pushPosY, pushNegY);
                 float dirY = (pushPosY < pushNegY) ? +1f : -1f;
 
-                float pushPosZ = w.Max.Z - boxAabb.Min.Z;
-                float pushNegZ = boxAabb.Max.Z - w.Min.Z;
+                float pushPosZ = boxB.Max.Z - boxA.Min.Z;
+                float pushNegZ = boxA.Max.Z - boxB.Min.Z;
                 float penZ = MathF.Min(pushPosZ, pushNegZ);
                 float dirZ = (pushPosZ < pushNegZ) ? +1f : -1f;
 
-                // Push out along smallest penetration axis
                 if (penX <= penY && penX <= penZ)
                 {
                     center.X += dirX * penX;
-                    vel.X = 0f;
+
+                    if (dirX > 0f && vel.X < 0f) vel.X = -vel.X * restitution;
+                    else if (dirX < 0f && vel.X > 0f) vel.X = -vel.X * restitution;
                 }
                 else if (penY <= penX && penY <= penZ)
                 {
                     center.Y += dirY * penY;
-                    vel.Y = 0f;
+
+                    if (dirY > 0f)
+                        grounded = true;
+
+                    if (dirY > 0f && vel.Y < 0f) vel.Y = -vel.Y * restitution;
+                    else if (dirY < 0f && vel.Y > 0f) vel.Y = -vel.Y * restitution;
                 }
                 else
                 {
                     center.Z += dirZ * penZ;
-                    vel.Z = 0f;
+
+                    if (dirZ > 0f && vel.Z < 0f) vel.Z = -vel.Z * restitution;
+                    else if (dirZ < 0f && vel.Z > 0f) vel.Z = -vel.Z * restitution;
                 }
 
-                boxAabb = Aabb.FromCenterExtents(center, extents);
+                boxA = Aabb.FromCenterExtents(center, extents);
             }
 
             if (!any) break;
         }
 
-        return (center, vel);
-    }
+        // tiny bounce cleanup
+        const float minBounceSpeed = 0.15f;
+        if (MathF.Abs(vel.X) < minBounceSpeed) vel.X = 0f;
+        if (MathF.Abs(vel.Y) < minBounceSpeed) vel.Y = 0f;
+        if (MathF.Abs(vel.Z) < minBounceSpeed) vel.Z = 0f;
 
+        return (center, vel, grounded);
+    }
 }

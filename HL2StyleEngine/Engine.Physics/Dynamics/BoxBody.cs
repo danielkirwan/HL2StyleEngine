@@ -14,31 +14,67 @@ public sealed class BoxBody
     public bool UseGravity = true;
     public bool IsKinematic = false;
 
+    public float Friction = 0.8f;      
+    public float Restitution = 0.05f;  
+    public float LinearDamping = 0.02f;
+
     public BoxBody(Vector3 center, Vector3 halfExtents)
     {
         Center = center;
         HalfExtents = halfExtents;
+        Velocity = Vector3.Zero;
     }
 
-    public Aabb GetAabb() => Aabb.FromCenterExtents(Center, HalfExtents);
-
-    public void Step(float dt, IReadOnlyList<Aabb> world, float gravityY)
+    public void Step(float dt, IReadOnlyList<Aabb> world, float gravityY = 20f)
     {
         if (dt <= 0) return;
 
+        if (IsKinematic)
+            return;
+
         // Gravity
-        if (UseGravity && !IsKinematic)
+        if (UseGravity)
             Velocity = new Vector3(Velocity.X, Velocity.Y - gravityY * dt, Velocity.Z);
 
-        // Integrate
-        Center += Velocity * dt;
+        // Optional air drag (helps stop endless drifting)
+        if (LinearDamping > 0f)
+        {
+            float k = MathF.Max(0f, 1f - LinearDamping * dt);
+            Velocity *= k;
+        }
 
-        // Resolve overlaps
-        var (newCenter, newVel) = StaticCollision.ResolveDynamicAabb(
-            Center, Velocity, HalfExtents, world);
+        Vector3 newCenter = Center + Velocity * dt;
 
-        Center = newCenter;
-        Velocity = newVel;
+        var (resolvedCenter, resolvedVel, grounded) =
+            StaticCollision.ResolveDynamicAabb(
+                newCenter,
+                Velocity,
+                HalfExtents,
+                world,
+                restitution: Restitution);
+
+        Center = resolvedCenter;
+        Velocity = resolvedVel;
+
+        if (grounded && Friction > 0f)
+        {
+            Vector3 lateral = new Vector3(Velocity.X, 0f, Velocity.Z);
+            float speed = lateral.Length();
+
+            if (speed > 1e-5f)
+            {
+                float drop = Friction * gravityY * dt;
+                float newSpeed = speed - drop;
+                if (newSpeed < 0f) newSpeed = 0f;
+
+                float scale = newSpeed / speed;
+                lateral *= scale;
+
+                Velocity = new Vector3(lateral.X, Velocity.Y, lateral.Z);
+            }
+        }
     }
+
+    public Aabb GetAabb() => Aabb.FromCenterExtents(Center, HalfExtents);
 
 }
