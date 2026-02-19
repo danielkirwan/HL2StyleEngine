@@ -23,6 +23,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -81,6 +82,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 18,
         "Y": 0.2,
@@ -139,6 +141,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 18,
         "Y": 4,
@@ -197,6 +200,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 18,
         "Y": 4,
@@ -255,6 +259,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 0.4,
         "Y": 4,
@@ -313,6 +318,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 0.4,
         "Y": 4,
@@ -356,7 +362,7 @@
       "Scripts": [],
       "Parent": null,
       "LocalPosition": {
-        "X": 1.1762245,
+        "X": 1.1762247,
         "Y": 3.660353,
         "Z": 2.0207162
       },
@@ -371,6 +377,7 @@
         "Z": 1
       },
       "CanPickUp": true,
+      "MotionType": 1,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -414,9 +421,9 @@
       "Scripts": [],
       "Parent": null,
       "LocalPosition": {
-        "X": -3.2205412,
+        "X": -3.0818229,
         "Y": 2.2838984,
-        "Z": -0.6771376
+        "Z": -0.46335745
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -429,15 +436,16 @@
         "Z": 1
       },
       "CanPickUp": true,
+      "MotionType": 1,
       "Size": {
         "X": 1,
         "Y": 1,
         "Z": 1
       },
       "Color": {
-        "X": 0.6,
-        "Y": 0.45,
-        "Z": 0.25,
+        "X": 0.90686274,
+        "Y": 0.21337946,
+        "Z": 0,
         "W": 1
       },
       "YawDeg": 0,
@@ -472,9 +480,9 @@
       "Scripts": [],
       "Parent": null,
       "LocalPosition": {
-        "X": 0,
+        "X": -2.3841858E-07,
         "Y": 0.5,
-        "Z": -4
+        "Z": -4.0000005
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -487,6 +495,7 @@
         "Z": 1
       },
       "CanPickUp": true,
+      "MotionType": 1,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -545,6 +554,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 0.8,
         "Y": 4,
@@ -603,6 +613,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 0.8,
         "Y": 4,
@@ -661,6 +672,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 0.8,
         "Y": 4,
@@ -719,6 +731,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 0.8,
         "Y": 4,
@@ -777,6 +790,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 0,
       "Size": {
         "X": 4,
         "Y": 0.5,
@@ -835,6 +849,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 1,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -893,6 +908,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 1,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -951,6 +967,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 1,
       "Size": {
         "X": 1,
         "Y": 1,
@@ -1014,6 +1031,7 @@
         "Z": 1
       },
       "CanPickUp": false,
+      "MotionType": 2,
       "Size": {
         "X": 6.41,
         "Y": 0.01,

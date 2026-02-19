@@ -25,6 +25,8 @@ namespace Engine.Runtime.Entities
 
         public BoxBody? Body;
 
+        public MotionType MotionType = MotionType.Static;
+
         public Entity(string id, string type, string name)
         {
             Id = id;

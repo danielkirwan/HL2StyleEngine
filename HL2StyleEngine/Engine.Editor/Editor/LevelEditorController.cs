@@ -1,6 +1,7 @@
 ﻿using Editor.Editor;
 using Engine.Editor.Level;
 using Engine.Physics.Collision;
+using Engine.Physics.Dynamics;
 using Engine.Runtime.Entities;
 using ImGuiNET;
 using System.Numerics;
@@ -920,6 +921,34 @@ public sealed class LevelEditorController
     {
         if (ent.Type == EntityTypes.Box)
         {
+            // Motion type dropdown
+            var motion = ent.MotionType;
+            int motionIndex = (int)motion;
+
+            string[] motionLabels = { "Static", "Dynamic", "Kinematic" };
+
+            if (ImGui.Combo("Motion Type", ref motionIndex, motionLabels, motionLabels.Length))
+            {
+                BeginEdit();
+                ent.MotionType = (MotionType)motionIndex;
+                Dirty = true;
+                RebuildRuntimeFromLevel();
+                EndEditIfAny();
+            }
+
+            // Only show pickup if dynamic
+            if (ent.MotionType == MotionType.Dynamic)
+            {
+                bool canPick = ent.CanPickUp;
+                if (ImGui.Checkbox("Can Pick Up", ref canPick))
+                {
+                    BeginEdit();
+                    ent.CanPickUp = canPick;
+                    Dirty = true;
+                    EndEditIfAny();
+                }
+            }
+
             Vector3 size = ent.Size;
             if (ImGui.DragFloat3("Size", ref size, 0.05f))
             {

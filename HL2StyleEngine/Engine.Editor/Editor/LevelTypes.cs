@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using System.Text.Json.Serialization;
 using Engine.Core.Serialization;
+using Engine.Physics.Dynamics;
 
 namespace Engine.Editor.Level;
 
@@ -11,6 +12,7 @@ public sealed class LevelFile
     public List<LevelEntityDef> Entities { get; set; } = new();
 
     public List<BoxDef>? Boxes { get; set; }
+    
 }
 
 public static class EntityTypes
@@ -50,6 +52,9 @@ public sealed class LevelEntityDef
 
     [JsonPropertyName("CanPickUp")]
     public bool CanPickUp { get; set; } = false;
+
+    [JsonPropertyName("MotionType")]
+    public MotionType MotionType { get; set; } = MotionType.Static;
 
     public SerVec3 Size { get; set; } = new(1, 1, 1);
     public SerVec4 Color { get; set; } = new(0.6f, 0.6f, 0.6f, 1f);

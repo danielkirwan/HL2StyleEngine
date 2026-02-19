@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "MeCHDe0shwA=",
+  "dgSpecHash": "gl9UGgwnNng=",
   "success": true,
-  "projectFilePath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Input\\Engine.Input.csproj",
+  "projectFilePath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Input\\Engine.Input.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\danie\\.nuget\\packages\\microsoft.dotnet.platformabstractions\\2.0.3\\microsoft.dotnet.platformabstractions.2.0.3.nupkg.sha512",
     "C:\\Users\\danie\\.nuget\\packages\\microsoft.extensions.dependencymodel\\2.0.3\\microsoft.extensions.dependencymodel.2.0.3.nupkg.sha512",

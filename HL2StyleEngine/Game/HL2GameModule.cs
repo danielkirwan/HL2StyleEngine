@@ -372,6 +372,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.BoxColor = (Vector4)def.Color;
 
             e.CanPickUp = def.CanPickUp;
+            e.MotionType = def.MotionType;
 
             foreach (var s in def.Scripts)
             {
@@ -384,8 +385,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 }
             }
 
-            // Create a dynamic body ONLY for pickup boxes (for now)
-            if (def.Type == EntityTypes.Box && def.CanPickUp)
+            if (def.Type == EntityTypes.Box && def.MotionType == MotionType.Dynamic)
             {
                 Vector3 scale = (Vector3)def.LocalScale;
                 Vector3 size = (Vector3)def.Size;
@@ -401,22 +401,38 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 Vector3 worldSize = Mul(size, scale);
                 Vector3 half = worldSize * 0.5f;
 
-                e.Body = new Engine.Physics.Dynamics.BoxBody(e.Transform.Position, half)
+                e.Body = new BoxBody(e.Transform.Position, half)
                 {
                     Mass = def.Mass,
                     UseGravity = true,
                     IsKinematic = false,
                     Friction = def.Friction,
                     Restitution = def.Restitution,
-
-                    // optional tuning:
                     LinearDamping = 0.02f
+                };
+            }
+            else if (def.Type == EntityTypes.Box && def.MotionType == MotionType.Kinematic)
+            {
+                Vector3 scale = (Vector3)def.LocalScale;
+                Vector3 size = (Vector3)def.Size;
+
+                Vector3 worldSize = Mul(size, scale);
+                Vector3 half = worldSize * 0.5f;
+
+                e.Body = new BoxBody(e.Transform.Position, half)
+                {
+                    Mass = def.Mass,
+                    UseGravity = false,
+                    IsKinematic = true,
+                    Friction = def.Friction,
+                    Restitution = def.Restitution
                 };
             }
             else
             {
-                e.Body = null;
+                e.Body = null; // static
             }
+
 
             _runtimeEntities.Add(e);
 
@@ -464,25 +480,21 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             var rr = _runtimeRenderBoxes[i];
             var e = rr.Entity;
 
-            bool isDynamic = (e.Body != null);
+            bool isDynamic = (e.MotionType == MotionType.Dynamic);
 
-            // Exclude dynamics when building "static world" for dynamic stepping.
+            // Only exclude real dynamics here.
             if (!includeDynamicBodies && isDynamic)
                 continue;
 
-            // Exclude held bodies when we don't want the player to collide with held objects.
             if (!includeHeldBodies && e.IsHeld)
                 continue;
 
             Vector3 pos = e.Transform.Position;
             Vector3 half = rr.Size * 0.5f;
-            _runtimeWorldColliders.Add(new Engine.Physics.Collision.Aabb(pos - half, pos + half));
+
+            _runtimeWorldColliders.Add(new Aabb(pos - half, pos + half));
         }
     }
-
-
-
-
 
     private void SnapshotPlatformPrevPositions()
     {
@@ -624,81 +636,152 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     }
 
     public void FixedUpdate(float fixedDt)
-{
-    if (_editorEnabled)
-        return;
-
-    if (!_ui.IsMouseCaptured)
     {
-        _jumpPressedThisFrame = false;
-        return;
+        if (_editorEnabled)
+            return;
+
+        if (!_ui.IsMouseCaptured)
+        {
+            _jumpPressedThisFrame = false;
+            return;
+        }
+
+        if (_jumpPressedThisFrame)
+        {
+            _motor.PressJump();
+            _jumpPressedThisFrame = false;
+        }
+
+        // 0) Platforms: snapshot prev positions (fixed step)
+        SnapshotPlatformPrevPositions();
+
+        // 1) Update components (MovingPlatform sets Transform.Position here)
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            var ent = _runtimeEntities[i];
+            for (int j = 0; j < ent.Components.Count; j++)
+                ent.Components[j].Update(fixedDt);
+        }
+
+        // 2) If an entity is kinematic, drive its body from its transform
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            var e = _runtimeEntities[i];
+            if (e.Body == null) continue;
+
+            if (e.MotionType == MotionType.Kinematic)
+            {
+                e.Body.Center = e.Transform.Position;
+                e.Body.Velocity = Vector3.Zero;
+            }
+        }
+
+        // 3) Compute platform deltas from prev -> current
+        ComputePlatformDeltasFromPrev();
+
+        // 4) Build world colliders for dynamic stepping (STATIC + KINEMATIC only)
+        BuildRuntimeCollidersThisFrame(includeDynamicBodies: false, includeHeldBodies: true);
+
+        // 5) Step DYNAMIC bodies vs static world
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            var e = _runtimeEntities[i];
+            if (e.Body == null) continue;
+
+            if (e.IsHeld) continue;
+            if (e.MotionType != MotionType.Dynamic) continue;
+
+            e.Body.Step(fixedDt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+
+            if (TryGetPlatformDeltaForBody(e.Body, out var platformDelta))
+                e.Body.Center += platformDelta;
+
+            e.Transform.Position = e.Body.Center;
+        }
+
+        // 6) Update held object (spring + world collision)
+        FixedUpdateHeldObject(fixedDt);
+
+        // 7) Player collides with EVERYTHING (STATIC + KINEMATIC + DYNAMIC), except held
+        BuildRuntimeCollidersThisFrame(includeDynamicBodies: true, includeHeldBodies: false);
+
+        _motor.Step(fixedDt, _wishDir, _wishSpeed, _runtimeWorldColliders);
+
+        // 8) Push dynamic boxes Half-Life style
+        PushDynamicBoxesFromPlayer(fixedDt);
+
+        // 9) Player carry on moving platforms
+        if (_motor.Grounded && TryGetGroundPlatformDelta(out var platDelta))
+        {
+            _motor.Position += platDelta;
+
+            Vector3 extents = new Vector3(_motor.Radius, _motor.HalfHeight, _motor.Radius);
+            Vector3 center = _motor.Position + new Vector3(0f, _motor.HalfHeight, 0f);
+
+            var (newCenter, newVel, grounded) = Engine.Physics.Collision.StaticCollision.ResolvePlayerAabb(
+                center, _motor.Velocity, extents, _runtimeWorldColliders);
+
+            _motor.Velocity = newVel;
+            _motor.Position = newCenter - new Vector3(0f, _motor.HalfHeight, 0f);
+        }
+
+        _editor.TickTriggers(_motor.Position);
+        _camera.Position = _motor.Position + new Vector3(0, _movement.EyeHeight, 0);
     }
 
-    if (_jumpPressedThisFrame)
+
+
+    private void PushDynamicBoxesFromPlayer(float dt)
     {
-        _motor.PressJump();
-        _jumpPressedThisFrame = false;
+        Vector3 playerExt = new Vector3(_motor.Radius, _motor.HalfHeight, _motor.Radius);
+        Vector3 playerCenter = _motor.Position + new Vector3(0f, _motor.HalfHeight, 0f);
+        var playerAabb = Aabb.FromCenterExtents(playerCenter, playerExt);
+
+        Vector3 playerLatVel = new Vector3(_motor.Velocity.X, 0f, _motor.Velocity.Z);
+        float speed = playerLatVel.Length();
+        if (speed < 0.05f) return;
+
+        Vector3 playerDir = playerLatVel / speed;
+
+        const float pushStrength = 6.0f; // tune
+        const float maxAddedSpeed = 5.0f; // tune
+
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            var e = _runtimeEntities[i];
+            if (e.Body == null) continue;
+            if (e.MotionType != MotionType.Dynamic) continue;
+            if (e.IsHeld) continue;
+
+            var boxAabb = Aabb.FromCenterExtents(e.Body.Center, e.Body.HalfExtents);
+
+            if (!playerAabb.Overlaps(boxAabb))
+                continue;
+
+            // push direction from player -> box in XZ
+            Vector3 toBox = e.Body.Center - playerCenter;
+            toBox.Y = 0f;
+            if (toBox.LengthSquared() < 0.0001f) continue;
+            toBox = Vector3.Normalize(toBox);
+
+            // only push if player moving somewhat toward it
+            float toward = Vector3.Dot(playerDir, toBox);
+            if (toward <= 0.1f) continue;
+
+            Vector3 add = toBox * (pushStrength * toward);
+
+            Vector3 v = e.Body.Velocity;
+            v.Y = e.Body.Velocity.Y;
+
+            Vector3 newLat = new Vector3(v.X, 0f, v.Z) + add;
+
+            float newLatSpeed = newLat.Length();
+            if (newLatSpeed > maxAddedSpeed)
+                newLat = newLat / newLatSpeed * maxAddedSpeed;
+
+            e.Body.Velocity = new Vector3(newLat.X, v.Y, newLat.Z);
+        }
     }
-
-    // Platforms snapshot/update/carry as you already do
-    SnapshotPlatformPrevPositions();
-
-    for (int i = 0; i < _runtimeEntities.Count; i++)
-    {
-        var ent = _runtimeEntities[i];
-        for (int j = 0; j < ent.Components.Count; j++)
-            ent.Components[j].Update(fixedDt);
-    }
-
-    ComputePlatformDeltasFromPrev();
-
-    // 1) Step dynamic bodies vs static world
-    BuildRuntimeCollidersThisFrame(includeDynamicBodies: false, includeHeldBodies: true);
-
-    for (int i = 0; i < _runtimeEntities.Count; i++)
-    {
-        var e = _runtimeEntities[i];
-        if (e.Body == null) continue;
-
-        // Held bodies are controlled separately
-        if (e.IsHeld) continue;
-
-        e.Body.Step(fixedDt, _runtimeWorldColliders, gravityY: _movement.Gravity);
-
-        if (TryGetPlatformDeltaForBody(e.Body, out var platformDelta))
-            e.Body.Center += platformDelta;
-
-        e.Transform.Position = e.Body.Center;
-    }
-
-    // 2) Update held object (spring + world collision)
-    FixedUpdateHeldObject(fixedDt);
-
-    // 3) Player collides with everything INCLUDING dynamic boxes, EXCEPT held
-    BuildRuntimeCollidersThisFrame(includeDynamicBodies: true, includeHeldBodies: false);
-
-    _motor.Step(fixedDt, _wishDir, _wishSpeed, _runtimeWorldColliders);
-
-    // 4) Player carry on moving platforms (your existing carry code)
-    if (_motor.Grounded && TryGetGroundPlatformDelta(out var platDelta))
-    {
-        _motor.Position += platDelta;
-
-        Vector3 extents = new Vector3(_motor.Radius, _motor.HalfHeight, _motor.Radius);
-        Vector3 center = _motor.Position + new Vector3(0f, _motor.HalfHeight, 0f);
-
-        var (newCenter, newVel, grounded) = Engine.Physics.Collision.StaticCollision.ResolvePlayerAabb(
-            center, _motor.Velocity, extents, _runtimeWorldColliders);
-
-        _motor.Velocity = newVel;
-        _motor.Position = newCenter - new Vector3(0f, _motor.HalfHeight, 0f);
-    }
-
-    _editor.TickTriggers(_motor.Position);
-    _camera.Position = _motor.Position + new Vector3(0, _movement.EyeHeight, 0);
-}
-
-
 
 
     public void DrawImGui()
@@ -1117,8 +1200,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             }
         }
     }
-
-
     private void PickUp(Entity e)
     {
         Console.WriteLine($"[Pickup] PickUp({e.Name}) BEFORE: grav={e.Body?.UseGravity} kin={e.Body?.IsKinematic} vel={e.Body?.Velocity}");
