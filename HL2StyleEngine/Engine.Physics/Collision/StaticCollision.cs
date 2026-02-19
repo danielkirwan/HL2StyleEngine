@@ -129,10 +129,14 @@ public static class StaticCollision
                     center.Y += dirY * penY;
 
                     if (dirY > 0f)
+                    {
                         grounded = true;
-
-                    if (dirY > 0f && vel.Y < 0f) vel.Y = -vel.Y * restitution;
-                    else if (dirY < 0f && vel.Y > 0f) vel.Y = -vel.Y * restitution;
+                        vel.Y = 0f; // no bounce on ground/platform
+                    }
+                    else if (dirY < 0f && vel.Y > 0f)
+                    {
+                        vel.Y = -vel.Y * restitution;
+                    }
                 }
                 else
                 {

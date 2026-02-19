@@ -72,6 +72,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private float _throwSpeed = 12f;
     private float _pickupMaxMass = 25f;
 
+    private int _physicsMaxSubsteps = 12;
+    private float _physicsMaxStep = 1f / 120f;
+
     private sealed class RuntimeRenderBox
     {
         public Entity Entity = null!;
@@ -679,27 +682,45 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         // 3) Compute platform deltas from prev -> current
         ComputePlatformDeltasFromPrev();
 
-        // 4) Build world colliders for dynamic stepping (STATIC + KINEMATIC only)
-        BuildRuntimeCollidersThisFrame(includeDynamicBodies: false, includeHeldBodies: true);
+        float remaining = fixedDt;
 
-        // 5) Step DYNAMIC bodies vs static world
-        for (int i = 0; i < _runtimeEntities.Count; i++)
+        for (int step = 0; step < _physicsMaxSubsteps && remaining > 0f; step++)
         {
-            var e = _runtimeEntities[i];
-            if (e.Body == null) continue;
+            // If we're on the last allowed substep, eat ALL remaining time.
+            float dt = (step == _physicsMaxSubsteps - 1)
+                ? remaining
+                : MathF.Min(_physicsMaxStep, remaining);
 
-            if (e.IsHeld) continue;
-            if (e.MotionType != MotionType.Dynamic) continue;
+            remaining -= dt;
 
-            e.Body.Step(fixedDt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+            BuildRuntimeCollidersThisFrame(includeDynamicBodies: false, includeHeldBodies: true);
 
-            if (TryGetPlatformDeltaForBody(e.Body, out var platformDelta))
-                e.Body.Center += platformDelta;
+            for (int i = 0; i < _runtimeEntities.Count; i++)
+            {
+                var e = _runtimeEntities[i];
+                if (e.Body == null) continue;
+                if (e.IsHeld) continue;
+                if (e.MotionType != MotionType.Dynamic) continue;
 
-            e.Transform.Position = e.Body.Center;
+                e.Body.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+
+                if (TryGetPlatformDeltaForBody(e.Body, out var platformDelta))
+                {
+                    e.Body.Center += platformDelta;
+
+                    // cancel downward velocity when riding platform
+                    if (e.Body.Velocity.Y < 0f)
+                        e.Body.Velocity = new Vector3(e.Body.Velocity.X, 0f, e.Body.Velocity.Z);
+                }
+
+                e.Transform.Position = e.Body.Center;
+            }
+
+            ResolveDynamicDynamic(iterations: 2);
         }
 
-        ResolveDynamicDynamic(iterations: 3);
+
+        //ResolveDynamicDynamic(iterations: 3);
 
         // 6) Update held object (spring + world collision)
         FixedUpdateHeldObject(fixedDt);
