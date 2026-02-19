@@ -699,6 +699,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Transform.Position = e.Body.Center;
         }
 
+        ResolveDynamicDynamic(iterations: 3);
+
         // 6) Update held object (spring + world collision)
         FixedUpdateHeldObject(fixedDt);
 
@@ -1295,6 +1297,138 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         _held.Transform.Position = b.Center;
     }
+
+    private static bool ComputeAabbContact(Aabb a, Aabb b, out Vector3 normal, out float penetration)
+    {
+        normal = Vector3.Zero;
+        penetration = 0f;
+
+        if (!a.Overlaps(b))
+            return false;
+
+        Vector3 aCenter = a.Center;
+        Vector3 bCenter = b.Center;
+
+        float aEx = (a.Max.X - a.Min.X) * 0.5f;
+        float aEy = (a.Max.Y - a.Min.Y) * 0.5f;
+        float aEz = (a.Max.Z - a.Min.Z) * 0.5f;
+
+        float bEx = (b.Max.X - b.Min.X) * 0.5f;
+        float bEy = (b.Max.Y - b.Min.Y) * 0.5f;
+        float bEz = (b.Max.Z - b.Min.Z) * 0.5f;
+
+        Vector3 d = bCenter - aCenter;
+
+        float ox = (aEx + bEx) - MathF.Abs(d.X);
+        float oy = (aEy + bEy) - MathF.Abs(d.Y);
+        float oz = (aEz + bEz) - MathF.Abs(d.Z);
+
+        // smallest axis
+        if (ox <= oy && ox <= oz)
+        {
+            penetration = ox;
+            normal = (d.X >= 0f) ? Vector3.UnitX : -Vector3.UnitX;
+        }
+        else if (oy <= ox && oy <= oz)
+        {
+            penetration = oy;
+            normal = (d.Y >= 0f) ? Vector3.UnitY : -Vector3.UnitY;
+        }
+        else
+        {
+            penetration = oz;
+            normal = (d.Z >= 0f) ? Vector3.UnitZ : -Vector3.UnitZ;
+        }
+
+        return penetration > 0f;
+    }
+
+    private void ResolveDynamicDynamic(int iterations = 3)
+    {
+        // gather indices for dynamic bodies (skip held)
+        Span<int> dyn = stackalloc int[_runtimeEntities.Count];
+        int dynCount = 0;
+
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            var e = _runtimeEntities[i];
+            if (e.Body == null) continue;
+            if (e.IsHeld) continue;
+            if (e.MotionType != MotionType.Dynamic) continue;
+            dyn[dynCount++] = i;
+        }
+
+        if (dynCount <= 1) return;
+
+        for (int it = 0; it < iterations; it++)
+        {
+            for (int ai = 0; ai < dynCount; ai++)
+            {
+                var A = _runtimeEntities[dyn[ai]];
+                var aBody = A.Body!;
+
+                for (int bi = ai + 1; bi < dynCount; bi++)
+                {
+                    var B = _runtimeEntities[dyn[bi]];
+                    var bBody = B.Body!;
+
+                    var aAabb = aBody.GetAabb();
+                    var bAabb = bBody.GetAabb();
+
+                    if (!ComputeAabbContact(aAabb, bAabb, out var n, out float pen))
+                        continue;
+
+                    float invA = aBody.Mass > 0f ? 1f / aBody.Mass : 0f;
+                    float invB = bBody.Mass > 0f ? 1f / bBody.Mass : 0f;
+                    float invSum = invA + invB;
+                    if (invSum <= 0f) continue;
+
+                    Vector3 corr = n * pen;
+                    aBody.Center -= corr * (invA / invSum);
+                    bBody.Center += corr * (invB / invSum);
+
+                    Vector3 rv = bBody.Velocity - aBody.Velocity;
+                    float relN = Vector3.Dot(rv, n);
+
+                    // only if moving into each other
+                    if (relN < 0f)
+                    {
+                        float e = MathF.Min(aBody.Restitution, bBody.Restitution);
+
+                        float j = -(1f + e) * relN / invSum;
+                        Vector3 impulse = j * n;
+
+                        aBody.Velocity -= impulse * invA;
+                        bBody.Velocity += impulse * invB;
+
+                        // simple friction
+                        Vector3 rv2 = bBody.Velocity - aBody.Velocity;
+                        Vector3 t = rv2 - Vector3.Dot(rv2, n) * n;
+
+                        float tLen = t.Length();
+                        if (tLen > 1e-6f)
+                        {
+                            t /= tLen;
+
+                            float mu = MathF.Min(aBody.Friction, bBody.Friction);
+                            float jt = -Vector3.Dot(rv2, t) / invSum;
+
+                            float maxF = mu * j;
+                            jt = Math.Clamp(jt, -maxF, +maxF);
+
+                            Vector3 frImpulse = jt * t;
+                            aBody.Velocity -= frImpulse * invA;
+                            bBody.Velocity += frImpulse * invB;
+                        }
+                    }
+
+                    A.Transform.Position = aBody.Center;
+                    B.Transform.Position = bBody.Center;
+                }
+            }
+        }
+    }
+
 
 
     public void Dispose()
