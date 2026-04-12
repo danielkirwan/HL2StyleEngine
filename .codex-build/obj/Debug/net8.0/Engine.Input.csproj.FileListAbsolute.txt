@@ -1,0 +1,6 @@
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\obj\Debug\net8.0\Engine.Input.csproj.AssemblyReference.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\obj\Debug\net8.0\Engine.Input.GeneratedMSBuildEditorConfig.editorconfig
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\obj\Debug\net8.0\Engine.Input.AssemblyInfoInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\obj\Debug\net8.0\Engine.Input.AssemblyInfo.cs
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\obj\Debug\net8.0\Engine.Input.csproj.CoreCompileInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\obj\Debug\net8.0\Engine.Input.sourcelink.json

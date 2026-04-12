@@ -1,0 +1,5 @@
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check\Engine.Physics\obj\Debug\net8.0\Engine.Physics.GeneratedMSBuildEditorConfig.editorconfig
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check\Engine.Physics\obj\Debug\net8.0\Engine.Physics.AssemblyInfoInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check\Engine.Physics\obj\Debug\net8.0\Engine.Physics.AssemblyInfo.cs
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check\Engine.Physics\obj\Debug\net8.0\Engine.Physics.csproj.CoreCompileInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check\Engine.Physics\obj\Debug\net8.0\Engine.Physics.sourcelink.json

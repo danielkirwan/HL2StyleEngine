@@ -248,6 +248,121 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
     }
 
+    private static bool IsSphereShape(string? shape)
+        => string.Equals(shape, "Sphere", StringComparison.OrdinalIgnoreCase);
+
+    private static RuntimeShapeKind GetRigidBodyShape(LevelEntityDef def)
+        => IsSphereShape(def.Shape) ? RuntimeShapeKind.Sphere : RuntimeShapeKind.Box;
+
+    private static float GetScaledSphereRadius(LevelEntityDef def, bool clampScale)
+    {
+        float radius = clampScale ? MathF.Max(0.01f, def.Radius) : def.Radius;
+        Vector3 scale = Abs((Vector3)def.LocalScale);
+
+        if (clampScale)
+            scale = ClampMin(scale, 0.01f);
+
+        float scaleMax = MathF.Max(scale.X, MathF.Max(scale.Y, scale.Z));
+        return radius * scaleMax;
+    }
+
+    private static bool HasPhysicsBody(Entity entity)
+        => entity.Physics.BoxBody != null || entity.Physics.SphereBody != null;
+
+    private static RuntimeShapeKind GetPhysicsBodyShape(Entity entity)
+    {
+        if (entity.Physics.BoxBody != null) return RuntimeShapeKind.Box;
+        if (entity.Physics.SphereBody != null) return RuntimeShapeKind.Sphere;
+        return RuntimeShapeKind.None;
+    }
+
+    private static bool TryGetPhysicsBodyAabb(Entity entity, out Aabb aabb)
+    {
+        if (entity.Physics.BoxBody != null)
+        {
+            aabb = entity.Physics.BoxBody.GetAabb();
+            return true;
+        }
+
+        if (entity.Physics.SphereBody != null)
+        {
+            aabb = entity.Physics.SphereBody.GetAabb();
+            return true;
+        }
+
+        aabb = default;
+        return false;
+    }
+
+    private static bool TryGetPhysicsBodyCenter(Entity entity, out Vector3 center)
+    {
+        if (entity.Physics.BoxBody != null)
+        {
+            center = entity.Physics.BoxBody.Center;
+            return true;
+        }
+
+        if (entity.Physics.SphereBody != null)
+        {
+            center = entity.Physics.SphereBody.Center;
+            return true;
+        }
+
+        center = default;
+        return false;
+    }
+
+    private static void SetPhysicsBodyCenter(Entity entity, Vector3 center)
+    {
+        if (entity.Physics.BoxBody != null)
+            entity.Physics.BoxBody.Center = center;
+
+        if (entity.Physics.SphereBody != null)
+            entity.Physics.SphereBody.Center = center;
+    }
+
+    private static Vector3 GetPhysicsBodyVelocity(Entity entity)
+    {
+        if (entity.Physics.BoxBody != null) return entity.Physics.BoxBody.Velocity;
+        if (entity.Physics.SphereBody != null) return entity.Physics.SphereBody.Velocity;
+        return Vector3.Zero;
+    }
+
+    private static void SetPhysicsBodyVelocity(Entity entity, Vector3 velocity)
+    {
+        if (entity.Physics.BoxBody != null)
+            entity.Physics.BoxBody.Velocity = velocity;
+
+        if (entity.Physics.SphereBody != null)
+            entity.Physics.SphereBody.Velocity = velocity;
+    }
+
+    private static bool IsPhysicsBodyKinematic(Entity entity)
+    {
+        if (entity.Physics.BoxBody != null) return entity.Physics.BoxBody.IsKinematic;
+        if (entity.Physics.SphereBody != null) return entity.Physics.SphereBody.IsKinematic;
+        return false;
+    }
+
+    private static float GetPhysicsBodyMass(Entity entity)
+    {
+        if (entity.Physics.BoxBody != null) return entity.Physics.BoxBody.Mass;
+        if (entity.Physics.SphereBody != null) return entity.Physics.SphereBody.Mass;
+        return 0f;
+    }
+
+    private void StepPhysicsBody(Entity entity, float dt)
+    {
+        if (entity.Physics.BoxBody != null)
+        {
+            entity.Physics.BoxBody.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+            return;
+        }
+
+        if (entity.Physics.SphereBody != null)
+            entity.Physics.SphereBody.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+    }
+
     private bool TryGetSupportingPlatformForBody(
         BoxBody body,
         bool usePreviousPlatformPosition,
@@ -322,7 +437,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     }
 
 
-    private bool TryGetGroundPlatformDelta(out Vector3 delta)
+    private bool TryGetGroundSupportDelta(out Vector3 delta)
     {
         delta = Vector3.Zero;
 
@@ -335,31 +450,35 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return false;
 
         const float yTolerance = 0.18f; // thin platform => larger tolerance
+        float bestTopY = float.NegativeInfinity;
 
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
-            if (!e.Collider.IsMovingPlatform) continue;
+            if (!e.Collider.Enabled || !e.Collider.IsSolid) continue;
+            if (e.IsHeld) continue;
 
-            Vector3 p = e.Transform.Position;
-            Vector3 half = e.Collider.HalfExtents;
-            float topY = p.Y + half.Y;
+            Aabb aabb = e.Collider.GetAabb(e.Transform.Position);
+            float topY = aabb.Max.Y;
 
             // Feet must be close to top surface
             if (feetY < topY - yTolerance || feetY > topY + yTolerance)
                 continue;
 
-            bool overlapX = (center.X + extents.X) >= (p.X - half.X) && (center.X - extents.X) <= (p.X + half.X);
-            bool overlapZ = (center.Z + extents.Z) >= (p.Z - half.Z) && (center.Z - extents.Z) <= (p.Z + half.Z);
+            bool overlapX = (center.X + extents.X) >= aabb.Min.X && (center.X - extents.X) <= aabb.Max.X;
+            bool overlapZ = (center.Z + extents.Z) >= aabb.Min.Z && (center.Z - extents.Z) <= aabb.Max.Z;
 
             if (!overlapX || !overlapZ)
                 continue;
 
+            if (topY < bestTopY)
+                continue;
+
+            bestTopY = topY;
             delta = e.Collider.Delta;
-            return true;
         }
 
-        return false;
+        return bestTopY > float.NegativeInfinity;
     }
 
     private void RebuildRuntimeWorld()
@@ -376,10 +495,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Transform.Scale = def.LocalScale;
             e.Render.Shape = RuntimeShapeKind.Box;
             e.Render.Size = GetScaledSize(def, clampComponents: false);
+            e.Render.Radius = GetScaledSphereRadius(def, clampScale: false);
             e.Render.Color = (Vector4)def.Color;
 
             e.CanPickUp = def.CanPickUp;
             e.Physics.MotionType = def.MotionType;
+            e.Physics.BoxBody = null;
+            e.Physics.SphereBody = null;
 
             foreach (var s in def.Scripts)
             {
@@ -392,7 +514,48 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 }
             }
 
-            if (def.Type == EntityTypes.Box && def.MotionType == MotionType.Dynamic)
+            bool isRigidBody = def.Type == EntityTypes.RigidBody;
+            bool isSphere = isRigidBody && GetRigidBodyShape(def) == RuntimeShapeKind.Sphere;
+            bool isBoxPhysicsShape =
+                (def.Type == EntityTypes.Box) ||
+                (isRigidBody && !isSphere);
+
+            if (isSphere)
+            {
+                float radius = GetScaledSphereRadius(def, clampScale: true);
+                e.Render.Shape = RuntimeShapeKind.Sphere;
+                e.Render.Size = new Vector3(radius * 2f);
+                e.Render.Radius = radius;
+            }
+
+            if (isSphere && def.MotionType == MotionType.Dynamic)
+            {
+                float radius = GetScaledSphereRadius(def, clampScale: true);
+
+                e.Physics.SphereBody = new SphereBody(e.Transform.Position, radius)
+                {
+                    Mass = def.Mass,
+                    UseGravity = true,
+                    IsKinematic = false,
+                    Friction = def.Friction,
+                    Restitution = def.Restitution,
+                    LinearDamping = 0.02f
+                };
+            }
+            else if (isSphere && def.MotionType == MotionType.Kinematic)
+            {
+                float radius = GetScaledSphereRadius(def, clampScale: true);
+
+                e.Physics.SphereBody = new SphereBody(e.Transform.Position, radius)
+                {
+                    Mass = def.Mass,
+                    UseGravity = false,
+                    IsKinematic = true,
+                    Friction = def.Friction,
+                    Restitution = def.Restitution
+                };
+            }
+            else if (isBoxPhysicsShape && def.MotionType == MotionType.Dynamic)
             {
                 Vector3 worldSize = GetScaledSize(def, clampComponents: true);
                 Vector3 half = worldSize * 0.5f;
@@ -407,7 +570,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                     LinearDamping = 0.02f
                 };
             }
-            else if (def.Type == EntityTypes.Box && def.MotionType == MotionType.Kinematic)
+            else if (isBoxPhysicsShape && def.MotionType == MotionType.Kinematic)
             {
                 Vector3 worldSize = GetScaledSize(def, clampComponents: true);
                 Vector3 half = worldSize * 0.5f;
@@ -421,23 +584,25 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                     Restitution = def.Restitution
                 };
             }
-            else
-            {
-                e.Physics.BoxBody = null;
-            }
-
-
-            bool isBoxLike =
-                def.Type == EntityTypes.Box ||
-                def.Type == EntityTypes.RigidBody;
 
             bool hasMovingPlatform =
                 def.Scripts.Any(sd => sd.Type == "MovingPlatform");
 
-            if (isBoxLike || hasMovingPlatform)
+            if (isSphere)
+            {
+                float radius = GetScaledSphereRadius(def, clampScale: true);
+                e.Collider.Shape = RuntimeShapeKind.Sphere;
+                e.Collider.Radius = radius;
+                e.Collider.Size = new Vector3(radius * 2f);
+                e.Collider.IsMovingPlatform = false;
+                e.Collider.PreviousPosition = e.Transform.Position;
+                e.Collider.Delta = Vector3.Zero;
+            }
+            else if (isBoxPhysicsShape || hasMovingPlatform)
             {
                 e.Collider.Shape = RuntimeShapeKind.Box;
                 e.Collider.Size = GetScaledSize(def, clampComponents: true);
+                e.Collider.Radius = 0.5f;
                 e.Collider.IsMovingPlatform = hasMovingPlatform;
                 e.Collider.PreviousPosition = e.Transform.Position;
                 e.Collider.Delta = Vector3.Zero;
@@ -471,22 +636,22 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
     }
 
-    private void SnapshotPlatformPrevPositions()
+    private void SnapshotRuntimeColliderPrevPositions()
     {
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
-            if (!e.Collider.IsMovingPlatform) continue;
+            if (!e.Collider.Enabled) continue;
             e.Collider.PreviousPosition = e.Transform.Position;
         }
     }
 
-    private void ComputePlatformDeltasFromPrev()
+    private void ComputeRuntimeColliderDeltasFromPrev()
     {
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
-            if (!e.Collider.IsMovingPlatform) continue;
+            if (!e.Collider.Enabled) continue;
 
             Vector3 cur = e.Transform.Position;
             e.Collider.Delta = cur - e.Collider.PreviousPosition;
@@ -512,6 +677,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             MathF.Max(min, value.X),
             MathF.Max(min, value.Y),
             MathF.Max(min, value.Z));
+
+    private static Vector3 Abs(Vector3 value)
+        => new(MathF.Abs(value.X), MathF.Abs(value.Y), MathF.Abs(value.Z));
 
     private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
 
@@ -647,7 +815,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
 
         // 0) Platforms: snapshot prev positions (fixed step)
-        SnapshotPlatformPrevPositions();
+        SnapshotRuntimeColliderPrevPositions();
 
         // 1) Update components (MovingPlatform sets Transform.Position here)
         for (int i = 0; i < _runtimeEntities.Count; i++)
@@ -661,17 +829,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
-            if (e.Physics.BoxBody == null) continue;
+            if (!HasPhysicsBody(e)) continue;
 
             if (e.Physics.MotionType == MotionType.Kinematic)
             {
-                e.Physics.BoxBody.Center = e.Transform.Position;
-                e.Physics.BoxBody.Velocity = Vector3.Zero;
+                SetPhysicsBodyCenter(e, e.Transform.Position);
+                SetPhysicsBodyVelocity(e, Vector3.Zero);
             }
         }
 
         // 3) Compute platform deltas from prev -> current
-        ComputePlatformDeltasFromPrev();
+        ComputeRuntimeColliderDeltasFromPrev();
 
         // 4) Carry supported dynamic boxes once per fixed tick.
         CarryDynamicBoxesOnMovingPlatforms();
@@ -692,13 +860,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             for (int i = 0; i < _runtimeEntities.Count; i++)
             {
                 var e = _runtimeEntities[i];
-                if (e.Physics.BoxBody == null) continue;
+                if (!HasPhysicsBody(e)) continue;
                 if (e.IsHeld) continue;
                 if (e.Physics.MotionType != MotionType.Dynamic) continue;
 
-                e.Physics.BoxBody.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+                StepPhysicsBody(e, dt);
 
                 if (ShouldStickToMovingPlatform(e) &&
+                    e.Physics.BoxBody != null &&
                     TryGetSupportingPlatformForBody(
                         e.Physics.BoxBody,
                         usePreviousPlatformPosition: false,
@@ -709,7 +878,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                         e.Physics.BoxBody.Velocity = new Vector3(e.Physics.BoxBody.Velocity.X, 0f, e.Physics.BoxBody.Velocity.Z);
                 }
 
-                e.Transform.Position = e.Physics.BoxBody.Center;
+                if (TryGetPhysicsBodyCenter(e, out Vector3 center))
+                    e.Transform.Position = center;
             }
 
             ResolveDynamicDynamic(iterations: 2);
@@ -727,10 +897,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _motor.Step(fixedDt, _wishDir, _wishSpeed, _runtimeWorldColliders);
 
         // 8) Push dynamic boxes Half-Life style
-        PushDynamicBoxesFromPlayer(fixedDt);
+        PushDynamicBodiesFromPlayer(fixedDt);
 
-        // 9) Player carry on moving platforms
-        if (_motor.Grounded && TryGetGroundPlatformDelta(out var platDelta))
+        // Refresh final support-body deltas after dynamics/player interaction.
+        ComputeRuntimeColliderDeltasFromPrev();
+
+        // 9) Player carry on moving supports (platform directly or a body riding it)
+        if (_motor.Grounded && TryGetGroundSupportDelta(out var platDelta))
         {
             _motor.Position += platDelta;
 
@@ -750,7 +923,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
 
 
-    private void PushDynamicBoxesFromPlayer(float dt)
+    private void PushDynamicBodiesFromPlayer(float dt)
     {
         Vector3 playerExt = new Vector3(_motor.Radius, _motor.HalfHeight, _motor.Radius);
         Vector3 playerCenter = _motor.Position + new Vector3(0f, _motor.HalfHeight, 0f);
@@ -768,29 +941,35 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
-            if (e.Physics.BoxBody == null) continue;
+            if (!HasPhysicsBody(e)) continue;
             if (e.Physics.MotionType != MotionType.Dynamic) continue;
             if (e.IsHeld) continue;
 
-            var boxAabb = Aabb.FromCenterExtents(e.Physics.BoxBody.Center, e.Physics.BoxBody.HalfExtents);
+            if (!TryGetPhysicsBodyAabb(e, out var bodyAabb) ||
+                !TryGetPhysicsBodyCenter(e, out Vector3 bodyCenter))
+            {
+                continue;
+            }
 
-            if (!playerAabb.Overlaps(boxAabb))
+            if (!playerAabb.Overlaps(bodyAabb))
                 continue;
 
-            // push direction from player -> box in XZ
-            Vector3 toBox = e.Physics.BoxBody.Center - playerCenter;
-            toBox.Y = 0f;
-            if (toBox.LengthSquared() < 0.0001f) continue;
-            toBox = Vector3.Normalize(toBox);
+            if (IsPlayerStandingOnDynamicBody(playerCenter, playerExt, bodyAabb))
+                continue;
+
+            // push direction from player -> body in XZ
+            Vector3 toBody = bodyCenter - playerCenter;
+            toBody.Y = 0f;
+            if (toBody.LengthSquared() < 0.0001f) continue;
+            toBody = Vector3.Normalize(toBody);
 
             // only push if player moving somewhat toward it
-            float toward = Vector3.Dot(playerDir, toBox);
+            float toward = Vector3.Dot(playerDir, toBody);
             if (toward <= 0.1f) continue;
 
-            Vector3 add = toBox * (pushStrength * toward);
+            Vector3 add = toBody * (pushStrength * toward);
 
-            Vector3 v = e.Physics.BoxBody.Velocity;
-            v.Y = e.Physics.BoxBody.Velocity.Y;
+            Vector3 v = GetPhysicsBodyVelocity(e);
 
             Vector3 newLat = new Vector3(v.X, 0f, v.Z) + add;
 
@@ -798,8 +977,35 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (newLatSpeed > maxAddedSpeed)
                 newLat = newLat / newLatSpeed * maxAddedSpeed;
 
-            e.Physics.BoxBody.Velocity = new Vector3(newLat.X, v.Y, newLat.Z);
+            SetPhysicsBodyVelocity(e, new Vector3(newLat.X, v.Y, newLat.Z));
         }
+    }
+
+    private bool IsPlayerStandingOnDynamicBody(Vector3 playerCenter, Vector3 playerExtents, Aabb bodyAabb)
+    {
+        if (_motor.Velocity.Y > 0.05f)
+            return false;
+
+        float feetY = playerCenter.Y - playerExtents.Y;
+        float bodyTopY = bodyAabb.Max.Y;
+
+        const float yTolerance = 0.18f;
+
+        if (feetY < bodyTopY - yTolerance || feetY > bodyTopY + yTolerance)
+            return false;
+
+        bool overlapX =
+            (playerCenter.X + playerExtents.X) >= bodyAabb.Min.X &&
+            (playerCenter.X - playerExtents.X) <= bodyAabb.Max.X;
+
+        bool overlapZ =
+            (playerCenter.Z + playerExtents.Z) >= bodyAabb.Min.Z &&
+            (playerCenter.Z - playerExtents.Z) <= bodyAabb.Max.Z;
+
+        if (!overlapX || !overlapZ)
+            return false;
+
+        return playerCenter.Y >= bodyAabb.Center.Y;
     }
 
 
@@ -941,7 +1147,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 if (i == _editor.SelectedEntityIndex)
                     color = new Vector4(1f, 1f, 0.1f, 1f);
 
-                DrawEditorBox(renderer, d.Position, d.Size, d.Rotation, color);
+                DrawPrimitive(renderer, d.IsSphere ? RuntimeShapeKind.Sphere : RuntimeShapeKind.Box, d.Position, d.Size, d.Rotation, color);
             }
 
             if (_editor.HasGizmo(out var xLine, out var xHandle,
@@ -969,7 +1175,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
                     if (_editor.TryGetEntityWorldTRS(i, out var pos, out var rot, out var scale))
                     {
-                        Vector3 size = Mul((Vector3)e.Size, scale);
+                        bool isSphere = e.Type == EntityTypes.RigidBody && IsSphereShape(e.Shape);
+                        Vector3 size = isSphere
+                            ? new Vector3(MathF.Max(0.01f, e.Radius) * MathF.Max(MathF.Abs(scale.X), MathF.Max(MathF.Abs(scale.Y), MathF.Abs(scale.Z))) * 2f)
+                            : Mul((Vector3)e.Size, scale);
+                        Quaternion colliderRot = isSphere ? Quaternion.Identity : rot;
 
                         bool selected = (i == _editor.SelectedEntityIndex);
 
@@ -977,12 +1187,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                             ? new Vector4(0.2f, 1f, 0.2f, 1f)
                             : new Vector4(0.1f, 0.8f, 0.1f, 1f);
 
-                        DrawWireObb(renderer, pos, size, rot, col, _editor.ColliderLineThickness);
+                        DrawWireObb(renderer, pos, size, colliderRot, col, _editor.ColliderLineThickness);
 
                         if (_editor.ShowColliderCorners)
                         {
                             float cs = selected ? _editor.CornerSize * 1.25f : _editor.CornerSize;
-                            DrawObbCorners(renderer, pos, size, rot, col, cs);
+                            DrawObbCorners(renderer, pos, size, colliderRot, col, cs);
                         }
                     }
                 }
@@ -1025,7 +1235,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             Vector3 size = ent.Render.Size;
             Vector4 col = ent.Render.Color;
 
-            DrawEditorBox(renderer, pos, size, rot, col);
+            DrawPrimitive(renderer, ent.Render.Shape, pos, size, rot, col);
         }
     }
 
@@ -1133,6 +1343,43 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _world.DrawBox(renderer.CommandList, model, color);
     }
 
+    private void DrawPrimitive(Renderer renderer, RuntimeShapeKind shape, Vector3 pos, Vector3 size, Quaternion rot, Vector4 color)
+    {
+        var model = Matrix4x4.CreateScale(size) * Matrix4x4.CreateFromQuaternion(rot) * Matrix4x4.CreateTranslation(pos);
+
+        if (shape == RuntimeShapeKind.Sphere)
+            _world.DrawSphere(renderer.CommandList, model, color);
+        else
+            _world.DrawBox(renderer.CommandList, model, color);
+    }
+
+    private static bool RayIntersectsEntityCollider(in Engine.Physics.Collision.Ray ray, Entity entity, float tMin, float tMax, out float hitT)
+    {
+        if (!entity.Collider.Enabled)
+        {
+            hitT = 0f;
+            return false;
+        }
+
+        if (entity.Collider.Shape == RuntimeShapeKind.Sphere)
+        {
+            return Engine.Physics.Collision.Raycast.RayIntersectsSphere(
+                ray,
+                entity.Transform.Position,
+                entity.Collider.Radius,
+                tMin,
+                tMax,
+                out hitT);
+        }
+
+        return Engine.Physics.Collision.Raycast.RayIntersectsAabb(
+            ray,
+            entity.Collider.GetAabb(entity.Transform.Position),
+            tMin,
+            tMax,
+            out hitT);
+    }
+
     private Entity? RaycastPickable(float maxDist)
     {
         Vector3 origin = _camera.Position;
@@ -1155,19 +1402,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 continue;
 
 
-            if (e.Physics.BoxBody == null)
+            if (!HasPhysicsBody(e))
             {
-                Console.WriteLine($"[Pickup.Raycast] {e.Name} CanPickUp=true but BoxBody==null (not dynamic, can't pick up)");
+                Console.WriteLine($"[Pickup.Raycast] {e.Name} CanPickUp=true but has no runtime body (not pickable)");
                 continue;
             }
 
             if (e.IsHeld) continue;
-            if (e.Physics.BoxBody.IsKinematic) continue;
-            if (e.Physics.BoxBody.Mass > _pickupMaxMass) continue;
+            if (IsPhysicsBodyKinematic(e)) continue;
+            if (GetPhysicsBodyMass(e) > _pickupMaxMass) continue;
 
-            var aabb = e.Collider.GetAabb(e.Transform.Position);
-
-            if (Engine.Physics.Collision.Raycast.RayIntersectsAabb(ray, aabb, 0.05f, bestT, out float tHit))
+            if (RayIntersectsEntityCollider(ray, e, 0.05f, bestT, out float tHit))
             {
                 Console.WriteLine($"[Pickup.Raycast] HIT {e.Name} at t={tHit}");
                 bestT = tHit;
@@ -1212,7 +1457,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 }
                 else
                 {
-                    Console.WriteLine($"[Pickup] Raycast hit entity: {hit.Name} canPickUp={hit.CanPickUp} hasBody={(hit.Physics.BoxBody != null)} pos={hit.Transform.Position}");
+                    Console.WriteLine($"[Pickup] Raycast hit entity: {hit.Name} canPickUp={hit.CanPickUp} bodyShape={GetPhysicsBodyShape(hit)} pos={hit.Transform.Position}");
                     PickUp(hit);
                 }
             }
@@ -1220,17 +1465,28 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     }
     private void PickUp(Entity e)
     {
-        Console.WriteLine($"[Pickup] PickUp({e.Name}) BEFORE: grav={e.Physics.BoxBody?.UseGravity} kin={e.Physics.BoxBody?.IsKinematic} vel={e.Physics.BoxBody?.Velocity}");
+        Console.WriteLine($"[Pickup] PickUp({e.Name}) BEFORE: bodyShape={GetPhysicsBodyShape(e)} vel={GetPhysicsBodyVelocity(e)}");
 
-        if (e.Physics.BoxBody == null) return;
+        if (!HasPhysicsBody(e)) return;
 
         _held = e;
         e.IsHeld = true;
 
-        e.Physics.BoxBody.IsKinematic = true;
-        e.Physics.BoxBody.UseGravity = false;
-        e.Physics.BoxBody.Velocity = Vector3.Zero;
-        Console.WriteLine($"[Pickup] PickUp({e.Name}) AFTER: grav={e.Physics.BoxBody.UseGravity} kin={e.Physics.BoxBody.IsKinematic} vel={e.Physics.BoxBody.Velocity}");
+        if (e.Physics.BoxBody != null)
+        {
+            e.Physics.BoxBody.IsKinematic = true;
+            e.Physics.BoxBody.UseGravity = false;
+            e.Physics.BoxBody.Velocity = Vector3.Zero;
+        }
+
+        if (e.Physics.SphereBody != null)
+        {
+            e.Physics.SphereBody.IsKinematic = true;
+            e.Physics.SphereBody.UseGravity = false;
+            e.Physics.SphereBody.Velocity = Vector3.Zero;
+        }
+
+        Console.WriteLine($"[Pickup] PickUp({e.Name}) AFTER: bodyShape={GetPhysicsBodyShape(e)} vel={GetPhysicsBodyVelocity(e)}");
 
     }
 
@@ -1246,6 +1502,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         {
             e.Physics.BoxBody.IsKinematic = false;
             e.Physics.BoxBody.UseGravity = true;
+        }
+
+        if (e.Physics.SphereBody != null)
+        {
+            e.Physics.SphereBody.IsKinematic = false;
+            e.Physics.SphereBody.UseGravity = true;
         }
 
         e.IsHeld = false;
@@ -1267,6 +1529,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Physics.BoxBody.Velocity = dir * _throwSpeed + _motor.Velocity * 0.5f;
         }
 
+        if (e.Physics.SphereBody != null)
+        {
+            e.Physics.SphereBody.IsKinematic = false;
+            e.Physics.SphereBody.UseGravity = true;
+
+            e.Physics.SphereBody.Velocity = dir * _throwSpeed + _motor.Velocity * 0.5f;
+        }
+
         e.IsHeld = false;
         _held = null;
     }
@@ -1286,14 +1556,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private void FixedUpdateHeldObject(float dt)
     {
         if (_held == null) return;
-        if (_held.Physics.BoxBody == null) return;
+        if (!HasPhysicsBody(_held)) return;
 
         Vector3 desired = _camera.Position + Vector3.Normalize(_camera.Forward) * _holdDistance;
 
-        var b = _held.Physics.BoxBody;
-
-        Vector3 x = b.Center;
-        Vector3 v = b.Velocity;
+        Vector3 x = _held.Physics.BoxBody?.Center ?? _held.Physics.SphereBody!.Center;
+        Vector3 v = GetPhysicsBodyVelocity(_held);
 
         Vector3 toTarget = desired - x;
 
@@ -1304,14 +1572,30 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         BuildRuntimeCollidersThisFrame(includeDynamicBodies: false, includeHeldBodies: true);
 
-        var (resolvedCenter, resolvedVel, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicAabb(
-    newCenter, v, b.HalfExtents, _runtimeWorldColliders);
+        Vector3 resolvedCenter;
+        Vector3 resolvedVel;
 
+        if (_held.Physics.BoxBody != null)
+        {
+            (resolvedCenter, resolvedVel, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicAabb(
+                newCenter,
+                v,
+                _held.Physics.BoxBody.HalfExtents,
+                _runtimeWorldColliders);
+        }
+        else
+        {
+            (resolvedCenter, resolvedVel, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicSphere(
+                newCenter,
+                v,
+                _held.Physics.SphereBody!.Radius,
+                _runtimeWorldColliders);
+        }
 
-        b.Center = resolvedCenter;
-        b.Velocity = resolvedVel; 
+        SetPhysicsBodyCenter(_held, resolvedCenter);
+        SetPhysicsBodyVelocity(_held, resolvedVel);
 
-        _held.Transform.Position = b.Center;
+        _held.Transform.Position = resolvedCenter;
     }
 
     private static bool ComputeAabbContact(Aabb a, Aabb b, out Vector3 normal, out float penetration)
@@ -1359,6 +1643,103 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         return penetration > 0f;
     }
 
+    private static bool ComputeSphereContact(Vector3 aCenter, float aRadius, Vector3 bCenter, float bRadius, out Vector3 normal, out float penetration)
+    {
+        Vector3 delta = bCenter - aCenter;
+        float distSq = delta.LengthSquared();
+        float radiusSum = aRadius + bRadius;
+
+        if (distSq <= 1e-8f)
+        {
+            normal = Vector3.UnitY;
+            penetration = radiusSum;
+            return true;
+        }
+
+        float dist = MathF.Sqrt(distSq);
+        penetration = radiusSum - dist;
+        if (penetration <= 0f)
+        {
+            normal = Vector3.Zero;
+            penetration = 0f;
+            return false;
+        }
+
+        normal = delta / dist;
+        return true;
+    }
+
+    private static bool ComputeSphereAabbContact(Vector3 sphereCenter, float sphereRadius, Aabb box, out Vector3 normal, out float penetration)
+        => Engine.Physics.Collision.StaticCollision.TryResolveSphereAabb(sphereCenter, sphereRadius, box, out normal, out penetration);
+
+    private static float GetBodyRestitution(Entity entity)
+    {
+        if (entity.Physics.BoxBody != null) return entity.Physics.BoxBody.Restitution;
+        if (entity.Physics.SphereBody != null) return entity.Physics.SphereBody.Restitution;
+        return 0f;
+    }
+
+    private static float GetBodyFriction(Entity entity)
+    {
+        if (entity.Physics.BoxBody != null) return entity.Physics.BoxBody.Friction;
+        if (entity.Physics.SphereBody != null) return entity.Physics.SphereBody.Friction;
+        return 0f;
+    }
+
+    private static bool TryGetDynamicContact(Entity a, Entity b, out Vector3 normal, out float penetration)
+    {
+        normal = Vector3.Zero;
+        penetration = 0f;
+
+        RuntimeShapeKind shapeA = GetPhysicsBodyShape(a);
+        RuntimeShapeKind shapeB = GetPhysicsBodyShape(b);
+
+        if (!TryGetPhysicsBodyAabb(a, out var aAabb) ||
+            !TryGetPhysicsBodyAabb(b, out var bAabb) ||
+            !aAabb.Overlaps(bAabb))
+        {
+            return false;
+        }
+
+        if (shapeA == RuntimeShapeKind.Box && shapeB == RuntimeShapeKind.Box)
+            return ComputeAabbContact(aAabb, bAabb, out normal, out penetration);
+
+        if (shapeA == RuntimeShapeKind.Sphere && shapeB == RuntimeShapeKind.Sphere)
+        {
+            return ComputeSphereContact(
+                a.Physics.SphereBody!.Center,
+                a.Physics.SphereBody.Radius,
+                b.Physics.SphereBody!.Center,
+                b.Physics.SphereBody.Radius,
+                out normal,
+                out penetration);
+        }
+
+        if (shapeA == RuntimeShapeKind.Sphere && shapeB == RuntimeShapeKind.Box)
+        {
+            return ComputeSphereAabbContact(
+                a.Physics.SphereBody!.Center,
+                a.Physics.SphereBody.Radius,
+                bAabb,
+                out normal,
+                out penetration);
+        }
+
+        if (shapeA == RuntimeShapeKind.Box && shapeB == RuntimeShapeKind.Sphere &&
+            ComputeSphereAabbContact(
+                b.Physics.SphereBody!.Center,
+                b.Physics.SphereBody.Radius,
+                aAabb,
+                out Vector3 sphereToBox,
+                out penetration))
+        {
+            normal = -sphereToBox;
+            return true;
+        }
+
+        return false;
+    }
+
     private void ResolveDynamicDynamic(int iterations = 3)
     {
         // gather indices for dynamic bodies (skip held)
@@ -1368,7 +1749,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
-            if (e.Physics.BoxBody == null) continue;
+            if (!HasPhysicsBody(e)) continue;
             if (e.IsHeld) continue;
             if (e.Physics.MotionType != MotionType.Dynamic) continue;
             dyn[dynCount++] = i;
@@ -1381,44 +1762,47 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             for (int ai = 0; ai < dynCount; ai++)
             {
                 var A = _runtimeEntities[dyn[ai]];
-                var aBody = A.Physics.BoxBody!;
 
                 for (int bi = ai + 1; bi < dynCount; bi++)
                 {
                     var B = _runtimeEntities[dyn[bi]];
-                    var bBody = B.Physics.BoxBody!;
-
-                    var aAabb = aBody.GetAabb();
-                    var bAabb = bBody.GetAabb();
-
-                    if (!ComputeAabbContact(aAabb, bAabb, out var n, out float pen))
+                    if (!TryGetDynamicContact(A, B, out var n, out float pen))
                         continue;
 
-                    float invA = aBody.Mass > 0f ? 1f / aBody.Mass : 0f;
-                    float invB = bBody.Mass > 0f ? 1f / bBody.Mass : 0f;
+                    float invA = GetPhysicsBodyMass(A) > 0f ? 1f / GetPhysicsBodyMass(A) : 0f;
+                    float invB = GetPhysicsBodyMass(B) > 0f ? 1f / GetPhysicsBodyMass(B) : 0f;
                     float invSum = invA + invB;
                     if (invSum <= 0f) continue;
 
                     Vector3 corr = n * pen;
-                    aBody.Center -= corr * (invA / invSum);
-                    bBody.Center += corr * (invB / invSum);
+                    Vector3 aCenter = A.Transform.Position;
+                    Vector3 bCenter = B.Transform.Position;
+                    TryGetPhysicsBodyCenter(A, out aCenter);
+                    TryGetPhysicsBodyCenter(B, out bCenter);
 
-                    Vector3 rv = bBody.Velocity - aBody.Velocity;
+                    SetPhysicsBodyCenter(A, aCenter - corr * (invA / invSum));
+                    SetPhysicsBodyCenter(B, bCenter + corr * (invB / invSum));
+
+                    Vector3 aVelocity = GetPhysicsBodyVelocity(A);
+                    Vector3 bVelocity = GetPhysicsBodyVelocity(B);
+                    Vector3 rv = bVelocity - aVelocity;
                     float relN = Vector3.Dot(rv, n);
 
                     // only if moving into each other
                     if (relN < 0f)
                     {
-                        float e = MathF.Min(aBody.Restitution, bBody.Restitution);
+                        float e = MathF.Min(GetBodyRestitution(A), GetBodyRestitution(B));
 
                         float j = -(1f + e) * relN / invSum;
                         Vector3 impulse = j * n;
 
-                        aBody.Velocity -= impulse * invA;
-                        bBody.Velocity += impulse * invB;
+                        aVelocity -= impulse * invA;
+                        bVelocity += impulse * invB;
+                        SetPhysicsBodyVelocity(A, aVelocity);
+                        SetPhysicsBodyVelocity(B, bVelocity);
 
                         // simple friction
-                        Vector3 rv2 = bBody.Velocity - aBody.Velocity;
+                        Vector3 rv2 = bVelocity - aVelocity;
                         Vector3 t = rv2 - Vector3.Dot(rv2, n) * n;
 
                         float tLen = t.Length();
@@ -1426,20 +1810,24 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                         {
                             t /= tLen;
 
-                            float mu = MathF.Min(aBody.Friction, bBody.Friction);
+                            float mu = MathF.Min(GetBodyFriction(A), GetBodyFriction(B));
                             float jt = -Vector3.Dot(rv2, t) / invSum;
 
                             float maxF = mu * j;
                             jt = Math.Clamp(jt, -maxF, +maxF);
 
                             Vector3 frImpulse = jt * t;
-                            aBody.Velocity -= frImpulse * invA;
-                            bBody.Velocity += frImpulse * invB;
+                            aVelocity -= frImpulse * invA;
+                            bVelocity += frImpulse * invB;
+                            SetPhysicsBodyVelocity(A, aVelocity);
+                            SetPhysicsBodyVelocity(B, bVelocity);
                         }
                     }
 
-                    A.Transform.Position = aBody.Center;
-                    B.Transform.Position = bBody.Center;
+                    if (TryGetPhysicsBodyCenter(A, out aCenter))
+                        A.Transform.Position = aCenter;
+                    if (TryGetPhysicsBodyCenter(B, out bCenter))
+                        B.Transform.Position = bCenter;
                 }
             }
         }

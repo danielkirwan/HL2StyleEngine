@@ -160,4 +160,121 @@ public static class StaticCollision
 
         return (center, vel, grounded);
     }
+
+    public static (Vector3 center, Vector3 vel, bool grounded) ResolveDynamicSphere(
+        Vector3 center,
+        Vector3 vel,
+        float radius,
+        IReadOnlyList<Aabb> world,
+        float restitution = 0.05f,
+        int iterations = 6)
+    {
+        bool grounded = false;
+
+        for (int it = 0; it < iterations; it++)
+        {
+            Aabb sphereBounds = Aabb.FromCenterExtents(center, new Vector3(radius));
+            bool any = false;
+
+            for (int i = 0; i < world.Count; i++)
+            {
+                var box = world[i];
+                if (!sphereBounds.Overlaps(box))
+                    continue;
+
+                if (!TryResolveSphereAabb(center, radius, box, out Vector3 normal, out float penetration))
+                    continue;
+
+                any = true;
+                center -= normal * penetration;
+
+                float alongNormal = Vector3.Dot(vel, normal);
+                if (alongNormal > 0f)
+                {
+                    if (normal.Y < -0.5f)
+                    {
+                        grounded = true;
+                        vel.Y = 0f;
+                    }
+                    else
+                    {
+                        vel -= (1f + restitution) * alongNormal * normal;
+                    }
+                }
+
+                sphereBounds = Aabb.FromCenterExtents(center, new Vector3(radius));
+            }
+
+            if (!any)
+                break;
+        }
+
+        const float minBounceSpeed = 0.15f;
+        if (MathF.Abs(vel.X) < minBounceSpeed) vel.X = 0f;
+        if (MathF.Abs(vel.Y) < minBounceSpeed) vel.Y = 0f;
+        if (MathF.Abs(vel.Z) < minBounceSpeed) vel.Z = 0f;
+
+        return (center, vel, grounded);
+    }
+
+    public static bool TryResolveSphereAabb(
+        Vector3 sphereCenter,
+        float sphereRadius,
+        Aabb box,
+        out Vector3 normal,
+        out float penetration)
+    {
+        Vector3 closest = Vector3.Clamp(sphereCenter, box.Min, box.Max);
+        Vector3 delta = closest - sphereCenter;
+        float distSq = delta.LengthSquared();
+
+        if (distSq > 1e-8f)
+        {
+            float dist = MathF.Sqrt(distSq);
+            penetration = sphereRadius - dist;
+            if (penetration <= 0f)
+            {
+                normal = Vector3.Zero;
+                penetration = 0f;
+                return false;
+            }
+
+            normal = delta / dist;
+            return true;
+        }
+
+        float toMinX = sphereCenter.X - box.Min.X;
+        float toMaxX = box.Max.X - sphereCenter.X;
+        float toMinY = sphereCenter.Y - box.Min.Y;
+        float toMaxY = box.Max.Y - sphereCenter.Y;
+        float toMinZ = sphereCenter.Z - box.Min.Z;
+        float toMaxZ = box.Max.Z - sphereCenter.Z;
+
+        float exitX = MathF.Min(toMinX, toMaxX);
+        float exitY = MathF.Min(toMinY, toMaxY);
+        float exitZ = MathF.Min(toMinZ, toMaxZ);
+
+        if (exitX <= exitY && exitX <= exitZ)
+        {
+            bool closerToMin = toMinX <= toMaxX;
+            normal = closerToMin ? Vector3.UnitX : -Vector3.UnitX;
+            penetration = sphereRadius + exitX;
+            return penetration > 0f;
+        }
+
+        if (exitY <= exitX && exitY <= exitZ)
+        {
+            bool closerToMin = toMinY <= toMaxY;
+            normal = closerToMin ? Vector3.UnitY : -Vector3.UnitY;
+            penetration = sphereRadius + exitY;
+            return penetration > 0f;
+        }
+
+        {
+            bool closerToMin = toMinZ <= toMaxZ;
+            normal = closerToMin ? Vector3.UnitZ : -Vector3.UnitZ;
+            penetration = sphereRadius + exitZ;
+            return penetration > 0f;
+        }
+    }
 }

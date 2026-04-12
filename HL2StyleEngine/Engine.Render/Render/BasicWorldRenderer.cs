@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -14,6 +15,9 @@ public sealed class BasicWorldRenderer : IDisposable
     private readonly DeviceBuffer _vb;
     private readonly DeviceBuffer _ib;
     private readonly uint _indexCount;
+    private readonly DeviceBuffer _sphereVb;
+    private readonly DeviceBuffer _sphereIb;
+    private readonly uint _sphereIndexCount;
 
     // b0
     private readonly DeviceBuffer _cameraBuffer;
@@ -48,6 +52,8 @@ public sealed class BasicWorldRenderer : IDisposable
         var vertices = CreateCubeVertices();
         var indices = CreateCubeIndices();
         _indexCount = (uint)indices.Length;
+        var sphereMesh = CreateSphereMesh(latitudeSegments: 12, longitudeSegments: 18);
+        _sphereIndexCount = (uint)sphereMesh.indices.Length;
 
         _vb = _factory.CreateBuffer(new BufferDescription(
             (uint)(vertices.Length * Marshal.SizeOf<Vector3>()),
@@ -59,6 +65,17 @@ public sealed class BasicWorldRenderer : IDisposable
 
         gd.UpdateBuffer(_vb, 0, vertices);
         gd.UpdateBuffer(_ib, 0, indices);
+
+        _sphereVb = _factory.CreateBuffer(new BufferDescription(
+            (uint)(sphereMesh.vertices.Length * Marshal.SizeOf<Vector3>()),
+            BufferUsage.VertexBuffer));
+
+        _sphereIb = _factory.CreateBuffer(new BufferDescription(
+            (uint)(sphereMesh.indices.Length * sizeof(ushort)),
+            BufferUsage.IndexBuffer));
+
+        gd.UpdateBuffer(_sphereVb, 0, sphereMesh.vertices);
+        gd.UpdateBuffer(_sphereIb, 0, sphereMesh.indices);
 
         _cameraBuffer = _factory.CreateBuffer(new BufferDescription(
             64,
@@ -134,6 +151,12 @@ public sealed class BasicWorldRenderer : IDisposable
     }
 
     public void DrawBox(CommandList cl, Matrix4x4 model, Vector4 color)
+        => DrawMesh(cl, model, color, _vb, _ib, _indexCount);
+
+    public void DrawSphere(CommandList cl, Matrix4x4 model, Vector4 color)
+        => DrawMesh(cl, model, color, _sphereVb, _sphereIb, _sphereIndexCount);
+
+    private void DrawMesh(CommandList cl, Matrix4x4 model, Vector4 color, DeviceBuffer vertexBuffer, DeviceBuffer indexBuffer, uint indexCount)
     {
         if (_objectWriteIndex >= MaxObjectsPerFrame)
             return;
@@ -150,9 +173,9 @@ public sealed class BasicWorldRenderer : IDisposable
         cl.SetGraphicsResourceSet(0, _cameraSet);
         cl.SetGraphicsResourceSet(1, _objectSets[slot]);
 
-        cl.SetVertexBuffer(0, _vb);
-        cl.SetIndexBuffer(_ib, IndexFormat.UInt16);
-        cl.DrawIndexed(_indexCount, 1, 0, 0, 0);
+        cl.SetVertexBuffer(0, vertexBuffer);
+        cl.SetIndexBuffer(indexBuffer, IndexFormat.UInt16);
+        cl.DrawIndexed(indexCount, 1, 0, 0, 0);
     }
 
     public void Dispose()
@@ -169,6 +192,8 @@ public sealed class BasicWorldRenderer : IDisposable
         _cameraLayout.Dispose();
         _cameraBuffer.Dispose();
 
+        _sphereIb.Dispose();
+        _sphereVb.Dispose();
         _ib.Dispose();
         _vb.Dispose();
     }
@@ -209,5 +234,50 @@ public sealed class BasicWorldRenderer : IDisposable
             // +Y
             3,7,6,  3,6,2,
         };
+    }
+
+    private static (Vector3[] vertices, ushort[] indices) CreateSphereMesh(int latitudeSegments, int longitudeSegments)
+    {
+        var vertices = new List<Vector3>();
+        var indices = new List<ushort>();
+
+        for (int lat = 0; lat <= latitudeSegments; lat++)
+        {
+            float v = lat / (float)latitudeSegments;
+            float phi = v * MathF.PI;
+            float y = MathF.Cos(phi) * 0.5f;
+            float ringRadius = MathF.Sin(phi) * 0.5f;
+
+            for (int lon = 0; lon <= longitudeSegments; lon++)
+            {
+                float u = lon / (float)longitudeSegments;
+                float theta = u * MathF.PI * 2f;
+                float x = MathF.Cos(theta) * ringRadius;
+                float z = MathF.Sin(theta) * ringRadius;
+                vertices.Add(new Vector3(x, y, z));
+            }
+        }
+
+        int stride = longitudeSegments + 1;
+        for (int lat = 0; lat < latitudeSegments; lat++)
+        {
+            for (int lon = 0; lon < longitudeSegments; lon++)
+            {
+                ushort i0 = (ushort)(lat * stride + lon);
+                ushort i1 = (ushort)(i0 + 1);
+                ushort i2 = (ushort)(i0 + stride);
+                ushort i3 = (ushort)(i2 + 1);
+
+                indices.Add(i0);
+                indices.Add(i2);
+                indices.Add(i1);
+
+                indices.Add(i1);
+                indices.Add(i2);
+                indices.Add(i3);
+            }
+        }
+
+        return (vertices.ToArray(), indices.ToArray());
     }
 }

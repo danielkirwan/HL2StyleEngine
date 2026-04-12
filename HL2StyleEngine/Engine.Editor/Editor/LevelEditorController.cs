@@ -70,6 +70,12 @@ public sealed class LevelEditorController
 
     public bool FrameSelectionRequested { get; private set; }
     private static bool IsZero(Vector3 v) => MathF.Abs(v.X) < 0.0001f && MathF.Abs(v.Y) < 0.0001f && MathF.Abs(v.Z) < 0.0001f;
+    private static bool IsSphereShape(string? shape) => string.Equals(shape, "Sphere", StringComparison.OrdinalIgnoreCase);
+    private static float GetScaledSphereRadius(LevelEntityDef entity, Vector3 scale)
+    {
+        float scaleMax = MathF.Max(MathF.Abs(scale.X), MathF.Max(MathF.Abs(scale.Y), MathF.Abs(scale.Z)));
+        return MathF.Max(0.01f, entity.Radius) * MathF.Max(0.01f, scaleMax);
+    }
     private ScriptRegistry _scripts = null!;
     public void SetScriptRegistry(ScriptRegistry reg) => _scripts = reg;
     public void ConsumeFrameRequest() => FrameSelectionRequested = false;
@@ -1074,12 +1080,39 @@ public sealed class LevelEditorController
         }
         else if (ent.Type == EntityTypes.RigidBody)
         {
-            string shape = ent.Shape ?? "Box";
-            if (ImGui.InputText("Shape", ref shape, 32))
+            var motion = ent.MotionType;
+            int motionIndex = (int)motion;
+
+            string[] motionLabels = { "Static", "Dynamic", "Kinematic" };
+
+            if (ImGui.Combo("Motion Type", ref motionIndex, motionLabels, motionLabels.Length))
             {
                 BeginEdit();
-                ent.Shape = shape;
+                ent.MotionType = (MotionType)motionIndex;
                 Dirty = true;
+                RebuildRuntimeFromLevel();
+                EndEditIfAny();
+            }
+
+            if (ent.MotionType == MotionType.Dynamic)
+            {
+                bool canPick = ent.CanPickUp;
+                if (ImGui.Checkbox("Can Pick Up", ref canPick))
+                {
+                    BeginEdit();
+                    ent.CanPickUp = canPick;
+                    Dirty = true;
+                    EndEditIfAny();
+                }
+            }
+
+            int shapeIndex = IsSphereShape(ent.Shape) ? 1 : 0;
+            if (ImGui.Combo("Shape", ref shapeIndex, "Box\0Sphere\0"))
+            {
+                BeginEdit();
+                ent.Shape = shapeIndex == 1 ? "Sphere" : "Box";
+                Dirty = true;
+                RebuildRuntimeFromLevel();
                 EndEditIfAny();
             }
 
@@ -1119,20 +1152,35 @@ public sealed class LevelEditorController
                 EndEditIfAny();
             }
 
-            Vector3 size = ent.Size;
-            if (ImGui.DragFloat3("Size", ref size, 0.05f))
+            if (IsSphereShape(ent.Shape))
             {
-                BeginEdit();
+                float radius = ent.Radius;
+                if (ImGui.DragFloat("Radius", ref radius, 0.05f, 0.01f, 1000f))
+                {
+                    BeginEdit();
+                    ent.Radius = MathF.Max(0.01f, radius);
+                    Dirty = true;
+                    RebuildRuntimeFromLevel();
+                    EndEditIfAny();
+                }
+            }
+            else
+            {
+                Vector3 size = ent.Size;
+                if (ImGui.DragFloat3("Size", ref size, 0.05f))
+                {
+                    BeginEdit();
 
-                size.X = MathF.Max(0.01f, size.X);
-                size.Y = MathF.Max(0.01f, size.Y);
-                size.Z = MathF.Max(0.01f, size.Z);
-                ent.Size = size;
+                    size.X = MathF.Max(0.01f, size.X);
+                    size.Y = MathF.Max(0.01f, size.Y);
+                    size.Z = MathF.Max(0.01f, size.Z);
+                    ent.Size = size;
 
-                Dirty = true;
-                RebuildRuntimeFromLevel();
+                    Dirty = true;
+                    RebuildRuntimeFromLevel();
 
-                EndEditIfAny();
+                    EndEditIfAny();
+                }
             }
         }
     }
@@ -1422,8 +1470,16 @@ public sealed class LevelEditorController
             }
             else if (e.Type == EntityTypes.RigidBody)
             {
-                Vector3 size = Mul(e.Size, ws);
-                DrawBoxes.Add(new EditorDrawBox(wt, size, new Vector4(0.9f, 0.2f, 0.6f, 1f), wr));
+                if (IsSphereShape(e.Shape))
+                {
+                    float radius = GetScaledSphereRadius(e, ws);
+                    DrawBoxes.Add(EditorDrawBox.Sphere(wt, radius * 2f, new Vector4(0.9f, 0.2f, 0.6f, 1f)));
+                }
+                else
+                {
+                    Vector3 size = Mul(e.Size, ws);
+                    DrawBoxes.Add(new EditorDrawBox(wt, size, new Vector4(0.9f, 0.2f, 0.6f, 1f), wr));
+                }
             }
             else
             {
@@ -1714,6 +1770,7 @@ public sealed class LevelEditorController
             LocalScale = Vector3.One,
             Shape = "Box",
             Size = new Vector3(1, 1, 1),
+            Radius = 0.5f,
             Mass = 10f,
             Friction = 0.8f
         });
@@ -1744,9 +1801,20 @@ public sealed class LevelEditorController
 
             if (e.Type == EntityTypes.Box || e.Type == EntityTypes.RigidBody)
             {
-                Vector3 sz = e.Size;
-                if (IsZero(sz))
-                    e.Size = new Vector3(1, 1, 1);
+                if (e.Type == EntityTypes.RigidBody && string.IsNullOrWhiteSpace(e.Shape))
+                    e.Shape = "Box";
+
+                if (IsSphereShape(e.Shape))
+                {
+                    if (e.Radius <= 0f)
+                        e.Radius = 0.5f;
+                }
+                else
+                {
+                    Vector3 sz = e.Size;
+                    if (IsZero(sz))
+                        e.Size = new Vector3(1, 1, 1);
+                }
             }
 
             if (e.Type == EntityTypes.TriggerVolume)

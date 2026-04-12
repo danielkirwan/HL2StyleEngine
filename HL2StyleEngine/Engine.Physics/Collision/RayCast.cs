@@ -17,7 +17,6 @@ namespace Engine.Physics.Collision
 
     public static class Raycast
     {
-
         public static bool RayIntersectsAabb(in Ray ray, in Aabb aabb, float tMin, float tMax, out float hitT)
         {
             hitT = 0f;
@@ -50,6 +49,39 @@ namespace Engine.Physics.Collision
             }
 
             hitT = tMin;
+            return true;
+        }
+
+        public static bool RayIntersectsSphere(in Ray ray, Vector3 center, float radius, float tMin, float tMax, out float hitT)
+        {
+            Vector3 oc = ray.Origin - center;
+            float a = Vector3.Dot(ray.Dir, ray.Dir);
+            float b = 2f * Vector3.Dot(oc, ray.Dir);
+            float c = Vector3.Dot(oc, oc) - radius * radius;
+
+            float discriminant = b * b - 4f * a * c;
+            if (discriminant < 0f)
+            {
+                hitT = 0f;
+                return false;
+            }
+
+            float sqrt = MathF.Sqrt(discriminant);
+            float invDenom = 0.5f / a;
+            float t0 = (-b - sqrt) * invDenom;
+            float t1 = (-b + sqrt) * invDenom;
+
+            if (t0 > t1)
+                (t0, t1) = (t1, t0);
+
+            float t = t0 >= tMin ? t0 : t1;
+            if (t < tMin || t > tMax)
+            {
+                hitT = 0f;
+                return false;
+            }
+
+            hitT = t;
             return true;
         }
     }
