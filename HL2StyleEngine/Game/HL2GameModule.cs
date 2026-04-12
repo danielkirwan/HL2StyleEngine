@@ -61,7 +61,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private readonly List<Entity> _runtimeEntities = new();
 
     private readonly List<Aabb> _runtimeWorldColliders = new();
-    private readonly Dictionary<string, LevelEntityDef> _defById = new();
 
     private Entity? _held;
     private float _holdDistance = 2.0f;
@@ -74,21 +73,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private int _physicsMaxSubsteps = 12;
     private float _physicsMaxStep = 1f / 120f;
-
-    private sealed class RuntimeRenderBox
-    {
-        public Entity Entity = null!;
-        public Vector3 Size;        
-        public Vector4 Color;
-        public Vector3 Delta;
-        public Vector3 PrevPos;
-        public bool IsMovingPlatform;
-        public bool IsSolid;
-        public bool IsRigidBody;
-    }
-    private readonly List<RuntimeRenderBox> _runtimeRenderBoxes = new();
-
-    private bool _runtimeDirty = true; 
 
     public InputState InputState => _inputState;
 
@@ -203,12 +187,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return;
         }
 
-        if (_editorEnabled && _editor.Dirty)
-        {
-            RebuildRuntimeWorld();
-            _runtimeDirty = false;
-        }
-
         var io = ImGui.GetIO();
         bool uiWantsKeyboard = io.WantCaptureKeyboard;
         bool uiWantsMouse = io.WantCaptureMouse;
@@ -270,9 +248,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
     }
 
-    private bool TryGetPlatformDeltaForBody(BoxBody body, out Vector3 delta)
+    private bool TryGetSupportingPlatformForBody(
+        BoxBody body,
+        bool usePreviousPlatformPosition,
+        out Entity? platform)
     {
-        delta = Vector3.Zero;
+        platform = null;
 
         Vector3 center = body.Center;
         Vector3 extents = body.HalfExtents;
@@ -281,13 +262,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         const float yTolerance = 0.08f;
 
-        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        for (int i = 0; i < _runtimeEntities.Count; i++)
         {
-            var rr = _runtimeRenderBoxes[i];
-            if (!rr.IsMovingPlatform) continue;
+            var e = _runtimeEntities[i];
+            if (!e.Collider.IsMovingPlatform) continue;
 
-            Vector3 p = rr.Entity.Transform.Position;
-            Vector3 half = rr.Size * 0.5f;
+            Vector3 p = usePreviousPlatformPosition
+                ? e.Collider.PreviousPosition
+                : e.Transform.Position;
+            Vector3 half = e.Collider.HalfExtents;
 
             float topY = p.Y + half.Y;
 
@@ -305,11 +288,37 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (!overlapX || !overlapZ)
                 continue;
 
-            delta = rr.Delta;
+            platform = e;
             return true;
         }
 
         return false;
+    }
+
+    private static bool ShouldStickToMovingPlatform(Entity entity)
+        => entity.Collider.Shape == RuntimeShapeKind.Box;
+
+    private void CarryDynamicBoxesOnMovingPlatforms()
+    {
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            var e = _runtimeEntities[i];
+            if (e.Physics.BoxBody == null) continue;
+            if (e.IsHeld) continue;
+            if (e.Physics.MotionType != MotionType.Dynamic) continue;
+            if (!ShouldStickToMovingPlatform(e)) continue;
+
+            if (!TryGetSupportingPlatformForBody(
+                    e.Physics.BoxBody,
+                    usePreviousPlatformPosition: true,
+                    out var previousSupport))
+            {
+                continue;
+            }
+
+            e.Physics.BoxBody.Center += previousSupport!.Collider.Delta;
+            e.Transform.Position = e.Physics.BoxBody.Center;
+        }
     }
 
 
@@ -327,13 +336,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         const float yTolerance = 0.18f; // thin platform => larger tolerance
 
-        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        for (int i = 0; i < _runtimeEntities.Count; i++)
         {
-            var rr = _runtimeRenderBoxes[i];
-            if (!rr.IsMovingPlatform) continue;
+            var e = _runtimeEntities[i];
+            if (!e.Collider.IsMovingPlatform) continue;
 
-            Vector3 p = rr.Entity.Transform.Position;
-            Vector3 half = rr.Size * 0.5f;
+            Vector3 p = e.Transform.Position;
+            Vector3 half = e.Collider.HalfExtents;
             float topY = p.Y + half.Y;
 
             // Feet must be close to top surface
@@ -346,7 +355,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (!overlapX || !overlapZ)
                 continue;
 
-            delta = rr.Delta;
+            delta = e.Collider.Delta;
             return true;
         }
 
@@ -356,12 +365,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private void RebuildRuntimeWorld()
     {
         _runtimeEntities.Clear();
-        _runtimeRenderBoxes.Clear();
         _runtimeWorldColliders.Clear();
-        _defById.Clear();
-
-        foreach (var def in _editor.LevelFile.Entities)
-            _defById[def.Id] = def;
 
         foreach (var def in _editor.LevelFile.Entities)
         {
@@ -370,12 +374,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Transform.Position = def.LocalPosition;
             e.Transform.RotationEulerDeg = def.LocalRotationEulerDeg;
             e.Transform.Scale = def.LocalScale;
-
-            e.BoxSize = (Vector3)def.Size;
-            e.BoxColor = (Vector4)def.Color;
+            e.Render.Shape = RuntimeShapeKind.Box;
+            e.Render.Size = GetScaledSize(def, clampComponents: false);
+            e.Render.Color = (Vector4)def.Color;
 
             e.CanPickUp = def.CanPickUp;
-            e.MotionType = def.MotionType;
+            e.Physics.MotionType = def.MotionType;
 
             foreach (var s in def.Scripts)
             {
@@ -390,21 +394,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             if (def.Type == EntityTypes.Box && def.MotionType == MotionType.Dynamic)
             {
-                Vector3 scale = (Vector3)def.LocalScale;
-                Vector3 size = (Vector3)def.Size;
-
-                size.X = MathF.Max(0.01f, size.X);
-                size.Y = MathF.Max(0.01f, size.Y);
-                size.Z = MathF.Max(0.01f, size.Z);
-
-                scale.X = MathF.Max(0.01f, scale.X);
-                scale.Y = MathF.Max(0.01f, scale.Y);
-                scale.Z = MathF.Max(0.01f, scale.Z);
-
-                Vector3 worldSize = Mul(size, scale);
+                Vector3 worldSize = GetScaledSize(def, clampComponents: true);
                 Vector3 half = worldSize * 0.5f;
 
-                e.Body = new BoxBody(e.Transform.Position, half)
+                e.Physics.BoxBody = new BoxBody(e.Transform.Position, half)
                 {
                     Mass = def.Mass,
                     UseGravity = true,
@@ -416,13 +409,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             }
             else if (def.Type == EntityTypes.Box && def.MotionType == MotionType.Kinematic)
             {
-                Vector3 scale = (Vector3)def.LocalScale;
-                Vector3 size = (Vector3)def.Size;
-
-                Vector3 worldSize = Mul(size, scale);
+                Vector3 worldSize = GetScaledSize(def, clampComponents: true);
                 Vector3 half = worldSize * 0.5f;
 
-                e.Body = new BoxBody(e.Transform.Position, half)
+                e.Physics.BoxBody = new BoxBody(e.Transform.Position, half)
                 {
                     Mass = def.Mass,
                     UseGravity = false,
@@ -433,11 +423,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             }
             else
             {
-                e.Body = null; // static
+                e.Physics.BoxBody = null;
             }
 
-
-            _runtimeEntities.Add(e);
 
             bool isBoxLike =
                 def.Type == EntityTypes.Box ||
@@ -448,29 +436,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             if (isBoxLike || hasMovingPlatform)
             {
-                Vector3 size = (Vector3)def.Size;
-                Vector3 scale = (Vector3)def.LocalScale;
-
-                size.X = MathF.Max(0.01f, size.X);
-                size.Y = MathF.Max(0.01f, size.Y);
-                size.Z = MathF.Max(0.01f, size.Z);
-
-                scale.X = MathF.Max(0.01f, scale.X);
-                scale.Y = MathF.Max(0.01f, scale.Y);
-                scale.Z = MathF.Max(0.01f, scale.Z);
-
-                var rr = new RuntimeRenderBox
-                {
-                    Entity = e,
-                    Size = Mul(size, scale),
-                    Color = hasMovingPlatform ? new Vector4(1f, 0.2f, 1f, 1f) : (Vector4)def.Color,
-                    IsMovingPlatform = hasMovingPlatform,
-                    PrevPos = e.Transform.Position,
-                    Delta = Vector3.Zero
-                };
-
-                _runtimeRenderBoxes.Add(rr);
+                e.Collider.Shape = RuntimeShapeKind.Box;
+                e.Collider.Size = GetScaledSize(def, clampComponents: true);
+                e.Collider.IsMovingPlatform = hasMovingPlatform;
+                e.Collider.PreviousPosition = e.Transform.Position;
+                e.Collider.Delta = Vector3.Zero;
+                e.Render.Color = hasMovingPlatform ? new Vector4(1f, 0.2f, 1f, 1f) : (Vector4)def.Color;
             }
+
+            _runtimeEntities.Add(e);
         }
     }
 
@@ -478,12 +452,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         _runtimeWorldColliders.Clear();
 
-        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        for (int i = 0; i < _runtimeEntities.Count; i++)
         {
-            var rr = _runtimeRenderBoxes[i];
-            var e = rr.Entity;
+            var e = _runtimeEntities[i];
+            if (!e.Collider.Enabled || !e.Collider.IsSolid)
+                continue;
 
-            bool isDynamic = (e.MotionType == MotionType.Dynamic);
+            bool isDynamic = (e.Physics.MotionType == MotionType.Dynamic);
 
             // Only exclude real dynamics here.
             if (!includeDynamicBodies && isDynamic)
@@ -492,35 +467,51 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (!includeHeldBodies && e.IsHeld)
                 continue;
 
-            Vector3 pos = e.Transform.Position;
-            Vector3 half = rr.Size * 0.5f;
-
-            _runtimeWorldColliders.Add(new Aabb(pos - half, pos + half));
+            _runtimeWorldColliders.Add(e.Collider.GetAabb(e.Transform.Position));
         }
     }
 
     private void SnapshotPlatformPrevPositions()
     {
-        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        for (int i = 0; i < _runtimeEntities.Count; i++)
         {
-            var rr = _runtimeRenderBoxes[i];
-            if (!rr.IsMovingPlatform) continue;
-            rr.PrevPos = rr.Entity.Transform.Position;
+            var e = _runtimeEntities[i];
+            if (!e.Collider.IsMovingPlatform) continue;
+            e.Collider.PreviousPosition = e.Transform.Position;
         }
     }
 
     private void ComputePlatformDeltasFromPrev()
     {
-        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        for (int i = 0; i < _runtimeEntities.Count; i++)
         {
-            var rr = _runtimeRenderBoxes[i];
-            if (!rr.IsMovingPlatform) continue;
+            var e = _runtimeEntities[i];
+            if (!e.Collider.IsMovingPlatform) continue;
 
-            Vector3 cur = rr.Entity.Transform.Position;
-            rr.Delta = cur - rr.PrevPos;
+            Vector3 cur = e.Transform.Position;
+            e.Collider.Delta = cur - e.Collider.PreviousPosition;
         }
     }
 
+    private static Vector3 GetScaledSize(LevelEntityDef def, bool clampComponents)
+    {
+        Vector3 size = (Vector3)def.Size;
+        Vector3 scale = (Vector3)def.LocalScale;
+
+        if (clampComponents)
+        {
+            size = ClampMin(size, 0.01f);
+            scale = ClampMin(scale, 0.01f);
+        }
+
+        return Mul(size, scale);
+    }
+
+    private static Vector3 ClampMin(Vector3 value, float min)
+        => new(
+            MathF.Max(min, value.X),
+            MathF.Max(min, value.Y),
+            MathF.Max(min, value.Z));
 
     private static Vector3 Mul(Vector3 a, Vector3 b) => new(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
 
@@ -670,17 +661,20 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
-            if (e.Body == null) continue;
+            if (e.Physics.BoxBody == null) continue;
 
-            if (e.MotionType == MotionType.Kinematic)
+            if (e.Physics.MotionType == MotionType.Kinematic)
             {
-                e.Body.Center = e.Transform.Position;
-                e.Body.Velocity = Vector3.Zero;
+                e.Physics.BoxBody.Center = e.Transform.Position;
+                e.Physics.BoxBody.Velocity = Vector3.Zero;
             }
         }
 
         // 3) Compute platform deltas from prev -> current
         ComputePlatformDeltasFromPrev();
+
+        // 4) Carry supported dynamic boxes once per fixed tick.
+        CarryDynamicBoxesOnMovingPlatforms();
 
         float remaining = fixedDt;
 
@@ -698,22 +692,24 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             for (int i = 0; i < _runtimeEntities.Count; i++)
             {
                 var e = _runtimeEntities[i];
-                if (e.Body == null) continue;
+                if (e.Physics.BoxBody == null) continue;
                 if (e.IsHeld) continue;
-                if (e.MotionType != MotionType.Dynamic) continue;
+                if (e.Physics.MotionType != MotionType.Dynamic) continue;
 
-                e.Body.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+                e.Physics.BoxBody.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
 
-                if (TryGetPlatformDeltaForBody(e.Body, out var platformDelta))
+                if (ShouldStickToMovingPlatform(e) &&
+                    TryGetSupportingPlatformForBody(
+                        e.Physics.BoxBody,
+                        usePreviousPlatformPosition: false,
+                        out _))
                 {
-                    e.Body.Center += platformDelta;
-
-                    // cancel downward velocity when riding platform
-                    if (e.Body.Velocity.Y < 0f)
-                        e.Body.Velocity = new Vector3(e.Body.Velocity.X, 0f, e.Body.Velocity.Z);
+                    // Keep boxes settled on a supporting platform after the carry step.
+                    if (e.Physics.BoxBody.Velocity.Y < 0f)
+                        e.Physics.BoxBody.Velocity = new Vector3(e.Physics.BoxBody.Velocity.X, 0f, e.Physics.BoxBody.Velocity.Z);
                 }
 
-                e.Transform.Position = e.Body.Center;
+                e.Transform.Position = e.Physics.BoxBody.Center;
             }
 
             ResolveDynamicDynamic(iterations: 2);
@@ -772,17 +768,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
-            if (e.Body == null) continue;
-            if (e.MotionType != MotionType.Dynamic) continue;
+            if (e.Physics.BoxBody == null) continue;
+            if (e.Physics.MotionType != MotionType.Dynamic) continue;
             if (e.IsHeld) continue;
 
-            var boxAabb = Aabb.FromCenterExtents(e.Body.Center, e.Body.HalfExtents);
+            var boxAabb = Aabb.FromCenterExtents(e.Physics.BoxBody.Center, e.Physics.BoxBody.HalfExtents);
 
             if (!playerAabb.Overlaps(boxAabb))
                 continue;
 
             // push direction from player -> box in XZ
-            Vector3 toBox = e.Body.Center - playerCenter;
+            Vector3 toBox = e.Physics.BoxBody.Center - playerCenter;
             toBox.Y = 0f;
             if (toBox.LengthSquared() < 0.0001f) continue;
             toBox = Vector3.Normalize(toBox);
@@ -793,8 +789,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             Vector3 add = toBox * (pushStrength * toward);
 
-            Vector3 v = e.Body.Velocity;
-            v.Y = e.Body.Velocity.Y;
+            Vector3 v = e.Physics.BoxBody.Velocity;
+            v.Y = e.Physics.BoxBody.Velocity.Y;
 
             Vector3 newLat = new Vector3(v.X, 0f, v.Z) + add;
 
@@ -802,7 +798,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (newLatSpeed > maxAddedSpeed)
                 newLat = newLat / newLatSpeed * maxAddedSpeed;
 
-            e.Body.Velocity = new Vector3(newLat.X, v.Y, newLat.Z);
+            e.Physics.BoxBody.Velocity = new Vector3(newLat.X, v.Y, newLat.Z);
         }
     }
 
@@ -868,7 +864,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         if (!string.IsNullOrWhiteSpace(_editor.LastTriggerEvent))
             ImGui.Text($"Last Trigger: {_editor.LastTriggerEvent}");
         ImGui.Text($"Runtime Entities: {_runtimeEntities.Count}");
-        ImGui.Text($"Runtime RenderBoxes: {_runtimeRenderBoxes.Count}");
+        ImGui.Text($"Runtime Renderables: {_runtimeEntities.Count(e => e.Render.Enabled)}");
         ImGui.Text($"Runtime Colliders: {_runtimeWorldColliders.Count}");
 
         if (_runtimeEntities.Count > 0)
@@ -1014,6 +1010,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var ent = _runtimeEntities[i];
+            if (!ent.Render.Enabled) continue;
 
             // Position comes from runtime (MovingPlatform updates this)
             Vector3 pos = ent.Transform.Position;
@@ -1025,8 +1022,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 eulerDeg.X * (MathF.PI / 180f),
                 eulerDeg.Z * (MathF.PI / 180f));
 
-            Vector3 size = Mul(ent.BoxSize, ent.Transform.Scale);
-            Vector4 col = ent.BoxColor;
+            Vector3 size = ent.Render.Size;
+            Vector4 col = ent.Render.Color;
 
             DrawEditorBox(renderer, pos, size, rot, col);
         }
@@ -1147,30 +1144,28 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         float bestT = maxDist;
 
         Console.WriteLine($"[Pickup.Raycast] origin={origin} dir={dir} maxDist={maxDist}");
-        Console.WriteLine($"[Pickup.Raycast] runtimeRenderBoxes={_runtimeRenderBoxes.Count}");
+        Console.WriteLine($"[Pickup.Raycast] runtimeColliders={_runtimeEntities.Count(e => e.Collider.Enabled)}");
 
-        for (int i = 0; i < _runtimeRenderBoxes.Count; i++)
+        for (int i = 0; i < _runtimeEntities.Count; i++)
         {
-            var rr = _runtimeRenderBoxes[i];
-            var e = rr.Entity;
+            var e = _runtimeEntities[i];
+            if (!e.Collider.Enabled) continue;
 
             if (!e.CanPickUp)
                 continue;
 
 
-            if (e.Body == null)
+            if (e.Physics.BoxBody == null)
             {
-                Console.WriteLine($"[Pickup.Raycast] {e.Name} CanPickUp=true but Body==null (not dynamic, can't pick up)");
+                Console.WriteLine($"[Pickup.Raycast] {e.Name} CanPickUp=true but BoxBody==null (not dynamic, can't pick up)");
                 continue;
             }
 
             if (e.IsHeld) continue;
-            if (e.Body.IsKinematic) continue;
-            if (e.Body.Mass > _pickupMaxMass) continue;
+            if (e.Physics.BoxBody.IsKinematic) continue;
+            if (e.Physics.BoxBody.Mass > _pickupMaxMass) continue;
 
-            Vector3 pos = e.Transform.Position;
-            Vector3 half = rr.Size * 0.5f;
-            var aabb = new Aabb(pos - half, pos + half);
+            var aabb = e.Collider.GetAabb(e.Transform.Position);
 
             if (Engine.Physics.Collision.Raycast.RayIntersectsAabb(ray, aabb, 0.05f, bestT, out float tHit))
             {
@@ -1217,7 +1212,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 }
                 else
                 {
-                    Console.WriteLine($"[Pickup] Raycast hit entity: {hit.Name} canPickUp={hit.CanPickUp} hasBody={(hit.Body != null)} pos={hit.Transform.Position}");
+                    Console.WriteLine($"[Pickup] Raycast hit entity: {hit.Name} canPickUp={hit.CanPickUp} hasBody={(hit.Physics.BoxBody != null)} pos={hit.Transform.Position}");
                     PickUp(hit);
                 }
             }
@@ -1225,17 +1220,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     }
     private void PickUp(Entity e)
     {
-        Console.WriteLine($"[Pickup] PickUp({e.Name}) BEFORE: grav={e.Body?.UseGravity} kin={e.Body?.IsKinematic} vel={e.Body?.Velocity}");
+        Console.WriteLine($"[Pickup] PickUp({e.Name}) BEFORE: grav={e.Physics.BoxBody?.UseGravity} kin={e.Physics.BoxBody?.IsKinematic} vel={e.Physics.BoxBody?.Velocity}");
 
-        if (e.Body == null) return;
+        if (e.Physics.BoxBody == null) return;
 
         _held = e;
         e.IsHeld = true;
 
-        e.Body.IsKinematic = true;
-        e.Body.UseGravity = false;
-        e.Body.Velocity = Vector3.Zero;
-        Console.WriteLine($"[Pickup] PickUp({e.Name}) AFTER: grav={e.Body.UseGravity} kin={e.Body.IsKinematic} vel={e.Body.Velocity}");
+        e.Physics.BoxBody.IsKinematic = true;
+        e.Physics.BoxBody.UseGravity = false;
+        e.Physics.BoxBody.Velocity = Vector3.Zero;
+        Console.WriteLine($"[Pickup] PickUp({e.Name}) AFTER: grav={e.Physics.BoxBody.UseGravity} kin={e.Physics.BoxBody.IsKinematic} vel={e.Physics.BoxBody.Velocity}");
 
     }
 
@@ -1247,10 +1242,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         Console.WriteLine($"[Pickup] Drop({_held.Name})");
 
 
-        if (e.Body != null)
+        if (e.Physics.BoxBody != null)
         {
-            e.Body.IsKinematic = false;
-            e.Body.UseGravity = true;
+            e.Physics.BoxBody.IsKinematic = false;
+            e.Physics.BoxBody.UseGravity = true;
         }
 
         e.IsHeld = false;
@@ -1264,12 +1259,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         Vector3 dir = Vector3.Normalize(_camera.Forward);
 
-        if (e.Body != null)
+        if (e.Physics.BoxBody != null)
         {
-            e.Body.IsKinematic = false;
-            e.Body.UseGravity = true;
+            e.Physics.BoxBody.IsKinematic = false;
+            e.Physics.BoxBody.UseGravity = true;
 
-            e.Body.Velocity = dir * _throwSpeed + _motor.Velocity * 0.5f;
+            e.Physics.BoxBody.Velocity = dir * _throwSpeed + _motor.Velocity * 0.5f;
         }
 
         e.IsHeld = false;
@@ -1291,11 +1286,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private void FixedUpdateHeldObject(float dt)
     {
         if (_held == null) return;
-        if (_held.Body == null) return;
+        if (_held.Physics.BoxBody == null) return;
 
         Vector3 desired = _camera.Position + Vector3.Normalize(_camera.Forward) * _holdDistance;
 
-        var b = _held.Body;
+        var b = _held.Physics.BoxBody;
 
         Vector3 x = b.Center;
         Vector3 v = b.Velocity;
@@ -1373,9 +1368,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
-            if (e.Body == null) continue;
+            if (e.Physics.BoxBody == null) continue;
             if (e.IsHeld) continue;
-            if (e.MotionType != MotionType.Dynamic) continue;
+            if (e.Physics.MotionType != MotionType.Dynamic) continue;
             dyn[dynCount++] = i;
         }
 
@@ -1386,12 +1381,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             for (int ai = 0; ai < dynCount; ai++)
             {
                 var A = _runtimeEntities[dyn[ai]];
-                var aBody = A.Body!;
+                var aBody = A.Physics.BoxBody!;
 
                 for (int bi = ai + 1; bi < dynCount; bi++)
                 {
                     var B = _runtimeEntities[dyn[bi]];
-                    var bBody = B.Body!;
+                    var bBody = B.Physics.BoxBody!;
 
                     var aAabb = aBody.GetAabb();
                     var bAabb = bBody.GetAabb();

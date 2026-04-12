@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj": {}
+    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj": {}
   },
   "projects": {
-    "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj": {
+    "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj",
+        "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj",
         "projectName": "Engine.Physics",
-        "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj",
+        "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj",
         "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-        "outputPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\obj\\",
+        "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\obj\\",
         "projectStyle": "PackageReference",
         "centralPackageVersionsManagementEnabled": true,
         "fallbackFolders": [
@@ -27,7 +27,6 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -74,7 +73,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
