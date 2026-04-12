@@ -71,10 +71,22 @@ public sealed class LevelEditorController
     public bool FrameSelectionRequested { get; private set; }
     private static bool IsZero(Vector3 v) => MathF.Abs(v.X) < 0.0001f && MathF.Abs(v.Y) < 0.0001f && MathF.Abs(v.Z) < 0.0001f;
     private static bool IsSphereShape(string? shape) => string.Equals(shape, "Sphere", StringComparison.OrdinalIgnoreCase);
+    private static bool IsCapsuleShape(string? shape) => string.Equals(shape, "Capsule", StringComparison.OrdinalIgnoreCase);
     private static float GetScaledSphereRadius(LevelEntityDef entity, Vector3 scale)
     {
         float scaleMax = MathF.Max(MathF.Abs(scale.X), MathF.Max(MathF.Abs(scale.Y), MathF.Abs(scale.Z)));
         return MathF.Max(0.01f, entity.Radius) * MathF.Max(0.01f, scaleMax);
+    }
+    private static float GetScaledCapsuleRadius(LevelEntityDef entity, Vector3 scale)
+    {
+        float scaleXZ = MathF.Max(MathF.Abs(scale.X), MathF.Abs(scale.Z));
+        return MathF.Max(0.01f, entity.Radius) * MathF.Max(0.01f, scaleXZ);
+    }
+    private static float GetScaledCapsuleHeight(LevelEntityDef entity, Vector3 scale)
+    {
+        float radius = GetScaledCapsuleRadius(entity, scale);
+        float height = MathF.Max(0.01f, entity.Height) * MathF.Max(0.01f, MathF.Abs(scale.Y));
+        return MathF.Max(height, radius * 2f);
     }
     private ScriptRegistry _scripts = null!;
     public void SetScriptRegistry(ScriptRegistry reg) => _scripts = reg;
@@ -1106,11 +1118,16 @@ public sealed class LevelEditorController
                 }
             }
 
-            int shapeIndex = IsSphereShape(ent.Shape) ? 1 : 0;
-            if (ImGui.Combo("Shape", ref shapeIndex, "Box\0Sphere\0"))
+            int shapeIndex = IsCapsuleShape(ent.Shape) ? 2 : IsSphereShape(ent.Shape) ? 1 : 0;
+            if (ImGui.Combo("Shape", ref shapeIndex, "Box\0Sphere\0Capsule\0"))
             {
                 BeginEdit();
-                ent.Shape = shapeIndex == 1 ? "Sphere" : "Box";
+                ent.Shape = shapeIndex switch
+                {
+                    1 => "Sphere",
+                    2 => "Capsule",
+                    _ => "Box"
+                };
                 Dirty = true;
                 RebuildRuntimeFromLevel();
                 EndEditIfAny();
@@ -1159,6 +1176,29 @@ public sealed class LevelEditorController
                 {
                     BeginEdit();
                     ent.Radius = MathF.Max(0.01f, radius);
+                    Dirty = true;
+                    RebuildRuntimeFromLevel();
+                    EndEditIfAny();
+                }
+            }
+            else if (IsCapsuleShape(ent.Shape))
+            {
+                float radius = ent.Radius;
+                if (ImGui.DragFloat("Radius", ref radius, 0.05f, 0.01f, 1000f))
+                {
+                    BeginEdit();
+                    ent.Radius = MathF.Max(0.01f, radius);
+                    ent.Height = MathF.Max(ent.Height, ent.Radius * 2f);
+                    Dirty = true;
+                    RebuildRuntimeFromLevel();
+                    EndEditIfAny();
+                }
+
+                float height = ent.Height;
+                if (ImGui.DragFloat("Height", ref height, 0.05f, 0.01f, 1000f))
+                {
+                    BeginEdit();
+                    ent.Height = MathF.Max(MathF.Max(0.01f, height), ent.Radius * 2f);
                     Dirty = true;
                     RebuildRuntimeFromLevel();
                     EndEditIfAny();
@@ -1475,6 +1515,17 @@ public sealed class LevelEditorController
                     float radius = GetScaledSphereRadius(e, ws);
                     DrawBoxes.Add(EditorDrawBox.Sphere(wt, radius * 2f, new Vector4(0.9f, 0.2f, 0.6f, 1f)));
                 }
+                else if (IsCapsuleShape(e.Shape))
+                {
+                    float radius = GetScaledCapsuleRadius(e, ws);
+                    float height = GetScaledCapsuleHeight(e, ws);
+                    DrawBoxes.Add(new EditorDrawBox(
+                        wt,
+                        new Vector3(radius * 2f, height, radius * 2f),
+                        new Vector4(0.9f, 0.2f, 0.6f, 1f),
+                        Quaternion.Identity,
+                        isSphere: true));
+                }
                 else
                 {
                     Vector3 size = Mul(e.Size, ws);
@@ -1771,6 +1822,7 @@ public sealed class LevelEditorController
             Shape = "Box",
             Size = new Vector3(1, 1, 1),
             Radius = 0.5f,
+            Height = 1.5f,
             Mass = 10f,
             Friction = 0.8f
         });
@@ -1808,6 +1860,16 @@ public sealed class LevelEditorController
                 {
                     if (e.Radius <= 0f)
                         e.Radius = 0.5f;
+                }
+                else if (IsCapsuleShape(e.Shape))
+                {
+                    if (e.Radius <= 0f)
+                        e.Radius = 0.5f;
+
+                    if (e.Height <= 0f)
+                        e.Height = 1.5f;
+
+                    e.Height = MathF.Max(e.Height, e.Radius * 2f);
                 }
                 else
                 {

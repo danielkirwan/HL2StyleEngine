@@ -217,6 +217,64 @@ public static class StaticCollision
         return (center, vel, grounded);
     }
 
+    public static (Vector3 center, Vector3 vel, bool grounded) ResolveDynamicCapsule(
+        Vector3 center,
+        Vector3 vel,
+        float radius,
+        float height,
+        IReadOnlyList<Aabb> world,
+        float restitution = 0.05f,
+        int iterations = 6)
+    {
+        bool grounded = false;
+        float halfY = MathF.Max(height * 0.5f, radius);
+
+        for (int it = 0; it < iterations; it++)
+        {
+            Aabb capsuleBounds = Aabb.FromCenterExtents(center, new Vector3(radius, halfY, radius));
+            bool any = false;
+
+            for (int i = 0; i < world.Count; i++)
+            {
+                var box = world[i];
+                if (!capsuleBounds.Overlaps(box))
+                    continue;
+
+                if (!TryResolveCapsuleAabb(center, radius, height, box, out Vector3 normal, out float penetration))
+                    continue;
+
+                any = true;
+                center -= normal * penetration;
+
+                float alongNormal = Vector3.Dot(vel, normal);
+                if (alongNormal > 0f)
+                {
+                    if (normal.Y < -0.5f)
+                    {
+                        grounded = true;
+                        vel.Y = 0f;
+                    }
+                    else
+                    {
+                        vel -= (1f + restitution) * alongNormal * normal;
+                    }
+                }
+
+                capsuleBounds = Aabb.FromCenterExtents(center, new Vector3(radius, halfY, radius));
+            }
+
+            if (!any)
+                break;
+        }
+
+        const float minBounceSpeed = 0.15f;
+        if (MathF.Abs(vel.X) < minBounceSpeed) vel.X = 0f;
+        if (MathF.Abs(vel.Y) < minBounceSpeed) vel.Y = 0f;
+        if (MathF.Abs(vel.Z) < minBounceSpeed) vel.Z = 0f;
+
+        return (center, vel, grounded);
+    }
+
     public static bool TryResolveSphereAabb(
         Vector3 sphereCenter,
         float sphereRadius,
@@ -276,5 +334,72 @@ public static class StaticCollision
             penetration = sphereRadius + exitZ;
             return penetration > 0f;
         }
+    }
+
+    public static bool TryResolveCapsuleAabb(
+        Vector3 capsuleCenter,
+        float capsuleRadius,
+        float capsuleHeight,
+        Aabb box,
+        out Vector3 normal,
+        out float penetration)
+    {
+        float segmentHalf = MathF.Max(0f, capsuleHeight * 0.5f - capsuleRadius);
+        float segmentMinY = capsuleCenter.Y - segmentHalf;
+        float segmentMaxY = capsuleCenter.Y + segmentHalf;
+
+        float closestSegmentY;
+        if (segmentMaxY < box.Min.Y) closestSegmentY = segmentMaxY;
+        else if (segmentMinY > box.Max.Y) closestSegmentY = segmentMinY;
+        else closestSegmentY = Math.Clamp(capsuleCenter.Y, box.Min.Y, box.Max.Y);
+
+        Vector3 segmentPoint = new(capsuleCenter.X, closestSegmentY, capsuleCenter.Z);
+        Vector3 closestBoxPoint = Vector3.Clamp(segmentPoint, box.Min, box.Max);
+        Vector3 delta = closestBoxPoint - segmentPoint;
+        float distSq = delta.LengthSquared();
+
+        if (distSq > 1e-8f)
+        {
+            float dist = MathF.Sqrt(distSq);
+            penetration = capsuleRadius - dist;
+            if (penetration <= 0f)
+            {
+                normal = Vector3.Zero;
+                penetration = 0f;
+                return false;
+            }
+
+            normal = delta / dist;
+            return true;
+        }
+
+        float toMinX = segmentPoint.X - box.Min.X;
+        float toMaxX = box.Max.X - segmentPoint.X;
+        float toMinY = segmentPoint.Y - box.Min.Y;
+        float toMaxY = box.Max.Y - segmentPoint.Y;
+        float toMinZ = segmentPoint.Z - box.Min.Z;
+        float toMaxZ = box.Max.Z - segmentPoint.Z;
+
+        float exitX = MathF.Min(toMinX, toMaxX);
+        float exitY = MathF.Min(toMinY, toMaxY);
+        float exitZ = MathF.Min(toMinZ, toMaxZ);
+
+        if (exitX <= exitY && exitX <= exitZ)
+        {
+            normal = toMinX <= toMaxX ? Vector3.UnitX : -Vector3.UnitX;
+            penetration = capsuleRadius + exitX;
+            return penetration > 0f;
+        }
+
+        if (exitY <= exitX && exitY <= exitZ)
+        {
+            normal = toMinY <= toMaxY ? Vector3.UnitY : -Vector3.UnitY;
+            penetration = capsuleRadius + exitY;
+            return penetration > 0f;
+        }
+
+        normal = toMinZ <= toMaxZ ? Vector3.UnitZ : -Vector3.UnitZ;
+        penetration = capsuleRadius + exitZ;
+        return penetration > 0f;
     }
 }

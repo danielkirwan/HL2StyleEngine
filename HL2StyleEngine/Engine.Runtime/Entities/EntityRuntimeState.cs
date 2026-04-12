@@ -8,7 +8,8 @@ public enum RuntimeShapeKind
 {
     None = 0,
     Box = 1,
-    Sphere = 2
+    Sphere = 2,
+    Capsule = 3
 }
 
 public sealed class EntityRenderState
@@ -16,6 +17,7 @@ public sealed class EntityRenderState
     public RuntimeShapeKind Shape = RuntimeShapeKind.None;
     public Vector3 Size = Vector3.One;
     public float Radius = 0.5f;
+    public float Height = 1f;
     public Vector4 Color = new(0.6f, 0.6f, 0.6f, 1f);
 
     public bool Enabled => Shape != RuntimeShapeKind.None;
@@ -26,6 +28,7 @@ public sealed class EntityColliderState
     public RuntimeShapeKind Shape = RuntimeShapeKind.None;
     public Vector3 Size = Vector3.One;
     public float Radius = 0.5f;
+    public float Height = 1f;
     public bool IsSolid = true;
     public bool IsMovingPlatform;
     public Vector3 PreviousPosition;
@@ -41,6 +44,7 @@ public sealed class EntityColliderState
         {
             RuntimeShapeKind.Box => Aabb.FromCenterExtents(position, HalfExtents),
             RuntimeShapeKind.Sphere => Aabb.FromCenterExtents(position, new Vector3(Radius)),
+            RuntimeShapeKind.Capsule => Aabb.FromCenterExtents(position, new Vector3(Radius, MathF.Max(Height * 0.5f, Radius), Radius)),
             _ => Aabb.FromCenterExtents(position, Vector3.Zero)
         };
     }
@@ -51,4 +55,5 @@ public sealed class EntityPhysicsState
     public MotionType MotionType = MotionType.Static;
     public BoxBody? BoxBody;
     public SphereBody? SphereBody;
+    public CapsuleBody? CapsuleBody;
 }

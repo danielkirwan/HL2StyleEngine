@@ -251,8 +251,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private static bool IsSphereShape(string? shape)
         => string.Equals(shape, "Sphere", StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsCapsuleShape(string? shape)
+        => string.Equals(shape, "Capsule", StringComparison.OrdinalIgnoreCase);
+
     private static RuntimeShapeKind GetRigidBodyShape(LevelEntityDef def)
-        => IsSphereShape(def.Shape) ? RuntimeShapeKind.Sphere : RuntimeShapeKind.Box;
+        => IsCapsuleShape(def.Shape)
+            ? RuntimeShapeKind.Capsule
+            : IsSphereShape(def.Shape)
+                ? RuntimeShapeKind.Sphere
+                : RuntimeShapeKind.Box;
 
     private static float GetScaledSphereRadius(LevelEntityDef def, bool clampScale)
     {
@@ -266,13 +273,39 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         return radius * scaleMax;
     }
 
+    private static float GetScaledCapsuleRadius(LevelEntityDef def, bool clampScale)
+    {
+        float radius = clampScale ? MathF.Max(0.01f, def.Radius) : def.Radius;
+        Vector3 scale = Abs((Vector3)def.LocalScale);
+
+        if (clampScale)
+            scale = ClampMin(scale, 0.01f);
+
+        float scaleXZ = MathF.Max(scale.X, scale.Z);
+        return radius * scaleXZ;
+    }
+
+    private static float GetScaledCapsuleHeight(LevelEntityDef def, bool clampScale)
+    {
+        float radius = GetScaledCapsuleRadius(def, clampScale);
+        float height = clampScale ? MathF.Max(0.01f, def.Height) : def.Height;
+        float scaleY = MathF.Abs(((Vector3)def.LocalScale).Y);
+
+        if (clampScale)
+            scaleY = MathF.Max(0.01f, scaleY);
+
+        height *= scaleY;
+        return MathF.Max(height, radius * 2f);
+    }
+
     private static bool HasPhysicsBody(Entity entity)
-        => entity.Physics.BoxBody != null || entity.Physics.SphereBody != null;
+        => entity.Physics.BoxBody != null || entity.Physics.SphereBody != null || entity.Physics.CapsuleBody != null;
 
     private static RuntimeShapeKind GetPhysicsBodyShape(Entity entity)
     {
         if (entity.Physics.BoxBody != null) return RuntimeShapeKind.Box;
         if (entity.Physics.SphereBody != null) return RuntimeShapeKind.Sphere;
+        if (entity.Physics.CapsuleBody != null) return RuntimeShapeKind.Capsule;
         return RuntimeShapeKind.None;
     }
 
@@ -287,6 +320,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         if (entity.Physics.SphereBody != null)
         {
             aabb = entity.Physics.SphereBody.GetAabb();
+            return true;
+        }
+
+        if (entity.Physics.CapsuleBody != null)
+        {
+            aabb = entity.Physics.CapsuleBody.GetAabb();
             return true;
         }
 
@@ -308,6 +347,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return true;
         }
 
+        if (entity.Physics.CapsuleBody != null)
+        {
+            center = entity.Physics.CapsuleBody.Center;
+            return true;
+        }
+
         center = default;
         return false;
     }
@@ -319,12 +364,16 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (entity.Physics.SphereBody != null)
             entity.Physics.SphereBody.Center = center;
+
+        if (entity.Physics.CapsuleBody != null)
+            entity.Physics.CapsuleBody.Center = center;
     }
 
     private static Vector3 GetPhysicsBodyVelocity(Entity entity)
     {
         if (entity.Physics.BoxBody != null) return entity.Physics.BoxBody.Velocity;
         if (entity.Physics.SphereBody != null) return entity.Physics.SphereBody.Velocity;
+        if (entity.Physics.CapsuleBody != null) return entity.Physics.CapsuleBody.Velocity;
         return Vector3.Zero;
     }
 
@@ -335,12 +384,16 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (entity.Physics.SphereBody != null)
             entity.Physics.SphereBody.Velocity = velocity;
+
+        if (entity.Physics.CapsuleBody != null)
+            entity.Physics.CapsuleBody.Velocity = velocity;
     }
 
     private static bool IsPhysicsBodyKinematic(Entity entity)
     {
         if (entity.Physics.BoxBody != null) return entity.Physics.BoxBody.IsKinematic;
         if (entity.Physics.SphereBody != null) return entity.Physics.SphereBody.IsKinematic;
+        if (entity.Physics.CapsuleBody != null) return entity.Physics.CapsuleBody.IsKinematic;
         return false;
     }
 
@@ -348,6 +401,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         if (entity.Physics.BoxBody != null) return entity.Physics.BoxBody.Mass;
         if (entity.Physics.SphereBody != null) return entity.Physics.SphereBody.Mass;
+        if (entity.Physics.CapsuleBody != null) return entity.Physics.CapsuleBody.Mass;
         return 0f;
     }
 
@@ -360,7 +414,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
 
         if (entity.Physics.SphereBody != null)
+        {
             entity.Physics.SphereBody.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+            return;
+        }
+
+        if (entity.Physics.CapsuleBody != null)
+            entity.Physics.CapsuleBody.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
     }
 
     private bool TryGetSupportingPlatformForBody(
@@ -496,12 +556,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Render.Shape = RuntimeShapeKind.Box;
             e.Render.Size = GetScaledSize(def, clampComponents: false);
             e.Render.Radius = GetScaledSphereRadius(def, clampScale: false);
+            e.Render.Height = GetScaledCapsuleHeight(def, clampScale: false);
             e.Render.Color = (Vector4)def.Color;
 
             e.CanPickUp = def.CanPickUp;
             e.Physics.MotionType = def.MotionType;
             e.Physics.BoxBody = null;
             e.Physics.SphereBody = null;
+            e.Physics.CapsuleBody = null;
 
             foreach (var s in def.Scripts)
             {
@@ -515,10 +577,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             }
 
             bool isRigidBody = def.Type == EntityTypes.RigidBody;
-            bool isSphere = isRigidBody && GetRigidBodyShape(def) == RuntimeShapeKind.Sphere;
+            RuntimeShapeKind rigidBodyShape = isRigidBody ? GetRigidBodyShape(def) : RuntimeShapeKind.Box;
+            bool isSphere = isRigidBody && rigidBodyShape == RuntimeShapeKind.Sphere;
+            bool isCapsule = isRigidBody && rigidBodyShape == RuntimeShapeKind.Capsule;
             bool isBoxPhysicsShape =
                 (def.Type == EntityTypes.Box) ||
-                (isRigidBody && !isSphere);
+                (isRigidBody && rigidBodyShape == RuntimeShapeKind.Box);
 
             if (isSphere)
             {
@@ -526,6 +590,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 e.Render.Shape = RuntimeShapeKind.Sphere;
                 e.Render.Size = new Vector3(radius * 2f);
                 e.Render.Radius = radius;
+            }
+            else if (isCapsule)
+            {
+                float radius = GetScaledCapsuleRadius(def, clampScale: true);
+                float height = GetScaledCapsuleHeight(def, clampScale: true);
+                e.Render.Shape = RuntimeShapeKind.Capsule;
+                e.Render.Size = new Vector3(radius * 2f, height, radius * 2f);
+                e.Render.Radius = radius;
+                e.Render.Height = height;
             }
 
             if (isSphere && def.MotionType == MotionType.Dynamic)
@@ -547,6 +620,35 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 float radius = GetScaledSphereRadius(def, clampScale: true);
 
                 e.Physics.SphereBody = new SphereBody(e.Transform.Position, radius)
+                {
+                    Mass = def.Mass,
+                    UseGravity = false,
+                    IsKinematic = true,
+                    Friction = def.Friction,
+                    Restitution = def.Restitution
+                };
+            }
+            else if (isCapsule && def.MotionType == MotionType.Dynamic)
+            {
+                float radius = GetScaledCapsuleRadius(def, clampScale: true);
+                float height = GetScaledCapsuleHeight(def, clampScale: true);
+
+                e.Physics.CapsuleBody = new CapsuleBody(e.Transform.Position, radius, height)
+                {
+                    Mass = def.Mass,
+                    UseGravity = true,
+                    IsKinematic = false,
+                    Friction = def.Friction,
+                    Restitution = def.Restitution,
+                    LinearDamping = 0.02f
+                };
+            }
+            else if (isCapsule && def.MotionType == MotionType.Kinematic)
+            {
+                float radius = GetScaledCapsuleRadius(def, clampScale: true);
+                float height = GetScaledCapsuleHeight(def, clampScale: true);
+
+                e.Physics.CapsuleBody = new CapsuleBody(e.Transform.Position, radius, height)
                 {
                     Mass = def.Mass,
                     UseGravity = false,
@@ -594,6 +696,19 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 e.Collider.Shape = RuntimeShapeKind.Sphere;
                 e.Collider.Radius = radius;
                 e.Collider.Size = new Vector3(radius * 2f);
+                e.Collider.Height = radius * 2f;
+                e.Collider.IsMovingPlatform = false;
+                e.Collider.PreviousPosition = e.Transform.Position;
+                e.Collider.Delta = Vector3.Zero;
+            }
+            else if (isCapsule)
+            {
+                float radius = GetScaledCapsuleRadius(def, clampScale: true);
+                float height = GetScaledCapsuleHeight(def, clampScale: true);
+                e.Collider.Shape = RuntimeShapeKind.Capsule;
+                e.Collider.Radius = radius;
+                e.Collider.Height = height;
+                e.Collider.Size = new Vector3(radius * 2f, height, radius * 2f);
                 e.Collider.IsMovingPlatform = false;
                 e.Collider.PreviousPosition = e.Transform.Position;
                 e.Collider.Delta = Vector3.Zero;
@@ -603,6 +718,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 e.Collider.Shape = RuntimeShapeKind.Box;
                 e.Collider.Size = GetScaledSize(def, clampComponents: true);
                 e.Collider.Radius = 0.5f;
+                e.Collider.Height = e.Collider.Size.Y;
                 e.Collider.IsMovingPlatform = hasMovingPlatform;
                 e.Collider.PreviousPosition = e.Transform.Position;
                 e.Collider.Delta = Vector3.Zero;
@@ -1147,7 +1263,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 if (i == _editor.SelectedEntityIndex)
                     color = new Vector4(1f, 1f, 0.1f, 1f);
 
-                DrawPrimitive(renderer, d.IsSphere ? RuntimeShapeKind.Sphere : RuntimeShapeKind.Box, d.Position, d.Size, d.Rotation, color);
+                RuntimeShapeKind shape =
+                    d.IsSphere
+                        ? (d.Size.Y > d.Size.X + 0.0001f ? RuntimeShapeKind.Capsule : RuntimeShapeKind.Sphere)
+                        : RuntimeShapeKind.Box;
+                float radius = d.Size.X * 0.5f;
+                float height = d.Size.Y;
+
+                DrawPrimitive(renderer, shape, d.Position, d.Size, d.Rotation, color, radius, height);
             }
 
             if (_editor.HasGizmo(out var xLine, out var xHandle,
@@ -1176,10 +1299,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                     if (_editor.TryGetEntityWorldTRS(i, out var pos, out var rot, out var scale))
                     {
                         bool isSphere = e.Type == EntityTypes.RigidBody && IsSphereShape(e.Shape);
+                        bool isCapsule = e.Type == EntityTypes.RigidBody && IsCapsuleShape(e.Shape);
+                        float capsuleRadius = MathF.Max(0.01f, e.Radius) * MathF.Max(MathF.Abs(scale.X), MathF.Abs(scale.Z));
+                        float capsuleHeight = MathF.Max(MathF.Max(0.01f, e.Height) * MathF.Max(0.01f, MathF.Abs(scale.Y)), capsuleRadius * 2f);
                         Vector3 size = isSphere
                             ? new Vector3(MathF.Max(0.01f, e.Radius) * MathF.Max(MathF.Abs(scale.X), MathF.Max(MathF.Abs(scale.Y), MathF.Abs(scale.Z))) * 2f)
-                            : Mul((Vector3)e.Size, scale);
-                        Quaternion colliderRot = isSphere ? Quaternion.Identity : rot;
+                            : isCapsule
+                                ? new Vector3(
+                                    capsuleRadius * 2f,
+                                    capsuleHeight,
+                                    capsuleRadius * 2f)
+                                : Mul((Vector3)e.Size, scale);
+                        Quaternion colliderRot = (isSphere || isCapsule) ? Quaternion.Identity : rot;
 
                         bool selected = (i == _editor.SelectedEntityIndex);
 
@@ -1235,7 +1366,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             Vector3 size = ent.Render.Size;
             Vector4 col = ent.Render.Color;
 
-            DrawPrimitive(renderer, ent.Render.Shape, pos, size, rot, col);
+            DrawPrimitive(renderer, ent.Render.Shape, pos, size, rot, col, ent.Render.Radius, ent.Render.Height);
         }
     }
 
@@ -1343,14 +1474,44 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _world.DrawBox(renderer.CommandList, model, color);
     }
 
-    private void DrawPrimitive(Renderer renderer, RuntimeShapeKind shape, Vector3 pos, Vector3 size, Quaternion rot, Vector4 color)
+    private void DrawPrimitive(Renderer renderer, RuntimeShapeKind shape, Vector3 pos, Vector3 size, Quaternion rot, Vector4 color, float radius = 0.5f, float height = 1f)
     {
+        if (shape == RuntimeShapeKind.Capsule)
+        {
+            DrawCapsulePrimitive(renderer, pos, radius, height, color);
+            return;
+        }
+
         var model = Matrix4x4.CreateScale(size) * Matrix4x4.CreateFromQuaternion(rot) * Matrix4x4.CreateTranslation(pos);
 
         if (shape == RuntimeShapeKind.Sphere)
             _world.DrawSphere(renderer.CommandList, model, color);
         else
             _world.DrawBox(renderer.CommandList, model, color);
+    }
+
+    private void DrawCapsulePrimitive(Renderer renderer, Vector3 pos, float radius, float height, Vector4 color)
+    {
+        float clampedRadius = MathF.Max(0.01f, radius);
+        float clampedHeight = MathF.Max(height, clampedRadius * 2f);
+        float cylinderHeight = MathF.Max(0f, clampedHeight - clampedRadius * 2f);
+
+        if (cylinderHeight > 0.0001f)
+        {
+            var cylinderModel =
+                Matrix4x4.CreateScale(new Vector3(clampedRadius * 2f, cylinderHeight, clampedRadius * 2f)) *
+                Matrix4x4.CreateTranslation(pos);
+            _world.DrawBox(renderer.CommandList, cylinderModel, color);
+        }
+
+        Vector3 capOffset = Vector3.UnitY * MathF.Max(0f, clampedHeight * 0.5f - clampedRadius);
+        var sphereScale = Matrix4x4.CreateScale(new Vector3(clampedRadius * 2f));
+
+        var topModel = sphereScale * Matrix4x4.CreateTranslation(pos + capOffset);
+        var bottomModel = sphereScale * Matrix4x4.CreateTranslation(pos - capOffset);
+
+        _world.DrawSphere(renderer.CommandList, topModel, color);
+        _world.DrawSphere(renderer.CommandList, bottomModel, color);
     }
 
     private static bool RayIntersectsEntityCollider(in Engine.Physics.Collision.Ray ray, Entity entity, float tMin, float tMax, out float hitT)
@@ -1367,6 +1528,16 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 ray,
                 entity.Transform.Position,
                 entity.Collider.Radius,
+                tMin,
+                tMax,
+                out hitT);
+        }
+
+        if (entity.Collider.Shape == RuntimeShapeKind.Capsule)
+        {
+            return Engine.Physics.Collision.Raycast.RayIntersectsAabb(
+                ray,
+                entity.Collider.GetAabb(entity.Transform.Position),
                 tMin,
                 tMax,
                 out hitT);
@@ -1486,6 +1657,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Physics.SphereBody.Velocity = Vector3.Zero;
         }
 
+        if (e.Physics.CapsuleBody != null)
+        {
+            e.Physics.CapsuleBody.IsKinematic = true;
+            e.Physics.CapsuleBody.UseGravity = false;
+            e.Physics.CapsuleBody.Velocity = Vector3.Zero;
+        }
+
         Console.WriteLine($"[Pickup] PickUp({e.Name}) AFTER: bodyShape={GetPhysicsBodyShape(e)} vel={GetPhysicsBodyVelocity(e)}");
 
     }
@@ -1508,6 +1686,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         {
             e.Physics.SphereBody.IsKinematic = false;
             e.Physics.SphereBody.UseGravity = true;
+        }
+
+        if (e.Physics.CapsuleBody != null)
+        {
+            e.Physics.CapsuleBody.IsKinematic = false;
+            e.Physics.CapsuleBody.UseGravity = true;
         }
 
         e.IsHeld = false;
@@ -1537,6 +1721,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Physics.SphereBody.Velocity = dir * _throwSpeed + _motor.Velocity * 0.5f;
         }
 
+        if (e.Physics.CapsuleBody != null)
+        {
+            e.Physics.CapsuleBody.IsKinematic = false;
+            e.Physics.CapsuleBody.UseGravity = true;
+
+            e.Physics.CapsuleBody.Velocity = dir * _throwSpeed + _motor.Velocity * 0.5f;
+        }
+
         e.IsHeld = false;
         _held = null;
     }
@@ -1560,7 +1752,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         Vector3 desired = _camera.Position + Vector3.Normalize(_camera.Forward) * _holdDistance;
 
-        Vector3 x = _held.Physics.BoxBody?.Center ?? _held.Physics.SphereBody!.Center;
+        Vector3 x = _held.Physics.BoxBody?.Center ?? _held.Physics.SphereBody?.Center ?? _held.Physics.CapsuleBody!.Center;
         Vector3 v = GetPhysicsBodyVelocity(_held);
 
         Vector3 toTarget = desired - x;
@@ -1585,11 +1777,23 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
         else
         {
-            (resolvedCenter, resolvedVel, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicSphere(
-                newCenter,
-                v,
-                _held.Physics.SphereBody!.Radius,
-                _runtimeWorldColliders);
+            if (_held.Physics.SphereBody != null)
+            {
+                (resolvedCenter, resolvedVel, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicSphere(
+                    newCenter,
+                    v,
+                    _held.Physics.SphereBody.Radius,
+                    _runtimeWorldColliders);
+            }
+            else
+            {
+                (resolvedCenter, resolvedVel, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicCapsule(
+                    newCenter,
+                    v,
+                    _held.Physics.CapsuleBody!.Radius,
+                    _held.Physics.CapsuleBody.Height,
+                    _runtimeWorldColliders);
+            }
         }
 
         SetPhysicsBodyCenter(_held, resolvedCenter);
@@ -1676,6 +1880,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         if (entity.Physics.BoxBody != null) return entity.Physics.BoxBody.Restitution;
         if (entity.Physics.SphereBody != null) return entity.Physics.SphereBody.Restitution;
+        if (entity.Physics.CapsuleBody != null) return entity.Physics.CapsuleBody.Restitution;
         return 0f;
     }
 
@@ -1683,6 +1888,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         if (entity.Physics.BoxBody != null) return entity.Physics.BoxBody.Friction;
         if (entity.Physics.SphereBody != null) return entity.Physics.SphereBody.Friction;
+        if (entity.Physics.CapsuleBody != null) return entity.Physics.CapsuleBody.Friction;
         return 0f;
     }
 
@@ -1702,6 +1908,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
 
         if (shapeA == RuntimeShapeKind.Box && shapeB == RuntimeShapeKind.Box)
+            return ComputeAabbContact(aAabb, bAabb, out normal, out penetration);
+
+        if (shapeA == RuntimeShapeKind.Capsule || shapeB == RuntimeShapeKind.Capsule)
             return ComputeAabbContact(aAabb, bAabb, out normal, out penetration);
 
         if (shapeA == RuntimeShapeKind.Sphere && shapeB == RuntimeShapeKind.Sphere)
