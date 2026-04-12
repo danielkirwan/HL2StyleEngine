@@ -56,4 +56,8 @@ public sealed class EntityPhysicsState
     public BoxBody? BoxBody;
     public SphereBody? SphereBody;
     public CapsuleBody? CapsuleBody;
+    public Quaternion RestRotation = Quaternion.Identity;
+    public Quaternion Rotation = Quaternion.Identity;
+    public Vector3 AngularVelocity = Vector3.Zero;
+    public float AngularDamping = 8f;
 }

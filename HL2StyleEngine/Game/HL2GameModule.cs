@@ -60,7 +60,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private readonly ScriptRegistry _scriptRegistry = new();
     private readonly List<Entity> _runtimeEntities = new();
 
-    private readonly List<Aabb> _runtimeWorldColliders = new();
+    private readonly List<WorldCollider> _runtimeWorldColliders = new();
 
     private Entity? _held;
     private float _holdDistance = 2.0f;
@@ -357,6 +357,16 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         return false;
     }
 
+    private static WorldCollider CreateWorldCollider(EntityColliderState collider, Vector3 position)
+    {
+        return collider.Shape switch
+        {
+            RuntimeShapeKind.Sphere => WorldCollider.Sphere(position, collider.Radius),
+            RuntimeShapeKind.Capsule => WorldCollider.Capsule(position, collider.Radius, collider.Height),
+            _ => WorldCollider.Box(position, collider.HalfExtents)
+        };
+    }
+
     private static void SetPhysicsBodyCenter(Entity entity, Vector3 center)
     {
         if (entity.Physics.BoxBody != null)
@@ -405,22 +415,464 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         return 0f;
     }
 
+    private static Quaternion EulerDegToQuat(Vector3 eulerDeg)
+    {
+        float yaw = MathF.PI / 180f * eulerDeg.Y;
+        float pitch = MathF.PI / 180f * eulerDeg.X;
+        float roll = MathF.PI / 180f * eulerDeg.Z;
+
+        return Quaternion.CreateFromYawPitchRoll(yaw, pitch, roll);
+    }
+
+    private static Vector3 QuatToEulerDeg(Quaternion q)
+    {
+        var m = Matrix4x4.CreateFromQuaternion(q);
+
+        float sy = -m.M23;
+        float cy = MathF.Sqrt(MathF.Max(0f, 1f - sy * sy));
+
+        float pitch;
+        float yaw;
+        float roll;
+
+        if (cy > 0.0001f)
+        {
+            pitch = MathF.Asin(sy);
+            yaw = MathF.Atan2(m.M13, m.M33);
+            roll = MathF.Atan2(m.M21, m.M22);
+        }
+        else
+        {
+            pitch = MathF.Asin(sy);
+            yaw = MathF.Atan2(-m.M31, m.M11);
+            roll = 0f;
+        }
+
+        const float rad2deg = 180f / MathF.PI;
+        return new Vector3(pitch * rad2deg, yaw * rad2deg, roll * rad2deg);
+    }
+
+    private static float GetBodyRotationRadius(Entity entity)
+    {
+        return GetPhysicsBodyShape(entity) switch
+        {
+            RuntimeShapeKind.Sphere => MathF.Max(0.05f, entity.Physics.SphereBody?.Radius ?? entity.Render.Radius),
+            RuntimeShapeKind.Capsule => MathF.Max(0.05f, entity.Physics.CapsuleBody?.Radius ?? entity.Render.Radius),
+            RuntimeShapeKind.Box => MathF.Max(0.05f, entity.Render.Size.Length() / 3f),
+            _ => 0.5f
+        };
+    }
+
+    private static void SyncEntityRotationFromPhysics(Entity entity)
+    {
+        entity.Physics.Rotation = Quaternion.Normalize(entity.Physics.Rotation);
+        entity.Transform.RotationEulerDeg = QuatToEulerDeg(entity.Physics.Rotation);
+    }
+
+    private static void AddAngularVelocity(Entity entity, Vector3 delta)
+    {
+        if (!HasPhysicsBody(entity))
+            return;
+
+        entity.Physics.AngularVelocity += delta;
+
+        const float maxAngularSpeed = 10f;
+        float speed = entity.Physics.AngularVelocity.Length();
+        if (speed > maxAngularSpeed)
+            entity.Physics.AngularVelocity *= maxAngularSpeed / speed;
+    }
+
+    private static float NormalSign(float value)
+    {
+        if (value > 1e-4f) return 1f;
+        if (value < -1e-4f) return -1f;
+        return 0f;
+    }
+
+    private static Quaternion ClampRotationAroundRest(Quaternion current, Quaternion rest, float maxAngleRadians)
+    {
+        Quaternion relative = Quaternion.Normalize(current * Quaternion.Conjugate(rest));
+        if (relative.W < 0f)
+            relative = new Quaternion(-relative.X, -relative.Y, -relative.Z, -relative.W);
+
+        float clampedW = Math.Clamp(relative.W, -1f, 1f);
+        float angle = 2f * MathF.Acos(clampedW);
+        if (angle <= maxAngleRadians || angle < 1e-5f)
+            return Quaternion.Normalize(current);
+
+        float sinHalf = MathF.Sqrt(MathF.Max(0f, 1f - clampedW * clampedW));
+        Vector3 axis = sinHalf > 1e-5f
+            ? new Vector3(relative.X, relative.Y, relative.Z) / sinHalf
+            : Vector3.UnitY;
+
+        Quaternion limited = Quaternion.CreateFromAxisAngle(axis, maxAngleRadians);
+        return Quaternion.Normalize(limited * rest);
+    }
+
+    private static bool TryNormalize(Vector3 v, out Vector3 normalized)
+    {
+        float lenSq = v.LengthSquared();
+        if (lenSq < 1e-8f)
+        {
+            normalized = Vector3.Zero;
+            return false;
+        }
+
+        normalized = v / MathF.Sqrt(lenSq);
+        return true;
+    }
+
+    private static Vector3 ProjectOntoPlane(Vector3 v, Vector3 normal)
+        => v - normal * Vector3.Dot(v, normal);
+
+    private static Quaternion GetNearestBoxStableRotation(Quaternion current)
+    {
+        ReadOnlySpan<Vector3> candidates =
+        [
+            Vector3.UnitX, -Vector3.UnitX,
+            Vector3.UnitY, -Vector3.UnitY,
+            Vector3.UnitZ, -Vector3.UnitZ
+        ];
+
+        Vector3 localUp = Vector3.UnitY;
+        float bestUpDot = float.NegativeInfinity;
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            Vector3 worldAxis = Vector3.Transform(candidates[i], current);
+            float d = Vector3.Dot(worldAxis, Vector3.UnitY);
+            if (d > bestUpDot)
+            {
+                bestUpDot = d;
+                localUp = candidates[i];
+            }
+        }
+
+        Vector3 localForward = Vector3.UnitZ;
+        float bestForwardScore = float.NegativeInfinity;
+        Vector3 desiredForward = Vector3.UnitZ;
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            Vector3 candidate = candidates[i];
+            if (MathF.Abs(Vector3.Dot(candidate, localUp)) > 0.999f)
+                continue;
+
+            Vector3 worldAxis = Vector3.Transform(candidate, current);
+            Vector3 planar = ProjectOntoPlane(worldAxis, Vector3.UnitY);
+            float score = planar.LengthSquared();
+            if (score > bestForwardScore && TryNormalize(planar, out var planarDir))
+            {
+                bestForwardScore = score;
+                localForward = candidate;
+                desiredForward = planarDir;
+            }
+        }
+
+        Quaternion qUp = FromToRotation(localUp, Vector3.UnitY);
+        Vector3 rotatedForward = ProjectOntoPlane(Vector3.Transform(localForward, qUp), Vector3.UnitY);
+        if (!TryNormalize(rotatedForward, out var rotatedForwardDir))
+            return Quaternion.Normalize(qUp);
+
+        Quaternion qTwist = FromToRotation(rotatedForwardDir, desiredForward);
+        return Quaternion.Normalize(qTwist * qUp);
+    }
+
+    private static Quaternion GetNearestCapsuleStableRotation(Quaternion current)
+    {
+        Vector3 axis = Vector3.Transform(Vector3.UnitY, current);
+        float upDot = Vector3.Dot(axis, Vector3.UnitY);
+        float absUpDot = MathF.Abs(upDot);
+
+        if (absUpDot >= 0.72f)
+        {
+            Vector3 forward = ProjectOntoPlane(Vector3.Transform(Vector3.UnitZ, current), Vector3.UnitY);
+            if (!TryNormalize(forward, out var forwardDir))
+            {
+                forward = ProjectOntoPlane(Vector3.Transform(Vector3.UnitX, current), Vector3.UnitY);
+                if (!TryNormalize(forward, out forwardDir))
+                    forwardDir = Vector3.UnitZ;
+            }
+
+            return Quaternion.Normalize(FromToRotation(Vector3.UnitZ, forwardDir));
+        }
+
+        Vector3 horizontalAxis = ProjectOntoPlane(axis, Vector3.UnitY);
+        if (!TryNormalize(horizontalAxis, out var sideDir))
+            sideDir = Vector3.UnitX;
+
+        return Quaternion.Normalize(FromToRotation(Vector3.UnitY, sideDir));
+    }
+
+    private static bool IsNearStableBoxPose(Entity entity, float minAlignment = 0.995f)
+    {
+        Quaternion stable = GetNearestBoxStableRotation(entity.Physics.Rotation);
+        float alignment = MathF.Abs(Quaternion.Dot(Quaternion.Normalize(entity.Physics.Rotation), stable));
+        return alignment >= minAlignment;
+    }
+
+    private static Vector3 GetCollisionContactOffset(Entity entity, Vector3 surfaceNormal)
+    {
+        surfaceNormal = surfaceNormal.LengthSquared() > 1e-6f
+            ? Vector3.Normalize(surfaceNormal)
+            : Vector3.UnitY;
+
+        RuntimeShapeKind shape = GetPhysicsBodyShape(entity);
+        if (shape == RuntimeShapeKind.Sphere)
+            return -surfaceNormal * GetBodyRotationRadius(entity);
+
+        if (shape == RuntimeShapeKind.Capsule)
+        {
+            float radius = GetBodyRotationRadius(entity);
+            float height = entity.Physics.CapsuleBody?.Height ?? entity.Render.Height;
+            float cylinderHalf = MathF.Max(0f, height * 0.5f - radius);
+            Vector3 axis = Vector3.Transform(Vector3.UnitY, entity.Physics.Rotation);
+            Vector3 velocity = GetPhysicsBodyVelocity(entity);
+            Vector3 sideSense = Vector3.Cross(axis, surfaceNormal);
+            float axisSign = 1f;
+
+            if (sideSense.LengthSquared() > 1e-6f)
+            {
+                float sense = Vector3.Dot(velocity, sideSense);
+                if (MathF.Abs(sense) > 1e-4f)
+                    axisSign = MathF.Sign(sense);
+            }
+
+            return axis * (cylinderHalf * axisSign) - surfaceNormal * radius;
+        }
+
+        if (shape == RuntimeShapeKind.Box)
+        {
+            Quaternion rotation = entity.Physics.Rotation;
+            Quaternion invRotation = Quaternion.Conjugate(rotation);
+            Vector3 localNormal = Vector3.Transform(surfaceNormal, invRotation);
+            Vector3 halfExtents = entity.Render.Size * 0.5f;
+            float ax = MathF.Abs(localNormal.X);
+            float ay = MathF.Abs(localNormal.Y);
+            float az = MathF.Abs(localNormal.Z);
+            Vector3 localOffset;
+
+            if (ax >= ay && ax >= az)
+                localOffset = new Vector3(NormalSign(-localNormal.X) * halfExtents.X, 0f, 0f);
+            else if (ay >= ax && ay >= az)
+                localOffset = new Vector3(0f, NormalSign(-localNormal.Y) * halfExtents.Y, 0f);
+            else
+                localOffset = new Vector3(0f, 0f, NormalSign(-localNormal.Z) * halfExtents.Z);
+
+            return Vector3.Transform(localOffset, rotation);
+        }
+
+        return -surfaceNormal * GetBodyRotationRadius(entity);
+    }
+
+    private void ApplyCollisionSpin(Entity entity, Vector3 surfaceNormal, Vector3 velocityDelta, float intensityScale = 1f)
+    {
+        if (!HasPhysicsBody(entity) || entity.IsHeld || entity.Physics.MotionType != MotionType.Dynamic)
+            return;
+
+        if (velocityDelta.LengthSquared() < 0.0025f)
+            return;
+
+        Vector3 contactOffset = GetCollisionContactOffset(entity, surfaceNormal);
+        Vector3 torque = Vector3.Cross(contactOffset, velocityDelta);
+        float torqueLenSq = torque.LengthSquared();
+        if (torqueLenSq < 1e-6f)
+            return;
+
+        Vector3 axis = torque / MathF.Sqrt(torqueLenSq);
+        float radius = MathF.Max(0.05f, contactOffset.Length());
+        float shapeScale = GetPhysicsBodyShape(entity) switch
+        {
+            RuntimeShapeKind.Box => 0.55f,
+            RuntimeShapeKind.Capsule => 0.45f,
+            RuntimeShapeKind.Sphere => 0.35f,
+            _ => 1f
+        };
+
+        AddAngularVelocity(entity, axis * (velocityDelta.Length() / radius) * shapeScale * intensityScale);
+    }
+
+    private void ApplyWorldCollisionSpin(Entity entity, Vector3 predictedVelocity, Vector3 actualVelocity)
+    {
+        Vector3 velocityDelta = actualVelocity - predictedVelocity;
+        if (velocityDelta.LengthSquared() < 0.01f)
+            return;
+
+        Vector3 surfaceNormal = velocityDelta.LengthSquared() > 1e-6f
+            ? Vector3.Normalize(-velocityDelta)
+            : Vector3.UnitY;
+
+        RuntimeShapeKind shape = GetPhysicsBodyShape(entity);
+        if (shape == RuntimeShapeKind.Box && surfaceNormal.Y > 0.85f)
+        {
+            Vector3 tangentialDelta = ProjectOntoPlane(velocityDelta, surfaceNormal);
+            Vector3 lateralVelocity = new(actualVelocity.X, 0f, actualVelocity.Z);
+
+            if (tangentialDelta.LengthSquared() < 0.01f &&
+                lateralVelocity.LengthSquared() < 0.1225f &&
+                IsNearStableBoxPose(entity, minAlignment: 0.99f))
+            {
+                return;
+            }
+        }
+
+        ApplyCollisionSpin(entity, surfaceNormal, velocityDelta, intensityScale: 0.8f);
+    }
+
+    private bool IsBodySupportedByWorld(Entity entity)
+    {
+        if (!TryGetPhysicsBodyAabb(entity, out var bodyAabb))
+            return false;
+
+        const float yTolerance = 0.08f;
+        const float inset = 0.02f;
+
+        for (int i = 0; i < _runtimeWorldColliders.Count; i++)
+        {
+            Aabb ground = _runtimeWorldColliders[i].GetAabb();
+            float topY = ground.Max.Y;
+
+            if (bodyAabb.Min.Y < topY - yTolerance || bodyAabb.Min.Y > topY + yTolerance)
+                continue;
+
+            bool overlapX = (bodyAabb.Max.X - inset) >= ground.Min.X && (bodyAabb.Min.X + inset) <= ground.Max.X;
+            bool overlapZ = (bodyAabb.Max.Z - inset) >= ground.Min.Z && (bodyAabb.Min.Z + inset) <= ground.Max.Z;
+            if (!overlapX || !overlapZ)
+                continue;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private void IntegrateEntityRotation(Entity entity, float dt)
+    {
+        if (!HasPhysicsBody(entity))
+            return;
+
+        Vector3 angularVelocity = entity.Physics.AngularVelocity;
+        RuntimeShapeKind shape = GetPhysicsBodyShape(entity);
+        bool supported = IsBodySupportedByWorld(entity);
+
+        float damping = MathF.Max(0f, 1f - entity.Physics.AngularDamping * dt);
+        angularVelocity *= damping;
+
+        if (shape == RuntimeShapeKind.Capsule && supported)
+        {
+            Vector3 axis = Vector3.Transform(Vector3.UnitY, entity.Physics.Rotation);
+            float axisUp = MathF.Abs(Vector3.Dot(axis, Vector3.UnitY));
+            if (axisUp < 0.45f)
+            {
+                Vector3 lateral = new(GetPhysicsBodyVelocity(entity).X, 0f, GetPhysicsBodyVelocity(entity).Z);
+                float lateralSpeed = lateral.Length();
+                if (lateralSpeed > 0.08f && TryNormalize(axis, out var axisDir))
+                {
+                    Vector3 rollDirection = Vector3.Cross(axisDir, -Vector3.UnitY);
+                    if (TryNormalize(rollDirection, out var rollDir))
+                    {
+                        float radius = MathF.Max(0.05f, entity.Physics.CapsuleBody?.Radius ?? entity.Render.Radius);
+                        float signedSpeed = Vector3.Dot(lateral, rollDir);
+                        Vector3 targetAngular = axisDir * (signedSpeed / radius);
+                        float rollFollow = Math.Clamp(dt * 5f, 0f, 1f);
+                        angularVelocity += (targetAngular - angularVelocity) * rollFollow;
+                    }
+                }
+            }
+        }
+
+        if (angularVelocity.LengthSquared() < 0.0025f)
+            angularVelocity = Vector3.Zero;
+
+        float angularSpeed = angularVelocity.Length();
+        if (angularSpeed > 1e-5f)
+        {
+            Vector3 axis = angularVelocity / angularSpeed;
+            Quaternion delta = Quaternion.CreateFromAxisAngle(axis, angularSpeed * dt);
+            entity.Physics.Rotation = Quaternion.Normalize(delta * entity.Physics.Rotation);
+        }
+
+        if (supported && (shape == RuntimeShapeKind.Box || shape == RuntimeShapeKind.Capsule))
+        {
+            float linearSpeed = GetPhysicsBodyVelocity(entity).Length();
+            if (linearSpeed < 1.5f)
+            {
+                Quaternion stableTarget = shape == RuntimeShapeKind.Box
+                    ? GetNearestBoxStableRotation(entity.Physics.Rotation)
+                    : GetNearestCapsuleStableRotation(entity.Physics.Rotation);
+
+                float settle = Math.Clamp(dt * 5f, 0f, 1f);
+                entity.Physics.Rotation = Quaternion.Normalize(
+                    Quaternion.Slerp(entity.Physics.Rotation, stableTarget, settle));
+
+                if (Quaternion.Dot(entity.Physics.Rotation, stableTarget) > 0.9995f &&
+                    angularVelocity.LengthSquared() < 0.04f)
+                {
+                    entity.Physics.Rotation = stableTarget;
+                    angularVelocity = Vector3.Zero;
+                }
+            }
+        }
+
+        entity.Physics.AngularVelocity = angularVelocity;
+        SyncEntityRotationFromPhysics(entity);
+    }
+
+    private Vector3 PredictVelocityWithoutCollision(Vector3 velocity, bool useGravity, float linearDamping, float dt)
+    {
+        if (useGravity)
+            velocity = new Vector3(velocity.X, velocity.Y - _movement.Gravity * dt, velocity.Z);
+
+        if (linearDamping > 0f)
+        {
+            float k = MathF.Max(0f, 1f - linearDamping * dt);
+            velocity *= k;
+        }
+
+        return velocity;
+    }
+
     private void StepPhysicsBody(Entity entity, float dt)
     {
         if (entity.Physics.BoxBody != null)
         {
+            Vector3 predictedVelocity = PredictVelocityWithoutCollision(
+                entity.Physics.BoxBody.Velocity,
+                entity.Physics.BoxBody.UseGravity,
+                entity.Physics.BoxBody.LinearDamping,
+                dt);
+
             entity.Physics.BoxBody.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+            ApplyWorldCollisionSpin(entity, predictedVelocity, entity.Physics.BoxBody.Velocity);
+            IntegrateEntityRotation(entity, dt);
             return;
         }
 
         if (entity.Physics.SphereBody != null)
         {
+            Vector3 predictedVelocity = PredictVelocityWithoutCollision(
+                entity.Physics.SphereBody.Velocity,
+                entity.Physics.SphereBody.UseGravity,
+                entity.Physics.SphereBody.LinearDamping,
+                dt);
+
             entity.Physics.SphereBody.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+            ApplyWorldCollisionSpin(entity, predictedVelocity, entity.Physics.SphereBody.Velocity);
+            IntegrateEntityRotation(entity, dt);
             return;
         }
 
         if (entity.Physics.CapsuleBody != null)
+        {
+            Vector3 predictedVelocity = PredictVelocityWithoutCollision(
+                entity.Physics.CapsuleBody.Velocity,
+                entity.Physics.CapsuleBody.UseGravity,
+                entity.Physics.CapsuleBody.LinearDamping,
+                dt);
+
             entity.Physics.CapsuleBody.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
+            ApplyWorldCollisionSpin(entity, predictedVelocity, entity.Physics.CapsuleBody.Velocity);
+            IntegrateEntityRotation(entity, dt);
+        }
     }
 
     private bool TryGetSupportingPlatformForBody(
@@ -553,6 +1005,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Transform.Position = def.LocalPosition;
             e.Transform.RotationEulerDeg = def.LocalRotationEulerDeg;
             e.Transform.Scale = def.LocalScale;
+            e.Physics.RestRotation = EulerDegToQuat(def.LocalRotationEulerDeg);
+            e.Physics.Rotation = EulerDegToQuat(def.LocalRotationEulerDeg);
+            e.Physics.AngularVelocity = Vector3.Zero;
+            e.Physics.AngularDamping = 8f;
             e.Render.Shape = RuntimeShapeKind.Box;
             e.Render.Size = GetScaledSize(def, clampComponents: false);
             e.Render.Radius = GetScaledSphereRadius(def, clampScale: false);
@@ -748,7 +1204,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (!includeHeldBodies && e.IsHeld)
                 continue;
 
-            _runtimeWorldColliders.Add(e.Collider.GetAabb(e.Transform.Position));
+            _runtimeWorldColliders.Add(CreateWorldCollider(e.Collider, e.Transform.Position));
         }
     }
 
@@ -951,6 +1407,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             {
                 SetPhysicsBodyCenter(e, e.Transform.Position);
                 SetPhysicsBodyVelocity(e, Vector3.Zero);
+                e.Physics.RestRotation = EulerDegToQuat(e.Transform.RotationEulerDeg);
+                e.Physics.Rotation = EulerDegToQuat(e.Transform.RotationEulerDeg);
+                e.Physics.AngularVelocity = Vector3.Zero;
             }
         }
 
@@ -1318,9 +1777,21 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                             ? new Vector4(0.2f, 1f, 0.2f, 1f)
                             : new Vector4(0.1f, 0.8f, 0.1f, 1f);
 
-                        DrawWireObb(renderer, pos, size, colliderRot, col, _editor.ColliderLineThickness);
+                        if (isSphere)
+                        {
+                            float radius = size.X * 0.5f;
+                            DrawWireSphere(renderer, pos, radius, Quaternion.Identity, col, _editor.ColliderLineThickness);
+                        }
+                        else if (isCapsule)
+                        {
+                            DrawWireCapsule(renderer, pos, capsuleRadius, capsuleHeight, Quaternion.Identity, col, _editor.ColliderLineThickness);
+                        }
+                        else
+                        {
+                            DrawWireObb(renderer, pos, size, colliderRot, col, _editor.ColliderLineThickness);
+                        }
 
-                        if (_editor.ShowColliderCorners)
+                        if (_editor.ShowColliderCorners && !isSphere && !isCapsule)
                         {
                             float cs = selected ? _editor.CornerSize * 1.25f : _editor.CornerSize;
                             DrawObbCorners(renderer, pos, size, colliderRot, col, cs);
@@ -1362,6 +1833,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 eulerDeg.Y * (MathF.PI / 180f),
                 eulerDeg.X * (MathF.PI / 180f),
                 eulerDeg.Z * (MathF.PI / 180f));
+
+            if (ent.Render.Shape == RuntimeShapeKind.Capsule && ent.Physics.MotionType != MotionType.Dynamic)
+                rot = Quaternion.Identity;
 
             Vector3 size = ent.Render.Size;
             Vector4 col = ent.Render.Color;
@@ -1425,6 +1899,85 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
     }
 
+    private void DrawWireSphere(Renderer renderer, Vector3 center, float radius, Quaternion rot, Vector4 color, float thickness)
+    {
+        const int segments = 24;
+        DrawWireCircle(renderer, center, radius, rot, Vector3.UnitX, Vector3.UnitY, color, thickness, segments);
+        DrawWireCircle(renderer, center, radius, rot, Vector3.UnitX, Vector3.UnitZ, color, thickness, segments);
+        DrawWireCircle(renderer, center, radius, rot, Vector3.UnitY, Vector3.UnitZ, color, thickness, segments);
+    }
+
+    private void DrawWireCapsule(Renderer renderer, Vector3 center, float radius, float height, Quaternion rot, Vector4 color, float thickness)
+    {
+        const int segments = 24;
+        float clampedRadius = MathF.Max(0.01f, radius);
+        float clampedHeight = MathF.Max(height, clampedRadius * 2f);
+        float halfStraight = MathF.Max(0f, clampedHeight * 0.5f - clampedRadius);
+
+        Vector3 up = Vector3.Transform(Vector3.UnitY, rot);
+        Vector3 right = Vector3.Transform(Vector3.UnitX, rot);
+        Vector3 forward = Vector3.Transform(Vector3.UnitZ, rot);
+
+        Vector3 topCenter = center + up * halfStraight;
+        Vector3 bottomCenter = center - up * halfStraight;
+
+        DrawWireCircle(renderer, topCenter, clampedRadius, Quaternion.Identity, right, forward, color, thickness, segments);
+        DrawWireCircle(renderer, bottomCenter, clampedRadius, Quaternion.Identity, right, forward, color, thickness, segments);
+
+        DrawEdgeBox(renderer, topCenter + right * clampedRadius, bottomCenter + right * clampedRadius, thickness, color);
+        DrawEdgeBox(renderer, topCenter - right * clampedRadius, bottomCenter - right * clampedRadius, thickness, color);
+        DrawEdgeBox(renderer, topCenter + forward * clampedRadius, bottomCenter + forward * clampedRadius, thickness, color);
+        DrawEdgeBox(renderer, topCenter - forward * clampedRadius, bottomCenter - forward * clampedRadius, thickness, color);
+
+        DrawWireArc(renderer, topCenter, clampedRadius, right, up, color, thickness, segments / 2, 0f, MathF.PI);
+        DrawWireArc(renderer, topCenter, clampedRadius, forward, up, color, thickness, segments / 2, 0f, MathF.PI);
+        DrawWireArc(renderer, bottomCenter, clampedRadius, right, -up, color, thickness, segments / 2, 0f, MathF.PI);
+        DrawWireArc(renderer, bottomCenter, clampedRadius, forward, -up, color, thickness, segments / 2, 0f, MathF.PI);
+    }
+
+    private void DrawWireCircle(
+        Renderer renderer,
+        Vector3 center,
+        float radius,
+        Quaternion rot,
+        Vector3 axisA,
+        Vector3 axisB,
+        Vector4 color,
+        float thickness,
+        int segments)
+    {
+        Vector3 basisA = Vector3.Transform(Vector3.Normalize(axisA), rot);
+        Vector3 basisB = Vector3.Transform(Vector3.Normalize(axisB), rot);
+        DrawWireArc(renderer, center, radius, basisA, basisB, color, thickness, segments, 0f, MathF.Tau);
+    }
+
+    private void DrawWireArc(
+        Renderer renderer,
+        Vector3 center,
+        float radius,
+        Vector3 axisA,
+        Vector3 axisB,
+        Vector4 color,
+        float thickness,
+        int segments,
+        float startAngle,
+        float endAngle)
+    {
+        Vector3 basisA = Vector3.Normalize(axisA);
+        Vector3 basisB = Vector3.Normalize(axisB);
+        int count = Math.Max(4, segments);
+        float step = (endAngle - startAngle) / count;
+
+        Vector3 prev = center + (basisA * MathF.Cos(startAngle) + basisB * MathF.Sin(startAngle)) * radius;
+        for (int i = 1; i <= count; i++)
+        {
+            float angle = startAngle + step * i;
+            Vector3 next = center + (basisA * MathF.Cos(angle) + basisB * MathF.Sin(angle)) * radius;
+            DrawEdgeBox(renderer, prev, next, thickness, color);
+            prev = next;
+        }
+    }
+
     private void DrawEdgeBox(Renderer renderer, Vector3 a, Vector3 b, float thickness, Vector4 color)
     {
         Vector3 mid = (a + b) * 0.5f;
@@ -1478,7 +2031,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         if (shape == RuntimeShapeKind.Capsule)
         {
-            DrawCapsulePrimitive(renderer, pos, radius, height, color);
+            DrawCapsulePrimitive(renderer, pos, rot, radius, height, color);
             return;
         }
 
@@ -1490,7 +2043,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _world.DrawBox(renderer.CommandList, model, color);
     }
 
-    private void DrawCapsulePrimitive(Renderer renderer, Vector3 pos, float radius, float height, Vector4 color)
+    private void DrawCapsulePrimitive(Renderer renderer, Vector3 pos, Quaternion rot, float radius, float height, Vector4 color)
     {
         float clampedRadius = MathF.Max(0.01f, radius);
         float clampedHeight = MathF.Max(height, clampedRadius * 2f);
@@ -1500,15 +2053,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         {
             var cylinderModel =
                 Matrix4x4.CreateScale(new Vector3(clampedRadius * 2f, cylinderHeight, clampedRadius * 2f)) *
+                Matrix4x4.CreateFromQuaternion(rot) *
                 Matrix4x4.CreateTranslation(pos);
-            _world.DrawBox(renderer.CommandList, cylinderModel, color);
+            _world.DrawCylinder(renderer.CommandList, cylinderModel, color);
         }
 
-        Vector3 capOffset = Vector3.UnitY * MathF.Max(0f, clampedHeight * 0.5f - clampedRadius);
+        Vector3 capOffset = Vector3.Transform(
+            Vector3.UnitY * MathF.Max(0f, clampedHeight * 0.5f - clampedRadius),
+            rot);
         var sphereScale = Matrix4x4.CreateScale(new Vector3(clampedRadius * 2f));
 
-        var topModel = sphereScale * Matrix4x4.CreateTranslation(pos + capOffset);
-        var bottomModel = sphereScale * Matrix4x4.CreateTranslation(pos - capOffset);
+        var topModel = sphereScale * Matrix4x4.CreateFromQuaternion(rot) * Matrix4x4.CreateTranslation(pos + capOffset);
+        var bottomModel = sphereScale * Matrix4x4.CreateFromQuaternion(rot) * Matrix4x4.CreateTranslation(pos - capOffset);
 
         _world.DrawSphere(renderer.CommandList, topModel, color);
         _world.DrawSphere(renderer.CommandList, bottomModel, color);
@@ -1663,6 +2219,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Physics.CapsuleBody.UseGravity = false;
             e.Physics.CapsuleBody.Velocity = Vector3.Zero;
         }
+
+        e.Physics.AngularVelocity = Vector3.Zero;
 
         Console.WriteLine($"[Pickup] PickUp({e.Name}) AFTER: bodyShape={GetPhysicsBodyShape(e)} vel={GetPhysicsBodyVelocity(e)}");
 
@@ -1908,14 +2466,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
 
         if (shapeA == RuntimeShapeKind.Box && shapeB == RuntimeShapeKind.Box)
-            return ComputeAabbContact(aAabb, bAabb, out normal, out penetration);
-
-        if (shapeA == RuntimeShapeKind.Capsule || shapeB == RuntimeShapeKind.Capsule)
-            return ComputeAabbContact(aAabb, bAabb, out normal, out penetration);
+            return StaticCollision.TryResolveAabbAabb(aAabb, bAabb, out normal, out penetration);
 
         if (shapeA == RuntimeShapeKind.Sphere && shapeB == RuntimeShapeKind.Sphere)
         {
-            return ComputeSphereContact(
+            return StaticCollision.TryResolveSphereSphere(
                 a.Physics.SphereBody!.Center,
                 a.Physics.SphereBody.Radius,
                 b.Physics.SphereBody!.Center,
@@ -1926,7 +2481,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (shapeA == RuntimeShapeKind.Sphere && shapeB == RuntimeShapeKind.Box)
         {
-            return ComputeSphereAabbContact(
+            return StaticCollision.TryResolveSphereAabb(
                 a.Physics.SphereBody!.Center,
                 a.Physics.SphereBody.Radius,
                 bAabb,
@@ -1934,16 +2489,75 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 out penetration);
         }
 
-        if (shapeA == RuntimeShapeKind.Box && shapeB == RuntimeShapeKind.Sphere &&
-            ComputeSphereAabbContact(
+        if (shapeA == RuntimeShapeKind.Box && shapeB == RuntimeShapeKind.Sphere)
+        {
+            return StaticCollision.TryResolveAabbSphere(
+                aAabb,
                 b.Physics.SphereBody!.Center,
                 b.Physics.SphereBody.Radius,
+                out normal,
+                out penetration);
+        }
+
+        if (shapeA == RuntimeShapeKind.Capsule && shapeB == RuntimeShapeKind.Box)
+        {
+            return StaticCollision.TryResolveCapsuleAabb(
+                a.Physics.CapsuleBody!.Center,
+                a.Physics.CapsuleBody.Radius,
+                a.Physics.CapsuleBody.Height,
+                bAabb,
+                out normal,
+                out penetration);
+        }
+
+        if (shapeA == RuntimeShapeKind.Box && shapeB == RuntimeShapeKind.Capsule)
+        {
+            return StaticCollision.TryResolveAabbCapsule(
                 aAabb,
-                out Vector3 sphereToBox,
+                b.Physics.CapsuleBody!.Center,
+                b.Physics.CapsuleBody.Radius,
+                b.Physics.CapsuleBody.Height,
+                out normal,
+                out penetration);
+        }
+
+        if (shapeA == RuntimeShapeKind.Sphere && shapeB == RuntimeShapeKind.Capsule)
+        {
+            return StaticCollision.TryResolveSphereCapsule(
+                a.Physics.SphereBody!.Center,
+                a.Physics.SphereBody.Radius,
+                b.Physics.CapsuleBody!.Center,
+                b.Physics.CapsuleBody.Radius,
+                b.Physics.CapsuleBody.Height,
+                out normal,
+                out penetration);
+        }
+
+        if (shapeA == RuntimeShapeKind.Capsule && shapeB == RuntimeShapeKind.Sphere &&
+            StaticCollision.TryResolveSphereCapsule(
+                b.Physics.SphereBody!.Center,
+                b.Physics.SphereBody.Radius,
+                a.Physics.CapsuleBody!.Center,
+                a.Physics.CapsuleBody.Radius,
+                a.Physics.CapsuleBody.Height,
+                out Vector3 sphereToCapsule,
                 out penetration))
         {
-            normal = -sphereToBox;
+            normal = -sphereToCapsule;
             return true;
+        }
+
+        if (shapeA == RuntimeShapeKind.Capsule && shapeB == RuntimeShapeKind.Capsule)
+        {
+            return StaticCollision.TryResolveCapsuleCapsule(
+                a.Physics.CapsuleBody!.Center,
+                a.Physics.CapsuleBody.Radius,
+                a.Physics.CapsuleBody.Height,
+                b.Physics.CapsuleBody!.Center,
+                b.Physics.CapsuleBody.Radius,
+                b.Physics.CapsuleBody.Height,
+                out normal,
+                out penetration);
         }
 
         return false;
@@ -1994,6 +2608,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
                     Vector3 aVelocity = GetPhysicsBodyVelocity(A);
                     Vector3 bVelocity = GetPhysicsBodyVelocity(B);
+                    Vector3 aVelocityBefore = aVelocity;
+                    Vector3 bVelocityBefore = bVelocity;
                     Vector3 rv = bVelocity - aVelocity;
                     float relN = Vector3.Dot(rv, n);
 
@@ -2032,6 +2648,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                             SetPhysicsBodyVelocity(B, bVelocity);
                         }
                     }
+
+                    ApplyCollisionSpin(A, -n, aVelocity - aVelocityBefore, intensityScale: 1.1f);
+                    ApplyCollisionSpin(B, n, bVelocity - bVelocityBefore, intensityScale: 1.1f);
 
                     if (TryGetPhysicsBodyCenter(A, out aCenter))
                         A.Transform.Position = aCenter;

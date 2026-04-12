@@ -15,6 +15,9 @@ public sealed class BasicWorldRenderer : IDisposable
     private readonly DeviceBuffer _vb;
     private readonly DeviceBuffer _ib;
     private readonly uint _indexCount;
+    private readonly DeviceBuffer _cylinderVb;
+    private readonly DeviceBuffer _cylinderIb;
+    private readonly uint _cylinderIndexCount;
     private readonly DeviceBuffer _sphereVb;
     private readonly DeviceBuffer _sphereIb;
     private readonly uint _sphereIndexCount;
@@ -52,6 +55,8 @@ public sealed class BasicWorldRenderer : IDisposable
         var vertices = CreateCubeVertices();
         var indices = CreateCubeIndices();
         _indexCount = (uint)indices.Length;
+        var cylinderMesh = CreateCylinderMesh(radialSegments: 24);
+        _cylinderIndexCount = (uint)cylinderMesh.indices.Length;
         var sphereMesh = CreateSphereMesh(latitudeSegments: 12, longitudeSegments: 18);
         _sphereIndexCount = (uint)sphereMesh.indices.Length;
 
@@ -65,6 +70,17 @@ public sealed class BasicWorldRenderer : IDisposable
 
         gd.UpdateBuffer(_vb, 0, vertices);
         gd.UpdateBuffer(_ib, 0, indices);
+
+        _cylinderVb = _factory.CreateBuffer(new BufferDescription(
+            (uint)(cylinderMesh.vertices.Length * Marshal.SizeOf<Vector3>()),
+            BufferUsage.VertexBuffer));
+
+        _cylinderIb = _factory.CreateBuffer(new BufferDescription(
+            (uint)(cylinderMesh.indices.Length * sizeof(ushort)),
+            BufferUsage.IndexBuffer));
+
+        gd.UpdateBuffer(_cylinderVb, 0, cylinderMesh.vertices);
+        gd.UpdateBuffer(_cylinderIb, 0, cylinderMesh.indices);
 
         _sphereVb = _factory.CreateBuffer(new BufferDescription(
             (uint)(sphereMesh.vertices.Length * Marshal.SizeOf<Vector3>()),
@@ -153,6 +169,9 @@ public sealed class BasicWorldRenderer : IDisposable
     public void DrawBox(CommandList cl, Matrix4x4 model, Vector4 color)
         => DrawMesh(cl, model, color, _vb, _ib, _indexCount);
 
+    public void DrawCylinder(CommandList cl, Matrix4x4 model, Vector4 color)
+        => DrawMesh(cl, model, color, _cylinderVb, _cylinderIb, _cylinderIndexCount);
+
     public void DrawSphere(CommandList cl, Matrix4x4 model, Vector4 color)
         => DrawMesh(cl, model, color, _sphereVb, _sphereIb, _sphereIndexCount);
 
@@ -192,6 +211,8 @@ public sealed class BasicWorldRenderer : IDisposable
         _cameraLayout.Dispose();
         _cameraBuffer.Dispose();
 
+        _cylinderIb.Dispose();
+        _cylinderVb.Dispose();
         _sphereIb.Dispose();
         _sphereVb.Dispose();
         _ib.Dispose();
@@ -234,6 +255,86 @@ public sealed class BasicWorldRenderer : IDisposable
             // +Y
             3,7,6,  3,6,2,
         };
+    }
+
+    private static (Vector3[] vertices, ushort[] indices) CreateCylinderMesh(int radialSegments)
+    {
+        radialSegments = Math.Max(3, radialSegments);
+
+        var vertices = new List<Vector3>();
+        var indices = new List<ushort>();
+
+        int sideStart = 0;
+        for (int i = 0; i <= radialSegments; i++)
+        {
+            float t = i / (float)radialSegments;
+            float angle = t * MathF.PI * 2f;
+            float x = MathF.Cos(angle) * 0.5f;
+            float z = MathF.Sin(angle) * 0.5f;
+
+            vertices.Add(new Vector3(x, -0.5f, z));
+            vertices.Add(new Vector3(x, 0.5f, z));
+        }
+
+        for (int i = 0; i < radialSegments; i++)
+        {
+            ushort i0 = (ushort)(sideStart + i * 2);
+            ushort i1 = (ushort)(i0 + 1);
+            ushort i2 = (ushort)(i0 + 2);
+            ushort i3 = (ushort)(i0 + 3);
+
+            indices.Add(i0);
+            indices.Add(i1);
+            indices.Add(i2);
+
+            indices.Add(i1);
+            indices.Add(i3);
+            indices.Add(i2);
+        }
+
+        ushort topCenter = (ushort)vertices.Count;
+        vertices.Add(new Vector3(0f, 0.5f, 0f));
+        int topRingStart = vertices.Count;
+        for (int i = 0; i < radialSegments; i++)
+        {
+            float t = i / (float)radialSegments;
+            float angle = t * MathF.PI * 2f;
+            float x = MathF.Cos(angle) * 0.5f;
+            float z = MathF.Sin(angle) * 0.5f;
+            vertices.Add(new Vector3(x, 0.5f, z));
+        }
+
+        for (int i = 0; i < radialSegments; i++)
+        {
+            ushort current = (ushort)(topRingStart + i);
+            ushort next = (ushort)(topRingStart + ((i + 1) % radialSegments));
+            indices.Add(topCenter);
+            indices.Add(current);
+            indices.Add(next);
+        }
+
+        ushort bottomCenter = (ushort)vertices.Count;
+        vertices.Add(new Vector3(0f, -0.5f, 0f));
+        int bottomRingStart = vertices.Count;
+        for (int i = 0; i < radialSegments; i++)
+        {
+            float t = i / (float)radialSegments;
+            float angle = t * MathF.PI * 2f;
+            float x = MathF.Cos(angle) * 0.5f;
+            float z = MathF.Sin(angle) * 0.5f;
+            vertices.Add(new Vector3(x, -0.5f, z));
+        }
+
+        for (int i = 0; i < radialSegments; i++)
+        {
+            ushort current = (ushort)(bottomRingStart + i);
+            ushort next = (ushort)(bottomRingStart + ((i + 1) % radialSegments));
+            indices.Add(bottomCenter);
+            indices.Add(next);
+            indices.Add(current);
+        }
+
+        return (vertices.ToArray(), indices.ToArray());
     }
 
     private static (Vector3[] vertices, ushort[] indices) CreateSphereMesh(int latitudeSegments, int longitudeSegments)

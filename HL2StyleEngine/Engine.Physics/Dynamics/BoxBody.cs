@@ -25,7 +25,7 @@ public sealed class BoxBody
         Velocity = Vector3.Zero;
     }
 
-    public void Step(float dt, IReadOnlyList<Aabb> world, float gravityY = 20f)
+    public void Step(float dt, IReadOnlyList<WorldCollider> world, float gravityY = 20f)
     {
         if (dt <= 0) return;
 

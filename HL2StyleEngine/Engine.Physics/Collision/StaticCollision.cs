@@ -10,81 +10,43 @@ public static class StaticCollision
         Vector3 center,
         Vector3 vel,
         Vector3 extents,
-        IReadOnlyList<Aabb> world,
+        IReadOnlyList<WorldCollider> world,
         int iterations = 6)
     {
         bool grounded = false;
 
         for (int it = 0; it < iterations; it++)
         {
-            var player = Aabb.FromCenterExtents(center, extents);
+            Aabb player = Aabb.FromCenterExtents(center, extents);
             bool any = false;
 
             for (int i = 0; i < world.Count; i++)
             {
-                var box = world[i];
-                if (!player.Overlaps(box)) continue;
+                WorldCollider collider = world[i];
+                if (!player.Overlaps(collider.GetAabb()))
+                    continue;
+
+                if (!TryResolveAabbWorldCollider(player, collider, out Vector3 normal, out float penetration))
+                    continue;
 
                 any = true;
-
-                float pushPosX = box.Max.X - player.Min.X;
-                float pushNegX = player.Max.X - box.Min.X;
-                float penX = MathF.Min(pushPosX, pushNegX);
-                float dirX = (pushPosX < pushNegX) ? +1f : -1f;
-
-                float pushPosY = box.Max.Y - player.Min.Y;
-                float pushNegY = player.Max.Y - box.Min.Y;
-                float penY = MathF.Min(pushPosY, pushNegY);
-                float dirY = (pushPosY < pushNegY) ? +1f : -1f;
-
-                float pushPosZ = box.Max.Z - player.Min.Z;
-                float pushNegZ = player.Max.Z - box.Min.Z;
-                float penZ = MathF.Min(pushPosZ, pushNegZ);
-                float dirZ = (pushPosZ < pushNegZ) ? +1f : -1f;
-
-                if (penX <= penY && penX <= penZ)
-                {
-                    center.X += dirX * penX;
-                    vel.X = 0f;
-                }
-                else if (penY <= penX && penY <= penZ)
-                {
-                    center.Y += dirY * penY;
-
-                    // only "grounded" when we get pushed UP and we were not moving upward
-                    if (dirY > 0f && vel.Y <= 0f)
-                    {
-                        grounded = true;
-                        vel.Y = 0f;
-                    }
-                    else
-                    {
-                        vel.Y = 0f;
-                    }
-                }
-                else
-                {
-                    center.Z += dirZ * penZ;
-                    vel.Z = 0f;
-                }
-
+                center -= normal * penetration;
+                ApplyPlayerVelocityResponse(ref vel, normal, ref grounded);
                 player = Aabb.FromCenterExtents(center, extents);
             }
 
-            if (!any) break;
+            if (!any)
+                break;
         }
 
         return (center, vel, grounded);
     }
 
-    // --------------------------------
-    // DYNAMIC BODY (bounce + grounded)
-    // --------------------------------
     public static (Vector3 center, Vector3 vel, bool grounded) ResolveDynamicAabb(
         Vector3 center,
         Vector3 vel,
         Vector3 extents,
-        IReadOnlyList<Aabb> world,
+        IReadOnlyList<WorldCollider> world,
         float restitution = 0.05f,
         int iterations = 6)
     {
@@ -92,72 +54,29 @@ public static class StaticCollision
 
         for (int it = 0; it < iterations; it++)
         {
-            var boxA = Aabb.FromCenterExtents(center, extents);
+            Aabb box = Aabb.FromCenterExtents(center, extents);
             bool any = false;
 
             for (int i = 0; i < world.Count; i++)
             {
-                var boxB = world[i];
-                if (!boxA.Overlaps(boxB)) continue;
+                WorldCollider collider = world[i];
+                if (!box.Overlaps(collider.GetAabb()))
+                    continue;
+
+                if (!TryResolveAabbWorldCollider(box, collider, out Vector3 normal, out float penetration))
+                    continue;
 
                 any = true;
-
-                float pushPosX = boxB.Max.X - boxA.Min.X;
-                float pushNegX = boxA.Max.X - boxB.Min.X;
-                float penX = MathF.Min(pushPosX, pushNegX);
-                float dirX = (pushPosX < pushNegX) ? +1f : -1f;
-
-                float pushPosY = boxB.Max.Y - boxA.Min.Y;
-                float pushNegY = boxA.Max.Y - boxB.Min.Y;
-                float penY = MathF.Min(pushPosY, pushNegY);
-                float dirY = (pushPosY < pushNegY) ? +1f : -1f;
-
-                float pushPosZ = boxB.Max.Z - boxA.Min.Z;
-                float pushNegZ = boxA.Max.Z - boxB.Min.Z;
-                float penZ = MathF.Min(pushPosZ, pushNegZ);
-                float dirZ = (pushPosZ < pushNegZ) ? +1f : -1f;
-
-                if (penX <= penY && penX <= penZ)
-                {
-                    center.X += dirX * penX;
-
-                    if (dirX > 0f && vel.X < 0f) vel.X = -vel.X * restitution;
-                    else if (dirX < 0f && vel.X > 0f) vel.X = -vel.X * restitution;
-                }
-                else if (penY <= penX && penY <= penZ)
-                {
-                    center.Y += dirY * penY;
-
-                    if (dirY > 0f)
-                    {
-                        grounded = true;
-                        vel.Y = 0f; // no bounce on ground/platform
-                    }
-                    else if (dirY < 0f && vel.Y > 0f)
-                    {
-                        vel.Y = -vel.Y * restitution;
-                    }
-                }
-                else
-                {
-                    center.Z += dirZ * penZ;
-
-                    if (dirZ > 0f && vel.Z < 0f) vel.Z = -vel.Z * restitution;
-                    else if (dirZ < 0f && vel.Z > 0f) vel.Z = -vel.Z * restitution;
-                }
-
-                boxA = Aabb.FromCenterExtents(center, extents);
+                center -= normal * penetration;
+                ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
+                box = Aabb.FromCenterExtents(center, extents);
             }
 
-            if (!any) break;
+            if (!any)
+                break;
         }
 
-        // tiny bounce cleanup
-        const float minBounceSpeed = 0.15f;
-        if (MathF.Abs(vel.X) < minBounceSpeed) vel.X = 0f;
-        if (MathF.Abs(vel.Y) < minBounceSpeed) vel.Y = 0f;
-        if (MathF.Abs(vel.Z) < minBounceSpeed) vel.Z = 0f;
-
+        ZeroSmallVelocity(ref vel);
         return (center, vel, grounded);
     }
 
@@ -165,7 +84,7 @@ public static class StaticCollision
         Vector3 center,
         Vector3 vel,
         float radius,
-        IReadOnlyList<Aabb> world,
+        IReadOnlyList<WorldCollider> world,
         float restitution = 0.05f,
         int iterations = 6)
     {
@@ -173,47 +92,29 @@ public static class StaticCollision
 
         for (int it = 0; it < iterations; it++)
         {
-            Aabb sphereBounds = Aabb.FromCenterExtents(center, new Vector3(radius));
+            Aabb bounds = Aabb.FromCenterExtents(center, new Vector3(radius));
             bool any = false;
 
             for (int i = 0; i < world.Count; i++)
             {
-                var box = world[i];
-                if (!sphereBounds.Overlaps(box))
+                WorldCollider collider = world[i];
+                if (!bounds.Overlaps(collider.GetAabb()))
                     continue;
 
-                if (!TryResolveSphereAabb(center, radius, box, out Vector3 normal, out float penetration))
+                if (!TryResolveSphereWorldCollider(center, radius, collider, out Vector3 normal, out float penetration))
                     continue;
 
                 any = true;
                 center -= normal * penetration;
-
-                float alongNormal = Vector3.Dot(vel, normal);
-                if (alongNormal > 0f)
-                {
-                    if (normal.Y < -0.5f)
-                    {
-                        grounded = true;
-                        vel.Y = 0f;
-                    }
-                    else
-                    {
-                        vel -= (1f + restitution) * alongNormal * normal;
-                    }
-                }
-
-                sphereBounds = Aabb.FromCenterExtents(center, new Vector3(radius));
+                ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
+                bounds = Aabb.FromCenterExtents(center, new Vector3(radius));
             }
 
             if (!any)
                 break;
         }
 
-        const float minBounceSpeed = 0.15f;
-        if (MathF.Abs(vel.X) < minBounceSpeed) vel.X = 0f;
-        if (MathF.Abs(vel.Y) < minBounceSpeed) vel.Y = 0f;
-        if (MathF.Abs(vel.Z) < minBounceSpeed) vel.Z = 0f;
-
+        ZeroSmallVelocity(ref vel);
         return (center, vel, grounded);
     }
 
@@ -222,7 +123,7 @@ public static class StaticCollision
         Vector3 vel,
         float radius,
         float height,
-        IReadOnlyList<Aabb> world,
+        IReadOnlyList<WorldCollider> world,
         float restitution = 0.05f,
         int iterations = 6)
     {
@@ -231,48 +132,178 @@ public static class StaticCollision
 
         for (int it = 0; it < iterations; it++)
         {
-            Aabb capsuleBounds = Aabb.FromCenterExtents(center, new Vector3(radius, halfY, radius));
+            Aabb bounds = Aabb.FromCenterExtents(center, new Vector3(radius, halfY, radius));
             bool any = false;
 
             for (int i = 0; i < world.Count; i++)
             {
-                var box = world[i];
-                if (!capsuleBounds.Overlaps(box))
+                WorldCollider collider = world[i];
+                if (!bounds.Overlaps(collider.GetAabb()))
                     continue;
 
-                if (!TryResolveCapsuleAabb(center, radius, height, box, out Vector3 normal, out float penetration))
+                if (!TryResolveCapsuleWorldCollider(center, radius, height, collider, out Vector3 normal, out float penetration))
                     continue;
 
                 any = true;
                 center -= normal * penetration;
-
-                float alongNormal = Vector3.Dot(vel, normal);
-                if (alongNormal > 0f)
-                {
-                    if (normal.Y < -0.5f)
-                    {
-                        grounded = true;
-                        vel.Y = 0f;
-                    }
-                    else
-                    {
-                        vel -= (1f + restitution) * alongNormal * normal;
-                    }
-                }
-
-                capsuleBounds = Aabb.FromCenterExtents(center, new Vector3(radius, halfY, radius));
+                ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
+                bounds = Aabb.FromCenterExtents(center, new Vector3(radius, halfY, radius));
             }
 
             if (!any)
                 break;
         }
 
-        const float minBounceSpeed = 0.15f;
-        if (MathF.Abs(vel.X) < minBounceSpeed) vel.X = 0f;
-        if (MathF.Abs(vel.Y) < minBounceSpeed) vel.Y = 0f;
-        if (MathF.Abs(vel.Z) < minBounceSpeed) vel.Z = 0f;
-
+        ZeroSmallVelocity(ref vel);
         return (center, vel, grounded);
+    }
+
+    public static bool TryResolveAabbAabb(
+        Aabb a,
+        Aabb b,
+        out Vector3 normal,
+        out float penetration)
+    {
+        normal = Vector3.Zero;
+        penetration = 0f;
+
+        if (!a.Overlaps(b))
+            return false;
+
+        Vector3 aCenter = a.Center;
+        Vector3 bCenter = b.Center;
+
+        float aEx = (a.Max.X - a.Min.X) * 0.5f;
+        float aEy = (a.Max.Y - a.Min.Y) * 0.5f;
+        float aEz = (a.Max.Z - a.Min.Z) * 0.5f;
+
+        float bEx = (b.Max.X - b.Min.X) * 0.5f;
+        float bEy = (b.Max.Y - b.Min.Y) * 0.5f;
+        float bEz = (b.Max.Z - b.Min.Z) * 0.5f;
+
+        Vector3 d = bCenter - aCenter;
+
+        float ox = (aEx + bEx) - MathF.Abs(d.X);
+        float oy = (aEy + bEy) - MathF.Abs(d.Y);
+        float oz = (aEz + bEz) - MathF.Abs(d.Z);
+
+        if (ox <= oy && ox <= oz)
+        {
+            penetration = ox;
+            normal = d.X >= 0f ? Vector3.UnitX : -Vector3.UnitX;
+        }
+        else if (oy <= ox && oy <= oz)
+        {
+            penetration = oy;
+            normal = d.Y >= 0f ? Vector3.UnitY : -Vector3.UnitY;
+        }
+        else
+        {
+            penetration = oz;
+            normal = d.Z >= 0f ? Vector3.UnitZ : -Vector3.UnitZ;
+        }
+
+        return penetration > 0f;
+    }
+
+    public static bool TryResolveAabbSphere(
+        Aabb box,
+        Vector3 sphereCenter,
+        float sphereRadius,
+        out Vector3 normal,
+        out float penetration)
+    {
+        if (!TryResolveSphereAabb(sphereCenter, sphereRadius, box, out Vector3 sphereToBox, out penetration))
+        {
+            normal = Vector3.Zero;
+            return false;
+        }
+
+        normal = -sphereToBox;
+        return true;
+    }
+
+    public static bool TryResolveAabbCapsule(
+        Aabb box,
+        Vector3 capsuleCenter,
+        float capsuleRadius,
+        float capsuleHeight,
+        out Vector3 normal,
+        out float penetration)
+    {
+        if (!TryResolveCapsuleAabb(capsuleCenter, capsuleRadius, capsuleHeight, box, out Vector3 capsuleToBox, out penetration))
+        {
+            normal = Vector3.Zero;
+            return false;
+        }
+
+        normal = -capsuleToBox;
+        return true;
+    }
+
+    public static bool TryResolveSphereSphere(
+        Vector3 aCenter,
+        float aRadius,
+        Vector3 bCenter,
+        float bRadius,
+        out Vector3 normal,
+        out float penetration)
+    {
+        Vector3 delta = bCenter - aCenter;
+        float distSq = delta.LengthSquared();
+        float radiusSum = aRadius + bRadius;
+
+        if (distSq <= 1e-8f)
+        {
+            normal = Vector3.UnitY;
+            penetration = radiusSum;
+            return true;
+        }
+
+        float dist = MathF.Sqrt(distSq);
+        penetration = radiusSum - dist;
+        if (penetration <= 0f)
+        {
+            normal = Vector3.Zero;
+            penetration = 0f;
+            return false;
+        }
+
+        normal = delta / dist;
+        return true;
+    }
+
+    public static bool TryResolveSphereCapsule(
+        Vector3 sphereCenter,
+        float sphereRadius,
+        Vector3 capsuleCenter,
+        float capsuleRadius,
+        float capsuleHeight,
+        out Vector3 normal,
+        out float penetration)
+    {
+        Vector3 capsulePoint = ClosestPointOnVerticalCapsuleSegment(capsuleCenter, capsuleHeight, capsuleRadius, sphereCenter);
+        return TryResolveSphereSphere(
+            sphereCenter,
+            sphereRadius,
+            capsulePoint,
+            capsuleRadius,
+            out normal,
+            out penetration);
+    }
+
+    public static bool TryResolveCapsuleCapsule(
+        Vector3 aCenter,
+        float aRadius,
+        float aHeight,
+        Vector3 bCenter,
+        float bRadius,
+        float bHeight,
+        out Vector3 normal,
+        out float penetration)
+    {
+        ClosestPointsBetweenVerticalCapsuleSegments(aCenter, aHeight, aRadius, bCenter, bHeight, bRadius, out Vector3 aPoint, out Vector3 bPoint);
+        return TryResolveSphereSphere(aPoint, aRadius, bPoint, bRadius, out normal, out penetration);
     }
 
     public static bool TryResolveSphereAabb(
@@ -328,12 +359,10 @@ public static class StaticCollision
             return penetration > 0f;
         }
 
-        {
-            bool closerToMin = toMinZ <= toMaxZ;
-            normal = closerToMin ? Vector3.UnitZ : -Vector3.UnitZ;
-            penetration = sphereRadius + exitZ;
-            return penetration > 0f;
-        }
+        bool closerToMinZ = toMinZ <= toMaxZ;
+        normal = closerToMinZ ? Vector3.UnitZ : -Vector3.UnitZ;
+        penetration = sphereRadius + exitZ;
+        return penetration > 0f;
     }
 
     public static bool TryResolveCapsuleAabb(
@@ -344,7 +373,7 @@ public static class StaticCollision
         out Vector3 normal,
         out float penetration)
     {
-        float segmentHalf = MathF.Max(0f, capsuleHeight * 0.5f - capsuleRadius);
+        float segmentHalf = GetVerticalCapsuleSegmentHalf(capsuleHeight, capsuleRadius);
         float segmentMinY = capsuleCenter.Y - segmentHalf;
         float segmentMaxY = capsuleCenter.Y + segmentHalf;
 
@@ -401,5 +430,146 @@ public static class StaticCollision
         normal = toMinZ <= toMaxZ ? Vector3.UnitZ : -Vector3.UnitZ;
         penetration = capsuleRadius + exitZ;
         return penetration > 0f;
+    }
+
+    private static bool TryResolveAabbWorldCollider(Aabb box, WorldCollider collider, out Vector3 normal, out float penetration)
+    {
+        return collider.Shape switch
+        {
+            WorldColliderShape.Box => TryResolveAabbAabb(box, collider.GetAabb(), out normal, out penetration),
+            WorldColliderShape.Sphere => TryResolveAabbSphere(box, collider.Center, collider.Radius, out normal, out penetration),
+            WorldColliderShape.Capsule => TryResolveAabbCapsule(box, collider.Center, collider.Radius, collider.Height, out normal, out penetration),
+            _ => NoContact(out normal, out penetration)
+        };
+    }
+
+    private static bool TryResolveSphereWorldCollider(Vector3 center, float radius, WorldCollider collider, out Vector3 normal, out float penetration)
+    {
+        return collider.Shape switch
+        {
+            WorldColliderShape.Box => TryResolveSphereAabb(center, radius, collider.GetAabb(), out normal, out penetration),
+            WorldColliderShape.Sphere => TryResolveSphereSphere(center, radius, collider.Center, collider.Radius, out normal, out penetration),
+            WorldColliderShape.Capsule => TryResolveSphereCapsule(center, radius, collider.Center, collider.Radius, collider.Height, out normal, out penetration),
+            _ => NoContact(out normal, out penetration)
+        };
+    }
+
+    private static bool TryResolveCapsuleWorldCollider(Vector3 center, float radius, float height, WorldCollider collider, out Vector3 normal, out float penetration)
+    {
+        if (collider.Shape == WorldColliderShape.Box)
+            return TryResolveCapsuleAabb(center, radius, height, collider.GetAabb(), out normal, out penetration);
+
+        if (collider.Shape == WorldColliderShape.Sphere &&
+            TryResolveSphereCapsule(collider.Center, collider.Radius, center, radius, height, out Vector3 sphereToCapsule, out penetration))
+        {
+            normal = -sphereToCapsule;
+            return true;
+        }
+
+        if (collider.Shape == WorldColliderShape.Capsule)
+            return TryResolveCapsuleCapsule(center, radius, height, collider.Center, collider.Radius, collider.Height, out normal, out penetration);
+
+        return NoContact(out normal, out penetration);
+    }
+
+    private static void ApplyPlayerVelocityResponse(ref Vector3 vel, Vector3 normal, ref bool grounded)
+    {
+        float alongNormal = Vector3.Dot(vel, normal);
+        if (alongNormal <= 0f)
+            return;
+
+        if (normal.Y < -0.5f && vel.Y <= 0f)
+        {
+            grounded = true;
+            vel.Y = 0f;
+            return;
+        }
+
+        vel -= alongNormal * normal;
+    }
+
+    private static void ApplyDynamicVelocityResponse(ref Vector3 vel, Vector3 normal, float restitution, ref bool grounded)
+    {
+        float alongNormal = Vector3.Dot(vel, normal);
+        if (alongNormal <= 0f)
+            return;
+
+        if (normal.Y < -0.5f)
+        {
+            grounded = true;
+            vel.Y = 0f;
+            return;
+        }
+
+        vel -= (1f + restitution) * alongNormal * normal;
+    }
+
+    private static Vector3 ClosestPointOnVerticalCapsuleSegment(Vector3 capsuleCenter, float capsuleHeight, float capsuleRadius, Vector3 point)
+    {
+        float segmentHalf = GetVerticalCapsuleSegmentHalf(capsuleHeight, capsuleRadius);
+        float y = Math.Clamp(point.Y, capsuleCenter.Y - segmentHalf, capsuleCenter.Y + segmentHalf);
+        return new Vector3(capsuleCenter.X, y, capsuleCenter.Z);
+    }
+
+    private static void ClosestPointsBetweenVerticalCapsuleSegments(
+        Vector3 aCenter,
+        float aHeight,
+        float aRadius,
+        Vector3 bCenter,
+        float bHeight,
+        float bRadius,
+        out Vector3 aPoint,
+        out Vector3 bPoint)
+    {
+        float aHalf = GetVerticalCapsuleSegmentHalf(aHeight, aRadius);
+        float bHalf = GetVerticalCapsuleSegmentHalf(bHeight, bRadius);
+
+        float aMin = aCenter.Y - aHalf;
+        float aMax = aCenter.Y + aHalf;
+        float bMin = bCenter.Y - bHalf;
+        float bMax = bCenter.Y + bHalf;
+
+        float yA;
+        float yB;
+
+        if (aMax < bMin)
+        {
+            yA = aMax;
+            yB = bMin;
+        }
+        else if (bMax < aMin)
+        {
+            yA = aMin;
+            yB = bMax;
+        }
+        else
+        {
+            float overlapMin = MathF.Max(aMin, bMin);
+            float overlapMax = MathF.Min(aMax, bMax);
+            float y = (overlapMin + overlapMax) * 0.5f;
+            yA = y;
+            yB = y;
+        }
+
+        aPoint = new Vector3(aCenter.X, yA, aCenter.Z);
+        bPoint = new Vector3(bCenter.X, yB, bCenter.Z);
+    }
+
+    private static float GetVerticalCapsuleSegmentHalf(float height, float radius)
+        => MathF.Max(0f, height * 0.5f - radius);
+
+    private static void ZeroSmallVelocity(ref Vector3 vel)
+    {
+        const float minBounceSpeed = 0.15f;
+        if (MathF.Abs(vel.X) < minBounceSpeed) vel.X = 0f;
+        if (MathF.Abs(vel.Y) < minBounceSpeed) vel.Y = 0f;
+        if (MathF.Abs(vel.Z) < minBounceSpeed) vel.Z = 0f;
+    }
+
+    private static bool NoContact(out Vector3 normal, out float penetration)
+    {
+        normal = Vector3.Zero;
+        penetration = 0f;
+        return false;
     }
 }

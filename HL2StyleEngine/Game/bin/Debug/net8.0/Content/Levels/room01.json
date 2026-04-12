@@ -1075,7 +1075,7 @@
       "Scripts": [],
       "Parent": null,
       "LocalPosition": {
-        "X": 0.77398765,
+        "X": 0.7739879,
         "Y": 1.8740093,
         "Z": -3.6143634
       },
@@ -1120,7 +1120,7 @@
       },
       "TriggerEvent": "OnEnter",
       "Shape": "Sphere",
-      "Mass": 10,
+      "Mass": 28.3,
       "Friction": 0.8,
       "Restitution": 0.05,
       "IsKinematic": false,

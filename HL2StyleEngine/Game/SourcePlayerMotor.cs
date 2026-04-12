@@ -33,7 +33,7 @@ public sealed class SourcePlayerMotor
 
     public void PressJump() => _timeSinceJumpPressed = 0f;
 
-    public void Step(float dt, Vector3 wishDir, float wishSpeed, IReadOnlyList<Aabb> world)
+    public void Step(float dt, Vector3 wishDir, float wishSpeed, IReadOnlyList<WorldCollider> world)
     {
         _timeSinceJumpPressed += dt;
         _timeSinceGrounded += dt;
