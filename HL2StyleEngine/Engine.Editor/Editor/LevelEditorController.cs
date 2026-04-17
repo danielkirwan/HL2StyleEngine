@@ -1523,7 +1523,7 @@ public sealed class LevelEditorController
                         wt,
                         new Vector3(radius * 2f, height, radius * 2f),
                         new Vector4(0.9f, 0.2f, 0.6f, 1f),
-                        Quaternion.Identity,
+                        wr,
                         isSphere: true));
                 }
                 else

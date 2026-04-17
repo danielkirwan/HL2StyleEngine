@@ -1,0 +1,117 @@
+# Project Overview
+
+Last updated: 2026-04-17
+
+## Purpose
+
+This project is a custom C# game engine and game prototype built to capture the feel of a Half-Life 2 style experience.
+
+The goal is not to copy Source exactly. The goal is to build a modern, understandable codebase that can deliver:
+
+- grounded first-person movement
+- believable physics interaction and prop behavior
+- readable, purposeful level spaces
+- an art direction that leans toward industrial, physical, Source-era realism
+- clear separation between reusable engine systems and game-specific behavior
+
+## What The Project Is Trying To Achieve
+
+The north star is a playable game and engine foundation where movement, collision, props, and world interaction feel physical and authored rather than floaty or arcade-like.
+
+The main target qualities are:
+
+- strong movement feel inspired by Half-Life 2 and Source-era FPS games
+- physics props that look convincing when pushed, thrown, dropped, or stacked
+- a fast iteration workflow with clear engine/game separation
+- tooling that can grow into a practical in-engine editor and content workflow
+- visuals and world building that support the same grounded tone as the gameplay
+
+## Current Stage
+
+The project is in a foundation-plus-prototyping stage.
+
+Core engine structure is in place, the runtime and editor exist, and the project is now spending more time on feel-critical systems such as movement, collision, dynamic props, and debug tooling. The current work is moving from broad placeholder behavior toward more faithful physical behavior.
+
+## Solution Layout
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Core`
+  Shared math, timing, and low-level utilities.
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Platform`
+  Windowing and platform-facing services.
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input`
+  Input systems and input-related abstractions.
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render`
+  Rendering systems and graphics integration.
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime`
+  Runtime host, main loop, and module lifecycle.
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Physics`
+  Collision, stepping, and simple physics bodies.
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor`
+  Editor systems and debug/editor-facing tooling.
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game`
+  Game-specific logic, gameplay state, and current prototype behavior.
+
+## Where The Project Is Right Now
+
+Implemented or substantially present:
+
+- custom engine structure in C# on .NET 8
+- separate engine and game projects
+- runtime loop and editor/runtime split
+- rendering and debug UI foundations
+- first-person movement foundations
+- fixed-step simulation
+- basic world collision and simple dynamic body stepping
+- dynamic prop runtime state for visual rotation and angular settling work
+- debug collider display for box, sphere, and capsule shapes
+
+Current active gameplay/physics focus:
+
+- make dynamic prop behavior feel more physically plausible
+- stop sphere and capsule collision from behaving like box placeholders
+- support rotated colliders for dynamic boxes and capsules
+- improve how props settle after impacts, especially boxes and capsules
+
+## Active Workstream
+
+The main active workstream is runtime prop rotation and collision fidelity.
+
+Recent work in progress has moved collision handling away from a pure AABB mindset and toward shape-aware colliders:
+
+- `WorldCollider` now carries shape data and rotation
+- dynamic box and capsule stepping passes rotation into collision resolution
+- a new `ShapeCollision` layer handles rotated shape tests
+- runtime and editor debug drawing now show sphere and capsule colliders properly
+- dynamic contact and runtime world collider construction use shape-aware colliders
+
+This work is aimed at fixing several visible problems:
+
+- capsules and spheres behaving like hidden boxes
+- props settling into implausible orientations
+- boxes popping into awkward floor rotations
+- capsules not tipping or resting believably
+
+## Known Current Limitations
+
+- collision for rotated capsules versus boxes is orientation-aware, but still approximate rather than a full rigid-body contact manifold solution
+- some support, picking, and ray logic may still rely on AABB-style fallbacks or broadphase approximations
+- there are existing unrelated build blockers in the wider workspace, so a clean full `Game` build is not currently the validation signal
+- parts of the current prop rotation system are still visual/runtime approximations layered over simplified collision
+
+## Immediate Next Steps
+
+- validate rotated box, sphere, and capsule collision behavior in gameplay scenarios
+- remove remaining AABB fallback logic where exact rotated shape behavior matters
+- improve support and settling logic for tipped capsules and resting boxes
+- get a cleaner full-project build signal once unrelated workspace issues are addressed
+- continue moving from placeholder physics behavior toward feel-driven gameplay behavior
+
+## Reference Handover
+
+Future chats should treat these files as the handover set:
+
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT_GUIDELINES.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+When meaningful work is completed, update `WORKLOG.md` first, then refresh `PROJECT.md` if the project direction or current stage has changed.

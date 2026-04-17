@@ -17,22 +17,22 @@ public static class StaticCollision
 
         for (int it = 0; it < iterations; it++)
         {
-            Aabb player = Aabb.FromCenterExtents(center, extents);
+            WorldCollider player = WorldCollider.Box(center, extents, Quaternion.Identity);
             bool any = false;
 
             for (int i = 0; i < world.Count; i++)
             {
                 WorldCollider collider = world[i];
-                if (!player.Overlaps(collider.GetAabb()))
+                if (!player.GetAabb().Overlaps(collider.GetAabb()))
                     continue;
 
-                if (!TryResolveAabbWorldCollider(player, collider, out Vector3 normal, out float penetration))
+                if (!ShapeCollision.TryResolve(player, collider, out Vector3 normal, out float penetration))
                     continue;
 
                 any = true;
                 center -= normal * penetration;
                 ApplyPlayerVelocityResponse(ref vel, normal, ref grounded);
-                player = Aabb.FromCenterExtents(center, extents);
+                player = WorldCollider.Box(center, extents, Quaternion.Identity);
             }
 
             if (!any)
@@ -46,6 +46,7 @@ public static class StaticCollision
         Vector3 center,
         Vector3 vel,
         Vector3 extents,
+        Quaternion rotation,
         IReadOnlyList<WorldCollider> world,
         float restitution = 0.05f,
         int iterations = 6)
@@ -54,22 +55,22 @@ public static class StaticCollision
 
         for (int it = 0; it < iterations; it++)
         {
-            Aabb box = Aabb.FromCenterExtents(center, extents);
+            WorldCollider box = WorldCollider.Box(center, extents, rotation);
             bool any = false;
 
             for (int i = 0; i < world.Count; i++)
             {
                 WorldCollider collider = world[i];
-                if (!box.Overlaps(collider.GetAabb()))
+                if (!box.GetAabb().Overlaps(collider.GetAabb()))
                     continue;
 
-                if (!TryResolveAabbWorldCollider(box, collider, out Vector3 normal, out float penetration))
+                if (!ShapeCollision.TryResolve(box, collider, out Vector3 normal, out float penetration))
                     continue;
 
                 any = true;
                 center -= normal * penetration;
                 ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
-                box = Aabb.FromCenterExtents(center, extents);
+                box = WorldCollider.Box(center, extents, rotation);
             }
 
             if (!any)
@@ -92,22 +93,22 @@ public static class StaticCollision
 
         for (int it = 0; it < iterations; it++)
         {
-            Aabb bounds = Aabb.FromCenterExtents(center, new Vector3(radius));
+            WorldCollider moving = WorldCollider.Sphere(center, radius);
             bool any = false;
 
             for (int i = 0; i < world.Count; i++)
             {
                 WorldCollider collider = world[i];
-                if (!bounds.Overlaps(collider.GetAabb()))
+                if (!moving.GetAabb().Overlaps(collider.GetAabb()))
                     continue;
 
-                if (!TryResolveSphereWorldCollider(center, radius, collider, out Vector3 normal, out float penetration))
+                if (!ShapeCollision.TryResolve(moving, collider, out Vector3 normal, out float penetration))
                     continue;
 
                 any = true;
                 center -= normal * penetration;
                 ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
-                bounds = Aabb.FromCenterExtents(center, new Vector3(radius));
+                moving = WorldCollider.Sphere(center, radius);
             }
 
             if (!any)
@@ -123,31 +124,30 @@ public static class StaticCollision
         Vector3 vel,
         float radius,
         float height,
+        Quaternion rotation,
         IReadOnlyList<WorldCollider> world,
         float restitution = 0.05f,
         int iterations = 6)
     {
         bool grounded = false;
-        float halfY = MathF.Max(height * 0.5f, radius);
-
         for (int it = 0; it < iterations; it++)
         {
-            Aabb bounds = Aabb.FromCenterExtents(center, new Vector3(radius, halfY, radius));
+            WorldCollider moving = WorldCollider.Capsule(center, radius, height, rotation);
             bool any = false;
 
             for (int i = 0; i < world.Count; i++)
             {
                 WorldCollider collider = world[i];
-                if (!bounds.Overlaps(collider.GetAabb()))
+                if (!moving.GetAabb().Overlaps(collider.GetAabb()))
                     continue;
 
-                if (!TryResolveCapsuleWorldCollider(center, radius, height, collider, out Vector3 normal, out float penetration))
+                if (!ShapeCollision.TryResolve(moving, collider, out Vector3 normal, out float penetration))
                     continue;
 
                 any = true;
                 center -= normal * penetration;
                 ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
-                bounds = Aabb.FromCenterExtents(center, new Vector3(radius, halfY, radius));
+                moving = WorldCollider.Capsule(center, radius, height, rotation);
             }
 
             if (!any)
