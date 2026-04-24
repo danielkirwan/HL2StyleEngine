@@ -312,7 +312,9 @@ public static class ShapeCollision
         if (overlap <= 0f)
             return false;
 
-        if (overlap < bestOverlap)
+        const float tieBias = 0.01f;
+        if (overlap < bestOverlap - tieBias ||
+            (MathF.Abs(overlap - bestOverlap) <= tieBias && MathF.Abs(n.Y) > MathF.Abs(bestAxis.Y)))
         {
             bestOverlap = overlap;
             bestAxis = Vector3.Dot(centerDelta, n) >= 0f ? n : -n;

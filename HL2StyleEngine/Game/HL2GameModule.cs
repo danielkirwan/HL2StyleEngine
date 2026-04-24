@@ -20,6 +20,41 @@ namespace Game;
 
 public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 {
+    private readonly struct BoxSupportState
+    {
+        public readonly bool Valid;
+        public readonly bool Stable;
+        public readonly int CornerCount;
+        public readonly int PolygonCount;
+        public readonly float MinCornerY;
+        public readonly float MaxCornerY;
+        public readonly Vector3 PatchCenter;
+        public readonly Vector3 Pivot;
+        public readonly Vector3 Lever;
+
+        public BoxSupportState(
+            bool valid,
+            bool stable,
+            int cornerCount,
+            int polygonCount,
+            float minCornerY,
+            float maxCornerY,
+            Vector3 patchCenter,
+            Vector3 pivot,
+            Vector3 lever)
+        {
+            Valid = valid;
+            Stable = stable;
+            CornerCount = cornerCount;
+            PolygonCount = polygonCount;
+            MinCornerY = minCornerY;
+            MaxCornerY = maxCornerY;
+            PatchCenter = patchCenter;
+            Pivot = pivot;
+            Lever = lever;
+        }
+    }
+
     private EngineContext _ctx = null!;
 
     private readonly InputState _inputState = new();
@@ -73,6 +108,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private int _physicsMaxSubsteps = 12;
     private float _physicsMaxStep = 1f / 120f;
+    private readonly Dictionary<string, long> _cornerBalanceLogTicks = new();
 
     public InputState InputState => _inputState;
 
@@ -241,10 +277,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 _jumpPressedThisFrame = true;
 
             if (_inputState.WasPressed(Key.E))
-                Console.WriteLine("[Pickup] E pressed");
+                ; // Console.WriteLine("[Pickup] E pressed");
 
             if (_inputState.LeftMouseDown) // or WasPressed if you add it
-                Console.WriteLine("[Pickup] LMB down");
+                ; // Console.WriteLine("[Pickup] LMB down");
         }
     }
 
@@ -717,6 +753,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private static Vector3 GetBoxSupportPatchCenter(WorldCollider collider)
     {
+        GetBoxSupportPatchInfo(collider, out Vector3 center, out _, out _, out _);
+        return center;
+    }
+
+    private static void GetBoxSupportPatchInfo(
+        WorldCollider collider,
+        out Vector3 center,
+        out int cornerCount,
+        out float minCornerY,
+        out float maxCornerY)
+    {
         Vector3 hx = collider.AxisX * collider.HalfExtents.X;
         Vector3 hy = collider.AxisY * collider.HalfExtents.Y;
         Vector3 hz = collider.AxisZ * collider.HalfExtents.Z;
@@ -732,10 +779,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         corners[7] = collider.Center - hx + hy + hz;
 
         float minY = float.PositiveInfinity;
+        float highestY = float.NegativeInfinity;
         for (int i = 0; i < corners.Length; i++)
+        {
             minY = MathF.Min(minY, corners[i].Y);
+            highestY = MathF.Max(highestY, corners[i].Y);
+        }
 
-        const float patchTolerance = 0.03f;
+        float patchTolerance = MathF.Max(0.03f, MathF.Max(collider.HalfExtents.X, collider.HalfExtents.Z) * 0.14f);
         Vector3 sum = Vector3.Zero;
         int count = 0;
 
@@ -748,7 +799,241 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             }
         }
 
-        return count > 0 ? sum / count : collider.Center - collider.AxisY * collider.HalfExtents.Y;
+        center = count > 0 ? sum / count : collider.Center - collider.AxisY * collider.HalfExtents.Y;
+        cornerCount = count;
+        minCornerY = minY;
+        maxCornerY = highestY;
+    }
+
+    private static int BuildBoxBottomCorners(WorldCollider collider, Span<Vector3> corners, out float minCornerY, out float maxCornerY)
+    {
+        Vector3 hx = collider.AxisX * collider.HalfExtents.X;
+        Vector3 hy = collider.AxisY * collider.HalfExtents.Y;
+        Vector3 hz = collider.AxisZ * collider.HalfExtents.Z;
+
+        Span<Vector3> all = stackalloc Vector3[8];
+        all[0] = collider.Center - hx - hy - hz;
+        all[1] = collider.Center + hx - hy - hz;
+        all[2] = collider.Center + hx - hy + hz;
+        all[3] = collider.Center - hx - hy + hz;
+        all[4] = collider.Center - hx + hy - hz;
+        all[5] = collider.Center + hx + hy - hz;
+        all[6] = collider.Center + hx + hy + hz;
+        all[7] = collider.Center - hx + hy + hz;
+
+        minCornerY = float.PositiveInfinity;
+        maxCornerY = float.NegativeInfinity;
+        for (int i = 0; i < all.Length; i++)
+        {
+            minCornerY = MathF.Min(minCornerY, all[i].Y);
+            maxCornerY = MathF.Max(maxCornerY, all[i].Y);
+        }
+
+        float patchTolerance = MathF.Max(0.03f, MathF.Max(collider.HalfExtents.X, collider.HalfExtents.Z) * 0.14f);
+        int count = 0;
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i].Y <= minCornerY + patchTolerance)
+                corners[count++] = all[i];
+        }
+
+        return count;
+    }
+
+    private static bool NearlyEqual(Vector2 a, Vector2 b, float tolerance = 0.01f)
+        => Vector2.DistanceSquared(a, b) <= tolerance * tolerance;
+
+    private static int AddUniquePoint(Span<Vector2> points, int count, Vector2 point)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            if (NearlyEqual(points[i], point))
+                return count;
+        }
+
+        points[count] = point;
+        return count + 1;
+    }
+
+    private static float Cross2D(Vector2 a, Vector2 b, Vector2 c)
+        => (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
+
+    private static void Swap(ref Vector2 a, ref Vector2 b)
+    {
+        (a, b) = (b, a);
+    }
+
+    private static int BuildConvexHull(Span<Vector2> points, int count, Span<Vector2> hull)
+    {
+        if (count <= 1)
+        {
+            if (count == 1)
+                hull[0] = points[0];
+            return count;
+        }
+
+        for (int i = 0; i < count - 1; i++)
+        {
+            for (int j = i + 1; j < count; j++)
+            {
+                if (points[j].X < points[i].X ||
+                    (MathF.Abs(points[j].X - points[i].X) < 1e-6f && points[j].Y < points[i].Y))
+                {
+                    Swap(ref points[i], ref points[j]);
+                }
+            }
+        }
+
+        int hullCount = 0;
+        for (int i = 0; i < count; i++)
+        {
+            while (hullCount >= 2 && Cross2D(hull[hullCount - 2], hull[hullCount - 1], points[i]) <= 1e-6f)
+                hullCount--;
+
+            hull[hullCount++] = points[i];
+        }
+
+        int lowerCount = hullCount;
+        for (int i = count - 2; i >= 0; i--)
+        {
+            while (hullCount > lowerCount && Cross2D(hull[hullCount - 2], hull[hullCount - 1], points[i]) <= 1e-6f)
+                hullCount--;
+
+            hull[hullCount++] = points[i];
+        }
+
+        if (hullCount > 1)
+            hullCount--;
+
+        return hullCount;
+    }
+
+    private static Vector2 ClosestPointOnSegment2D(Vector2 point, Vector2 a, Vector2 b)
+    {
+        Vector2 ab = b - a;
+        float abLenSq = ab.LengthSquared();
+        if (abLenSq < 1e-8f)
+            return a;
+
+        float t = Vector2.Dot(point - a, ab) / abLenSq;
+        t = Math.Clamp(t, 0f, 1f);
+        return a + ab * t;
+    }
+
+    private static bool PointInConvexPolygonXZ(Vector2 point, Span<Vector2> polygon, int count)
+    {
+        if (count < 3)
+            return false;
+
+        float sign = 0f;
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 a = polygon[i];
+            Vector2 b = polygon[(i + 1) % count];
+            float cross = Cross2D(a, b, point);
+            if (MathF.Abs(cross) <= 0.01f)
+                continue;
+
+            if (sign == 0f)
+                sign = MathF.Sign(cross);
+            else if (MathF.Sign(cross) != sign)
+                return false;
+        }
+
+        return true;
+    }
+
+    private static Vector2 ClosestPointOnPolygonEdgesXZ(Vector2 point, Span<Vector2> polygon, int count)
+    {
+        Vector2 best = polygon[0];
+        float bestDistSq = float.PositiveInfinity;
+
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 a = polygon[i];
+            Vector2 b = polygon[(i + 1) % count];
+            Vector2 candidate = ClosestPointOnSegment2D(point, a, b);
+            float distSq = Vector2.DistanceSquared(point, candidate);
+            if (distSq < bestDistSq)
+            {
+                bestDistSq = distSq;
+                best = candidate;
+            }
+        }
+
+        return best;
+    }
+
+    private static bool TryBuildBoxSupportState(WorldCollider collider, Vector3 bodyCenter, Aabb supportAabb, out BoxSupportState state)
+    {
+        state = default;
+        if (collider.Shape != WorldColliderShape.Box)
+            return false;
+
+        Span<Vector3> bottomCorners = stackalloc Vector3[4];
+        int cornerCount = BuildBoxBottomCorners(collider, bottomCorners, out float minCornerY, out float maxCornerY);
+        if (cornerCount <= 0)
+            return false;
+
+        Span<Vector2> unique = stackalloc Vector2[4];
+        int uniqueCount = 0;
+        Vector3 patchSum = Vector3.Zero;
+
+        for (int i = 0; i < cornerCount; i++)
+        {
+            Vector3 corner = bottomCorners[i];
+            float clampedX = Math.Clamp(corner.X, supportAabb.Min.X, supportAabb.Max.X);
+            float clampedZ = Math.Clamp(corner.Z, supportAabb.Min.Z, supportAabb.Max.Z);
+            Vector2 pointXZ = new(clampedX, clampedZ);
+            uniqueCount = AddUniquePoint(unique, uniqueCount, pointXZ);
+            patchSum += new Vector3(clampedX, supportAabb.Max.Y, clampedZ);
+        }
+
+        if (uniqueCount <= 0)
+            return false;
+
+        Vector3 patchCenter = patchSum / cornerCount;
+        Vector2 comXZ = new(bodyCenter.X, bodyCenter.Z);
+        Vector2 pivotXZ;
+        bool stable;
+
+        if (uniqueCount == 1)
+        {
+            pivotXZ = unique[0];
+            stable = Vector2.DistanceSquared(comXZ, pivotXZ) <= 0.01f * 0.01f;
+        }
+        else if (uniqueCount == 2)
+        {
+            pivotXZ = ClosestPointOnSegment2D(comXZ, unique[0], unique[1]);
+            stable = Vector2.DistanceSquared(comXZ, pivotXZ) <= 0.02f * 0.02f;
+        }
+        else
+        {
+            Span<Vector2> hull = stackalloc Vector2[8];
+            int hullCount = BuildConvexHull(unique, uniqueCount, hull);
+            if (hullCount <= 0)
+                return false;
+
+            stable = PointInConvexPolygonXZ(comXZ, hull, hullCount);
+            pivotXZ = stable ? comXZ : ClosestPointOnPolygonEdgesXZ(comXZ, hull, hullCount);
+            uniqueCount = hullCount;
+        }
+
+        Vector3 pivot = new(pivotXZ.X, supportAabb.Max.Y, pivotXZ.Y);
+        Vector3 lever = bodyCenter - pivot;
+        lever.Y = 0f;
+
+        state = new BoxSupportState(
+            valid: true,
+            stable: stable,
+            cornerCount: cornerCount,
+            polygonCount: uniqueCount,
+            minCornerY: minCornerY,
+            maxCornerY: maxCornerY,
+            patchCenter: patchCenter,
+            pivot: pivot,
+            lever: lever);
+        return true;
     }
 
     private static Vector3 GetCapsuleSupportPatchCenter(WorldCollider collider)
@@ -801,8 +1086,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         float radius = MathF.Max(0.05f, GetBodyRotationRadius(entity));
         float strengthScale = GetPhysicsBodyShape(entity) switch
         {
-            RuntimeShapeKind.Box => 0.55f,
-            RuntimeShapeKind.Capsule => 0.45f,
+            RuntimeShapeKind.Box => 1.1f,
+            RuntimeShapeKind.Capsule => 0.8f,
             RuntimeShapeKind.Sphere => 0.35f,
             _ => 0.5f
         };
@@ -810,6 +1095,87 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         float angularAccel = _movement.Gravity * (leverLen / radius) * strengthScale;
         angularVelocity += torqueAxis * (angularAccel * dt);
         return true;
+    }
+
+    private bool TryApplyBoxSupportToppleTorque(Entity entity, Aabb supportAabb, float dt, ref Vector3 angularVelocity, out BoxSupportState supportState)
+    {
+        supportState = default;
+
+        if (!TryCreatePhysicsWorldCollider(entity, out var collider) ||
+            collider.Shape != WorldColliderShape.Box ||
+            !TryGetPhysicsBodyCenter(entity, out Vector3 bodyCenter) ||
+            !TryBuildBoxSupportState(collider, bodyCenter, supportAabb, out supportState))
+        {
+            return false;
+        }
+
+        float leverLenSq = supportState.Lever.LengthSquared();
+        if (leverLenSq < 1e-6f)
+            return true;
+
+        Vector3 torqueAxis = Vector3.Cross(supportState.Lever, -Vector3.UnitY);
+        if (!TryNormalize(torqueAxis, out torqueAxis))
+            return true;
+
+        float leverLen = MathF.Sqrt(leverLenSq);
+        float radius = MathF.Max(0.05f, GetBodyRotationRadius(entity));
+        float strengthScale = supportState.CornerCount switch
+        {
+            1 => 4.5f,
+            2 => 3.25f,
+            _ => 1.35f
+        };
+
+        if (!supportState.Stable)
+            strengthScale *= 1.5f;
+
+        float angularAccel = _movement.Gravity * (leverLen / radius) * strengthScale;
+        angularVelocity += torqueAxis * (angularAccel * dt);
+        return true;
+    }
+
+    private static string FormatVec3(Vector3 v)
+        => $"({v.X:F3}, {v.Y:F3}, {v.Z:F3})";
+
+    private void MaybeLogCornerBalance(Entity entity, Aabb supportAabb, BoxSupportState supportState)
+    {
+        if (entity.Physics.BoxBody == null || !supportState.Valid)
+            return;
+
+        if (!TryGetPhysicsBodyCenter(entity, out Vector3 bodyCenter))
+        {
+            return;
+        }
+
+        Vector3 velocity = GetPhysicsBodyVelocity(entity);
+        Vector3 angularVelocity = entity.Physics.AngularVelocity;
+        float linearSpeed = velocity.Length();
+        float angularSpeed = angularVelocity.Length();
+        bool nearStable = IsNearStableBoxPose(entity, minAlignment: 0.985f);
+
+        bool suspicious = linearSpeed < 0.5f &&
+                          angularSpeed < 1.5f &&
+                          (!supportState.Stable || supportState.CornerCount <= 2 || !nearStable);
+        if (!suspicious)
+            return;
+
+        long now = Environment.TickCount64;
+        if (_cornerBalanceLogTicks.TryGetValue(entity.Id, out long lastTick) &&
+            now - lastTick < 750)
+        {
+            return;
+        }
+
+        _cornerBalanceLogTicks[entity.Id] = now;
+
+        Console.WriteLine(
+            $"[CornerBalance] name={entity.Name} id={entity.Id} " +
+            $"center={FormatVec3(bodyCenter)} vel={FormatVec3(velocity)} angVel={FormatVec3(angularVelocity)} " +
+            $"speed={linearSpeed:F3} angSpeed={angularSpeed:F3} stable={supportState.Stable} nearStable={nearStable} " +
+            $"cornerCount={supportState.CornerCount} polygonCount={supportState.PolygonCount} cornerYRange=({supportState.MinCornerY:F3}->{supportState.MaxCornerY:F3}) " +
+            $"patchCenter={FormatVec3(supportState.PatchCenter)} pivot={FormatVec3(supportState.Pivot)} leverXZ={FormatVec3(supportState.Lever)} leverLen={supportState.Lever.Length():F3} " +
+            $"supportMin={FormatVec3(supportAabb.Min)} supportMax={FormatVec3(supportAabb.Max)} " +
+            $"contactNormal={FormatVec3(entity.Physics.BoxBody.LastContactNormal)} rotEuler={FormatVec3(entity.Transform.RotationEulerDeg)}");
     }
 
     private static Vector3 GetCollisionContactOffset(Entity entity, Vector3 surfaceNormal)
@@ -893,25 +1259,27 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         AddAngularVelocity(entity, axis * (velocityDelta.Length() / radius) * shapeScale * intensityScale);
     }
 
-    private void ApplyWorldCollisionSpin(Entity entity, Vector3 predictedVelocity, Vector3 actualVelocity)
+    private void ApplyWorldCollisionSpin(Entity entity, Vector3 predictedVelocity, Vector3 actualVelocity, bool hadContact, Vector3 contactNormal)
     {
+        if (!hadContact || contactNormal.LengthSquared() < 1e-6f)
+            return;
+
         Vector3 velocityDelta = actualVelocity - predictedVelocity;
         if (velocityDelta.LengthSquared() < 0.01f)
             return;
 
-        Vector3 surfaceNormal = velocityDelta.LengthSquared() > 1e-6f
-            ? Vector3.Normalize(-velocityDelta)
-            : Vector3.UnitY;
+        Vector3 surfaceNormal = Vector3.Normalize(-contactNormal);
 
         RuntimeShapeKind shape = GetPhysicsBodyShape(entity);
-        if (shape == RuntimeShapeKind.Box && surfaceNormal.Y > 0.85f)
+        if ((shape == RuntimeShapeKind.Box || shape == RuntimeShapeKind.Capsule) && surfaceNormal.Y > 0.85f)
         {
             Vector3 tangentialDelta = ProjectOntoPlane(velocityDelta, surfaceNormal);
             Vector3 lateralVelocity = new(actualVelocity.X, 0f, actualVelocity.Z);
 
-            if (tangentialDelta.LengthSquared() < 0.01f &&
-                lateralVelocity.LengthSquared() < 0.1225f &&
-                IsNearStableBoxPose(entity, minAlignment: 0.99f))
+            bool suppressFlatFloorSpin = tangentialDelta.LengthSquared() < 0.04f &&
+                                         lateralVelocity.LengthSquared() < 0.36f;
+
+            if (suppressFlatFloorSpin)
             {
                 return;
             }
@@ -933,8 +1301,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         Vector3 angularVelocity = entity.Physics.AngularVelocity;
         RuntimeShapeKind shape = GetPhysicsBodyShape(entity);
         bool touchingSupport = TryGetSupportingSurface(entity, requireCenterSupport: false, out Aabb supportAabb);
-        bool balancedSupport = touchingSupport && TryGetSupportingSurface(entity, requireCenterSupport: true, out _);
-
         float damping = MathF.Max(0f, 1f - entity.Physics.AngularDamping * dt);
         angularVelocity *= damping;
 
@@ -963,7 +1329,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (touchingSupport && (shape == RuntimeShapeKind.Box || shape == RuntimeShapeKind.Capsule))
         {
-            TryApplyGravityToppleTorque(entity, supportAabb, dt, ref angularVelocity);
+            if (shape == RuntimeShapeKind.Box)
+            {
+                if (TryApplyBoxSupportToppleTorque(entity, supportAabb, dt, ref angularVelocity, out BoxSupportState supportState))
+                    MaybeLogCornerBalance(entity, supportAabb, supportState);
+            }
+            else
+            {
+                TryApplyGravityToppleTorque(entity, supportAabb, dt, ref angularVelocity);
+            }
         }
 
         if (angularVelocity.LengthSquared() < 0.0025f)
@@ -975,28 +1349,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             Vector3 axis = angularVelocity / angularSpeed;
             Quaternion delta = Quaternion.CreateFromAxisAngle(axis, angularSpeed * dt);
             entity.Physics.Rotation = Quaternion.Normalize(delta * entity.Physics.Rotation);
-        }
-
-        if (balancedSupport && shape == RuntimeShapeKind.Box)
-        {
-            float linearSpeed = GetPhysicsBodyVelocity(entity).Length();
-            bool nearStable = IsNearStableBoxPose(entity, minAlignment: 0.9925f);
-
-            if (nearStable && linearSpeed < 0.45f)
-            {
-                Quaternion stableTarget = GetNearestBoxStableRotation(entity.Physics.Rotation);
-
-                float settle = Math.Clamp(dt * 1.5f, 0f, 1f);
-                entity.Physics.Rotation = Quaternion.Normalize(
-                    Quaternion.Slerp(entity.Physics.Rotation, stableTarget, settle));
-
-                if (Quaternion.Dot(entity.Physics.Rotation, stableTarget) > 0.9995f &&
-                    angularVelocity.LengthSquared() < 0.04f)
-                {
-                    entity.Physics.Rotation = stableTarget;
-                    angularVelocity = Vector3.Zero;
-                }
-            }
         }
 
         entity.Physics.AngularVelocity = angularVelocity;
@@ -1028,7 +1380,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 dt);
 
             entity.Physics.BoxBody.Step(dt, _runtimeWorldColliders, entity.Physics.Rotation, gravityY: _movement.Gravity);
-            ApplyWorldCollisionSpin(entity, predictedVelocity, entity.Physics.BoxBody.Velocity);
+            ApplyWorldCollisionSpin(
+                entity,
+                predictedVelocity,
+                entity.Physics.BoxBody.Velocity,
+                entity.Physics.BoxBody.HadContact,
+                entity.Physics.BoxBody.LastContactNormal);
             IntegrateEntityRotation(entity, dt);
             return;
         }
@@ -1042,7 +1399,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 dt);
 
             entity.Physics.SphereBody.Step(dt, _runtimeWorldColliders, gravityY: _movement.Gravity);
-            ApplyWorldCollisionSpin(entity, predictedVelocity, entity.Physics.SphereBody.Velocity);
+            ApplyWorldCollisionSpin(
+                entity,
+                predictedVelocity,
+                entity.Physics.SphereBody.Velocity,
+                entity.Physics.SphereBody.HadContact,
+                entity.Physics.SphereBody.LastContactNormal);
             IntegrateEntityRotation(entity, dt);
             return;
         }
@@ -1056,7 +1418,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 dt);
 
             entity.Physics.CapsuleBody.Step(dt, _runtimeWorldColliders, entity.Physics.Rotation, gravityY: _movement.Gravity);
-            ApplyWorldCollisionSpin(entity, predictedVelocity, entity.Physics.CapsuleBody.Velocity);
+            ApplyWorldCollisionSpin(
+                entity,
+                predictedVelocity,
+                entity.Physics.CapsuleBody.Velocity,
+                entity.Physics.CapsuleBody.HadContact,
+                entity.Physics.CapsuleBody.LastContactNormal);
             IntegrateEntityRotation(entity, dt);
         }
     }
@@ -1099,14 +1466,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     }
 
     private static bool ShouldStickToMovingPlatform(Entity entity)
-        => entity.Collider.Shape == RuntimeShapeKind.Box;
+        => entity.Collider.Shape == RuntimeShapeKind.Box ||
+           entity.Collider.Shape == RuntimeShapeKind.Capsule;
 
     private void CarryDynamicBoxesOnMovingPlatforms()
     {
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
-            if (e.Physics.BoxBody == null) continue;
+            if (!HasPhysicsBody(e)) continue;
             if (e.IsHeld) continue;
             if (e.Physics.MotionType != MotionType.Dynamic) continue;
             if (!ShouldStickToMovingPlatform(e)) continue;
@@ -1119,8 +1487,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 continue;
             }
 
-            e.Physics.BoxBody.Center += previousSupport!.Collider.Delta;
-            e.Transform.Position = e.Physics.BoxBody.Center;
+            if (!TryGetPhysicsBodyCenter(e, out Vector3 center))
+                continue;
+
+            center += previousSupport!.Collider.Delta;
+            SetPhysicsBodyCenter(e, center);
+            e.Transform.Position = center;
         }
     }
 
@@ -1184,7 +1556,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             e.Physics.RestRotation = EulerDegToQuat(def.LocalRotationEulerDeg);
             e.Physics.Rotation = EulerDegToQuat(def.LocalRotationEulerDeg);
             e.Physics.AngularVelocity = Vector3.Zero;
-            e.Physics.AngularDamping = 8f;
+            e.Physics.AngularDamping = 2.5f;
             e.Render.Shape = RuntimeShapeKind.Box;
             e.Render.Size = GetScaledSize(def, clampComponents: false);
             e.Render.Radius = GetScaledSphereRadius(def, clampScale: false);
@@ -1618,15 +1990,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 StepPhysicsBody(e, dt);
 
                 if (ShouldStickToMovingPlatform(e) &&
-                    e.Physics.BoxBody != null &&
                     TryGetSupportingPlatformForBody(
                         e,
                         usePreviousPlatformPosition: false,
                         out _))
                 {
                     // Keep boxes settled on a supporting platform after the carry step.
-                    if (e.Physics.BoxBody.Velocity.Y < 0f)
-                        e.Physics.BoxBody.Velocity = new Vector3(e.Physics.BoxBody.Velocity.X, 0f, e.Physics.BoxBody.Velocity.Z);
+                    Vector3 velocity = GetPhysicsBodyVelocity(e);
+                    if (velocity.Y < 0f)
+                        SetPhysicsBodyVelocity(e, new Vector3(velocity.X, 0f, velocity.Z));
                 }
 
                 if (TryGetPhysicsBodyCenter(e, out Vector3 center))
@@ -2290,8 +2662,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         Entity? best = null;
         float bestT = maxDist;
 
-        Console.WriteLine($"[Pickup.Raycast] origin={origin} dir={dir} maxDist={maxDist}");
-        Console.WriteLine($"[Pickup.Raycast] runtimeColliders={_runtimeEntities.Count(e => e.Collider.Enabled)}");
+        // Console.WriteLine($"[Pickup.Raycast] origin={origin} dir={dir} maxDist={maxDist}");
+        // Console.WriteLine($"[Pickup.Raycast] runtimeColliders={_runtimeEntities.Count(e => e.Collider.Enabled)}");
 
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
@@ -2304,7 +2676,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             if (!HasPhysicsBody(e))
             {
-                Console.WriteLine($"[Pickup.Raycast] {e.Name} CanPickUp=true but has no runtime body (not pickable)");
+                // Console.WriteLine($"[Pickup.Raycast] {e.Name} CanPickUp=true but has no runtime body (not pickable)");
                 continue;
             }
 
@@ -2314,7 +2686,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             if (RayIntersectsEntityCollider(ray, e, 0.05f, bestT, out float tHit))
             {
-                Console.WriteLine($"[Pickup.Raycast] HIT {e.Name} at t={tHit}");
+                // Console.WriteLine($"[Pickup.Raycast] HIT {e.Name} at t={tHit}");
                 bestT = tHit;
                 best = e;
             }
@@ -2342,22 +2714,22 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (pickupPressed)
         {
-            Console.WriteLine($"[Pickup] Tick (held={(_held != null ? _held.Name : "null")})  editor={_editorEnabled} mouseCaptured={_ui.IsMouseCaptured}");
+            // Console.WriteLine($"[Pickup] Tick (held={(_held != null ? _held.Name : "null")})  editor={_editorEnabled} mouseCaptured={_ui.IsMouseCaptured}");
             if (_held != null)
                 DropHeld();
             else
             {
-                Console.WriteLine("[Pickup] Trying to raycast for pickable...");
+                // Console.WriteLine("[Pickup] Trying to raycast for pickable...");
 
                 var hit = RaycastPickable(maxDist: 3.0f);
 
                 if (hit == null)
                 {
-                    Console.WriteLine("[Pickup] RaycastPickable returned NULL (no hit)");
+                    // Console.WriteLine("[Pickup] RaycastPickable returned NULL (no hit)");
                 }
                 else
                 {
-                    Console.WriteLine($"[Pickup] Raycast hit entity: {hit.Name} canPickUp={hit.CanPickUp} bodyShape={GetPhysicsBodyShape(hit)} pos={hit.Transform.Position}");
+                    // Console.WriteLine($"[Pickup] Raycast hit entity: {hit.Name} canPickUp={hit.CanPickUp} bodyShape={GetPhysicsBodyShape(hit)} pos={hit.Transform.Position}");
                     PickUp(hit);
                 }
             }
@@ -2365,7 +2737,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     }
     private void PickUp(Entity e)
     {
-        Console.WriteLine($"[Pickup] PickUp({e.Name}) BEFORE: bodyShape={GetPhysicsBodyShape(e)} vel={GetPhysicsBodyVelocity(e)}");
+        // Console.WriteLine($"[Pickup] PickUp({e.Name}) BEFORE: bodyShape={GetPhysicsBodyShape(e)} vel={GetPhysicsBodyVelocity(e)}");
 
         if (!HasPhysicsBody(e)) return;
 
@@ -2395,7 +2767,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         e.Physics.AngularVelocity = Vector3.Zero;
 
-        Console.WriteLine($"[Pickup] PickUp({e.Name}) AFTER: bodyShape={GetPhysicsBodyShape(e)} vel={GetPhysicsBodyVelocity(e)}");
+        // Console.WriteLine($"[Pickup] PickUp({e.Name}) AFTER: bodyShape={GetPhysicsBodyShape(e)} vel={GetPhysicsBodyVelocity(e)}");
 
     }
 
@@ -2404,7 +2776,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         if (_held == null) return;
         var e = _held;
 
-        Console.WriteLine($"[Pickup] Drop({_held.Name})");
+        // Console.WriteLine($"[Pickup] Drop({_held.Name})");
 
 
         if (e.Physics.BoxBody != null)
@@ -2500,7 +2872,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (_held.Physics.BoxBody != null)
         {
-            (resolvedCenter, resolvedVel, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicAabb(
+            (resolvedCenter, resolvedVel, _, _, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicAabb(
                 newCenter,
                 v,
                 _held.Physics.BoxBody.HalfExtents,
@@ -2511,7 +2883,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         {
             if (_held.Physics.SphereBody != null)
             {
-                (resolvedCenter, resolvedVel, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicSphere(
+                (resolvedCenter, resolvedVel, _, _, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicSphere(
                     newCenter,
                     v,
                     _held.Physics.SphereBody.Radius,
@@ -2519,7 +2891,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             }
             else
             {
-                (resolvedCenter, resolvedVel, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicCapsule(
+                (resolvedCenter, resolvedVel, _, _, _) = Engine.Physics.Collision.StaticCollision.ResolveDynamicCapsule(
                     newCenter,
                     v,
                     _held.Physics.CapsuleBody!.Radius,

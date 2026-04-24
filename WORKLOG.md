@@ -40,6 +40,13 @@ The current gameplay issues being worked first are:
 - narrowed stable-pose settling so it only helps near-stable poses instead of steering large parts of a fall
 - added a small topple assist for nearly-stationary supported boxes/capsules that are far from a stable pose
 - replaced capsule/righting pose steering with gravity-like topple torque from the current support/contact patch
+- fixed the inferred world-collision normal used for angular response so floor impacts no longer treat the floor normal backwards
+- extended moving-platform carry support from box-only to box and capsule bodies
+- biased box-box contact normal selection toward the more vertical axis in near-flat floor contacts
+- started shifting the prop behavior toward VPhysics/Havok-style principles by using actual collision normals for angular response instead of guessed velocity-change normals
+- removed the box pose-slerp cleanup so resting orientation is driven more by collision/support and less by authored stable targets
+- reduced angular damping and increased gravity-topple torque so overbalanced boxes/capsules are more likely to keep falling instead of perching
+- replaced box stability/topple logic based on whole-floor support AABBs with a support-polygon check built from the box's actual lowest support corners
 
 ### Why
 
@@ -52,6 +59,10 @@ The current gameplay issues being worked first are:
 - rotation settling was visually overpowering gravity/toppling behavior
 - some boxes could freeze in corner-balanced poses instead of falling onto a face
 - capsules were still visibly trying to return to an upright or authored stable pose
+- flat floor impacts could still inject incorrect angular cues because the inferred collision normal in the spin path was reversed
+- capsules were not inheriting moving-platform motion because the platform carry path was still box-only
+- the previous collision/settling path still relied too much on steering toward preferred orientations instead of contact-driven behavior
+- box balancing decisions were still being made against the entire floor/platform support AABB instead of the actual corner/edge contact patch
 
 ### Files
 
@@ -76,6 +87,9 @@ The current gameplay issues being worked first are:
 - held objects may now block against dynamic bodies without yet transferring satisfying push forces
 - the new topple assist is still an approximation and may need tuning if it feels too weak or too directed
 - gravity-topple behavior is still driven from simplified support patch estimation rather than a full contact manifold
+- flat-floor box behavior may still need more tuning if the linear contact solver keeps choosing a marginally tilted response in edge cases
+- validation is currently blocked by a local dotnet restore/build permission error in the temporary obj path, so this pass still needs in-game confirmation
+- the new box support-polygon logic still assumes a horizontal support plane and should be validated on floors and moving platforms before extending it further
 
 ### Next
 
@@ -87,6 +101,11 @@ The current gameplay issues being worked first are:
 - test a box hanging off a moving platform with its center over and then beyond the support area
 - test thrown box-on-box impacts for remaining corner-freeze cases
 - test a capsule tipped partly onto its side and confirm it now continues to fall instead of righting itself
+- test a capsule resting on a moving platform and confirm it is carried with the platform
+- test a flat box drop and confirm it no longer bounces up into a visible angled pose on clean floor contact
+- test a thrown box-on-box impact and confirm the losing box now topples off corners instead of hanging in a diamond pose
+- test a capsule on its side and confirm it no longer tries to stand upright after settling
+- test single-corner and two-corner box rests and confirm `stable` now flips false when the COM projection is outside the actual support polygon
 
 ## Notes For Future Chats
 

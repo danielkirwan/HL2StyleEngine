@@ -9,6 +9,8 @@ public sealed class BoxBody
     public Vector3 HalfExtents;
 
     public Vector3 Velocity;
+    public Vector3 LastContactNormal;
+    public bool HadContact;
 
     public float Mass = 10f;
     public bool UseGravity = true;
@@ -45,7 +47,7 @@ public sealed class BoxBody
 
         Vector3 newCenter = Center + Velocity * dt;
 
-        var (resolvedCenter, resolvedVel, grounded) =
+        var (resolvedCenter, resolvedVel, grounded, hadContact, contactNormal) =
             StaticCollision.ResolveDynamicAabb(
                 newCenter,
                 Velocity,
@@ -56,6 +58,8 @@ public sealed class BoxBody
 
         Center = resolvedCenter;
         Velocity = resolvedVel;
+        HadContact = hadContact;
+        LastContactNormal = contactNormal;
 
         if (grounded && Friction > 0f)
         {

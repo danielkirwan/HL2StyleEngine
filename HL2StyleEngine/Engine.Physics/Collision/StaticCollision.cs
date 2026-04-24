@@ -42,7 +42,7 @@ public static class StaticCollision
         return (center, vel, grounded);
     }
 
-    public static (Vector3 center, Vector3 vel, bool grounded) ResolveDynamicAabb(
+    public static (Vector3 center, Vector3 vel, bool grounded, bool hadContact, Vector3 contactNormal) ResolveDynamicAabb(
         Vector3 center,
         Vector3 vel,
         Vector3 extents,
@@ -52,6 +52,9 @@ public static class StaticCollision
         int iterations = 6)
     {
         bool grounded = false;
+        bool hadContact = false;
+        float bestPenetration = 0f;
+        Vector3 contactNormal = Vector3.Zero;
 
         for (int it = 0; it < iterations; it++)
         {
@@ -68,6 +71,12 @@ public static class StaticCollision
                     continue;
 
                 any = true;
+                hadContact = true;
+                if (penetration > bestPenetration)
+                {
+                    bestPenetration = penetration;
+                    contactNormal = normal;
+                }
                 center -= normal * penetration;
                 ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
                 box = WorldCollider.Box(center, extents, rotation);
@@ -78,10 +87,10 @@ public static class StaticCollision
         }
 
         ZeroSmallVelocity(ref vel);
-        return (center, vel, grounded);
+        return (center, vel, grounded, hadContact, contactNormal);
     }
 
-    public static (Vector3 center, Vector3 vel, bool grounded) ResolveDynamicSphere(
+    public static (Vector3 center, Vector3 vel, bool grounded, bool hadContact, Vector3 contactNormal) ResolveDynamicSphere(
         Vector3 center,
         Vector3 vel,
         float radius,
@@ -90,6 +99,9 @@ public static class StaticCollision
         int iterations = 6)
     {
         bool grounded = false;
+        bool hadContact = false;
+        float bestPenetration = 0f;
+        Vector3 contactNormal = Vector3.Zero;
 
         for (int it = 0; it < iterations; it++)
         {
@@ -106,6 +118,12 @@ public static class StaticCollision
                     continue;
 
                 any = true;
+                hadContact = true;
+                if (penetration > bestPenetration)
+                {
+                    bestPenetration = penetration;
+                    contactNormal = normal;
+                }
                 center -= normal * penetration;
                 ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
                 moving = WorldCollider.Sphere(center, radius);
@@ -116,10 +134,10 @@ public static class StaticCollision
         }
 
         ZeroSmallVelocity(ref vel);
-        return (center, vel, grounded);
+        return (center, vel, grounded, hadContact, contactNormal);
     }
 
-    public static (Vector3 center, Vector3 vel, bool grounded) ResolveDynamicCapsule(
+    public static (Vector3 center, Vector3 vel, bool grounded, bool hadContact, Vector3 contactNormal) ResolveDynamicCapsule(
         Vector3 center,
         Vector3 vel,
         float radius,
@@ -130,6 +148,9 @@ public static class StaticCollision
         int iterations = 6)
     {
         bool grounded = false;
+        bool hadContact = false;
+        float bestPenetration = 0f;
+        Vector3 contactNormal = Vector3.Zero;
         for (int it = 0; it < iterations; it++)
         {
             WorldCollider moving = WorldCollider.Capsule(center, radius, height, rotation);
@@ -145,6 +166,12 @@ public static class StaticCollision
                     continue;
 
                 any = true;
+                hadContact = true;
+                if (penetration > bestPenetration)
+                {
+                    bestPenetration = penetration;
+                    contactNormal = normal;
+                }
                 center -= normal * penetration;
                 ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
                 moving = WorldCollider.Capsule(center, radius, height, rotation);
@@ -155,7 +182,7 @@ public static class StaticCollision
         }
 
         ZeroSmallVelocity(ref vel);
-        return (center, vel, grounded);
+        return (center, vel, grounded, hadContact, contactNormal);
     }
 
     public static bool TryResolveAabbAabb(

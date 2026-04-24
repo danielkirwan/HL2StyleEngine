@@ -9,6 +9,8 @@ public sealed class SphereBody
     public float Radius;
 
     public Vector3 Velocity;
+    public Vector3 LastContactNormal;
+    public bool HadContact;
 
     public float Mass = 10f;
     public bool UseGravity = true;
@@ -44,7 +46,7 @@ public sealed class SphereBody
 
         Vector3 newCenter = Center + Velocity * dt;
 
-        var (resolvedCenter, resolvedVel, grounded) =
+        var (resolvedCenter, resolvedVel, grounded, hadContact, contactNormal) =
             StaticCollision.ResolveDynamicSphere(
                 newCenter,
                 Velocity,
@@ -54,6 +56,8 @@ public sealed class SphereBody
 
         Center = resolvedCenter;
         Velocity = resolvedVel;
+        HadContact = hadContact;
+        LastContactNormal = contactNormal;
 
         if (grounded && Friction > 0f)
         {
