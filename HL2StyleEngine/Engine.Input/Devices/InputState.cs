@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using Veldrid;
@@ -53,31 +52,9 @@ public sealed class InputState
 
     public bool HasGamepad => _controller != IntPtr.Zero;
 
-    private int _lastJoystickCount = -1;
-    private double _nextScanLogTime;
-    private readonly Stopwatch _scanTimer = Stopwatch.StartNew();
-
     public void UpdateGamepads()
     {
         int num = SDL_NumJoysticks();
-        double now = _scanTimer.Elapsed.TotalSeconds;
-
-        if (num != _lastJoystickCount || now >= _nextScanLogTime)
-        {
-            _lastJoystickCount = num;
-            _nextScanLogTime = now + 2.0;
-
-            Console.WriteLine($"[Input] SDL_NumJoysticks: {num}");
-
-            for (int i = 0; i < num; i++)
-            {
-                bool isGc = SDL_IsGameController(i);
-                Console.WriteLine($"[Input]  idx {i}: SDL_IsGameController={isGc}");
-            }
-
-            if (_controller != IntPtr.Zero)
-                Console.WriteLine($"[Input] Active controller index: {_controllerIndex}");
-        }
 
         if (_controller != IntPtr.Zero)
         {
@@ -139,8 +116,6 @@ public sealed class InputState
                 _controllerIndex = i;
 
                 InitPadDictionaries();
-
-                Console.WriteLine($"[Input] Gamepad OPENED at index {i} (SDL_IsGameController={isGc})");
                 ActiveDevice = ActiveInputDevice.Gamepad;
                 break;
             }

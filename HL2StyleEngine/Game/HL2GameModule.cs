@@ -108,7 +108,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     private int _physicsMaxSubsteps = 12;
     private float _physicsMaxStep = 1f / 120f;
-    private readonly Dictionary<string, long> _cornerBalanceLogTicks = new();
 
     public InputState InputState => _inputState;
 
@@ -276,11 +275,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (_jump.Pressed)
                 _jumpPressedThisFrame = true;
 
-            if (_inputState.WasPressed(Key.E))
-                ; // Console.WriteLine("[Pickup] E pressed");
-
-            if (_inputState.LeftMouseDown) // or WasPressed if you add it
-                ; // Console.WriteLine("[Pickup] LMB down");
         }
     }
 
@@ -1134,50 +1128,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         return true;
     }
 
-    private static string FormatVec3(Vector3 v)
-        => $"({v.X:F3}, {v.Y:F3}, {v.Z:F3})";
-
-    private void MaybeLogCornerBalance(Entity entity, Aabb supportAabb, BoxSupportState supportState)
-    {
-        if (entity.Physics.BoxBody == null || !supportState.Valid)
-            return;
-
-        if (!TryGetPhysicsBodyCenter(entity, out Vector3 bodyCenter))
-        {
-            return;
-        }
-
-        Vector3 velocity = GetPhysicsBodyVelocity(entity);
-        Vector3 angularVelocity = entity.Physics.AngularVelocity;
-        float linearSpeed = velocity.Length();
-        float angularSpeed = angularVelocity.Length();
-        bool nearStable = IsNearStableBoxPose(entity, minAlignment: 0.985f);
-
-        bool suspicious = linearSpeed < 0.5f &&
-                          angularSpeed < 1.5f &&
-                          (!supportState.Stable || supportState.CornerCount <= 2 || !nearStable);
-        if (!suspicious)
-            return;
-
-        long now = Environment.TickCount64;
-        if (_cornerBalanceLogTicks.TryGetValue(entity.Id, out long lastTick) &&
-            now - lastTick < 750)
-        {
-            return;
-        }
-
-        _cornerBalanceLogTicks[entity.Id] = now;
-
-        Console.WriteLine(
-            $"[CornerBalance] name={entity.Name} id={entity.Id} " +
-            $"center={FormatVec3(bodyCenter)} vel={FormatVec3(velocity)} angVel={FormatVec3(angularVelocity)} " +
-            $"speed={linearSpeed:F3} angSpeed={angularSpeed:F3} stable={supportState.Stable} nearStable={nearStable} " +
-            $"cornerCount={supportState.CornerCount} polygonCount={supportState.PolygonCount} cornerYRange=({supportState.MinCornerY:F3}->{supportState.MaxCornerY:F3}) " +
-            $"patchCenter={FormatVec3(supportState.PatchCenter)} pivot={FormatVec3(supportState.Pivot)} leverXZ={FormatVec3(supportState.Lever)} leverLen={supportState.Lever.Length():F3} " +
-            $"supportMin={FormatVec3(supportAabb.Min)} supportMax={FormatVec3(supportAabb.Max)} " +
-            $"contactNormal={FormatVec3(entity.Physics.BoxBody.LastContactNormal)} rotEuler={FormatVec3(entity.Transform.RotationEulerDeg)}");
-    }
-
     private static Vector3 GetCollisionContactOffset(Entity entity, Vector3 surfaceNormal)
     {
         surfaceNormal = surfaceNormal.LengthSquared() > 1e-6f
@@ -1331,8 +1281,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         {
             if (shape == RuntimeShapeKind.Box)
             {
-                if (TryApplyBoxSupportToppleTorque(entity, supportAabb, dt, ref angularVelocity, out BoxSupportState supportState))
-                    MaybeLogCornerBalance(entity, supportAabb, supportState);
+                TryApplyBoxSupportToppleTorque(entity, supportAabb, dt, ref angularVelocity, out _);
             }
             else
             {
@@ -2188,7 +2137,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         ImGui.Text($"Editor: {(_editorEnabled ? "ON" : "OFF")}");
         ImGui.Text($"Dirty: {(_editor.Dirty ? "YES" : "NO")}");
         ImGui.Text($"Level: {_editor.LevelPath}");
-        //Console.WriteLine(_editor.LevelPath); 
         ImGui.Text($"Selected: {_editor.SelectedEntityIndex}");
         if (!string.IsNullOrWhiteSpace(_editor.LastTriggerEvent))
             ImGui.Text($"Last Trigger: {_editor.LastTriggerEvent}");
@@ -2662,9 +2610,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         Entity? best = null;
         float bestT = maxDist;
 
-        // Console.WriteLine($"[Pickup.Raycast] origin={origin} dir={dir} maxDist={maxDist}");
-        // Console.WriteLine($"[Pickup.Raycast] runtimeColliders={_runtimeEntities.Count(e => e.Collider.Enabled)}");
-
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
@@ -2676,7 +2621,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             if (!HasPhysicsBody(e))
             {
-                // Console.WriteLine($"[Pickup.Raycast] {e.Name} CanPickUp=true but has no runtime body (not pickable)");
                 continue;
             }
 
@@ -2686,7 +2630,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             if (RayIntersectsEntityCollider(ray, e, 0.05f, bestT, out float tHit))
             {
-                // Console.WriteLine($"[Pickup.Raycast] HIT {e.Name} at t={tHit}");
                 bestT = tHit;
                 best = e;
             }
@@ -2714,22 +2657,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         if (pickupPressed)
         {
-            // Console.WriteLine($"[Pickup] Tick (held={(_held != null ? _held.Name : "null")})  editor={_editorEnabled} mouseCaptured={_ui.IsMouseCaptured}");
             if (_held != null)
                 DropHeld();
             else
             {
-                // Console.WriteLine("[Pickup] Trying to raycast for pickable...");
-
                 var hit = RaycastPickable(maxDist: 3.0f);
 
-                if (hit == null)
+                if (hit != null)
                 {
-                    // Console.WriteLine("[Pickup] RaycastPickable returned NULL (no hit)");
-                }
-                else
-                {
-                    // Console.WriteLine($"[Pickup] Raycast hit entity: {hit.Name} canPickUp={hit.CanPickUp} bodyShape={GetPhysicsBodyShape(hit)} pos={hit.Transform.Position}");
                     PickUp(hit);
                 }
             }
@@ -2737,8 +2672,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     }
     private void PickUp(Entity e)
     {
-        // Console.WriteLine($"[Pickup] PickUp({e.Name}) BEFORE: bodyShape={GetPhysicsBodyShape(e)} vel={GetPhysicsBodyVelocity(e)}");
-
         if (!HasPhysicsBody(e)) return;
 
         _held = e;
@@ -2767,17 +2700,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         e.Physics.AngularVelocity = Vector3.Zero;
 
-        // Console.WriteLine($"[Pickup] PickUp({e.Name}) AFTER: bodyShape={GetPhysicsBodyShape(e)} vel={GetPhysicsBodyVelocity(e)}");
-
     }
 
     private void DropHeld()
     {
         if (_held == null) return;
         var e = _held;
-
-        // Console.WriteLine($"[Pickup] Drop({_held.Name})");
-
 
         if (e.Physics.BoxBody != null)
         {

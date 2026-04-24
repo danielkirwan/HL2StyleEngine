@@ -1,6 +1,6 @@
 # Project Overview
 
-Last updated: 2026-04-17
+Last updated: 2026-04-24
 
 ## Purpose
 
@@ -25,6 +25,15 @@ The main target qualities are:
 - a fast iteration workflow with clear engine/game separation
 - tooling that can grow into a practical in-engine editor and content workflow
 - visuals and world building that support the same grounded tone as the gameplay
+
+## Editor Direction
+
+The project now has two editor goals, not one:
+
+- a proper standalone level editor that is practical for building levels from scratch
+- an in-scene runtime editor that stays available for playtest-time adjustment and rapid feel tuning
+
+The standalone editor should become the main environment for layout, object placement, and level construction. The in-scene editor should remain as a fast iteration tool for checking scale, gameplay flow, physics feel, and small live adjustments while the game is running.
 
 ## Current Stage
 
@@ -103,6 +112,8 @@ This work is aimed at fixing several visible problems:
 - validate rotated box, sphere, and capsule collision behavior in gameplay scenarios
 - remove remaining AABB fallback logic where exact rotated shape behavior matters
 - improve support and settling logic for tipped capsules and resting boxes
+- define and build a real standalone level editor workflow for creating levels more efficiently
+- keep and improve the current in-scene play editor so runtime tweaking remains part of the workflow
 - get a cleaner full-project build signal once unrelated workspace issues are addressed
 - continue moving from placeholder physics behavior toward feel-driven gameplay behavior
 

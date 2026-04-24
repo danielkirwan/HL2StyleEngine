@@ -15,9 +15,6 @@ public static class Sdl2ControllerBootstrap
     private static extern int SDL_InitSubSystem(uint flags);
 
     [DllImport("SDL2.dll", CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr SDL_GetError();
-
-    [DllImport("SDL2.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern int SDL_NumJoysticks();
 
     private static bool _done;
@@ -29,31 +26,17 @@ public static class Sdl2ControllerBootstrap
 
         try
         {
-            uint was = SDL_WasInit(0);
-
-            int rJoy = SDL_InitSubSystem(SDL_INIT_JOYSTICK);
-            int rGc = SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
-
-            uint now = SDL_WasInit(0);
-            int num = SDL_NumJoysticks();
-
-            Console.WriteLine($"[SDL] WasInit(before)=0x{was:X}  Init(JOY)={rJoy}  Init(GC)={rGc}  WasInit(after)=0x{now:X}");
-            Console.WriteLine($"[SDL] NumJoysticks after init: {num}");
-            Console.WriteLine($"[SDL] Error: {GetErrorString()}");
+            SDL_WasInit(0);
+            SDL_InitSubSystem(SDL_INIT_JOYSTICK);
+            SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
+            SDL_WasInit(0);
+            SDL_NumJoysticks();
         }
-        catch (DllNotFoundException e)
+        catch (DllNotFoundException)
         {
-            Console.WriteLine($"[SDL] SDL2.dll not found: {e.Message}");
         }
-        catch (Exception e)
+        catch
         {
-            Console.WriteLine($"[SDL] Controller bootstrap failed: {e}");
         }
-    }
-
-    private static string GetErrorString()
-    {
-        IntPtr p = SDL_GetError();
-        return p == IntPtr.Zero ? "" : Marshal.PtrToStringAnsi(p) ?? "";
     }
 }

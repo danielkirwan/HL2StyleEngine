@@ -1,6 +1,6 @@
 # Work Log
 
-Last updated: 2026-04-17
+Last updated: 2026-04-24
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
@@ -24,6 +24,7 @@ The current gameplay issues being worked first are:
 - rotation-aware collider plumbing has been introduced for dynamic boxes and capsules
 - `Engine.Physics` has a passing build signal
 - the wider `Game` project still does not have a clean full-build signal because of unrelated workspace issues
+- the roadmap now includes a proper standalone level editor for building maps, while keeping the runtime in-scene editor for live playtest adjustments
 
 ## 2026-04-17
 
@@ -97,6 +98,8 @@ The current gameplay issues being worked first are:
 - test low-side capsule impacts and side-rest behavior
 - audit remaining AABB fallbacks where exact rotated shape behavior matters
 - improve support and settling logic if capsules or boxes still look unstable
+- scope the standalone level editor as a first-class workflow instead of relying only on the runtime scene editor
+- preserve the runtime in-scene editor as a tuning and playtest tool rather than replacing it
 - test carrying an object into static geometry and into another dynamic body
 - test a box hanging off a moving platform with its center over and then beyond the support area
 - test thrown box-on-box impacts for remaining corner-freeze cases
