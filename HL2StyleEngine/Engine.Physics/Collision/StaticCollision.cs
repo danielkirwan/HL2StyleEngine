@@ -42,7 +42,7 @@ public static class StaticCollision
         return (center, vel, grounded);
     }
 
-    public static (Vector3 center, Vector3 vel, bool grounded, bool hadContact, Vector3 contactNormal) ResolveDynamicAabb(
+    public static (Vector3 center, Vector3 vel, bool grounded, bool hadContact, Vector3 contactNormal, ContactManifold contactManifold, ContactManifold supportManifold) ResolveDynamicAabb(
         Vector3 center,
         Vector3 vel,
         Vector3 extents,
@@ -55,6 +55,8 @@ public static class StaticCollision
         bool hadContact = false;
         float bestPenetration = 0f;
         Vector3 contactNormal = Vector3.Zero;
+        ContactManifold contactManifold = default;
+        ContactManifold supportManifold = default;
 
         for (int it = 0; it < iterations; it++)
         {
@@ -67,16 +69,23 @@ public static class StaticCollision
                 if (!box.GetAabb().Overlaps(collider.GetAabb()))
                     continue;
 
-                if (!ShapeCollision.TryResolve(box, collider, out Vector3 normal, out float penetration))
+                if (!ShapeCollision.TryResolve(box, collider, out ContactManifold manifold))
                     continue;
 
                 any = true;
                 hadContact = true;
+                Vector3 normal = manifold.Normal;
+                float penetration = manifold.Penetration;
                 if (penetration > bestPenetration)
                 {
                     bestPenetration = penetration;
                     contactNormal = normal;
+                    contactManifold = manifold;
                 }
+
+                if (ShouldUseAsSupport(manifold, supportManifold))
+                    supportManifold = manifold;
+
                 center -= normal * penetration;
                 ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
                 box = WorldCollider.Box(center, extents, rotation);
@@ -87,10 +96,10 @@ public static class StaticCollision
         }
 
         ZeroSmallVelocity(ref vel);
-        return (center, vel, grounded, hadContact, contactNormal);
+        return (center, vel, grounded, hadContact, contactNormal, contactManifold, supportManifold);
     }
 
-    public static (Vector3 center, Vector3 vel, bool grounded, bool hadContact, Vector3 contactNormal) ResolveDynamicSphere(
+    public static (Vector3 center, Vector3 vel, bool grounded, bool hadContact, Vector3 contactNormal, ContactManifold contactManifold, ContactManifold supportManifold) ResolveDynamicSphere(
         Vector3 center,
         Vector3 vel,
         float radius,
@@ -102,6 +111,8 @@ public static class StaticCollision
         bool hadContact = false;
         float bestPenetration = 0f;
         Vector3 contactNormal = Vector3.Zero;
+        ContactManifold contactManifold = default;
+        ContactManifold supportManifold = default;
 
         for (int it = 0; it < iterations; it++)
         {
@@ -114,16 +125,23 @@ public static class StaticCollision
                 if (!moving.GetAabb().Overlaps(collider.GetAabb()))
                     continue;
 
-                if (!ShapeCollision.TryResolve(moving, collider, out Vector3 normal, out float penetration))
+                if (!ShapeCollision.TryResolve(moving, collider, out ContactManifold manifold))
                     continue;
 
                 any = true;
                 hadContact = true;
+                Vector3 normal = manifold.Normal;
+                float penetration = manifold.Penetration;
                 if (penetration > bestPenetration)
                 {
                     bestPenetration = penetration;
                     contactNormal = normal;
+                    contactManifold = manifold;
                 }
+
+                if (ShouldUseAsSupport(manifold, supportManifold))
+                    supportManifold = manifold;
+
                 center -= normal * penetration;
                 ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
                 moving = WorldCollider.Sphere(center, radius);
@@ -134,10 +152,10 @@ public static class StaticCollision
         }
 
         ZeroSmallVelocity(ref vel);
-        return (center, vel, grounded, hadContact, contactNormal);
+        return (center, vel, grounded, hadContact, contactNormal, contactManifold, supportManifold);
     }
 
-    public static (Vector3 center, Vector3 vel, bool grounded, bool hadContact, Vector3 contactNormal) ResolveDynamicCapsule(
+    public static (Vector3 center, Vector3 vel, bool grounded, bool hadContact, Vector3 contactNormal, ContactManifold contactManifold, ContactManifold supportManifold) ResolveDynamicCapsule(
         Vector3 center,
         Vector3 vel,
         float radius,
@@ -151,6 +169,8 @@ public static class StaticCollision
         bool hadContact = false;
         float bestPenetration = 0f;
         Vector3 contactNormal = Vector3.Zero;
+        ContactManifold contactManifold = default;
+        ContactManifold supportManifold = default;
         for (int it = 0; it < iterations; it++)
         {
             WorldCollider moving = WorldCollider.Capsule(center, radius, height, rotation);
@@ -162,16 +182,23 @@ public static class StaticCollision
                 if (!moving.GetAabb().Overlaps(collider.GetAabb()))
                     continue;
 
-                if (!ShapeCollision.TryResolve(moving, collider, out Vector3 normal, out float penetration))
+                if (!ShapeCollision.TryResolve(moving, collider, out ContactManifold manifold))
                     continue;
 
                 any = true;
                 hadContact = true;
+                Vector3 normal = manifold.Normal;
+                float penetration = manifold.Penetration;
                 if (penetration > bestPenetration)
                 {
                     bestPenetration = penetration;
                     contactNormal = normal;
+                    contactManifold = manifold;
                 }
+
+                if (ShouldUseAsSupport(manifold, supportManifold))
+                    supportManifold = manifold;
+
                 center -= normal * penetration;
                 ApplyDynamicVelocityResponse(ref vel, normal, restitution, ref grounded);
                 moving = WorldCollider.Capsule(center, radius, height, rotation);
@@ -182,7 +209,32 @@ public static class StaticCollision
         }
 
         ZeroSmallVelocity(ref vel);
-        return (center, vel, grounded, hadContact, contactNormal);
+        return (center, vel, grounded, hadContact, contactNormal, contactManifold, supportManifold);
+    }
+
+    private static bool ShouldUseAsSupport(ContactManifold candidate, ContactManifold current)
+    {
+        if (!candidate.HasContact)
+            return false;
+
+        float candidateUp = candidate.SurfaceNormal.Y;
+        if (candidateUp < 0.35f)
+            return false;
+
+        if (!current.HasContact)
+            return true;
+
+        float currentUp = current.SurfaceNormal.Y;
+        if (candidateUp > currentUp + 0.05f)
+            return true;
+
+        if (MathF.Abs(candidateUp - currentUp) <= 0.05f &&
+            candidate.Penetration > current.Penetration)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     public static bool TryResolveAabbAabb(

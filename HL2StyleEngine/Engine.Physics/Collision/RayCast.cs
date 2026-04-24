@@ -17,6 +17,20 @@ namespace Engine.Physics.Collision
 
     public static class Raycast
     {
+        public static bool RayIntersectsObb(in Ray ray, Vector3 center, Vector3 halfExtents, Quaternion rotation, float tMin, float tMax, out float hitT)
+        {
+            Quaternion inv = Quaternion.Conjugate(rotation);
+            Vector3 localOrigin = Vector3.Transform(ray.Origin - center, inv);
+            Vector3 localDir = Vector3.Transform(ray.Dir, inv);
+
+            return RayIntersectsAabb(
+                new Ray(localOrigin, localDir),
+                Aabb.FromCenterExtents(Vector3.Zero, halfExtents),
+                tMin,
+                tMax,
+                out hitT);
+        }
+
         public static bool RayIntersectsAabb(in Ray ray, in Aabb aabb, float tMin, float tMax, out float hitT)
         {
             hitT = 0f;
@@ -82,6 +96,91 @@ namespace Engine.Physics.Collision
             }
 
             hitT = t;
+            return true;
+        }
+
+        public static bool RayIntersectsCapsule(
+            in Ray ray,
+            Vector3 center,
+            float radius,
+            float height,
+            Quaternion rotation,
+            float tMin,
+            float tMax,
+            out float hitT)
+        {
+            hitT = 0f;
+
+            Quaternion inv = Quaternion.Conjugate(rotation);
+            Vector3 localOrigin = Vector3.Transform(ray.Origin - center, inv);
+            Vector3 localDir = Vector3.Transform(ray.Dir, inv);
+
+            float halfSegment = MathF.Max(0f, height * 0.5f - radius);
+            float bestT = float.PositiveInfinity;
+            bool found = false;
+
+            if (halfSegment > 1e-5f)
+            {
+                float a = localDir.X * localDir.X + localDir.Z * localDir.Z;
+                float b = 2f * (localOrigin.X * localDir.X + localOrigin.Z * localDir.Z);
+                float c = localOrigin.X * localOrigin.X + localOrigin.Z * localOrigin.Z - radius * radius;
+
+                if (MathF.Abs(a) > 1e-6f)
+                {
+                    float discriminant = b * b - 4f * a * c;
+                    if (discriminant >= 0f)
+                    {
+                        float sqrt = MathF.Sqrt(discriminant);
+                        float inv2A = 0.5f / a;
+                        float t0 = (-b - sqrt) * inv2A;
+                        float t1 = (-b + sqrt) * inv2A;
+
+                        if (TryAcceptCapsuleT(localOrigin, localDir, halfSegment, t0, tMin, tMax, ref bestT))
+                            found = true;
+                        if (TryAcceptCapsuleT(localOrigin, localDir, halfSegment, t1, tMin, tMax, ref bestT))
+                            found = true;
+                    }
+                }
+            }
+
+            if (RayIntersectsSphere(new Ray(localOrigin, localDir), new Vector3(0f, halfSegment, 0f), radius, tMin, tMax, out float topT) &&
+                topT < bestT)
+            {
+                bestT = topT;
+                found = true;
+            }
+
+            if (RayIntersectsSphere(new Ray(localOrigin, localDir), new Vector3(0f, -halfSegment, 0f), radius, tMin, tMax, out float bottomT) &&
+                bottomT < bestT)
+            {
+                bestT = bottomT;
+                found = true;
+            }
+
+            if (!found)
+                return false;
+
+            hitT = bestT;
+            return true;
+        }
+
+        private static bool TryAcceptCapsuleT(
+            Vector3 localOrigin,
+            Vector3 localDir,
+            float halfSegment,
+            float t,
+            float tMin,
+            float tMax,
+            ref float bestT)
+        {
+            if (t < tMin || t > tMax || t >= bestT)
+                return false;
+
+            float y = localOrigin.Y + localDir.Y * t;
+            if (y < -halfSegment || y > halfSegment)
+                return false;
+
+            bestT = t;
             return true;
         }
     }

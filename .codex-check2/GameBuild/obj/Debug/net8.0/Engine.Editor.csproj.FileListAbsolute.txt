@@ -1,0 +1,4 @@
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\Engine.Editor.csproj.AssemblyReference.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\Engine.Editor.GeneratedMSBuildEditorConfig.editorconfig
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\Engine.Editor.csproj.CoreCompileInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\Engine.Editor.sourcelink.json

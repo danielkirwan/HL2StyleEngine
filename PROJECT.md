@@ -90,6 +90,7 @@ Recent work in progress has moved collision handling away from a pure AABB minds
 - `WorldCollider` now carries shape data and rotation
 - dynamic box and capsule stepping passes rotation into collision resolution
 - a new `ShapeCollision` layer handles rotated shape tests
+- the collision path has started retaining contact manifolds so support, spin, and toppling can use contact points instead of only a single normal
 - runtime and editor debug drawing now show sphere and capsule colliders properly
 - dynamic contact and runtime world collider construction use shape-aware colliders
 
@@ -110,6 +111,7 @@ This work is aimed at fixing several visible problems:
 ## Immediate Next Steps
 
 - validate rotated box, sphere, and capsule collision behavior in gameplay scenarios
+- extend the new contact-manifold path so support and angular response are driven more consistently by contact points
 - remove remaining AABB fallback logic where exact rotated shape behavior matters
 - improve support and settling logic for tipped capsules and resting boxes
 - define and build a real standalone level editor workflow for creating levels more efficiently

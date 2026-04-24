@@ -1,0 +1,10 @@
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\bin\Debug\net8.0\Engine.Core.deps.json
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\bin\Debug\net8.0\Engine.Core.dll
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\bin\Debug\net8.0\Engine.Core.pdb
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\Engine.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\Engine.Core.csproj.CoreCompileInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\Engine.Core.sourcelink.json
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\Engine.Core.dll
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\refint\Engine.Core.dll
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\Engine.Core.pdb
+C:\HS2StyleEngine\HL2StyleEngine\.codex-check2\GameBuild\obj\Debug\net8.0\ref\Engine.Core.dll

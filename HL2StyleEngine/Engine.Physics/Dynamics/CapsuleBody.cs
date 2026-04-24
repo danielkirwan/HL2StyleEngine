@@ -11,6 +11,8 @@ public sealed class CapsuleBody
 
     public Vector3 Velocity;
     public Vector3 LastContactNormal;
+    public ContactManifold LastContactManifold;
+    public ContactManifold LastSupportManifold;
     public bool HadContact;
 
     public float Mass = 10f;
@@ -50,7 +52,7 @@ public sealed class CapsuleBody
 
         Vector3 newCenter = Center + Velocity * dt;
 
-        var (resolvedCenter, resolvedVel, grounded, hadContact, contactNormal) =
+        var (resolvedCenter, resolvedVel, grounded, hadContact, contactNormal, contactManifold, supportManifold) =
             StaticCollision.ResolveDynamicCapsule(
                 newCenter,
                 Velocity,
@@ -64,6 +66,8 @@ public sealed class CapsuleBody
         Velocity = resolvedVel;
         HadContact = hadContact;
         LastContactNormal = contactNormal;
+        LastContactManifold = contactManifold;
+        LastSupportManifold = supportManifold;
 
         if (grounded && Friction > 0f)
         {
