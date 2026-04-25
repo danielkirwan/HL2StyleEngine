@@ -52,6 +52,10 @@ The current gameplay issues being worked first are:
 - tightened held-object vertical support contacts so carried boxes slide off stacks without friction-spinning the supported box underneath
 - damped strongly-supported lower bodies during box-on-box support impacts so stack landings transfer less bounce and angular energy into the lower prop
 - backed out a destabilizing box-box contact rejection experiment after it caused scene-wide contact jitter
+- updated game-mode prop rendering to draw dynamic boxes and capsules from the same `Physics.Rotation` quaternion used by collision
+- constrained the box-on-box flat-settle promotion so it only treats real broad contact patches as face support
+- made one-point and two-point box support contacts unstable even when the box is near a cube-stable orientation
+- clamped box-box contact manifold points to the supporting box face so dynamic box support patches cannot extend outside the lower box
 
 ### Why
 
@@ -69,11 +73,16 @@ The current gameplay issues being worked first are:
 - the screenshot showed a visible gap/floating rest, which points toward box-box contact response or manifold projection over-separating before visible geometry touches
 - dynamic box colliders are built from `Physics.Rotation`, so the likely fault is the approximate contact manifold/response rather than rotation not being passed into colliders
 - rejecting suspected bad box-box contacts made contacts flicker frame-to-frame, which caused whole-scene shaking
+- visible props were still being drawn by round-tripping physics rotation through `Transform.RotationEulerDeg`, so boxes could appear to snap or rest on a corner even when collision was using a different quaternion
+- thrown and pickup-dropped boxes could still land on another box with only a corner or edge touching, then get promoted into fake full-face support and settle there
+- sparse support contacts under a box center are physically unstable, so they should keep falling instead of being accepted as rest just because the box is near a valid face orientation
+- floor and moving-platform support already behave better because they are static/world surfaces with bounded support; dynamic box-box contacts were projecting support points onto a plane without clipping them back to the lower box face
 
 ### Files
 
 - `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
 - `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Physics\Collision\ShapeCollision.cs`
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Levels\room01.json`
 
@@ -82,10 +91,16 @@ The current gameplay issues being worked first are:
 - `Engine.Physics` build succeeded
 - `room01.json` parsed successfully with 29 entities
 - full `Game` build succeeded
+- `git diff --check` passed, with only the existing line-ending warning for `HL2GameModule.cs`
+- `Game` compile check succeeded with `--no-dependencies` into a temporary output folder while the running game kept the normal output DLLs locked
+- `Engine.Physics` build succeeded
+- normal full `Game` build was blocked in this pass by the running `Game` process holding output DLLs open
 - in-game validation improved the clean box-on-box resting case, but pile stability and mixed-stack behavior still need more testing
 
 ### Next
 
+- re-test corner-rest cases with the render path now using the same quaternion as collision
+- re-test throwing and pickup-dropping boxes onto other boxes to confirm sparse corner/edge contacts topple instead of auto-correcting into corner rest
 - tune multi-box pile stability and mixed box/capsule stacks
 - reduce disturbance of already-supported lower props in piles and stacks
 - re-test picking up the top box from the centered stack and confirm the lower boxes stay quiet

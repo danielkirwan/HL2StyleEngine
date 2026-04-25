@@ -992,6 +992,22 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         return hullCount;
     }
 
+    private static float PolygonArea2D(Span<Vector2> polygon, int count)
+    {
+        if (count < 3)
+            return 0f;
+
+        float area = 0f;
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 a = polygon[i];
+            Vector2 b = polygon[(i + 1) % count];
+            area += a.X * b.Y - b.X * a.Y;
+        }
+
+        return MathF.Abs(area) * 0.5f;
+    }
+
     private static Vector2 ClosestPointOnSegment2D(Vector2 point, Vector2 a, Vector2 b)
     {
         Vector2 ab = b - a;
@@ -1273,31 +1289,31 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         if (flatRange > flatTolerance)
             return false;
 
+        Span<Vector2> contactPatch = stackalloc Vector2[4];
+        int contactPatchCount = 0;
         Vector3 patchCenter = Vector3.Zero;
-        Span<Vector2> polygon = stackalloc Vector2[4];
-        int polygonCount = 0;
-        for (int i = 0; i < cornerCount; i++)
+        for (int i = 0; i < manifold.ContactCount; i++)
         {
-            Vector3 point = new(bottomCorners[i].X, planeY, bottomCorners[i].Z);
+            Vector3 point = manifold.GetPoint(i);
             patchCenter += point;
-            polygonCount = AddUniquePoint(polygon, polygonCount, new Vector2(point.X, point.Z));
+            contactPatchCount = AddUniquePoint(contactPatch, contactPatchCount, new Vector2(point.X, point.Z));
         }
 
-        if (polygonCount < 3)
-            return false;
-
-        patchCenter /= cornerCount;
-        Vector2 comXZ = new(bodyCenter.X, bodyCenter.Z);
-        Vector2 patchCenterXZ = new(patchCenter.X, patchCenter.Z);
-        float centeredTolerance = MathF.Max(0.08f, MathF.Max(collider.HalfExtents.X, collider.HalfExtents.Z) * 0.35f);
-        if (Vector2.DistanceSquared(comXZ, patchCenterXZ) > centeredTolerance * centeredTolerance)
+        if (contactPatchCount < 3)
             return false;
 
         Span<Vector2> hull = stackalloc Vector2[8];
-        int hullCount = BuildConvexHull(polygon, polygonCount, hull);
+        int hullCount = BuildConvexHull(contactPatch, contactPatchCount, hull);
         if (hullCount < 3)
             return false;
 
+        float patchArea = PolygonArea2D(hull, hullCount);
+        float minimumPatchArea = MathF.Max(0.04f, collider.HalfExtents.X * collider.HalfExtents.Z * 0.45f);
+        if (patchArea < minimumPatchArea)
+            return false;
+
+        patchCenter /= manifold.ContactCount;
+        Vector2 comXZ = new(bodyCenter.X, bodyCenter.Z);
         bool stable = PointInConvexPolygonXZ(comXZ, hull, hullCount);
         Vector2 pivotXZ = stable ? comXZ : ClosestPointOnPolygonEdgesXZ(comXZ, hull, hullCount);
         Vector3 pivot = new(pivotXZ.X, planeY, pivotXZ.Y);
@@ -1307,7 +1323,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         state = new BoxSupportState(
             valid: true,
             stable: stable,
-            cornerCount: cornerCount,
+            cornerCount: manifold.ContactCount,
             polygonCount: hullCount,
             minCornerY: minCornerY,
             maxCornerY: maxCornerY,
@@ -1365,7 +1381,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return false;
         }
 
-        bool allowSparseStable = collider.Shape != WorldColliderShape.Box || IsNearStableBoxPose(entity, minAlignment: 0.985f);
+        bool allowSparseStable = collider.Shape != WorldColliderShape.Box;
         Vector2 sparseBias = collider.Shape == WorldColliderShape.Box
             ? GetSparseBoxSupportBias(entity)
             : Vector2.Zero;
@@ -2807,12 +2823,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             // Position comes from runtime (MovingPlatform updates this)
             Vector3 pos = ent.Transform.Position;
 
-            // Rotation & scale from runtime (currently mostly defaults for your boxes, but supported)
-            Vector3 eulerDeg = ent.Transform.RotationEulerDeg;
-            Quaternion rot = Quaternion.CreateFromYawPitchRoll(
-                eulerDeg.Y * (MathF.PI / 180f),
-                eulerDeg.X * (MathF.PI / 180f),
-                eulerDeg.Z * (MathF.PI / 180f));
+            // Draw dynamic boxes/capsules from the same authoritative quaternion
+            // used by collision, instead of round-tripping through Euler angles.
+            Quaternion rot = GetColliderRotation(ent);
 
             Vector3 size = ent.Render.Size;
             Vector4 col = ent.Render.Color;

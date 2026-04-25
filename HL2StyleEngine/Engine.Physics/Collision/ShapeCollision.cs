@@ -417,7 +417,8 @@ public static class ShapeCollision
         for (int i = 0; i < supportCount; i++)
         {
             Vector3 projected = ProjectPointOntoPlane(supportPoints[i], planePoint, planeNormal);
-            contactCount = AddUniquePoint3(contacts, contactCount, projected);
+            Vector3 clamped = ClampPointToBoxFace(b, projected, planeNormal);
+            contactCount = AddUniquePoint3(contacts, contactCount, clamped);
         }
 
         manifold = new ContactManifold(
@@ -570,6 +571,38 @@ public static class ShapeCollision
             segmentPoint = da >= db ? a : b;
 
         return segmentPoint + n * capsule.Radius;
+    }
+
+    private static Vector3 ClampPointToBoxFace(WorldCollider box, Vector3 point, Vector3 faceNormal)
+    {
+        Quaternion invRotation = Quaternion.Conjugate(box.Rotation);
+        Vector3 localPoint = Vector3.Transform(point - box.Center, invRotation);
+        Vector3 localNormal = Vector3.Transform(faceNormal, invRotation);
+
+        float ax = MathF.Abs(localNormal.X);
+        float ay = MathF.Abs(localNormal.Y);
+        float az = MathF.Abs(localNormal.Z);
+
+        if (ax >= ay && ax >= az)
+        {
+            localPoint.X = MathF.Sign(localNormal.X) * box.HalfExtents.X;
+            localPoint.Y = Math.Clamp(localPoint.Y, -box.HalfExtents.Y, box.HalfExtents.Y);
+            localPoint.Z = Math.Clamp(localPoint.Z, -box.HalfExtents.Z, box.HalfExtents.Z);
+        }
+        else if (ay >= ax && ay >= az)
+        {
+            localPoint.X = Math.Clamp(localPoint.X, -box.HalfExtents.X, box.HalfExtents.X);
+            localPoint.Y = MathF.Sign(localNormal.Y) * box.HalfExtents.Y;
+            localPoint.Z = Math.Clamp(localPoint.Z, -box.HalfExtents.Z, box.HalfExtents.Z);
+        }
+        else
+        {
+            localPoint.X = Math.Clamp(localPoint.X, -box.HalfExtents.X, box.HalfExtents.X);
+            localPoint.Y = Math.Clamp(localPoint.Y, -box.HalfExtents.Y, box.HalfExtents.Y);
+            localPoint.Z = MathF.Sign(localNormal.Z) * box.HalfExtents.Z;
+        }
+
+        return Vector3.Transform(localPoint, box.Rotation) + box.Center;
     }
 
     private static int GetCapsuleSupportPoints(Vector3 segA, Vector3 segB, float radius, Vector3 direction, Span<Vector3> points)
