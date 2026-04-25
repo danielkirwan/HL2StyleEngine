@@ -1,6 +1,6 @@
 # Work Log
 
-Last updated: 2026-04-24
+Last updated: 2026-04-25
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
@@ -10,7 +10,7 @@ Current focus is collision and prop behavior fidelity for dynamic physics object
 
 The immediate goal is to make runtime collision and visible object behavior line up more closely so props no longer feel like disguised AABBs or settle into obviously wrong poses.
 
-The next active stage has started: collision response is moving from single-normal heuristics toward contact-manifold-driven support, pivot, and spin behavior.
+The current tuning stage is stack and settle polish on top of the newer contact-manifold-driven support, pivot, and spin behavior.
 
 The current gameplay issues being worked first are:
 
@@ -19,6 +19,7 @@ The current gameplay issues being worked first are:
 - overhanging boxes on moving platforms should be able to fall off when their center of mass is no longer supported
 - thrown boxes should stop freezing in implausible corner-balanced poses
 - stacked boxes should settle with more weight and less low-speed jitter or sliding on each other
+- clean box-on-box drops should settle flat instead of freezing slightly angled on broad support
 
 ## Current Status Snapshot
 
@@ -31,6 +32,67 @@ The current gameplay issues being worked first are:
 - `Engine.Physics` has a passing build signal
 - the wider `Game` project still does not have a clean full-build signal because of unrelated workspace issues
 - the roadmap now includes a proper standalone level editor for building maps, while keeping the runtime in-scene editor for live playtest adjustments
+- the longer-term game target remains a grounded horror game built on top of this HL2-style movement and interaction foundation
+
+## 2026-04-25
+
+### Summary
+
+- updated the handover docs to reflect the current game target, the current box-stack polish stage, and the latest stack-settling changes
+- tuned dynamic box-on-box stability so dynamic contacts now merge back into retained support state instead of acting like one-frame impacts only
+- added low-speed resting-contact damping and suppressed repeated collision spin for settled vertical box-on-box contacts
+- biased dynamic contact separation so a strongly supported lower box gets disturbed less than the upper box resting on it
+- promoted near-flat centered box-on-box support manifolds into face-support patches when the raw manifold was too sparse
+- added a conservative low-speed face-support settle assist so broad stable support can flatten the last small visible tilt instead of freezing slightly crooked
+- extended low-speed stack recognition from box-box only to support-like box/capsule contacts
+- reduced disturbance of already-supported lower props in stacks by biasing correction and damping tiny residual lower-body motion during resting support contacts
+- added a small box-stack and pile test cluster to `room01.json` with centered, offset, and loose-pile box arrangements
+- fixed a pickup regression where grabbing the top box from a settled stack could inject fast spin into both the held box and the supporting box
+- replaced the bad sparse-support escape assist with support classification that treats tilted one-point/two-point box contacts as unstable instead of stable rest
+- tightened held-object vertical support contacts so carried boxes slide off stacks without friction-spinning the supported box underneath
+- damped strongly-supported lower bodies during box-on-box support impacts so stack landings transfer less bounce and angular energy into the lower prop
+- backed out a destabilizing box-box contact rejection experiment after it caused scene-wide contact jitter
+
+### Why
+
+- the md handover files needed to reflect the current project direction and latest physics tuning so a new chat can onboard quickly
+- the top box in a clean drop onto another box was still trying to flip, drift onto corners, or freeze a few degrees off-flat
+- the collision foundation is now strong enough that the highest-value work is tuning supported stacks and piles rather than adding another large physics rewrite
+- mixed box/capsule piles were not getting the same low-speed support treatment as box-on-box contacts
+- settled lower props in multi-body stacks could still absorb too much correction or tiny velocity from objects resting above them
+- the level needed repeatable in-scene fixtures for validating clean stack settling, off-balance tipping, and small pile behavior
+- the held-object dynamic contact path was still treating settled support contacts like fresh impacts, applying mass-split correction and collision spin to both bodies
+- a corner contact directly under the box center could produce zero support lever, leaving the topple torque with no axis and allowing the box to perch on a point after being dropped
+- the first attempt at fixing that used a pose-directed escape torque, which made pickup/drop behavior worse by reintroducing artificial spin
+- carried boxes should still collide, but vertical support-like held contacts should not behave like high-friction moving shelves or impact impulses
+- boxes landing on other boxes were still converting vertical support impacts into spin, especially when the lower box already had strong support from the floor or stack below
+- the screenshot showed a visible gap/floating rest, which points toward box-box contact response or manifold projection over-separating before visible geometry touches
+- dynamic box colliders are built from `Physics.Rotation`, so the likely fault is the approximate contact manifold/response rather than rotation not being passed into colliders
+- rejecting suspected bad box-box contacts made contacts flicker frame-to-frame, which caused whole-scene shaking
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Levels\room01.json`
+
+### Validation
+
+- `Engine.Physics` build succeeded
+- `room01.json` parsed successfully with 29 entities
+- full `Game` build succeeded
+- in-game validation improved the clean box-on-box resting case, but pile stability and mixed-stack behavior still need more testing
+
+### Next
+
+- tune multi-box pile stability and mixed box/capsule stacks
+- reduce disturbance of already-supported lower props in piles and stacks
+- re-test picking up the top box from the centered stack and confirm the lower boxes stay quiet
+- re-test dropping carried boxes from awkward rotations and confirm tilted sparse support is unstable without causing new spin
+- validate that clean box-on-box drops settle flat while genuine off-balance drops can still tip naturally
+- validate mixed box/capsule piles in-game, especially low-speed capsule contacts so rolling is not over-damped
+- continue keeping the handover docs current as the physics tuning moves into pile/polish work
 
 ## 2026-04-17
 

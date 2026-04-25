@@ -1,6 +1,6 @@
 # Project Overview
 
-Last updated: 2026-04-24
+Last updated: 2026-04-25
 
 ## Purpose
 
@@ -13,6 +13,18 @@ The goal is not to copy Source exactly. The goal is to build a modern, understan
 - readable, purposeful level spaces
 - an art direction that leans toward industrial, physical, Source-era realism
 - clear separation between reusable engine systems and game-specific behavior
+
+## Game Target
+
+The current game target for this engine is a grounded horror game built on top of the Half-Life 2 inspired interaction and movement foundation.
+
+The intended direction combines:
+
+- Half-Life 2 style physical interaction and object handling
+- horror lighting and atmosphere
+- Resident Evil inspired structure for maps, inventory, and save-point style progression
+
+The recommended scope is still to reach that through a vertical slice first, not by building every survival-horror system at once.
 
 ## What The Project Is Trying To Achieve
 
@@ -80,6 +92,7 @@ Current active gameplay/physics focus:
 - stop sphere and capsule collision from behaving like box placeholders
 - support rotated colliders for dynamic boxes and capsules
 - improve how props settle after impacts, especially boxes and capsules
+- improve stacked-box and pile behavior so supported props settle flat instead of perching or jittering
 
 ## Active Workstream
 
@@ -100,6 +113,7 @@ This work is aimed at fixing several visible problems:
 - props settling into implausible orientations
 - boxes popping into awkward floor rotations
 - capsules not tipping or resting believably
+- stacked boxes resting at angles, on corners, or with too much low-speed jitter
 
 ## Known Current Limitations
 
@@ -110,6 +124,8 @@ This work is aimed at fixing several visible problems:
 
 ## Immediate Next Steps
 
+- validate multi-box pile stability and mixed box/capsule stack behavior
+- keep tuning support retention and low-speed settle behavior for stacked props
 - validate rotated box, sphere, and capsule collision behavior in gameplay scenarios
 - extend the new contact-manifold path so support and angular response are driven more consistently by contact points
 - remove remaining AABB fallback logic where exact rotated shape behavior matters
@@ -118,6 +134,7 @@ This work is aimed at fixing several visible problems:
 - keep and improve the current in-scene play editor so runtime tweaking remains part of the workflow
 - get a cleaner full-project build signal once unrelated workspace issues are addressed
 - continue moving from placeholder physics behavior toward feel-driven gameplay behavior
+- shape the first horror vertical slice once the interaction and physics foundation is stable enough to support it
 
 ## Reference Handover
 

@@ -1120,7 +1120,47 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         return true;
     }
 
-    private static bool TryBuildSupportStateFromContactManifold(Vector3 bodyCenter, ContactManifold manifold, out BoxSupportState state)
+    private static Vector2 GetSparseBoxSupportBias(Entity entity)
+    {
+        Quaternion rotation = Quaternion.Normalize(entity.Physics.Rotation);
+        ReadOnlySpan<Vector3> candidates =
+        [
+            Vector3.UnitX, -Vector3.UnitX,
+            Vector3.UnitY, -Vector3.UnitY,
+            Vector3.UnitZ, -Vector3.UnitZ
+        ];
+
+        Vector3 bestAxis = Vector3.UnitX;
+        float bestUpDot = float.NegativeInfinity;
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            Vector3 worldAxis = Vector3.Transform(candidates[i], rotation);
+            float upDot = Vector3.Dot(worldAxis, Vector3.UnitY);
+            if (upDot > bestUpDot)
+            {
+                bestUpDot = upDot;
+                bestAxis = worldAxis;
+            }
+        }
+
+        Vector3 planar = ProjectOntoPlane(bestAxis, Vector3.UnitY);
+        if (!TryNormalize(planar, out planar))
+        {
+            planar = ProjectOntoPlane(Vector3.Transform(Vector3.UnitX, rotation), Vector3.UnitY);
+            if (!TryNormalize(planar, out planar))
+                planar = Vector3.UnitX;
+        }
+
+        const float bias = 0.04f;
+        return new Vector2(planar.X, planar.Z) * bias;
+    }
+
+    private static bool TryBuildSupportStateFromContactManifold(
+        Vector3 bodyCenter,
+        ContactManifold manifold,
+        bool allowSparseStable,
+        Vector2 sparseBias,
+        out BoxSupportState state)
     {
         state = default;
         if (!manifold.HasContact)
@@ -1154,11 +1194,29 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         {
             pivotXZ = unique[0];
             stable = Vector2.DistanceSquared(comXZ, pivotXZ) <= 0.01f * 0.01f;
+            if (!allowSparseStable && stable)
+            {
+                pivotXZ -= sparseBias;
+                stable = false;
+            }
         }
         else if (uniqueCount == 2)
         {
             pivotXZ = ClosestPointOnSegment2D(comXZ, unique[0], unique[1]);
             stable = Vector2.DistanceSquared(comXZ, pivotXZ) <= 0.02f * 0.02f;
+            if (!allowSparseStable && stable)
+            {
+                Vector2 segment = unique[1] - unique[0];
+                Vector2 normal = segment.LengthSquared() > 1e-6f
+                    ? Vector2.Normalize(new Vector2(-segment.Y, segment.X))
+                    : sparseBias;
+
+                if (Vector2.Dot(normal, sparseBias) < 0f)
+                    normal = -normal;
+
+                pivotXZ -= normal * 0.04f;
+                stable = false;
+            }
         }
         else
         {
@@ -1307,9 +1365,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return false;
         }
 
+        bool allowSparseStable = collider.Shape != WorldColliderShape.Box || IsNearStableBoxPose(entity, minAlignment: 0.985f);
+        Vector2 sparseBias = collider.Shape == WorldColliderShape.Box
+            ? GetSparseBoxSupportBias(entity)
+            : Vector2.Zero;
+
         if (TryGetLastSupportManifold(entity, out ContactManifold supportManifold) &&
             (TryBuildPromotedFlatBoxSupportState(entity, collider, bodyCenter, supportManifold, out supportState) ||
-             TryBuildSupportStateFromContactManifold(bodyCenter, supportManifold, out supportState)))
+             TryBuildSupportStateFromContactManifold(bodyCenter, supportManifold, allowSparseStable, sparseBias, out supportState)))
         {
             return !requireStableSupport || supportState.Stable;
         }
@@ -1615,7 +1678,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             }
         }
 
-        if (touchingSupport && (shape == RuntimeShapeKind.Box || shape == RuntimeShapeKind.Capsule))
+        if (!entity.IsHeld && touchingSupport && (shape == RuntimeShapeKind.Box || shape == RuntimeShapeKind.Capsule))
         {
             if (shape == RuntimeShapeKind.Box)
             {
@@ -3500,25 +3563,103 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                support.SurfaceNormal.Y >= 0.75f;
     }
 
-    private static bool IsRestingStackContact(Entity a, Entity b, ContactManifold manifold, Vector3 relativeVelocity)
+    private static bool TryGetStrongSupportedLowerBody(Entity a, Entity b, ContactManifold manifold, out Entity lower)
     {
-        if (!manifold.HasContact)
+        lower = a;
+        if (!IsSupportLikeDynamicContact(a, b, manifold, allowSparseCapsule: true))
             return false;
 
-        if (GetPhysicsBodyShape(a) != RuntimeShapeKind.Box || GetPhysicsBodyShape(b) != RuntimeShapeKind.Box)
+        if (manifold.Normal.Y > 0.7f && HasStrongSupportContact(a))
+        {
+            lower = a;
+            return true;
+        }
+
+        if (manifold.Normal.Y < -0.7f && HasStrongSupportContact(b))
+        {
+            lower = b;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void DampAngularVelocity(Entity entity, float scale, float stopThreshold = 0.08f)
+    {
+        entity.Physics.AngularVelocity *= Math.Clamp(scale, 0f, 1f);
+        if (entity.Physics.AngularVelocity.LengthSquared() < stopThreshold * stopThreshold)
+            entity.Physics.AngularVelocity = Vector3.Zero;
+    }
+
+    private static bool IsBoxOrCapsuleBody(Entity entity)
+    {
+        RuntimeShapeKind shape = GetPhysicsBodyShape(entity);
+        return shape == RuntimeShapeKind.Box || shape == RuntimeShapeKind.Capsule;
+    }
+
+    private static bool IsMixedBoxCapsuleContact(Entity a, Entity b)
+    {
+        RuntimeShapeKind shapeA = GetPhysicsBodyShape(a);
+        RuntimeShapeKind shapeB = GetPhysicsBodyShape(b);
+        return (shapeA == RuntimeShapeKind.Box && shapeB == RuntimeShapeKind.Capsule) ||
+               (shapeA == RuntimeShapeKind.Capsule && shapeB == RuntimeShapeKind.Box);
+    }
+
+    private static bool IsSupportLikeDynamicContact(Entity a, Entity b, ContactManifold manifold, bool allowSparseCapsule)
+    {
+        if (!manifold.HasContact || !IsBoxOrCapsuleBody(a) || !IsBoxOrCapsuleBody(b))
             return false;
 
         float verticality = MathF.Abs(manifold.Normal.Y);
-        if (verticality < 0.7f || manifold.ContactCount < 2)
+        if (verticality < 0.7f)
+            return false;
+
+        if (manifold.ContactCount >= 2)
+            return true;
+
+        return allowSparseCapsule &&
+               verticality >= 0.85f &&
+               IsMixedBoxCapsuleContact(a, b);
+    }
+
+    private static bool IsLowSpeedRestingContact(ContactManifold manifold, Vector3 relativeVelocity)
+    {
+        if (!manifold.HasContact)
             return false;
 
         float normalSpeed = MathF.Abs(Vector3.Dot(relativeVelocity, manifold.Normal));
         Vector3 tangent = relativeVelocity - Vector3.Dot(relativeVelocity, manifold.Normal) * manifold.Normal;
         float tangentSpeedSq = tangent.LengthSquared();
 
-        return normalSpeed <= 1.75f &&
-               tangentSpeedSq <= 1.0f &&
-               (IsNearStableBoxPose(a, minAlignment: 0.975f) || IsNearStableBoxPose(b, minAlignment: 0.975f));
+        return normalSpeed <= 1.5f &&
+               tangentSpeedSq <= 0.9f;
+    }
+
+    private static bool IsRestPoseCandidate(Entity entity)
+    {
+        return GetPhysicsBodyShape(entity) switch
+        {
+            RuntimeShapeKind.Box => IsNearStableBoxPose(entity, minAlignment: 0.965f),
+            RuntimeShapeKind.Capsule => entity.Physics.AngularVelocity.LengthSquared() <= 0.36f,
+            _ => false
+        };
+    }
+
+    private static bool IsRestingStackContact(Entity a, Entity b, ContactManifold manifold, Vector3 relativeVelocity)
+    {
+        if (!IsSupportLikeDynamicContact(a, b, manifold, allowSparseCapsule: true))
+            return false;
+
+        if (!IsLowSpeedRestingContact(manifold, relativeVelocity))
+            return false;
+
+        bool supportedLower =
+            (manifold.Normal.Y > 0.7f && HasStrongSupportContact(a)) ||
+            (manifold.Normal.Y < -0.7f && HasStrongSupportContact(b));
+
+        return supportedLower ||
+               IsRestPoseCandidate(a) ||
+               IsRestPoseCandidate(b);
     }
 
     private static void GetDynamicContactCorrectionWeights(
@@ -3541,20 +3682,104 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         aWeight = invA / invSum;
         bWeight = invB / invSum;
 
-        if (MathF.Abs(manifold.Normal.Y) < 0.7f || manifold.ContactCount < 2)
+        if (!IsSupportLikeDynamicContact(a, b, manifold, allowSparseCapsule: true))
             return;
 
+        float supportedBodyWeight = manifold.ContactCount >= 2 ? 0.05f : 0.12f;
         if (manifold.Normal.Y > 0.7f && HasStrongSupportContact(a))
         {
-            aWeight = MathF.Min(aWeight, 0.08f);
+            aWeight = MathF.Min(aWeight, supportedBodyWeight);
             bWeight = 1f - aWeight;
             return;
         }
 
         if (manifold.Normal.Y < -0.7f && HasStrongSupportContact(b))
         {
-            bWeight = MathF.Min(bWeight, 0.08f);
+            bWeight = MathF.Min(bWeight, supportedBodyWeight);
             aWeight = 1f - bWeight;
+        }
+    }
+
+    private static void ApplySupportedStackDamping(
+        Entity a,
+        Entity b,
+        ContactManifold manifold,
+        ref Vector3 aVelocity,
+        ref Vector3 bVelocity)
+    {
+        if (!IsSupportLikeDynamicContact(a, b, manifold, allowSparseCapsule: true))
+            return;
+
+        Vector3 relativeVelocity = bVelocity - aVelocity;
+        if (!IsLowSpeedRestingContact(manifold, relativeVelocity))
+            return;
+
+        if (manifold.Normal.Y > 0.7f && HasStrongSupportContact(a))
+        {
+            DampSupportedBodyVelocity(ref aVelocity, manifold.ContactCount);
+        }
+        else if (manifold.Normal.Y < -0.7f && HasStrongSupportContact(b))
+        {
+            DampSupportedBodyVelocity(ref bVelocity, manifold.ContactCount);
+        }
+    }
+
+    private static void DampSupportedBodyVelocity(ref Vector3 velocity, int contactCount)
+    {
+        float lateralScale = contactCount >= 2 ? 0.65f : 0.78f;
+        velocity = new Vector3(velocity.X * lateralScale, velocity.Y, velocity.Z * lateralScale);
+
+        if (velocity.Y > 0f)
+            velocity = new Vector3(velocity.X, velocity.Y * 0.35f, velocity.Z);
+
+        if (MathF.Abs(velocity.Y) < 0.06f)
+            velocity = new Vector3(velocity.X, 0f, velocity.Z);
+    }
+
+    private static void ApplyStrongSupportImpactDamping(
+        Entity a,
+        Entity b,
+        ContactManifold manifold,
+        ref Vector3 aVelocity,
+        ref Vector3 bVelocity)
+    {
+        if (!TryGetStrongSupportedLowerBody(a, b, manifold, out Entity lower))
+            return;
+
+        bool aIsLower = ReferenceEquals(lower, a);
+        if (aIsLower)
+        {
+            DampSupportedImpactVelocities(manifold, ref aVelocity, ref bVelocity);
+        }
+        else
+        {
+            DampSupportedImpactVelocities(manifold, ref bVelocity, ref aVelocity);
+        }
+
+        DampAngularVelocity(lower, manifold.ContactCount >= 2 ? 0.25f : 0.45f);
+    }
+
+    private static void DampSupportedImpactVelocities(
+        ContactManifold manifold,
+        ref Vector3 lowerVelocity,
+        ref Vector3 upperVelocity)
+    {
+        float lowerLateralScale = manifold.ContactCount >= 2 ? 0.35f : 0.55f;
+        lowerVelocity = new Vector3(
+            lowerVelocity.X * lowerLateralScale,
+            lowerVelocity.Y,
+            lowerVelocity.Z * lowerLateralScale);
+
+        if (lowerVelocity.Y > 0f)
+            lowerVelocity = new Vector3(lowerVelocity.X, lowerVelocity.Y * 0.2f, lowerVelocity.Z);
+
+        if (MathF.Abs(lowerVelocity.Y) < 0.12f)
+            lowerVelocity = new Vector3(lowerVelocity.X, 0f, lowerVelocity.Z);
+
+        if (upperVelocity.Y > 0f)
+        {
+            float maxUpwardBounce = manifold.ContactCount >= 2 ? 0.18f : 0.32f;
+            upperVelocity = new Vector3(upperVelocity.X, MathF.Min(upperVelocity.Y, maxUpwardBounce), upperVelocity.Z);
         }
     }
 
@@ -3595,8 +3820,16 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             }
 
             Vector3 corr = n * pen;
-            heldCenter -= corr * (invHeld / invSum);
-            otherCenter += corr * (invOther / invSum);
+            GetDynamicContactCorrectionWeights(
+                held,
+                other,
+                manifold,
+                invHeld,
+                invOther,
+                out float heldCorrectionWeight,
+                out float otherCorrectionWeight);
+            heldCenter -= corr * heldCorrectionWeight;
+            otherCenter += corr * otherCorrectionWeight;
             SetPhysicsBodyCenter(held, heldCenter);
             SetPhysicsBodyCenter(other, otherCenter);
 
@@ -3606,6 +3839,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             Vector3 otherVelocityBefore = otherVelocity;
             Vector3 rv = otherVelocity - heldVelocity;
             float relN = Vector3.Dot(rv, n);
+            bool supportLikeHeldContact = IsSupportLikeDynamicContact(held, other, manifold, allowSparseCapsule: true);
+            bool heldIsLowerSupport = supportLikeHeldContact && manifold.Normal.Y > 0.7f;
+            bool otherIsStrongLower = supportLikeHeldContact &&
+                                      manifold.Normal.Y < -0.7f &&
+                                      HasStrongSupportContact(other);
 
             if (relN < 0f)
             {
@@ -3625,7 +3863,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
                     float mu = MathF.Min(GetBodyFriction(held), GetBodyFriction(other));
                     float jt = -Vector3.Dot(rv2, t) / invSum;
-                    float maxF = mu * j;
+                    float maxF = supportLikeHeldContact ? 0f : mu * j;
                     jt = Math.Clamp(jt, -maxF, +maxF);
 
                     Vector3 frImpulse = jt * t;
@@ -3637,6 +3875,35 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 SetPhysicsBodyVelocity(other, otherVelocity);
             }
 
+            ApplyRestingContactDamping(
+                ref heldVelocity,
+                ref otherVelocity,
+                n,
+                invHeld,
+                invOther,
+                manifold);
+            ApplySupportedStackDamping(
+                held,
+                other,
+                manifold,
+                ref heldVelocity,
+                ref otherVelocity);
+            ApplyStrongSupportImpactDamping(
+                held,
+                other,
+                manifold,
+                ref heldVelocity,
+                ref otherVelocity);
+
+            if (otherIsStrongLower)
+            {
+                otherVelocity = Vector3.Lerp(otherVelocity, otherVelocityBefore, 0.85f);
+                DampAngularVelocity(other, 0.15f);
+            }
+
+            SetPhysicsBodyVelocity(held, heldVelocity);
+            SetPhysicsBodyVelocity(other, otherVelocity);
+
             hadContact = true;
             if (manifold.Penetration >= contactManifold.Penetration)
             {
@@ -3647,9 +3914,16 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (ShouldReplaceSupportManifold(manifold, supportManifold))
                 supportManifold = manifold;
 
-            ApplyCollisionSpin(held, -n, heldVelocity - heldVelocityBefore, manifold, intensityScale: 1.05f);
-            ApplyCollisionSpin(other, n, otherVelocity - otherVelocityBefore, manifold, intensityScale: 1.05f);
-            MergeBodyContactState(other, FlipManifold(manifold));
+            bool suppressHeldStackSpin = supportLikeHeldContact ||
+                                         IsRestingStackContact(held, other, manifold, otherVelocityBefore - heldVelocityBefore);
+            if (!suppressHeldStackSpin)
+            {
+                ApplyCollisionSpin(held, -n, heldVelocity - heldVelocityBefore, manifold, intensityScale: 0.75f);
+                ApplyCollisionSpin(other, n, otherVelocity - otherVelocityBefore, manifold, intensityScale: 0.55f);
+            }
+
+            if (!heldIsLowerSupport)
+                MergeBodyContactState(other, FlipManifold(manifold));
 
             held.Transform.Position = heldCenter;
             other.Transform.Position = otherCenter;
@@ -3753,14 +4027,30 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                         invA,
                         invB,
                         manifold);
+                    ApplySupportedStackDamping(
+                        A,
+                        B,
+                        manifold,
+                        ref aVelocity,
+                        ref bVelocity);
+                    ApplyStrongSupportImpactDamping(
+                        A,
+                        B,
+                        manifold,
+                        ref aVelocity,
+                        ref bVelocity);
                     SetPhysicsBodyVelocity(A, aVelocity);
                     SetPhysicsBodyVelocity(B, bVelocity);
 
                     bool suppressStackSpin = IsRestingStackContact(A, B, manifold, bVelocityBefore - aVelocityBefore);
+                    bool strongSupportContact = TryGetStrongSupportedLowerBody(A, B, manifold, out Entity lowerBody);
                     if (!suppressStackSpin)
                     {
-                        ApplyCollisionSpin(A, -n, aVelocity - aVelocityBefore, manifold, intensityScale: 1.1f);
-                        ApplyCollisionSpin(B, n, bVelocity - bVelocityBefore, manifold, intensityScale: 1.1f);
+                        float supportSpinScale = strongSupportContact ? 0.55f : 1.1f;
+                        if (!strongSupportContact || !ReferenceEquals(lowerBody, A))
+                            ApplyCollisionSpin(A, -n, aVelocity - aVelocityBefore, manifold, intensityScale: supportSpinScale);
+                        if (!strongSupportContact || !ReferenceEquals(lowerBody, B))
+                            ApplyCollisionSpin(B, n, bVelocity - bVelocityBefore, manifold, intensityScale: supportSpinScale);
                     }
                     MergeBodyContactState(A, manifold);
                     MergeBodyContactState(B, FlipManifold(manifold));
