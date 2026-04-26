@@ -1,6 +1,6 @@
 # Work Log
 
-Last updated: 2026-04-25
+Last updated: 2026-04-26
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
@@ -33,6 +33,40 @@ The current gameplay issues being worked first are:
 - the wider `Game` project still does not have a clean full-build signal because of unrelated workspace issues
 - the roadmap now includes a proper standalone level editor for building maps, while keeping the runtime in-scene editor for live playtest adjustments
 - the longer-term game target remains a grounded horror game built on top of this HL2-style movement and interaction foundation
+
+## 2026-04-26
+
+### Summary
+
+- added a stable dynamic box top-face contact classification for box-on-box support
+- damped gentle box landings on stable lower-box top faces so the lower box absorbs less lateral shove and upward bounce is capped more tightly
+- suppressed collision-spin injection for boxes contacting a stable supported lower-box top face, leaving the existing support/topple path to decide whether the upper box settles or tips
+- changed stable box top-face detection to use actual top-face overlap instead of relying on the dynamic contact normal being mostly vertical
+
+### Why
+
+- boxes dropped onto other boxes could still enter a rotation loop because the dynamic contact solver kept adding impact spin before the floor-like support/topple logic could settle the pose
+- the lower box's top face should behave closer to the floor or moving platform when it is already stable and strongly supported
+- off-balance boxes should still fall over from support geometry, not from repeated artificial contact spin
+- tilted or corner box-on-box contacts can produce diagonal manifold normals even when the upper box is resting on the lower box's top face, so the previous suppression could miss the exact cases that needed it
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `Game` compile check succeeded with `--no-dependencies` into a temporary output folder
+- `Game` compile check succeeded after top-face detection was decoupled from the dynamic contact normal
+- in-game validation still needed for tilted drops, stacked-box release, and harder side throws onto a box stack
+
+### Next
+
+- re-test tilted drops onto a flat lower box and confirm the upper box no longer spins continuously around its corners
+- check that real off-balance box drops still tip off naturally rather than being over-damped into place
+- tune the stable top-face damping thresholds if hard throws feel too muted or gentle drops still bounce
+- continue multi-box pile stability and mixed box/capsule stack tuning
 
 ## 2026-04-25
 

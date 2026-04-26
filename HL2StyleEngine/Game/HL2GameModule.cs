@@ -3799,6 +3799,114 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         return false;
     }
 
+    private static bool TryGetStableBoxTopFaceContact(Entity a, Entity b, ContactManifold manifold, out Entity lower, out Entity upper)
+    {
+        lower = a;
+        upper = b;
+
+        if (!manifold.HasContact ||
+            GetPhysicsBodyShape(a) != RuntimeShapeKind.Box ||
+            GetPhysicsBodyShape(b) != RuntimeShapeKind.Box)
+        {
+            return false;
+        }
+
+        if (TryGetStableBoxTopFacePair(a, b))
+            return true;
+
+        if (TryGetStableBoxTopFacePair(b, a))
+        {
+            lower = b;
+            upper = a;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryGetStableBoxTopFacePair(Entity candidateLower, Entity candidateUpper)
+    {
+        if (!TryCreatePhysicsWorldCollider(candidateLower, out WorldCollider lowerCollider) ||
+            !TryBuildStableBoxTopFaceAabb(candidateLower, lowerCollider, out Aabb topFace) ||
+            !TryGetPhysicsBodyAabb(candidateUpper, out Aabb upperAabb))
+        {
+            return false;
+        }
+
+        const float yTolerance = 0.14f;
+        const float overlapInset = 0.01f;
+        if (!DoesBodyTouchSupportSurface(upperAabb, topFace, yTolerance, overlapInset))
+            return false;
+
+        if (!TryGetPhysicsBodyCenter(candidateLower, out Vector3 lowerCenter) ||
+            !TryGetPhysicsBodyCenter(candidateUpper, out Vector3 upperCenter))
+        {
+            return false;
+        }
+
+        return upperCenter.Y >= lowerCenter.Y;
+    }
+
+    private static bool IsStableBoxTopFaceContact(Entity a, Entity b, ContactManifold manifold)
+        => TryGetStableBoxTopFaceContact(a, b, manifold, out _, out _);
+
+    private static void ApplyStableTopFaceLandingDamping(
+        Entity a,
+        Entity b,
+        ContactManifold manifold,
+        ref Vector3 aVelocity,
+        ref Vector3 bVelocity)
+    {
+        if (!TryGetStableBoxTopFaceContact(a, b, manifold, out Entity lower, out Entity upper))
+            return;
+
+        bool aIsLower = ReferenceEquals(lower, a);
+        Vector3 lowerVelocity = aIsLower ? aVelocity : bVelocity;
+        Vector3 upperVelocity = aIsLower ? bVelocity : aVelocity;
+        Vector3 relativeVelocity = upperVelocity - lowerVelocity;
+        Vector3 lateralRelative = new(relativeVelocity.X, 0f, relativeVelocity.Z);
+
+        bool gentleSupportImpact =
+            MathF.Abs(relativeVelocity.Y) <= 3.0f &&
+            lateralRelative.LengthSquared() <= 6.25f;
+
+        if (!gentleSupportImpact)
+            return;
+
+        float lowerLateralScale = manifold.ContactCount >= 2 ? 0.25f : 0.4f;
+        lowerVelocity = new Vector3(
+            lowerVelocity.X * lowerLateralScale,
+            lowerVelocity.Y,
+            lowerVelocity.Z * lowerLateralScale);
+
+        if (MathF.Abs(lowerVelocity.Y) < 0.08f)
+            lowerVelocity = new Vector3(lowerVelocity.X, 0f, lowerVelocity.Z);
+
+        float upperLateralScale = manifold.ContactCount >= 2 ? 0.55f : 0.7f;
+        upperVelocity = new Vector3(
+            lowerVelocity.X + lateralRelative.X * upperLateralScale,
+            upperVelocity.Y,
+            lowerVelocity.Z + lateralRelative.Z * upperLateralScale);
+
+        float maxRelativeUp = manifold.ContactCount >= 2 ? 0.08f : 0.14f;
+        if (upperVelocity.Y > lowerVelocity.Y + maxRelativeUp)
+            upperVelocity = new Vector3(upperVelocity.X, lowerVelocity.Y + maxRelativeUp, upperVelocity.Z);
+
+        if (aIsLower)
+        {
+            aVelocity = lowerVelocity;
+            bVelocity = upperVelocity;
+        }
+        else
+        {
+            bVelocity = lowerVelocity;
+            aVelocity = upperVelocity;
+        }
+
+        DampAngularVelocity(lower, manifold.ContactCount >= 2 ? 0.18f : 0.3f);
+        DampAngularVelocity(upper, manifold.ContactCount >= 2 ? 0.68f : 0.82f, stopThreshold: 0.04f);
+    }
+
     private static void DampAngularVelocity(Entity entity, float scale, float stopThreshold = 0.08f)
     {
         entity.Physics.AngularVelocity *= Math.Clamp(scale, 0f, 1f);
@@ -4125,6 +4233,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 manifold,
                 ref heldVelocity,
                 ref otherVelocity);
+            ApplyStableTopFaceLandingDamping(
+                held,
+                other,
+                manifold,
+                ref heldVelocity,
+                ref otherVelocity);
 
             if (otherIsStrongLower)
             {
@@ -4146,7 +4260,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 supportManifold = manifold;
 
             bool suppressHeldStackSpin = supportLikeHeldContact ||
-                                         IsRestingStackContact(held, other, manifold, otherVelocityBefore - heldVelocityBefore);
+                                         IsRestingStackContact(held, other, manifold, otherVelocityBefore - heldVelocityBefore) ||
+                                         IsStableBoxTopFaceContact(held, other, manifold);
             if (!suppressHeldStackSpin)
             {
                 // Held props keep the orientation they had at pickup; only the free body can pick up spin here.
@@ -4270,10 +4385,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                         manifold,
                         ref aVelocity,
                         ref bVelocity);
+                    ApplyStableTopFaceLandingDamping(
+                        A,
+                        B,
+                        manifold,
+                        ref aVelocity,
+                        ref bVelocity);
                     SetPhysicsBodyVelocity(A, aVelocity);
                     SetPhysicsBodyVelocity(B, bVelocity);
 
-                    bool suppressStackSpin = IsRestingStackContact(A, B, manifold, bVelocityBefore - aVelocityBefore);
+                    bool stableTopFaceContact = IsStableBoxTopFaceContact(A, B, manifold);
+                    bool suppressStackSpin = stableTopFaceContact ||
+                                             IsRestingStackContact(A, B, manifold, bVelocityBefore - aVelocityBefore);
                     bool strongSupportContact = TryGetStrongSupportedLowerBody(A, B, manifold, out Entity lowerBody);
                     if (!suppressStackSpin)
                     {
