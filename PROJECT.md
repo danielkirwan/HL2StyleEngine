@@ -1,6 +1,6 @@
 # Project Overview
 
-Last updated: 2026-04-25
+Last updated: 2026-04-26
 
 ## Purpose
 
@@ -86,19 +86,32 @@ Implemented or substantially present:
 - dynamic prop runtime state for visual rotation and angular settling work
 - debug collider display for box, sphere, and capsule shapes
 
-Current active gameplay/physics focus:
+Current active gameplay focus:
 
-- make dynamic prop behavior feel more physically plausible
-- stop sphere and capsule collision from behaving like box placeholders
-- support rotated colliders for dynamic boxes and capsules
-- improve how props settle after impacts, especially boxes and capsules
-- improve stacked-box and pile behavior so supported props settle flat instead of perching or jittering
+- build a small Resident Evil-inspired key, locked-door, and save-point interaction loop
+- keep the approved context interaction scheme: `E` / controller `X` uses nearby gameplay objects first, then falls back to physics pickup
+- use a separate interaction test level so gameplay work can progress without disturbing the physics test room
+- keep dynamic prop behavior at good-enough prototype quality while higher-level game flow is built around it
+- return to stack and pile stability later when the interaction loop has more surrounding gameplay context
 
 ## Active Workstream
 
-The main active workstream is runtime prop rotation and collision fidelity.
+The main active workstream is now the first horror interaction loop.
 
-Recent work in progress has moved collision handling away from a pure AABB mindset and toward shape-aware colliders:
+The current implementation direction is:
+
+- a separate `interaction_test.json` runtime level
+- key items that can be collected into a simple inventory
+- locked doors that check the inventory before opening
+- typewriter save points that require ink ribbons
+- prototype save persistence for collected keys, opened doors, ink count, save count, and player position
+- a developer reset hotkey for clean interaction-test runs
+- a small multi-room key route that starts shaping the horror vertical slice
+- controller parity for new player-facing actions
+
+The recent physics work remains important but is now parked as a foundation rather than the only active task.
+
+Previous runtime prop rotation and collision work moved collision handling away from a pure AABB mindset and toward shape-aware colliders:
 
 - `WorldCollider` now carries shape data and rotation
 - dynamic box and capsule stepping passes rotation into collision resolution
@@ -107,7 +120,7 @@ Recent work in progress has moved collision handling away from a pure AABB minds
 - runtime and editor debug drawing now show sphere and capsule colliders properly
 - dynamic contact and runtime world collider construction use shape-aware colliders
 
-This work is aimed at fixing several visible problems:
+That work is aimed at fixing several visible problems:
 
 - capsules and spheres behaving like hidden boxes
 - props settling into implausible orientations
@@ -124,9 +137,14 @@ This work is aimed at fixing several visible problems:
 
 ## Immediate Next Steps
 
-- validate multi-box pile stability and mixed box/capsule stack behavior
-- keep tuning support retention and low-speed settle behavior for stacked props
-- validate rotated box, sphere, and capsule collision behavior in gameplay scenarios
+- validate the interaction test level in-game
+- confirm key pickup, inventory display, locked-door failure/success, and ink-ribbon typewriter saves with keyboard and controller
+- validate ink ribbon pickup, typewriter save consumption, save reload behavior, and `F6` level reset
+- play through the expanded Rusted Key -> Service Key -> Archive Key route and adjust room layout/readability
+- tune interaction prompt readability and raycast distance
+- replace the first-pass name-prefix interaction prototype with level-authored components if the flow feels right
+- start shaping the interaction test into a small horror vertical-slice room sequence
+- keep multi-box pile stability and mixed box/capsule stack behavior parked unless it blocks the interaction loop
 - extend the new contact-manifold path so support and angular response are driven more consistently by contact points
 - remove remaining AABB fallback logic where exact rotated shape behavior matters
 - improve support and settling logic for tipped capsules and resting boxes

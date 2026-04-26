@@ -14,12 +14,20 @@ using Game.World;
 using Game.World.MovingPlatform;
 using ImGuiNET;
 using System.Numerics;
+using System.Text.Json;
 using Veldrid;
 
 namespace Game;
 
 public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 {
+    private static readonly JsonSerializerOptions PrototypeSaveJsonOptions = new()
+    {
+        WriteIndented = true,
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip
+    };
+
     private readonly struct BoxSupportState
     {
         public readonly bool Valid;
@@ -55,6 +63,21 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
     }
 
+    private sealed class PrototypeSaveData
+    {
+        public string LevelName { get; set; } = "";
+        public List<string> Inventory { get; set; } = new();
+        public List<string> CollectedInteractables { get; set; } = new();
+        public List<string> OpenedDoors { get; set; } = new();
+        public int InkRibbons { get; set; }
+        public int SavePointUseCount { get; set; }
+        public float PlayerX { get; set; }
+        public float PlayerY { get; set; }
+        public float PlayerZ { get; set; }
+        public float CameraYaw { get; set; }
+        public float CameraPitch { get; set; }
+    }
+
     private EngineContext _ctx = null!;
 
     private readonly InputState _inputState = new();
@@ -67,6 +90,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private InputAction _move = null!;
     private InputAction _look = null!;
     private bool _prevRightTriggerDown;
+    private readonly HashSet<string> _inventory = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _collectedInteractables = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _openedDoors = new(StringComparer.OrdinalIgnoreCase);
+    private bool _inventoryOpen;
+    private string _interactionPrompt = "";
+    private string _gameMessage = "";
+    private float _gameMessageTimer;
+    private int _inkRibbonCount;
+    private int _savePointUseCount;
 
     private readonly FpsCamera _camera = new(new Vector3(0, 1.8f, -5f));
     private UIModeController _ui = null!;
@@ -112,6 +144,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     public InputState InputState => _inputState;
 
+    private string PrototypeSavePath => Path.Combine(AppContext.BaseDirectory, "Saves", "prototype_save.json");
+
     public void Initialize(EngineContext context)
     {
         _ctx = context;
@@ -128,10 +162,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         _motor = new SourcePlayerMotor(_movement, startFeetPos: new Vector3(0, 0, -5f));
 
-        string levelPath = Path.Combine(AppContext.BaseDirectory, "Content", "Levels", "room01.json");
-        _editor.LoadOrCreate(levelPath, SimpleLevel.BuildRoom01File);
+        string levelPath = Path.Combine(AppContext.BaseDirectory, "Content", "Levels", "interaction_test.json");
+        EnsureInteractionTestLevelTemplate(levelPath);
+        _editor.LoadOrCreate(levelPath, SimpleLevel.BuildInteractionTestFile);
         RebuildRuntimeWorld();
-        ApplySpawnFromEditor(forceResetVelocity: true);
+        if (!TryLoadPrototypeSave())
+            ApplySpawnFromEditor(forceResetVelocity: true);
     }
 
     private void ApplySpawnFromEditor(bool forceResetVelocity)
@@ -198,14 +234,32 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         if (!_editorEnabled)
         {
             TryPickupDropThrow();
+            UpdateInteractionPrompt();
+        }
+
+        if (!_editorEnabled && ResetLevelPressedThisFrame())
+        {
+            ResetPrototypeLevelToStart();
+            return;
         }
 
         // Reload level at runtime
         if (!_editorEnabled && _inputState.WasPressed(Key.F5))
         {
-            _editor.LoadOrCreate(_editor.LevelPath, SimpleLevel.BuildRoom01File);
+            _editor.LoadOrCreate(_editor.LevelPath, GetDefaultLevelFactoryForPath(_editor.LevelPath));
             RebuildRuntimeWorld();
-            ApplySpawnFromEditor(forceResetVelocity: true);
+            if (!TryLoadPrototypeSave())
+                ApplySpawnFromEditor(forceResetVelocity: true);
+        }
+
+        if (!_editorEnabled && ToggleInventoryPressedThisFrame())
+            _inventoryOpen = !_inventoryOpen;
+
+        if (_gameMessageTimer > 0f)
+        {
+            _gameMessageTimer = MathF.Max(0f, _gameMessageTimer - dt);
+            if (_gameMessageTimer <= 0f)
+                _gameMessage = "";
         }
 
         if (_toggleUi.Pressed) _ui.ToggleUI();
@@ -276,6 +330,169 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (_jump.Pressed)
                 _jumpPressedThisFrame = true;
 
+        }
+    }
+
+    private static Func<LevelFile> GetDefaultLevelFactoryForPath(string path)
+    {
+        string file = Path.GetFileName(path);
+        return string.Equals(file, "interaction_test.json", StringComparison.OrdinalIgnoreCase)
+            ? SimpleLevel.BuildInteractionTestFile
+            : SimpleLevel.BuildRoom01File;
+    }
+
+    private static void EnsureInteractionTestLevelTemplate(string path)
+    {
+        if (!string.Equals(Path.GetFileName(path), "interaction_test.json", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (File.Exists(path) && !InteractionTestTemplateNeedsRefresh(path))
+            return;
+
+        LevelIO.Save(path, SimpleLevel.BuildInteractionTestFile());
+    }
+
+    private static bool InteractionTestTemplateNeedsRefresh(string path)
+    {
+        try
+        {
+            LevelFile level = LevelIO.Load(path);
+            return
+                !HasNamedEntity(level, "ItemInkRibbon_Foyer") ||
+                !HasNamedEntity(level, "LockedDoor_ArchiveKey") ||
+                !HasDoorBlockerSize(level, "LockedDoor_RustedKey", static size => size.X >= 3.0f) ||
+                !HasDoorBlockerSize(level, "LockedDoor_ArchiveKey", static size => size.X >= 3.0f) ||
+                !HasDoorBlockerSize(level, "LockedDoor_ServiceKey", static size => size.Z >= 2.4f) ||
+                !HasDoorBlockerSize(level, "Wall_Utility_Side_South", static size => size.Z >= 4.0f);
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    private static bool HasNamedEntity(LevelFile level, string name)
+        => level.Entities.Any(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    private static bool HasDoorBlockerSize(LevelFile level, string name, Func<Vector3, bool> sizePredicate)
+    {
+        LevelEntityDef? entity = level.Entities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+        return entity != null && sizePredicate((Vector3)entity.Size);
+    }
+
+    private bool TryLoadPrototypeSave()
+    {
+        if (!File.Exists(PrototypeSavePath))
+            return false;
+
+        try
+        {
+            string json = File.ReadAllText(PrototypeSavePath);
+            PrototypeSaveData? data = JsonSerializer.Deserialize<PrototypeSaveData>(json, PrototypeSaveJsonOptions);
+            if (data == null)
+                return false;
+
+            _inventory.Clear();
+            _collectedInteractables.Clear();
+            _openedDoors.Clear();
+
+            foreach (string item in data.Inventory)
+                _inventory.Add(item);
+            foreach (string item in data.CollectedInteractables)
+                _collectedInteractables.Add(item);
+            foreach (string item in data.OpenedDoors)
+                _openedDoors.Add(item);
+
+            _inkRibbonCount = Math.Max(0, data.InkRibbons);
+            _savePointUseCount = Math.Max(0, data.SavePointUseCount);
+
+            ApplyPersistentInteractionStateToRuntime();
+
+            _motor.Position = new Vector3(data.PlayerX, data.PlayerY, data.PlayerZ);
+            _motor.Velocity = Vector3.Zero;
+            _camera.Yaw = data.CameraYaw;
+            _camera.Pitch = data.CameraPitch;
+            _camera.Position = _motor.Position + new Vector3(0f, _movement.EyeHeight, 0f);
+            ShowGameMessage("Loaded saved progress.", 2.0f);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            ShowGameMessage($"Save could not be loaded: {ex.Message}", 4.0f);
+            return false;
+        }
+    }
+
+    private bool SavePrototypeGame(Entity savePoint)
+    {
+        try
+        {
+            var data = new PrototypeSaveData
+            {
+                LevelName = Path.GetFileName(_editor.LevelPath),
+                Inventory = _inventory.OrderBy(static x => x).ToList(),
+                CollectedInteractables = _collectedInteractables.OrderBy(static x => x).ToList(),
+                OpenedDoors = _openedDoors.OrderBy(static x => x).ToList(),
+                InkRibbons = _inkRibbonCount,
+                SavePointUseCount = _savePointUseCount,
+                PlayerX = _motor.Position.X,
+                PlayerY = _motor.Position.Y,
+                PlayerZ = _motor.Position.Z,
+                CameraYaw = _camera.Yaw,
+                CameraPitch = _camera.Pitch
+            };
+
+            string? directory = Path.GetDirectoryName(PrototypeSavePath);
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+
+            File.WriteAllText(PrototypeSavePath, JsonSerializer.Serialize(data, PrototypeSaveJsonOptions));
+            ShowGameMessage($"Saved at {PrettifyToken(GetNameToken(savePoint, "SavePoint_"))}. Ink ribbons left: {_inkRibbonCount}.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            ShowGameMessage($"Save failed: {ex.Message}", 4.0f);
+            return false;
+        }
+    }
+
+    private void ResetPrototypeLevelToStart()
+    {
+        if (_held != null)
+            DropHeld();
+
+        if (File.Exists(PrototypeSavePath))
+            File.Delete(PrototypeSavePath);
+
+        ClearPrototypeInteractionState();
+
+        Func<LevelFile> factory = GetDefaultLevelFactoryForPath(_editor.LevelPath);
+        LevelIO.Save(_editor.LevelPath, factory());
+        _editor.LoadOrCreate(_editor.LevelPath, factory);
+
+        RebuildRuntimeWorld();
+        ApplySpawnFromEditor(forceResetVelocity: true);
+        ShowGameMessage("Level reset to the start.", 2.5f);
+    }
+
+    private void ClearPrototypeInteractionState()
+    {
+        _inventory.Clear();
+        _collectedInteractables.Clear();
+        _openedDoors.Clear();
+        _inkRibbonCount = 0;
+        _savePointUseCount = 0;
+        _inventoryOpen = false;
+    }
+
+    private void ApplyPersistentInteractionStateToRuntime()
+    {
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            Entity e = _runtimeEntities[i];
+            if (_collectedInteractables.Contains(e.Name) || _openedDoors.Contains(e.Name))
+                HideRuntimeEntity(e);
         }
     }
 
@@ -2340,6 +2557,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             _runtimeEntities.Add(e);
         }
+
+        ApplyPersistentInteractionStateToRuntime();
     }
 
     private void BuildRuntimeCollidersThisFrame(bool includeDynamicBodies, bool includeHeldBodies)
@@ -2774,6 +2993,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         DrawMainDockspaceHost();
         DrawDebugWindow();
+        DrawGameplayHud();
 
         if (_editorEnabled)
         {
@@ -2835,6 +3055,66 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             var e0 = _runtimeEntities[0];
             ImGui.Text($"E0 pos: {e0.Transform.Position}");
         }
+        ImGui.End();
+    }
+
+    private void DrawGameplayHud()
+    {
+        if (_editorEnabled)
+            return;
+
+        ImGuiViewportPtr viewport = ImGui.GetMainViewport();
+        Vector2 centerBottom = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y - 96f);
+
+        ImGui.SetNextWindowPos(centerBottom, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowBgAlpha(0.35f);
+        ImGuiWindowFlags promptFlags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.AlwaysAutoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings |
+            ImGuiWindowFlags.NoFocusOnAppearing |
+            ImGuiWindowFlags.NoNav;
+
+        if (!string.IsNullOrWhiteSpace(_interactionPrompt) || !string.IsNullOrWhiteSpace(_gameMessage))
+        {
+            ImGui.Begin("GameplayPrompt", promptFlags);
+            if (!string.IsNullOrWhiteSpace(_interactionPrompt))
+                ImGui.Text($"E / X: {_interactionPrompt}");
+            if (!string.IsNullOrWhiteSpace(_gameMessage))
+                ImGui.Text(_gameMessage);
+            ImGui.End();
+        }
+
+        if (!_inventoryOpen)
+            return;
+
+        ImGui.SetNextWindowPos(new Vector2(viewport.Pos.X + 24f, viewport.Pos.Y + 90f), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(260f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.85f);
+        ImGui.Begin("Inventory", ref _inventoryOpen, ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoSavedSettings);
+        ImGui.Text("Inventory");
+        ImGui.Separator();
+
+        if (_inventory.Count == 0 && _inkRibbonCount == 0)
+        {
+            ImGui.TextDisabled("Empty");
+        }
+        else
+        {
+            if (_inkRibbonCount > 0)
+                ImGui.Text($"Ink Ribbon x{_inkRibbonCount}");
+
+            foreach (string item in _inventory.OrderBy(static x => x))
+                ImGui.Text(PrettifyToken(item));
+        }
+
+        ImGui.Separator();
+        ImGui.TextDisabled("I / Back: Close");
+        ImGui.TextDisabled("F6: Reset test level");
+        if (_savePointUseCount > 0)
+            ImGui.TextDisabled($"Saves used: {_savePointUseCount}");
         ImGui.End();
     }
 
@@ -3328,6 +3608,206 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         return best;
     }
 
+    private Entity? RaycastGameplayInteractable(float maxDist)
+    {
+        Vector3 origin = _camera.Position;
+        Vector3 dir = Vector3.Normalize(_camera.Forward);
+        var ray = new Engine.Physics.Collision.Ray(origin, dir);
+
+        Entity? best = null;
+        float bestT = maxDist;
+
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            var e = _runtimeEntities[i];
+            if (!e.Collider.Enabled || !IsGameplayInteractable(e))
+                continue;
+
+            if (RayIntersectsEntityCollider(ray, e, 0.05f, bestT, out float tHit))
+            {
+                bestT = tHit;
+                best = e;
+            }
+        }
+
+        return best;
+    }
+
+    private static bool IsGameplayInteractable(Entity e)
+        => IsKeyItem(e) || IsInkRibbon(e) || IsLockedDoor(e) || IsSavePoint(e);
+
+    private static bool IsKeyItem(Entity e)
+        => e.Name.StartsWith("ItemKey_", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsInkRibbon(Entity e)
+        => e.Name.StartsWith("ItemInkRibbon_", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsLockedDoor(Entity e)
+        => e.Name.StartsWith("LockedDoor_", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsSavePoint(Entity e)
+        => e.Name.StartsWith("SavePoint_", StringComparison.OrdinalIgnoreCase);
+
+    private static string GetNameToken(Entity e, string prefix)
+    {
+        if (!e.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return e.Name;
+
+        string token = e.Name[prefix.Length..];
+        int separator = token.IndexOf("__", StringComparison.Ordinal);
+        if (separator >= 0)
+            token = token[..separator];
+
+        return token;
+    }
+
+    private static string PrettifyToken(string token)
+    {
+        token = token.Replace('_', ' ').Trim();
+        if (token.Length == 0)
+            return "Item";
+
+        List<char> chars = new(token.Length + 4);
+        for (int i = 0; i < token.Length; i++)
+        {
+            char c = token[i];
+            if (i > 0 && char.IsUpper(c) && char.IsLower(token[i - 1]))
+                chars.Add(' ');
+
+            chars.Add(c);
+        }
+
+        return new string(chars.ToArray());
+    }
+
+    private string GetInteractionPrompt(Entity e)
+    {
+        if (IsKeyItem(e))
+            return $"Take {PrettifyToken(GetNameToken(e, "ItemKey_"))}";
+
+        if (IsInkRibbon(e))
+            return "Take Ink Ribbon";
+
+        if (IsLockedDoor(e))
+        {
+            string keyName = PrettifyToken(GetNameToken(e, "LockedDoor_"));
+            return _inventory.Contains(GetNameToken(e, "LockedDoor_"))
+                ? $"Unlock door with {keyName}"
+                : $"Locked - needs {keyName}";
+        }
+
+        if (IsSavePoint(e))
+            return _inkRibbonCount > 0
+                ? $"Use Ink Ribbon at {PrettifyToken(GetNameToken(e, "SavePoint_"))}"
+                : $"{PrettifyToken(GetNameToken(e, "SavePoint_"))} - needs Ink Ribbon";
+
+        return "Interact";
+    }
+
+    private void UpdateInteractionPrompt()
+    {
+        if (_held != null)
+        {
+            _interactionPrompt = "Drop object";
+            return;
+        }
+
+        Entity? interactable = RaycastGameplayInteractable(maxDist: 3.0f);
+        if (interactable != null)
+        {
+            _interactionPrompt = GetInteractionPrompt(interactable);
+            return;
+        }
+
+        _interactionPrompt = RaycastPickable(maxDist: 3.0f) != null
+            ? "Pick up object"
+            : "";
+    }
+
+    private bool TryUseFocusedInteractable()
+    {
+        Entity? hit = RaycastGameplayInteractable(maxDist: 3.0f);
+        if (hit == null)
+            return false;
+
+        if (IsKeyItem(hit))
+        {
+            string keyId = GetNameToken(hit, "ItemKey_");
+            _inventory.Add(keyId);
+            _collectedInteractables.Add(hit.Name);
+            HideRuntimeEntity(hit);
+            ShowGameMessage($"Picked up {PrettifyToken(keyId)}.");
+            return true;
+        }
+
+        if (IsInkRibbon(hit))
+        {
+            _inkRibbonCount++;
+            _collectedInteractables.Add(hit.Name);
+            HideRuntimeEntity(hit);
+            ShowGameMessage($"Picked up Ink Ribbon. Ink ribbons: {_inkRibbonCount}.");
+            return true;
+        }
+
+        if (IsLockedDoor(hit))
+        {
+            string requiredKey = GetNameToken(hit, "LockedDoor_");
+            if (!_inventory.Contains(requiredKey))
+            {
+                ShowGameMessage($"The door is locked. It needs {PrettifyToken(requiredKey)}.");
+                return true;
+            }
+
+            _openedDoors.Add(hit.Name);
+            HideRuntimeEntity(hit);
+            ShowGameMessage($"Unlocked with {PrettifyToken(requiredKey)}.");
+            return true;
+        }
+
+        if (IsSavePoint(hit))
+        {
+            if (_inkRibbonCount <= 0)
+            {
+                ShowGameMessage("The typewriter needs an Ink Ribbon.");
+                return true;
+            }
+
+            _inkRibbonCount--;
+            _savePointUseCount++;
+            if (!SavePrototypeGame(hit))
+            {
+                _inkRibbonCount++;
+                _savePointUseCount--;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    private void ShowGameMessage(string message, float seconds = 3.0f)
+    {
+        _gameMessage = message;
+        _gameMessageTimer = seconds;
+    }
+
+    private bool InteractPressedThisFrame()
+        => _inputState.WasPressed(Key.E) ||
+           _inputState.GetGamepadPressed(GamepadButton.X);
+
+    private bool ToggleInventoryPressedThisFrame()
+        => _inputState.WasPressed(Key.I) ||
+           _inputState.GetGamepadPressed(GamepadButton.Back);
+
+    private bool ResetLevelPressedThisFrame()
+        => _inputState.WasPressed(Key.F6);
+
+    private static void HideRuntimeEntity(Entity e)
+    {
+        e.Render.Shape = RuntimeShapeKind.None;
+        e.Collider.Shape = RuntimeShapeKind.None;
+    }
+
     private void TryPickupDropThrow()
     {
         
@@ -3341,14 +3821,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return;
         }
 
-        bool pickupPressed =
-            _inputState.WasPressed(Key.E) ||
-            _inputState.GetGamepadPressed(GamepadButton.X);
-
-        if (pickupPressed)
+        if (InteractPressedThisFrame())
         {
             if (_held != null)
                 DropHeld();
+            else if (TryUseFocusedInteractable())
+                return;
             else
             {
                 var hit = RaycastPickable(maxDist: 3.0f);

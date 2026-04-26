@@ -1,0 +1,2543 @@
+{
+  "Version": 2,
+  "Entities": [
+    {
+      "Id": "8297fba7331c47eba5ce3e83c5b90cb2",
+      "Type": "PlayerSpawn",
+      "Name": "PlayerSpawn",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 0,
+        "Y": 0,
+        "Z": -11.35
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "7f35e9a006f943bcab4423764cf7639d",
+      "Type": "PointLight",
+      "Name": "Light_Foyer_Dim",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -2.5,
+        "Y": 3,
+        "Z": -10.2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 0.75,
+        "Z": 0.48,
+        "W": 1
+      },
+      "Intensity": 2.1,
+      "Range": 7.5,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "e07e62b7a0df46e8be1c5c805c98206d",
+      "Type": "PointLight",
+      "Name": "Light_Central_Flicker",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 1.8,
+        "Y": 3.1,
+        "Z": -2.2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 0.8,
+        "Y": 0.95,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 1.8,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "f924914602904c46bc7865f21710ca82",
+      "Type": "PointLight",
+      "Name": "Light_SaveRoom_Cool",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -6.1,
+        "Y": 2.8,
+        "Z": 1.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 0.45,
+        "Y": 0.65,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 2.5,
+      "Range": 6.5,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "5ca250d08d66443ab3c4e026a509a910",
+      "Type": "PointLight",
+      "Name": "Light_Archive_Amber",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 2.8,
+        "Y": 3,
+        "Z": 9
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 0.62,
+        "Z": 0.35,
+        "W": 1
+      },
+      "Intensity": 2.2,
+      "Range": 7,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "5a6ed1d08a4d4c5d93cdae1d4f5cd8f3",
+      "Type": "Box",
+      "Name": "Floor_InteractionTest",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 0,
+        "Y": -0.1,
+        "Z": 0
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 18,
+        "Y": 0.2,
+        "Z": 28
+      },
+      "Color": {
+        "X": 0.12,
+        "Y": 0.13,
+        "Z": 0.14,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "10a2da68062e4860b494423f4dcff854",
+      "Type": "Box",
+      "Name": "Ceiling_InteractionTest",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 0,
+        "Y": 3.4,
+        "Z": 0
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 18,
+        "Y": 0.2,
+        "Z": 28
+      },
+      "Color": {
+        "X": 0.18,
+        "Y": 0.19,
+        "Z": 0.2,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "b631db6369854950b5d22d9dc1010a66",
+      "Type": "Box",
+      "Name": "Carpet_Foyer",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 0,
+        "Y": 0.02,
+        "Z": -10.5
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 5.2,
+        "Y": 0.05,
+        "Z": 3.4
+      },
+      "Color": {
+        "X": 0.32,
+        "Y": 0.05,
+        "Z": 0.11,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "d6581f9b1e764d88bad30589bdc2ce79",
+      "Type": "Box",
+      "Name": "Carpet_Archive",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 2.7,
+        "Y": 0.02,
+        "Z": 9
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 5.2,
+        "Y": 0.05,
+        "Z": 4.8
+      },
+      "Color": {
+        "X": 0.32,
+        "Y": 0.05,
+        "Z": 0.11,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "92415cb9e37c495db5335e045d2e9a0c",
+      "Type": "Box",
+      "Name": "Wall_North",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 0,
+        "Y": 1.7,
+        "Z": 14
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 18,
+        "Y": 3.4,
+        "Z": 0.35
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "92e4932de5d049ab9241f8cbd0bdcf06",
+      "Type": "Box",
+      "Name": "Wall_South",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 0,
+        "Y": 1.7,
+        "Z": -14
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 18,
+        "Y": 3.4,
+        "Z": 0.35
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "bc1571cdd9944b098ecf191d4b82a12b",
+      "Type": "Box",
+      "Name": "Wall_West",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -9,
+        "Y": 1.7,
+        "Z": 0
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.35,
+        "Y": 3.4,
+        "Z": 28
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "fb5ff47d3f9540ca81346385d34d1f25",
+      "Type": "Box",
+      "Name": "Wall_East",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 9,
+        "Y": 1.7,
+        "Z": 0
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.35,
+        "Y": 3.4,
+        "Z": 28
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "bff01683c763439f955bce59f90b586b",
+      "Type": "Box",
+      "Name": "Divider_Foyer_LeftOfDoor",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -5.25,
+        "Y": 1.7,
+        "Z": -6.4
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 7.5,
+        "Y": 3.4,
+        "Z": 0.35
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "3bb83e02be444f55aba6f90969e259b2",
+      "Type": "Box",
+      "Name": "Divider_Foyer_RightOfDoor",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 5.25,
+        "Y": 1.7,
+        "Z": -6.4
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 7.5,
+        "Y": 3.4,
+        "Z": 0.35
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "eaca471ecc8845d58a7b87a03d5d4adb",
+      "Type": "Box",
+      "Name": "LockedDoor_RustedKey",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 0,
+        "Y": 1.2,
+        "Z": -6.45
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 3.1,
+        "Y": 2.4,
+        "Z": 0.28
+      },
+      "Color": {
+        "X": 0.34,
+        "Y": 0.18,
+        "Z": 0.1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "acddad9d8fed451181e7ec9fd847e25f",
+      "Type": "Box",
+      "Name": "Divider_Archive_LeftOfDoor",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -5.25,
+        "Y": 1.7,
+        "Z": 3.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 7.5,
+        "Y": 3.4,
+        "Z": 0.35
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "4232344adc9b4445add3b1f2800fee0c",
+      "Type": "Box",
+      "Name": "Divider_Archive_RightOfDoor",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 5.25,
+        "Y": 1.7,
+        "Z": 3.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 7.5,
+        "Y": 3.4,
+        "Z": 0.35
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "feb7298069784239a8a675f92e2330ff",
+      "Type": "Box",
+      "Name": "LockedDoor_ArchiveKey",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 0,
+        "Y": 1.2,
+        "Z": 3.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 3.1,
+        "Y": 2.4,
+        "Z": 0.28
+      },
+      "Color": {
+        "X": 0.34,
+        "Y": 0.18,
+        "Z": 0.1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "ce5b81e5db844deb8fb2150a4c7536b6",
+      "Type": "Box",
+      "Name": "Wall_SaveOffice_Back",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -5.7,
+        "Y": 1.7,
+        "Z": 3.4
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 6.2,
+        "Y": 3.4,
+        "Z": 0.35
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "636676730d7d43d0837929ff9531035b",
+      "Type": "Box",
+      "Name": "Wall_SaveOffice_Side_South",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -3.0500023,
+        "Y": 1.7,
+        "Z": -4.75
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.35,
+        "Y": 3.4,
+        "Z": 3.2
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "0483362330ae453f84b3c5ce99a18b3a",
+      "Type": "Box",
+      "Name": "Wall_SaveOffice_Side_North",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -3.05,
+        "Y": 1.7,
+        "Z": 1.25
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.35,
+        "Y": 3.4,
+        "Z": 4.1
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "a53404a2786a469ab5f4ed524e359276",
+      "Type": "Box",
+      "Name": "LockedDoor_ServiceKey",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -3.08,
+        "Y": 1.2,
+        "Z": -1.95
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.28,
+        "Y": 2.4,
+        "Z": 2.5
+      },
+      "Color": {
+        "X": 0.34,
+        "Y": 0.18,
+        "Z": 0.1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "84514d0f4dd640848ee019415e259d5f",
+      "Type": "Box",
+      "Name": "Wall_Utility_Side_South",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 3.15,
+        "Y": 1.7,
+        "Z": -4.45
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.35,
+        "Y": 3.4,
+        "Z": 4.3
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "3c39d2b57d094815884e4f3a902ee265",
+      "Type": "Box",
+      "Name": "Wall_Utility_Side_North",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 3.15,
+        "Y": 1.7,
+        "Z": 1.15
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.35,
+        "Y": 3.4,
+        "Z": 4.5
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "b888e4e00ea6415bb16d17fe33fbe63c",
+      "Type": "Box",
+      "Name": "Wall_Utility_Back",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 6.05,
+        "Y": 1.7,
+        "Z": -3.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 5.9,
+        "Y": 3.4,
+        "Z": 0.35
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "76d1f5ca05b64566bbdb75b26c2cda84",
+      "Type": "Box",
+      "Name": "Desk_RustedKeyTable",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -5.65,
+        "Y": 0.45,
+        "Z": -11.2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 2.2,
+        "Y": 0.35,
+        "Z": 1.1
+      },
+      "Color": {
+        "X": 0.28,
+        "Y": 0.18,
+        "Z": 0.11,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "99abd0ff70d04b55a09e284cd946e9bd",
+      "Type": "Box",
+      "Name": "ItemKey_RustedKey",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -5.5,
+        "Y": 0.72,
+        "Z": -11.2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 28,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.42,
+        "Y": 0.08,
+        "Z": 0.18
+      },
+      "Color": {
+        "X": 0.95,
+        "Y": 0.72,
+        "Z": 0.28,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "5faec7bf6b344173a25ade665e5b4379",
+      "Type": "Box",
+      "Name": "ItemInkRibbon_Foyer",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 5.2,
+        "Y": 0.42,
+        "Z": -10.65
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -18,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.48,
+        "Y": 0.12,
+        "Z": 0.32
+      },
+      "Color": {
+        "X": 0.12,
+        "Y": 0.12,
+        "Z": 0.18,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "ce81e90ac0bc4bc19daab94cf7f6d69c",
+      "Type": "Box",
+      "Name": "Shelf_ServiceKey",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 5.85,
+        "Y": 0.55,
+        "Z": -1.25
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.7,
+        "Y": 0.35,
+        "Z": 0.9
+      },
+      "Color": {
+        "X": 0.22,
+        "Y": 0.27,
+        "Z": 0.24,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "150f486b11e34ec0bd698e655370d746",
+      "Type": "Box",
+      "Name": "ItemKey_ServiceKey",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 5.85,
+        "Y": 0.85,
+        "Z": -1.25
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -35,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.42,
+        "Y": 0.08,
+        "Z": 0.18
+      },
+      "Color": {
+        "X": 0.95,
+        "Y": 0.72,
+        "Z": 0.28,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "76271f7fde124007930fb6226c2d05d7",
+      "Type": "Box",
+      "Name": "SaveDesk",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -6.2,
+        "Y": 0.3,
+        "Z": 1.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.8,
+        "Y": 0.35,
+        "Z": 1.1
+      },
+      "Color": {
+        "X": 0.28,
+        "Y": 0.18,
+        "Z": 0.11,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "f066757165ac46cc93f5ef8d56fda607",
+      "Type": "Box",
+      "Name": "SavePoint_Typewriter",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -6.2,
+        "Y": 0.7,
+        "Z": 1.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.2,
+        "Y": 0.38,
+        "Z": 0.75
+      },
+      "Color": {
+        "X": 0.12,
+        "Y": 0.22,
+        "Z": 0.34,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "3be201c52b904787b4a009e5c3225a3e",
+      "Type": "Box",
+      "Name": "ItemInkRibbon_SaveOffice",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -7.25,
+        "Y": 0.62,
+        "Z": 0.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 12,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.48,
+        "Y": 0.12,
+        "Z": 0.32
+      },
+      "Color": {
+        "X": 0.12,
+        "Y": 0.12,
+        "Z": 0.18,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "8cf608c85e574ea6a18bb1c1f54348c7",
+      "Type": "Box",
+      "Name": "ItemKey_ArchiveKey",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -5.25,
+        "Y": 0.78,
+        "Z": 2.45
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 65,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.42,
+        "Y": 0.08,
+        "Z": 0.18
+      },
+      "Color": {
+        "X": 0.95,
+        "Y": 0.72,
+        "Z": 0.28,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "ad6d5309dfb54114a918ae2a1d125422",
+      "Type": "Box",
+      "Name": "ArchiveCabinet_A",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 3.1,
+        "Y": 0.9,
+        "Z": 8.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.1,
+        "Y": 1.8,
+        "Z": 0.7
+      },
+      "Color": {
+        "X": 0.22,
+        "Y": 0.27,
+        "Z": 0.24,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "151d18a81934440f8fa0e6e792db5016",
+      "Type": "Box",
+      "Name": "ArchiveCabinet_B",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 5.4,
+        "Y": 0.9,
+        "Z": 10.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.1,
+        "Y": 1.8,
+        "Z": 0.7
+      },
+      "Color": {
+        "X": 0.22,
+        "Y": 0.27,
+        "Z": 0.24,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "b0b98b7c6de2430aa01d33168990a2f8",
+      "Type": "RigidBody",
+      "Name": "Crate_FoyerCorner",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 5.6,
+        "Y": 0.5,
+        "Z": -12
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.45,
+        "Y": 0.32,
+        "Z": 0.18,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.85,
+      "Restitution": 0.03,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "8e5bdeb047be4d7d88349f85649d6fd2",
+      "Type": "RigidBody",
+      "Name": "Crate_Utility_A",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 6.7,
+        "Y": 0.5,
+        "Z": -2.25
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 14,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.45,
+        "Y": 0.32,
+        "Z": 0.18,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 0.85,
+      "Restitution": 0.03,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "aa06b6be939c45c7b29b04b61121c78d",
+      "Type": "RigidBody",
+      "Name": "Crate_Utility_B",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 6.1,
+        "Y": 1.5,
+        "Z": -2.25
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -8,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.45,
+        "Y": 0.32,
+        "Z": 0.18,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 0.85,
+      "Restitution": 0.03,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "ea61b726c6254875b4a3e5bfc4e042b8",
+      "Type": "RigidBody",
+      "Name": "Crate_SaveOffice",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -7.15,
+        "Y": 0.5,
+        "Z": 2.45
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.45,
+        "Y": 0.32,
+        "Z": 0.18,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.85,
+      "Restitution": 0.03,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "123415024e2b4476b41afd9da83ec413",
+      "Type": "RigidBody",
+      "Name": "Crate_ArchiveLoose",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 1.4,
+        "Y": 0.5,
+        "Z": 10.9
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 30,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.45,
+        "Y": 0.32,
+        "Z": 0.18,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.85,
+      "Restitution": 0.03,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "621862ccaa0542e388ab49d31572a3cb",
+      "Type": "TriggerVolume",
+      "Name": "Trigger_SaveRoomEntry",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -4,
+        "Y": 1,
+        "Z": 0.8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2.5
+      },
+      "TriggerEvent": "Entered_SaveRoom",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    }
+  ],
+  "Boxes": null
+}

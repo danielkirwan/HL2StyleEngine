@@ -6,11 +6,11 @@ This file is the running handover for active work, recent changes, and the next 
 
 ## Current Focus
 
-Current focus is collision and prop behavior fidelity for dynamic physics objects, especially boxes, spheres, and capsules.
+Current focus is shifting from physics-only tuning into a small playable interaction loop for the horror prototype.
 
-The immediate goal is to make runtime collision and visible object behavior line up more closely so props no longer feel like disguised AABBs or settle into obviously wrong poses.
+The immediate goal is to build a separate interaction test level with multiple keys, locked doors, ink-ribbon typewriter saving, simple inventory feedback, and a small explore-to-unlock room chain.
 
-The current tuning stage is stack and settle polish on top of the newer contact-manifold-driven support, pivot, and spin behavior.
+The box stacking and pile stability work is parked at a good-enough prototype point for now so the project can regain visible gameplay momentum.
 
 The current gameplay issues being worked first are:
 
@@ -20,6 +20,10 @@ The current gameplay issues being worked first are:
 - thrown boxes should stop freezing in implausible corner-balanced poses
 - stacked boxes should settle with more weight and less low-speed jitter or sliding on each other
 - clean box-on-box drops should settle flat instead of freezing slightly angled on broad support
+- key items should be collectable through the same context interaction button used by physics pickup
+- locked doors should check inventory and open when the required key is held
+- typewriter save points should require ink ribbons and persist prototype progress
+- the interaction test level should be resettable for clean playtest runs
 
 ## Current Status Snapshot
 
@@ -33,11 +37,25 @@ The current gameplay issues being worked first are:
 - the wider `Game` project still does not have a clean full-build signal because of unrelated workspace issues
 - the roadmap now includes a proper standalone level editor for building maps, while keeping the runtime in-scene editor for live playtest adjustments
 - the longer-term game target remains a grounded horror game built on top of this HL2-style movement and interaction foundation
+- the current gameplay prototype now has a first-pass interaction test level for key-door-save flow
 
 ## 2026-04-26
 
 ### Summary
 
+- parked box-stack tuning at the current prototype quality level and moved active work to interaction/game-loop progress
+- changed the default runtime level to `interaction_test.json` and added a generated interaction test layout with a key desk, locked door, and save room
+- added context interaction on `E` / controller `X`, prioritizing key/door/save-point use before falling back to physics pickup/drop
+- added a simple inventory overlay on `I` / controller `Back`
+- added runtime feedback messages for collecting the key, trying the locked door, unlocking it, and using the save point
+- expanded the interaction test into a multi-room key chain with Rusted, Service, and Archive keys
+- added ink ribbon pickups and changed the typewriter save point so saving consumes one ink ribbon
+- added a prototype save file that restores inventory, collected items, opened doors, ink ribbon count, save count, and player camera position
+- added `F6` as a developer reset hotkey that clears the prototype save and rewrites the interaction test level to its default layout
+- added dynamic crates in the expanded interaction rooms so the level still supports prop interaction testing while exploring
+- widened the generated locked-door blockers so they overlap adjacent wall pieces and do not leave player-sized side gaps
+- tightened the interaction-test template refresh so older generated JSON is rewritten if it still has the too-small door blockers
+- extended the utility-room wall beside the Service Key area so it overlaps the foyer divider instead of leaving a gap back toward the starting room
 - added a stable dynamic box top-face contact classification for box-on-box support
 - damped gentle box landings on stable lower-box top faces so the lower box absorbs less lateral shove and upward bounce is capped more tightly
 - suppressed collision-spin injection for boxes contacting a stable supported lower-box top face, leaving the existing support/topple path to decide whether the upper box settles or tips
@@ -45,6 +63,15 @@ The current gameplay issues being worked first are:
 
 ### Why
 
+- continued box tuning was producing diminishing returns and slowing visible game progress
+- the project needs a Resident Evil-inspired interaction loop to start feeling like the intended horror game rather than a physics lab
+- `E` / controller `X` was approved as the shared context interaction button, with interactables taking priority over physics pickup
+- the separate interaction test level keeps the existing physics test room intact while giving the key-door-save flow a focused place to evolve
+- Resident Evil-style typewriter saves need a scarce resource, so ink ribbons are now tracked separately from key inventory
+- the existing generated runtime level file could keep loading the old one-room test, so the interaction template refreshes when the expanded markers are missing
+- a fast reset hotkey keeps playtesting friction low while the lock-and-key layout is still being iterated
+- door blockers need to overlap the wall blockout slightly because exact-width seams can leave collision slits that the player capsule can squeeze through
+- adjacent wall pieces in the blockout need the same overlap treatment as doors, otherwise diagonal/edge visibility can expose real navigation gaps
 - boxes dropped onto other boxes could still enter a rotation loop because the dynamic contact solver kept adding impact spin before the floor-like support/topple logic could settle the pose
 - the lower box's top face should behave closer to the floor or moving platform when it is already stable and strongly supported
 - off-balance boxes should still fall over from support geometry, not from repeated artificial contact spin
@@ -53,16 +80,29 @@ The current gameplay issues being worked first are:
 ### Files
 
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\World\SimpleLevel.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
 - `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
 
 ### Validation
 
 - `Game` compile check succeeded with `--no-dependencies` into a temporary output folder
 - `Game` compile check succeeded after top-face detection was decoupled from the dynamic contact normal
+- `Game` compile check succeeded after adding the interaction test level and context interaction loop
+- `Game` compile check succeeded after adding ink-ribbon saves, prototype save persistence, reset hotkey, and the expanded interaction layout
+- `Game` compile check succeeded after closing the door/wall gaps in the generated interaction level
+- `Game` compile check succeeded after extending the Service Key utility-room wall
+- `git diff --check` passed with only existing line-ending warnings
 - in-game validation still needed for tilted drops, stacked-box release, and harder side throws onto a box stack
+- in-game validation still needed for the expanded key route, inventory overlay, ink ribbon pickup, and typewriter save behavior
 
 ### Next
 
+- run the interaction test level and validate `E` / `X` priority: key/door/save first, physics pickup second
+- tune prompt visibility and interaction distances once the first playtest pass lands
+- validate the expanded route in game: Rusted Key, Service Key, typewriter save with ink, Archive Key, and Archive door
+- decide whether the developer reset hotkey should stay keyboard-only or receive a controller debug chord after controller layout is chosen
+- turn the hard-coded name-prefix interaction prototype into proper level-authored interaction components if the flow feels good
 - re-test tilted drops onto a flat lower box and confirm the upper box no longer spins continuously around its corners
 - check that real off-balance box drops still tip off naturally rather than being over-damped into place
 - tune the stable top-face damping thresholds if hard throws feel too muted or gentle drops still bounce
