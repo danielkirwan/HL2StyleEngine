@@ -56,6 +56,10 @@ The current gameplay issues being worked first are:
 - constrained the box-on-box flat-settle promotion so it only treats real broad contact patches as face support
 - made one-point and two-point box support contacts unstable even when the box is near a cube-stable orientation
 - clamped box-box contact manifold points to the supporting box face so dynamic box support patches cannot extend outside the lower box
+- prevented edge/corner-supported boxes from being considered stack rest poses and added a small gravity-style topple nudge for sparse lowest-corner support
+- added a dynamic box top-face support path so a flat, already-supported lower box can behave like a floor/platform for boxes resting above it
+- fixed a startup crash in bottom-corner support detection by capping awkward tilted support patches to the four lowest candidate corners
+- locked carried props to the orientation they had at pickup and stopped held-object contact spin/integration from rotating the carried object while the camera moves
 
 ### Why
 
@@ -77,6 +81,10 @@ The current gameplay issues being worked first are:
 - thrown and pickup-dropped boxes could still land on another box with only a corner or edge touching, then get promoted into fake full-face support and settle there
 - sparse support contacts under a box center are physically unstable, so they should keep falling instead of being accepted as rest just because the box is near a valid face orientation
 - floor and moving-platform support already behave better because they are static/world surfaces with bounded support; dynamic box-box contacts were projecting support points onto a plane without clipping them back to the lower box face
+- a perfectly centered edge/corner contact can become an unstable mathematical equilibrium in the simplified solver, so it needs an explicit tiny topple bias instead of being damped as settled stack contact
+- tilted boxes on top of other boxes were bouncing between stack-settle and sparse-topple rules; using the lower box's stable top face as a floor-like support surface makes box-on-box rest follow the same support path as floor/platform rest
+- some tilted box poses can put more than four OBB corners within the support tolerance, but the helper only had a four-corner output buffer
+- pickup only cleared angular velocity once, so the held-object update could still reintroduce rotation through world collision spin, dynamic-body contact spin, or normal angular integration
 
 ### Files
 
@@ -94,13 +102,19 @@ The current gameplay issues being worked first are:
 - `git diff --check` passed, with only the existing line-ending warning for `HL2GameModule.cs`
 - `Game` compile check succeeded with `--no-dependencies` into a temporary output folder while the running game kept the normal output DLLs locked
 - `Engine.Physics` build succeeded
+- `Game` compile check succeeded after the sparse support/topple change
+- `Game` compile check succeeded after adding dynamic box top-face support
+- `Game` compile check succeeded after fixing the bottom-corner overflow
+- `Game` compile check succeeded after locking held-object orientation during pickup carry
 - normal full `Game` build was blocked in this pass by the running `Game` process holding output DLLs open
 - in-game validation improved the clean box-on-box resting case, but pile stability and mixed-stack behavior still need more testing
 
 ### Next
 
+- re-test picking up a tilted/stacked box and turning the camera left/right to confirm the held object keeps its pickup orientation
 - re-test corner-rest cases with the render path now using the same quaternion as collision
 - re-test throwing and pickup-dropping boxes onto other boxes to confirm sparse corner/edge contacts topple instead of auto-correcting into corner rest
+- re-test tilted drops onto a flat lower box and confirm the upper box settles like it does on the floor/moving platform instead of looping around corners
 - tune multi-box pile stability and mixed box/capsule stacks
 - reduce disturbance of already-supported lower props in piles and stacks
 - re-test picking up the top box from the centered stack and confirm the lower boxes stay quiet
