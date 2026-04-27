@@ -43,7 +43,25 @@ public static class ItemCatalog
             slotWidth: 1,
             slotHeight: 1,
             maxStack: 1,
-            expiresWhenMatchingLocksOpened: true)
+            expiresWhenMatchingLocksOpened: true),
+
+        ["Scrap"] = new(
+            "Scrap",
+            "Scrap",
+            "Crafting material. Combine it later to create or improve useful items.",
+            InventoryItemType.Material,
+            slotWidth: 1,
+            slotHeight: 1,
+            maxStack: 99),
+
+        ["CrankHandle"] = new(
+            "CrankHandle",
+            "Crank Handle",
+            "A sturdy handle for a square crank mechanism.",
+            InventoryItemType.Puzzle,
+            slotWidth: 1,
+            slotHeight: 2,
+            maxStack: 1)
     };
 
     public static InventoryItemDefinition Get(string itemId)

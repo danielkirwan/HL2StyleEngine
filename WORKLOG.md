@@ -55,6 +55,9 @@ The current gameplay issues being worked first are:
 - captured the intended Resident Evil Requiem-inspired inventory direction: pickup examine screen, grid inventory, item slot footprints, stack limits, descriptions, chest rewards, and shared safe storage
 - added the first item data model with item definitions, item types, slot footprints, stack limits, saveable item stacks, and an inventory container sized for an 8x4 grid
 - moved the working key and ink ribbon prototype onto the item container while keeping the existing simple inventory overlay functional
+- added a first item-collected overlay for pickups and chest rewards, dismissed with the existing `E` / controller `X` confirm action
+- turned the Service Key supply chests into prototype reward containers that grant Scrap and a Crank Handle
+- upgraded the temporary inventory overlay into a simple grid-slot view with stack counts, item footprints, and selected-item descriptions
 
 ### Why
 
@@ -65,6 +68,7 @@ The current gameplay issues being worked first are:
 - chests are planned as item reward containers, so the next inventory work needs a real item model before chest rewards or storage can be implemented cleanly
 - shared safe storage depends on the same item stacking and slot-footprint rules as the player inventory
 - building the item model before the UI means chests, item pickup screens, inventory grid layout, and safe storage can all share the same item definitions
+- the first reward items prove the item catalog can support both stackable materials and larger puzzle objects
 
 ### Files
 
@@ -78,6 +82,7 @@ The current gameplay issues being worked first are:
 - user playtest confirmed the playable area is good and keys can be found and used
 - `Game` compile check succeeded after the interaction/save/layout changes
 - `Game` compile check succeeded after adding the item data model and wiring current keys/ink ribbons through it
+- `Game` compile check succeeded after adding pickup examine overlay, chest rewards, and the first grid-style inventory overlay
 - `git diff --check` passed with only existing line-ending warnings
 - in-game validation still needed for the three-lock Service Key expiry path and save reload edge cases
 
@@ -86,9 +91,9 @@ The current gameplay issues being worked first are:
 - validate the Service Key expiry path: save-office door plus two supply chests, with inventory removal only after the last matching lock opens
 - validate typewriter save reload after keys are consumed, doors/chests are opened, and the Service Key has expired
 - improve prompt/readability polish for keys, doors, chests, ink ribbons, and typewriter state
-- add a first item-collected/examine screen before building the full inventory grid
-- use the item definitions to drive pickup messages, chest rewards, and inventory descriptions
-- turn chests into reward containers after item definitions exist
+- validate pickup examine overlay flow for keys, ink ribbons, Scrap, and Crank Handle
+- validate the Service Key chest rewards and key expiry after all Service Key locks are opened
+- improve the grid inventory into true item placement/movement instead of the current simple slot view
 - add shared safe storage after grid inventory and stack transfer rules exist
 - convert the name-prefix prototype interaction rules into authored interaction/lock/item data
 - add real inventory item inspection/description UI rather than only a simple item list

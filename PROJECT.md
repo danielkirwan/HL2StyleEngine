@@ -108,6 +108,9 @@ The current implementation state is:
 - prototype save persistence for collected keys, opened doors, ink count, save count, and player position
 - non-ink key/item expiry when every matching locked door or chest has been opened
 - first-pass item data model with item definitions, item types, slot footprints, stack limits, counts, and saveable inventory stacks
+- first-pass pickup/examine overlay for collected items
+- locked chests can now grant prototype reward items from the item catalog
+- the temporary inventory overlay now shows grid slots, stack counts, item footprints, and selected-item descriptions
 - a developer reset hotkey for clean interaction-test runs
 - a small multi-room key route that is playable and starts shaping the horror vertical slice
 - controller parity for new player-facing actions
@@ -147,9 +150,9 @@ That work is aimed at fixing several visible problems:
 - gameplay interactions are still authored by name prefixes such as `ItemKey_`, `LockedDoor_`, `LockedChest_`, `ItemInkRibbon_`, and `SavePoint_`
 - the inventory UI is still a simple list rather than a proper inspect/combine/use survival-horror inventory
 - inventory items now have data-model support for slot footprints, stack limits, categories, and descriptions, but the UI does not yet present them in a real grid
-- there is not yet an item-collected/examine screen for pickups
+- the item-collected/examine screen is a first pass and still needs final Resident Evil-style presentation and pause behavior
 - safe storage boxes and inventory/storage transfer are not implemented yet
-- locked chests currently disappear when opened rather than revealing loot or playing an authored open state
+- locked chests currently disappear after granting prototype rewards rather than playing an authored open animation/state
 - save/load is prototype-local JSON state, not a full slot/save-profile system
 - `F6` reset is currently keyboard-only as a developer hotkey until a controller debug chord is chosen
 - collision for rotated capsules versus boxes is orientation-aware, but still approximate rather than a full rigid-body contact manifold solution
@@ -161,8 +164,10 @@ That work is aimed at fixing several visible problems:
 
 - validate multi-lock key expiry, especially the Service Key staying useful across the save-office door and two supply chests before being removed
 - validate save reload behavior after keys are collected, locks are opened, and a key has expired
+- validate pickup/examine overlay flow on key pickups, ink ribbons, and chest rewards
+- validate chest rewards for the Service Key supply chests: Scrap and Crank Handle
 - polish prompt/readability feedback for locked doors, locked chests, expired keys, ink ribbon count, and typewriter state
-- decide what opened chests should reveal first: puzzle item, upgrade material, or another progression item
+- improve the temporary grid inventory into a true slot-placement UI with item movement
 - tune interaction prompt readability and raycast distance
 - replace the first-pass name-prefix interaction prototype with level-authored components if the flow feels right
 - build a proper inventory screen with item descriptions and selected-item focus
