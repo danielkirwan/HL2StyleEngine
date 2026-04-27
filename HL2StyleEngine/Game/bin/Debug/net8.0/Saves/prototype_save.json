@@ -1,0 +1,26 @@
+{
+  "LevelName": "interaction_test.json",
+  "Inventory": [
+    "ArchiveKey"
+  ],
+  "CollectedInteractables": [
+    "ItemInkRibbon_Foyer",
+    "ItemInkRibbon_SaveOffice",
+    "ItemKey_ArchiveKey",
+    "ItemKey_RustedKey",
+    "ItemKey_ServiceKey"
+  ],
+  "OpenedDoors": [
+    "LockedChest_ServiceKey__SupplyA",
+    "LockedChest_ServiceKey__SupplyB",
+    "LockedDoor_RustedKey",
+    "LockedDoor_ServiceKey__SaveOffice"
+  ],
+  "InkRibbons": 1,
+  "SavePointUseCount": 1,
+  "PlayerX": -6.0776362,
+  "PlayerY": 0,
+  "PlayerZ": 0.67999995,
+  "CameraYaw": -0.15500107,
+  "CameraPitch": -0.8574992
+}

@@ -10,6 +10,7 @@ using Engine.Render;
 using Engine.Runtime.Entities;
 using Engine.Runtime.Entities.Interfaces;
 using Engine.Runtime.Hosting;
+using Game.Inventory;
 using Game.World;
 using Game.World.MovingPlatform;
 using ImGuiNET;
@@ -67,6 +68,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         public string LevelName { get; set; } = "";
         public List<string> Inventory { get; set; } = new();
+        public List<InventoryItemSaveData> InventoryItems { get; set; } = new();
         public List<string> CollectedInteractables { get; set; } = new();
         public List<string> OpenedDoors { get; set; } = new();
         public int InkRibbons { get; set; }
@@ -90,14 +92,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private InputAction _move = null!;
     private InputAction _look = null!;
     private bool _prevRightTriggerDown;
-    private readonly HashSet<string> _inventory = new(StringComparer.OrdinalIgnoreCase);
+    private readonly InventoryContainer _inventory = new(gridWidth: 8, gridHeight: 4);
     private readonly HashSet<string> _collectedInteractables = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _openedDoors = new(StringComparer.OrdinalIgnoreCase);
     private bool _inventoryOpen;
     private string _interactionPrompt = "";
     private string _gameMessage = "";
     private float _gameMessageTimer;
-    private int _inkRibbonCount;
     private int _savePointUseCount;
 
     private readonly FpsCamera _camera = new(new Vector3(0, 1.8f, -5f));
@@ -360,9 +361,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             return
                 !HasNamedEntity(level, "ItemInkRibbon_Foyer") ||
                 !HasNamedEntity(level, "LockedDoor_ArchiveKey") ||
+                !HasNamedEntity(level, "LockedChest_ServiceKey__SupplyA") ||
+                !HasNamedEntity(level, "LockedChest_ServiceKey__SupplyB") ||
                 !HasDoorBlockerSize(level, "LockedDoor_RustedKey", static size => size.X >= 3.0f) ||
                 !HasDoorBlockerSize(level, "LockedDoor_ArchiveKey", static size => size.X >= 3.0f) ||
-                !HasDoorBlockerSize(level, "LockedDoor_ServiceKey", static size => size.Z >= 2.4f) ||
+                !HasNamedEntity(level, "LockedDoor_ServiceKey__SaveOffice") ||
+                !HasDoorBlockerSize(level, "LockedDoor_ServiceKey__SaveOffice", static size => size.Z >= 2.4f) ||
+                !HasEntityPosition(level, "Wall_SaveOffice_Side_South", static position => MathF.Abs(position.Z - -4.75f) <= 0.01f) ||
+                !HasDoorBlockerSize(level, "Wall_SaveOffice_Side_South", static size => MathF.Abs(size.Z - 3.4f) <= 0.01f) ||
                 !HasDoorBlockerSize(level, "Wall_Utility_Side_South", static size => size.Z >= 4.0f);
         }
         catch
@@ -378,6 +384,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     {
         LevelEntityDef? entity = level.Entities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
         return entity != null && sizePredicate((Vector3)entity.Size);
+    }
+
+    private static bool HasEntityPosition(LevelFile level, string name, Func<Vector3, bool> positionPredicate)
+    {
+        LevelEntityDef? entity = level.Entities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+        return entity != null && positionPredicate((Vector3)entity.LocalPosition);
     }
 
     private bool TryLoadPrototypeSave()
@@ -396,16 +408,27 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _collectedInteractables.Clear();
             _openedDoors.Clear();
 
-            foreach (string item in data.Inventory)
-                _inventory.Add(item);
+            if (data.InventoryItems.Count > 0)
+            {
+                _inventory.LoadFromSave(data.InventoryItems);
+            }
+            else
+            {
+                foreach (string item in data.Inventory)
+                    _inventory.Add(item);
+            }
+
+            if (data.InkRibbons > 0 && !_inventory.Contains(ItemCatalog.InkRibbon))
+                _inventory.Add(ItemCatalog.InkRibbon, data.InkRibbons);
+
             foreach (string item in data.CollectedInteractables)
                 _collectedInteractables.Add(item);
             foreach (string item in data.OpenedDoors)
                 _openedDoors.Add(item);
 
-            _inkRibbonCount = Math.Max(0, data.InkRibbons);
             _savePointUseCount = Math.Max(0, data.SavePointUseCount);
 
+            RemoveExpiredInventoryItems(showMessage: false);
             ApplyPersistentInteractionStateToRuntime();
 
             _motor.Position = new Vector3(data.PlayerX, data.PlayerY, data.PlayerZ);
@@ -430,10 +453,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             var data = new PrototypeSaveData
             {
                 LevelName = Path.GetFileName(_editor.LevelPath),
-                Inventory = _inventory.OrderBy(static x => x).ToList(),
+                Inventory = _inventory.ItemIds()
+                    .Where(static item => !string.Equals(item, ItemCatalog.InkRibbon, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(static x => x)
+                    .ToList(),
+                InventoryItems = _inventory.ToSaveData(),
                 CollectedInteractables = _collectedInteractables.OrderBy(static x => x).ToList(),
                 OpenedDoors = _openedDoors.OrderBy(static x => x).ToList(),
-                InkRibbons = _inkRibbonCount,
+                InkRibbons = _inventory.GetCount(ItemCatalog.InkRibbon),
                 SavePointUseCount = _savePointUseCount,
                 PlayerX = _motor.Position.X,
                 PlayerY = _motor.Position.Y,
@@ -447,7 +474,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 Directory.CreateDirectory(directory);
 
             File.WriteAllText(PrototypeSavePath, JsonSerializer.Serialize(data, PrototypeSaveJsonOptions));
-            ShowGameMessage($"Saved at {PrettifyToken(GetNameToken(savePoint, "SavePoint_"))}. Ink ribbons left: {_inkRibbonCount}.");
+            ShowGameMessage($"Saved at {PrettifyToken(GetNameToken(savePoint, "SavePoint_"))}. Ink ribbons left: {_inventory.GetCount(ItemCatalog.InkRibbon)}.");
             return true;
         }
         catch (Exception ex)
@@ -481,7 +508,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _inventory.Clear();
         _collectedInteractables.Clear();
         _openedDoors.Clear();
-        _inkRibbonCount = 0;
         _savePointUseCount = 0;
         _inventoryOpen = false;
     }
@@ -494,6 +520,77 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             if (_collectedInteractables.Contains(e.Name) || _openedDoors.Contains(e.Name))
                 HideRuntimeEntity(e);
         }
+    }
+
+    private void RemoveExpiredInventoryItems(bool showMessage)
+    {
+        List<string> expiredItems = new();
+
+        foreach (string item in _inventory.ItemIds())
+        {
+            if (IsInventoryItemFullyUsed(item))
+                expiredItems.Add(item);
+        }
+
+        foreach (string item in expiredItems)
+            _inventory.RemoveStack(item);
+
+        if (showMessage && expiredItems.Count > 0)
+        {
+            string itemList = string.Join(", ", expiredItems.Select(ItemCatalog.GetDisplayName));
+            ShowGameMessage($"{itemList} no longer needed.");
+        }
+    }
+
+    private bool TryRemoveInventoryItemIfFullyUsed(string itemId)
+    {
+        if (!_inventory.Contains(itemId) || !IsInventoryItemFullyUsed(itemId))
+            return false;
+
+        _inventory.RemoveStack(itemId);
+        return true;
+    }
+
+    private bool IsInventoryItemFullyUsed(string itemId)
+    {
+        if (!ItemCatalog.Get(itemId).ExpiresWhenMatchingLocksOpened)
+            return false;
+
+        bool hasAnyMatchingLock = false;
+
+        foreach (LevelEntityDef def in _editor.LevelFile.Entities)
+        {
+            string name = def.Name ?? "";
+            if (!TryGetLockedObjectRequiredItem(name, out string requiredItem) ||
+                !string.Equals(requiredItem, itemId, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            hasAnyMatchingLock = true;
+            if (!_openedDoors.Contains(name))
+                return false;
+        }
+
+        return hasAnyMatchingLock;
+    }
+
+    private static bool TryGetLockedObjectRequiredItem(string entityName, out string requiredItem)
+    {
+        if (entityName.StartsWith("LockedDoor_", StringComparison.OrdinalIgnoreCase))
+        {
+            requiredItem = GetNameToken(entityName, "LockedDoor_");
+            return true;
+        }
+
+        if (entityName.StartsWith("LockedChest_", StringComparison.OrdinalIgnoreCase))
+        {
+            requiredItem = GetNameToken(entityName, "LockedChest_");
+            return true;
+        }
+
+        requiredItem = "";
+        return false;
     }
 
     private static bool IsSphereShape(string? shape)
@@ -3097,20 +3194,22 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         ImGui.Text("Inventory");
         ImGui.Separator();
 
-        if (_inventory.Count == 0 && _inkRibbonCount == 0)
+        if (_inventory.IsEmpty)
         {
             ImGui.TextDisabled("Empty");
         }
         else
         {
-            if (_inkRibbonCount > 0)
-                ImGui.Text($"Ink Ribbon x{_inkRibbonCount}");
-
-            foreach (string item in _inventory.OrderBy(static x => x))
-                ImGui.Text(PrettifyToken(item));
+            foreach (InventoryItemStack stack in _inventory.Stacks.OrderBy(static stack => ItemCatalog.GetDisplayName(stack.ItemId)))
+            {
+                InventoryItemDefinition definition = ItemCatalog.Get(stack.ItemId);
+                string countSuffix = stack.Count > 1 ? $" x{stack.Count}" : "";
+                ImGui.Text($"{definition.DisplayName}{countSuffix} ({definition.SlotWidth}x{definition.SlotHeight})");
+            }
         }
 
         ImGui.Separator();
+        ImGui.TextDisabled($"Slots: {_inventory.UsedSlotCount}/{_inventory.SlotCapacity}");
         ImGui.TextDisabled("I / Back: Close");
         ImGui.TextDisabled("F6: Reset test level");
         if (_savePointUseCount > 0)
@@ -3634,7 +3733,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     }
 
     private static bool IsGameplayInteractable(Entity e)
-        => IsKeyItem(e) || IsInkRibbon(e) || IsLockedDoor(e) || IsSavePoint(e);
+        => IsKeyItem(e) || IsInkRibbon(e) || IsLockedObject(e) || IsSavePoint(e);
 
     private static bool IsKeyItem(Entity e)
         => e.Name.StartsWith("ItemKey_", StringComparison.OrdinalIgnoreCase);
@@ -3645,15 +3744,29 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private static bool IsLockedDoor(Entity e)
         => e.Name.StartsWith("LockedDoor_", StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsLockedChest(Entity e)
+        => e.Name.StartsWith("LockedChest_", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsLockedObject(Entity e)
+        => IsLockedDoor(e) || IsLockedChest(e);
+
     private static bool IsSavePoint(Entity e)
         => e.Name.StartsWith("SavePoint_", StringComparison.OrdinalIgnoreCase);
 
-    private static string GetNameToken(Entity e, string prefix)
-    {
-        if (!e.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            return e.Name;
+    private static string GetLockRequiredItem(Entity e)
+        => IsLockedChest(e)
+            ? GetNameToken(e, "LockedChest_")
+            : GetNameToken(e, "LockedDoor_");
 
-        string token = e.Name[prefix.Length..];
+    private static string GetNameToken(Entity e, string prefix)
+        => GetNameToken(e.Name, prefix);
+
+    private static string GetNameToken(string name, string prefix)
+    {
+        if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return name;
+
+        string token = name[prefix.Length..];
         int separator = token.IndexOf("__", StringComparison.Ordinal);
         if (separator >= 0)
             token = token[..separator];
@@ -3683,21 +3796,23 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private string GetInteractionPrompt(Entity e)
     {
         if (IsKeyItem(e))
-            return $"Take {PrettifyToken(GetNameToken(e, "ItemKey_"))}";
+            return $"Take {ItemCatalog.GetDisplayName(GetNameToken(e, "ItemKey_"))}";
 
         if (IsInkRibbon(e))
             return "Take Ink Ribbon";
 
-        if (IsLockedDoor(e))
+        if (IsLockedObject(e))
         {
-            string keyName = PrettifyToken(GetNameToken(e, "LockedDoor_"));
-            return _inventory.Contains(GetNameToken(e, "LockedDoor_"))
-                ? $"Unlock door with {keyName}"
-                : $"Locked - needs {keyName}";
+            string requiredItem = GetLockRequiredItem(e);
+            string itemName = ItemCatalog.GetDisplayName(requiredItem);
+            string lockName = IsLockedChest(e) ? "chest" : "door";
+            return _inventory.Contains(requiredItem)
+                ? $"Unlock {lockName} with {itemName}"
+                : $"Locked - needs {itemName}";
         }
 
         if (IsSavePoint(e))
-            return _inkRibbonCount > 0
+            return _inventory.GetCount(ItemCatalog.InkRibbon) > 0
                 ? $"Use Ink Ribbon at {PrettifyToken(GetNameToken(e, "SavePoint_"))}"
                 : $"{PrettifyToken(GetNameToken(e, "SavePoint_"))} - needs Ink Ribbon";
 
@@ -3736,47 +3851,51 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _inventory.Add(keyId);
             _collectedInteractables.Add(hit.Name);
             HideRuntimeEntity(hit);
-            ShowGameMessage($"Picked up {PrettifyToken(keyId)}.");
+            ShowGameMessage($"Picked up {ItemCatalog.GetDisplayName(keyId)}.");
             return true;
         }
 
         if (IsInkRibbon(hit))
         {
-            _inkRibbonCount++;
+            _inventory.Add(ItemCatalog.InkRibbon);
             _collectedInteractables.Add(hit.Name);
             HideRuntimeEntity(hit);
-            ShowGameMessage($"Picked up Ink Ribbon. Ink ribbons: {_inkRibbonCount}.");
+            ShowGameMessage($"Picked up Ink Ribbon. Ink ribbons: {_inventory.GetCount(ItemCatalog.InkRibbon)}.");
             return true;
         }
 
-        if (IsLockedDoor(hit))
+        if (IsLockedObject(hit))
         {
-            string requiredKey = GetNameToken(hit, "LockedDoor_");
-            if (!_inventory.Contains(requiredKey))
+            string requiredItem = GetLockRequiredItem(hit);
+            if (!_inventory.Contains(requiredItem))
             {
-                ShowGameMessage($"The door is locked. It needs {PrettifyToken(requiredKey)}.");
+                ShowGameMessage($"It is locked. It needs {ItemCatalog.GetDisplayName(requiredItem)}.");
                 return true;
             }
 
             _openedDoors.Add(hit.Name);
             HideRuntimeEntity(hit);
-            ShowGameMessage($"Unlocked with {PrettifyToken(requiredKey)}.");
+            string message = $"Unlocked with {ItemCatalog.GetDisplayName(requiredItem)}.";
+            if (TryRemoveInventoryItemIfFullyUsed(requiredItem))
+                message += $" {ItemCatalog.GetDisplayName(requiredItem)} is no longer needed.";
+
+            ShowGameMessage(message);
             return true;
         }
 
         if (IsSavePoint(hit))
         {
-            if (_inkRibbonCount <= 0)
+            if (_inventory.GetCount(ItemCatalog.InkRibbon) <= 0)
             {
                 ShowGameMessage("The typewriter needs an Ink Ribbon.");
                 return true;
             }
 
-            _inkRibbonCount--;
+            _inventory.RemoveCount(ItemCatalog.InkRibbon);
             _savePointUseCount++;
             if (!SavePrototypeGame(hit))
             {
-                _inkRibbonCount++;
+                _inventory.Add(ItemCatalog.InkRibbon);
                 _savePointUseCount--;
             }
             return true;

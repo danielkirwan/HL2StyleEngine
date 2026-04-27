@@ -1,14 +1,14 @@
 # Work Log
 
-Last updated: 2026-04-26
+Last updated: 2026-04-27
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
 ## Current Focus
 
-Current focus is shifting from physics-only tuning into a small playable interaction loop for the horror prototype.
+Current focus is now the first playable Resident Evil-inspired interaction loop for the horror prototype.
 
-The immediate goal is to build a separate interaction test level with multiple keys, locked doors, ink-ribbon typewriter saving, simple inventory feedback, and a small explore-to-unlock room chain.
+The immediate goal is to harden the separate interaction test level now that the playable area, keys, doors, ink-ribbon typewriter saving, inventory feedback, and small explore-to-unlock room chain are working in playtest.
 
 The box stacking and pile stability work is parked at a good-enough prototype point for now so the project can regain visible gameplay momentum.
 
@@ -24,6 +24,7 @@ The current gameplay issues being worked first are:
 - locked doors should check inventory and open when the required key is held
 - typewriter save points should require ink ribbons and persist prototype progress
 - the interaction test level should be resettable for clean playtest runs
+- non-ink keys should stay useful across linked locks, then auto-remove once no matching locks remain
 
 ## Current Status Snapshot
 
@@ -37,7 +38,62 @@ The current gameplay issues being worked first are:
 - the wider `Game` project still does not have a clean full-build signal because of unrelated workspace issues
 - the roadmap now includes a proper standalone level editor for building maps, while keeping the runtime in-scene editor for live playtest adjustments
 - the longer-term game target remains a grounded horror game built on top of this HL2-style movement and interaction foundation
-- the current gameplay prototype now has a first-pass interaction test level for key-door-save flow
+- the current gameplay prototype now has a playable interaction test level for key-door-save flow
+- the user has confirmed the playable area is good and keys can be found and used
+
+## 2026-04-27
+
+### Summary
+
+- confirmed the expanded playable area works well enough for the current interaction pass
+- kept the generated interaction test level as the active default runtime level
+- closed door and wall blockout gaps found during playtesting
+- updated `Wall_SaveOffice_Side_South` to the editor-tested position `(-3.05, 1.7, -4.75)` and size `(0.35, 3.4, 3.4)`
+- added reusable non-ink item expiry for locked objects: an inventory item stays while any matching lock remains unopened, then auto-removes with feedback after the last matching lock opens
+- added two Service Key supply chests so the Service Key now exercises a three-lock path
+- kept ink ribbons separate from the reusable key/item expiry system
+- captured the intended Resident Evil Requiem-inspired inventory direction: pickup examine screen, grid inventory, item slot footprints, stack limits, descriptions, chest rewards, and shared safe storage
+- added the first item data model with item definitions, item types, slot footprints, stack limits, saveable item stacks, and an inventory container sized for an 8x4 grid
+- moved the working key and ink ribbon prototype onto the item container while keeping the existing simple inventory overlay functional
+
+### Why
+
+- the interaction loop is now playable enough that the next work should focus on progression feel, readability, and converting prototype rules into authored data
+- wall and door blockers need slight overlap in this blockout style so the player capsule cannot squeeze through seams
+- Resident Evil-style keys can open several authored locks before becoming useless, so expiry should be based on remaining matching locks rather than a hard-coded counter
+- ink ribbons are consumable save resources, not reusable lock items, so they should not be removed by the key-expiry rule
+- chests are planned as item reward containers, so the next inventory work needs a real item model before chest rewards or storage can be implemented cleanly
+- shared safe storage depends on the same item stacking and slot-footprint rules as the player inventory
+- building the item model before the UI means chests, item pickup screens, inventory grid layout, and safe storage can all share the same item definitions
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\World\SimpleLevel.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- user playtest confirmed the playable area is good and keys can be found and used
+- `Game` compile check succeeded after the interaction/save/layout changes
+- `Game` compile check succeeded after adding the item data model and wiring current keys/ink ribbons through it
+- `git diff --check` passed with only existing line-ending warnings
+- in-game validation still needed for the three-lock Service Key expiry path and save reload edge cases
+
+### Next
+
+- validate the Service Key expiry path: save-office door plus two supply chests, with inventory removal only after the last matching lock opens
+- validate typewriter save reload after keys are consumed, doors/chests are opened, and the Service Key has expired
+- improve prompt/readability polish for keys, doors, chests, ink ribbons, and typewriter state
+- add a first item-collected/examine screen before building the full inventory grid
+- use the item definitions to drive pickup messages, chest rewards, and inventory descriptions
+- turn chests into reward containers after item definitions exist
+- add shared safe storage after grid inventory and stack transfer rules exist
+- convert the name-prefix prototype interaction rules into authored interaction/lock/item data
+- add real inventory item inspection/description UI rather than only a simple item list
+- decide whether `F6` remains keyboard-only or gets a controller debug chord after controller layout is chosen
+- continue leaving deep box-stack physics parked unless it blocks the interaction route
 
 ## 2026-04-26
 
@@ -56,6 +112,9 @@ The current gameplay issues being worked first are:
 - widened the generated locked-door blockers so they overlap adjacent wall pieces and do not leave player-sized side gaps
 - tightened the interaction-test template refresh so older generated JSON is rewritten if it still has the too-small door blockers
 - extended the utility-room wall beside the Service Key area so it overlaps the foyer divider instead of leaving a gap back toward the starting room
+- added reusable non-ink item expiry for locked objects: an inventory item stays while any matching lock remains unopened, then auto-removes with feedback after the last matching lock opens
+- added two Service Key supply chests to the interaction level so the Service Key is linked to three locks: the save-office door plus two chests
+- updated `Wall_SaveOffice_Side_South` to the editor-tested position and size from the latest playtest screenshot
 - added a stable dynamic box top-face contact classification for box-on-box support
 - damped gentle box landings on stable lower-box top faces so the lower box absorbs less lateral shove and upward bounce is capped more tightly
 - suppressed collision-spin injection for boxes contacting a stable supported lower-box top face, leaving the existing support/topple path to decide whether the upper box settles or tips
@@ -72,6 +131,8 @@ The current gameplay issues being worked first are:
 - a fast reset hotkey keeps playtesting friction low while the lock-and-key layout is still being iterated
 - door blockers need to overlap the wall blockout slightly because exact-width seams can leave collision slits that the player capsule can squeeze through
 - adjacent wall pieces in the blockout need the same overlap treatment as doors, otherwise diagonal/edge visibility can expose real navigation gaps
+- Resident Evil-style keys often remain useful across multiple locks, so key expiry should be based on remaining authored locks rather than a hard-coded use counter
+- ink ribbons are intentionally excluded from key expiry because they are consumable save resources, not reusable lock items
 - boxes dropped onto other boxes could still enter a rotation loop because the dynamic contact solver kept adding impact spin before the floor-like support/topple logic could settle the pose
 - the lower box's top face should behave closer to the floor or moving platform when it is already stable and strongly supported
 - off-balance boxes should still fall over from support geometry, not from repeated artificial contact spin
@@ -92,6 +153,8 @@ The current gameplay issues being worked first are:
 - `Game` compile check succeeded after adding ink-ribbon saves, prototype save persistence, reset hotkey, and the expanded interaction layout
 - `Game` compile check succeeded after closing the door/wall gaps in the generated interaction level
 - `Game` compile check succeeded after extending the Service Key utility-room wall
+- `Game` compile check succeeded after adding reusable key expiry and Service Key multi-lock test chests
+- `Game` compile check succeeded after updating the save-office south wall placement
 - `git diff --check` passed with only existing line-ending warnings
 - in-game validation still needed for tilted drops, stacked-box release, and harder side throws onto a box stack
 - in-game validation still needed for the expanded key route, inventory overlay, ink ribbon pickup, and typewriter save behavior
@@ -101,6 +164,7 @@ The current gameplay issues being worked first are:
 - run the interaction test level and validate `E` / `X` priority: key/door/save first, physics pickup second
 - tune prompt visibility and interaction distances once the first playtest pass lands
 - validate the expanded route in game: Rusted Key, Service Key, typewriter save with ink, Archive Key, and Archive door
+- validate Service Key behavior: it should stay after opening the save-office door and first supply chest, then disappear after the final Service Key lock is opened
 - decide whether the developer reset hotkey should stay keyboard-only or receive a controller debug chord after controller layout is chosen
 - turn the hard-coded name-prefix interaction prototype into proper level-authored interaction components if the flow feels good
 - re-test tilted drops onto a flat lower box and confirm the upper box no longer spins continuously around its corners

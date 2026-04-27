@@ -1,6 +1,6 @@
 # Project Overview
 
-Last updated: 2026-04-26
+Last updated: 2026-04-27
 
 ## Purpose
 
@@ -88,7 +88,7 @@ Implemented or substantially present:
 
 Current active gameplay focus:
 
-- build a small Resident Evil-inspired key, locked-door, and save-point interaction loop
+- harden the small Resident Evil-inspired key, locked-door, locked-chest, and save-point interaction loop
 - keep the approved context interaction scheme: `E` / controller `X` uses nearby gameplay objects first, then falls back to physics pickup
 - use a separate interaction test level so gameplay work can progress without disturbing the physics test room
 - keep dynamic prop behavior at good-enough prototype quality while higher-level game flow is built around it
@@ -96,18 +96,32 @@ Current active gameplay focus:
 
 ## Active Workstream
 
-The main active workstream is now the first horror interaction loop.
+The main active workstream is now hardening the first horror interaction loop.
 
-The current implementation direction is:
+The current implementation state is:
 
 - a separate `interaction_test.json` runtime level
 - key items that can be collected into a simple inventory
 - locked doors that check the inventory before opening
+- locked chest-style test objects that use the same reusable lock/item rule
 - typewriter save points that require ink ribbons
 - prototype save persistence for collected keys, opened doors, ink count, save count, and player position
+- non-ink key/item expiry when every matching locked door or chest has been opened
+- first-pass item data model with item definitions, item types, slot footprints, stack limits, counts, and saveable inventory stacks
 - a developer reset hotkey for clean interaction-test runs
-- a small multi-room key route that starts shaping the horror vertical slice
+- a small multi-room key route that is playable and starts shaping the horror vertical slice
 - controller parity for new player-facing actions
+
+The intended inventory direction is Resident Evil Requiem-inspired:
+
+- item pickup can show a focused item-collected/examine screen with the world blurred behind it
+- the inventory should become a grid-based case rather than a plain list
+- every inventory item should define a slot footprint, stack limit, display name, description, and item type
+- stackable items can occupy one footprint while holding a count up to their stack limit
+- keys and puzzle objects are reusable until their authored uses are exhausted, then they are removed from inventory with feedback
+- ink ribbons remain consumable save resources and are not part of the reusable-key expiry rule
+- locked chests should later reveal items such as puzzle objects, upgrade materials, or other pickups
+- safe storage should let the player transfer items between inventory and a shared global box, retrievable from any safe storage point
 
 The recent physics work remains important but is now parked as a foundation rather than the only active task.
 
@@ -130,6 +144,14 @@ That work is aimed at fixing several visible problems:
 
 ## Known Current Limitations
 
+- gameplay interactions are still authored by name prefixes such as `ItemKey_`, `LockedDoor_`, `LockedChest_`, `ItemInkRibbon_`, and `SavePoint_`
+- the inventory UI is still a simple list rather than a proper inspect/combine/use survival-horror inventory
+- inventory items now have data-model support for slot footprints, stack limits, categories, and descriptions, but the UI does not yet present them in a real grid
+- there is not yet an item-collected/examine screen for pickups
+- safe storage boxes and inventory/storage transfer are not implemented yet
+- locked chests currently disappear when opened rather than revealing loot or playing an authored open state
+- save/load is prototype-local JSON state, not a full slot/save-profile system
+- `F6` reset is currently keyboard-only as a developer hotkey until a controller debug chord is chosen
 - collision for rotated capsules versus boxes is orientation-aware, but still approximate rather than a full rigid-body contact manifold solution
 - some support, picking, and ray logic may still rely on AABB-style fallbacks or broadphase approximations
 - there are existing unrelated build blockers in the wider workspace, so a clean full `Game` build is not currently the validation signal
@@ -137,12 +159,14 @@ That work is aimed at fixing several visible problems:
 
 ## Immediate Next Steps
 
-- validate the interaction test level in-game
-- confirm key pickup, inventory display, locked-door failure/success, and ink-ribbon typewriter saves with keyboard and controller
-- validate ink ribbon pickup, typewriter save consumption, save reload behavior, and `F6` level reset
-- play through the expanded Rusted Key -> Service Key -> Archive Key route and adjust room layout/readability
+- validate multi-lock key expiry, especially the Service Key staying useful across the save-office door and two supply chests before being removed
+- validate save reload behavior after keys are collected, locks are opened, and a key has expired
+- polish prompt/readability feedback for locked doors, locked chests, expired keys, ink ribbon count, and typewriter state
+- decide what opened chests should reveal first: puzzle item, upgrade material, or another progression item
 - tune interaction prompt readability and raycast distance
 - replace the first-pass name-prefix interaction prototype with level-authored components if the flow feels right
+- build a proper inventory screen with item descriptions and selected-item focus
+- add shared safe storage after the item data model exists, so transfer/retrieve works with the same slot and stack rules
 - start shaping the interaction test into a small horror vertical-slice room sequence
 - keep multi-box pile stability and mixed box/capsule stack behavior parked unless it blocks the interaction loop
 - extend the new contact-manifold path so support and angular response are driven more consistently by contact points
