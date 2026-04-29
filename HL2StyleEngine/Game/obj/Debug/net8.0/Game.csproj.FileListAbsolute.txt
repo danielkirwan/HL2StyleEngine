@@ -128,3 +128,11 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\refint\Game.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\Game.pdb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\Game.genruntimeconfig.cache
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\obj\Debug\net8.0\ref\Game.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\UI\Inventory\inventory.rml
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\UI\Inventory\inventory.rcss
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Shaders\RmlUiPS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Shaders\RmlUiVS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Shaders\RmlUiPS.hlsl
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Shaders\RmlUiVS.hlsl
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Engine.UI.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Engine.UI.pdb

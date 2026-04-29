@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ImGui.NET" />
+    <ProjectReference Include="..\Engine.Input\Engine.Input.csproj" />
+    <ProjectReference Include="..\Engine.Render\Engine.Render.csproj" />
+  </ItemGroup>
+</Project>

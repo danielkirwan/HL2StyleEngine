@@ -1,6 +1,6 @@
 # Work Log
 
-Last updated: 2026-04-27
+Last updated: 2026-04-29
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
@@ -40,6 +40,137 @@ The current gameplay issues being worked first are:
 - the longer-term game target remains a grounded horror game built on top of this HL2-style movement and interaction foundation
 - the current gameplay prototype now has a playable interaction test level for key-door-save flow
 - the user has confirmed the playable area is good and keys can be found and used
+- RmlUi is now the preferred direction for final gameplay UI, while ImGui remains the current prototype/editor UI layer
+
+## 2026-04-29
+
+### Summary
+
+- recorded RmlUi as the preferred long-term gameplay UI interface direction for inventory, item examine screens, and safe storage
+- kept ImGui as the current short-term prototype/editor UI layer until RmlUi integration is scoped
+- tightened inventory and item-collected modal input so opening them forces UI mouse mode, clears mouse delta, blocks gameplay/camera input, and draws a visible ImGui cursor
+- removed the inventory window close button path so inventory state cannot desync from mouse capture; it should close through `I` / controller `Back`
+- added an `Engine.UI` project as the gameplay UI integration seam
+- added a first `GameplayUiLayer` and `RmlUiBackend` facade that probes for a future native bridge named `HS2RmlUiBridge`
+- added a runtime overlay render hook so gameplay UI can draw after the world is resolved and before ImGui editor/debug UI
+- staged starter RmlUi inventory assets under `Game/Content/UI/Inventory`
+- wired `Game` to create/update/render the gameplay UI layer and report RmlUi backend status in the debug window
+- added the managed native binding layer for the expected `HS2RmlUiBridge` exports
+- added a native C ABI header for `HS2RmlUiBridge`
+- updated the RmlUi backend so, when the bridge exists, it binds exports, creates an RmlUi context, loads `Inventory/inventory.rml`, and forwards frame size, mouse position, update, and render calls
+- added the native render-command ABI for RmlUi overlay data: vertices, indices, texture ids, scissor rectangles, translations, and viewport size
+- added managed render-data structs and bound `hs2_rmlui_get_render_data` / `hs2_rmlui_release_render_data`
+- added a first `RmlUiOverlayRenderer` scaffold that receives native render data and reports command counts until real Veldrid draw consumption is implemented
+- exposed the RmlUi render status in the debug window
+- upgraded `RmlUiOverlayRenderer` into a first Veldrid draw consumer with dynamic vertex/index buffers, fallback white texture, scissor-enabled pipeline state, pixel-to-NDC conversion, and indexed draw submission
+- kept the first draw path on existing present-pass shaders, so it validates geometry/scissor/draw flow but does not yet apply RmlUi vertex colors or native texture ids
+- added dedicated `RmlUiVS` and `RmlUiPS` shaders and compiled them to `.cso`
+- changed the RmlUi overlay vertex path to carry unpacked per-vertex color into the UI shader
+- added a texture-id registry shape in the overlay renderer so native RmlUi texture ids can later bind real Veldrid texture views, with unknown ids falling back to white
+- added a gameplay UI state model in `Engine.UI` so the game publishes inventory, pickup modal, prompt, message, selection, and save-count data without the UI backend reaching into game internals
+- added a generated RML document path for live gameplay UI state under `Content/UI/Runtime/gameplay_ui.rml`
+- updated the RmlUi backend to write generated RML, load the generated runtime document, and optionally live-refresh it through a new `hs2_rmlui_set_document_body` bridge export when the native DLL supports it
+- changed the gameplay HUD so ImGui now acts as a fallback presentation only; once RmlUi is ready, gameplay inventory/pickup/prompt rendering is owned by the `Engine.UI` path
+- upgraded inventory stacks to carry stable grid slot indices and save/load those slot positions
+- changed inventory add/load behavior to find valid free grid footprints for item slot sizes, so the RmlUi grid receives real placement data instead of list positions
+- refreshed the staged inventory RCSS to target the generated RmlUi gameplay document and its inventory, prompt, and collected-item panels
+- added an `Engine.UI` ImGui-backed RmlUi preview renderer so the test level can show the new gameplay UI layout before the native RmlUi bridge DLL exists
+- routed gameplay HUD drawing through `GameplayUiLayer.DrawPreview(...)`, so inventory, item-collected overlays, interaction prompts, and game messages now use the shared `GameplayUiState` presentation path in play mode
+- kept old game-side ImGui HUD code only as a last fallback; the preview path returns selected/hovered slots back to the game so mouse descriptions still update
+- copied the validated isolated UI preview build into the normal `Game/bin/Debug/net8.0` output so the user can test it immediately in the interaction test level
+
+### Why
+
+- the survival-horror menus need a more themed gameplay UI layer soon, and RmlUi looks like the best free candidate to evaluate before the inventory grows much further
+- playtesting showed that opening inventory with `I` could still let mouse movement affect the camera and leave the cursor hard to see
+- modal menus should feel like Resident Evil-style pause screens: world/input paused, visible cursor, mouse hover inspection, and controller navigation
+- RmlUi is C++ first, so the engine needs a clean native-bridge seam instead of coupling gameplay code directly to interop and renderer details
+- gameplay UI should render in an overlay pass separate from world rendering and before ImGui, so final menus can sit above the game but below editor/debug tooling
+- defining the bridge contract early keeps the native C++ work small and testable instead of letting RmlUi interop leak into game code
+- the managed backend should be able to detect missing or incompatible bridge DLLs gracefully while the prototype continues using ImGui
+- the native bridge and managed Veldrid renderer need a stable handoff format before either side can be implemented safely
+- keeping render data lifetime explicit avoids dangling native pointers while still letting the bridge own CPU-side RmlUi geometry buffers
+- implementing the managed draw consumer before the native DLL makes the next bridge slice easier to test: when native commands arrive, the C# side can already submit them
+- using the existing shader pair keeps this slice low-risk while the dedicated UI shader/texture path is still being defined
+- dedicated UI shaders are needed because RmlUi output depends on per-vertex color as well as texture sampling
+- texture-id lookup keeps the draw loop stable while native texture upload support is added separately
+- moving gameplay UI state into `Engine.UI` is the important swap-over step: game logic should publish data, not draw final menus directly with ImGui
+- generated RML lets the current inventory/pickup modal be represented in the chosen UI technology before the C++ bridge is fully implemented
+- keeping ImGui as an automatic fallback avoids breaking playtests while the native bridge work continues
+- real slot indices are needed before the inventory can become a Resident Evil-style case with stable item positions, footprints, stack counts, controller focus, and eventual storage transfer
+- the native RmlUi bridge is not present in the workspace yet, so a preview renderer lets the user test the new UI data/layout flow in-game instead of waiting for the C++ integration
+- keeping the preview renderer inside `Engine.UI` means the game is already calling the same UI-layer seam that the final RmlUi renderer will own
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiImGuiPreviewRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Engine.UI.csproj`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiLayer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\RmlUiBackend.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\RmlUiFrameContext.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Native\RmlUiNativeApi.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Native\RmlUiRenderData.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rendering\RmlUiOverlayRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Native\HS2RmlUiBridge\HS2RmlUiBridge.h`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Native\HS2RmlUiBridge\README.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\Hosting\IOverlayRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\Hosting\EngineHost.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryContainer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryItemSaveData.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryItemStack.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\UIModeController.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rml`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\Shaders\RmlUiVS.hlsl`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\Shaders\RmlUiVS.cso`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\Shaders\RmlUiPS.hlsl`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\Shaders\RmlUiPS.cso`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `Game` compile check succeeded after the modal input/cursor change
+- targeted restore succeeded after adding the new `Engine.UI` project reference
+- `Engine.UI` compile check succeeded
+- `Engine.Runtime` compile check succeeded after adding the overlay hook
+- `Game` compile check succeeded after wiring the RmlUi setup
+- `Engine.UI` compile check succeeded after adding native bridge binding
+- `Game` compile check succeeded after adding the managed bridge binding
+- `Engine.UI` compile check succeeded after adding render-command binding
+- `Game` compile check succeeded after pre-seeding the isolated output with the new `Engine.UI` reference assembly for the existing `--no-dependencies` validation path
+- `Engine.UI` compile check succeeded after adding the first Veldrid draw consumer
+- `Engine.Runtime` compile check succeeded after the overlay hook remained compatible
+- `Game` compile check succeeded after the Veldrid draw consumer update
+- `fxc.exe` compiled the dedicated RmlUi vertex and pixel shaders
+- `Engine.UI` compile check succeeded after switching to dedicated UI shaders and texture-id lookup
+- `Game` compile check succeeded after the UI shader renderer update
+- `Engine.UI` compile check succeeded after adding gameplay UI state and generated RML document support
+- `Engine.Runtime` compile check succeeded after the overlay hook remained compatible
+- `Game` compile check succeeded after routing inventory/pickup/prompt state through `Engine.UI` and adding slot-indexed inventory placement
+- `Engine.UI` compile check succeeded after adding the ImGui-backed RmlUi preview renderer
+- `Engine.Runtime` compile check succeeded after the preview path stayed compatible
+- isolated `Game` compile check succeeded after routing play-mode HUD drawing through the `Engine.UI` preview
+- copied the validated `Game.dll`, `Engine.UI.dll`, and `Engine.Runtime.dll` into the normal `Game/bin/Debug/net8.0` output for immediate playtesting because the normal full build remains blocked by generated-file write permissions
+- in-game validation needed: press `I`, confirm camera/movement do not respond, cursor is visible, mouse hover still selects items, and `I` / controller `Back` closes cleanly
+
+### Next
+
+- test the interaction test level: press `I` / controller `Back`, confirm the new `Engine.UI` preview inventory appears, selection moves, descriptions update, item-collected screens show, and prompts/messages still appear
+- validate the fixed inventory pause/cursor behavior in game
+- validate inventory save/load with the new `SlotIndex` field, especially older saves that do not have slot indices yet
+- validate that inventory selection still moves cleanly with WASD, D-pad, and left stick after slot-indexed placement
+- implement the C++ `HS2RmlUiBridge` DLL against the new header and export the expected C ABI
+- add native texture upload/delete exports and connect them to the managed texture registry
+- implement `hs2_rmlui_set_document_body` in the native bridge so generated gameplay UI RML can refresh live without reloading the whole document
+- implement the native render-command producer inside `HS2RmlUiBridge`
+- wire RmlUi input routing for mouse, keyboard text, and controller focus navigation
+- load the generated `Content/UI/Runtime/gameplay_ui.rml` document once the bridge is active
+- keep ImGui inventory only as a fallback while RmlUi replaces the presentation layer
+- build true grid item placement and shared safe storage after the modal input path is confirmed solid
 
 ## 2026-04-27
 
@@ -58,6 +189,9 @@ The current gameplay issues being worked first are:
 - added a first item-collected overlay for pickups and chest rewards, dismissed with the existing `E` / controller `X` confirm action
 - turned the Service Key supply chests into prototype reward containers that grant Scrap and a Crank Handle
 - upgraded the temporary inventory overlay into a simple grid-slot view with stack counts, item footprints, and selected-item descriptions
+- changed inventory into a modal paused state: opening it releases the mouse, blocks gameplay interaction/movement, and skips fixed-step gameplay simulation until closed
+- added mouse hover selection for inventory grid items so descriptions update under the cursor
+- added keyboard/controller grid navigation using WASD, D-pad, and left stick to move the highlighted inventory slot
 
 ### Why
 
@@ -69,6 +203,7 @@ The current gameplay issues being worked first are:
 - shared safe storage depends on the same item stacking and slot-footprint rules as the player inventory
 - building the item model before the UI means chests, item pickup screens, inventory grid layout, and safe storage can all share the same item definitions
 - the first reward items prove the item catalog can support both stackable materials and larger puzzle objects
+- inventory should behave like a proper survival-horror menu: the world pauses, the mouse can inspect items, and controller navigation can move across the grid without requiring a mouse
 
 ### Files
 
@@ -83,6 +218,7 @@ The current gameplay issues being worked first are:
 - `Game` compile check succeeded after the interaction/save/layout changes
 - `Game` compile check succeeded after adding the item data model and wiring current keys/ink ribbons through it
 - `Game` compile check succeeded after adding pickup examine overlay, chest rewards, and the first grid-style inventory overlay
+- `Game` compile check succeeded after adding paused inventory state, mouse hover descriptions, and controller grid navigation
 - `git diff --check` passed with only existing line-ending warnings
 - in-game validation still needed for the three-lock Service Key expiry path and save reload edge cases
 
@@ -94,6 +230,7 @@ The current gameplay issues being worked first are:
 - validate pickup examine overlay flow for keys, ink ribbons, Scrap, and Crank Handle
 - validate the Service Key chest rewards and key expiry after all Service Key locks are opened
 - improve the grid inventory into true item placement/movement instead of the current simple slot view
+- evaluate a longer-term UI library before the inventory grows much beyond the current ImGui prototype
 - add shared safe storage after grid inventory and stack transfer rules exist
 - convert the name-prefix prototype interaction rules into authored interaction/lock/item data
 - add real inventory item inspection/description UI rather than only a simple item list

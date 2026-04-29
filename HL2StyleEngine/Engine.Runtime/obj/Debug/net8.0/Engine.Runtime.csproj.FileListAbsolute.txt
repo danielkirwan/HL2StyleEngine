@@ -60,3 +60,7 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\Engine.Ru
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\refint\Engine.Runtime.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\Engine.Runtime.pdb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\obj\Debug\net8.0\ref\Engine.Runtime.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiPS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiVS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiPS.hlsl
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiVS.hlsl

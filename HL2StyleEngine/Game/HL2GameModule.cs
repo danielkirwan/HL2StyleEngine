@@ -10,6 +10,7 @@ using Engine.Render;
 using Engine.Runtime.Entities;
 using Engine.Runtime.Entities.Interfaces;
 using Engine.Runtime.Hosting;
+using Engine.UI;
 using Game.Inventory;
 using Game.World;
 using Game.World.MovingPlatform;
@@ -20,7 +21,7 @@ using Veldrid;
 
 namespace Game;
 
-public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
+public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRenderer, IInputConsumer
 {
     private static readonly JsonSerializerOptions PrototypeSaveJsonOptions = new()
     {
@@ -97,6 +98,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private readonly HashSet<string> _openedDoors = new(StringComparer.OrdinalIgnoreCase);
     private bool _inventoryOpen;
     private int _selectedInventoryStackIndex = -1;
+    private bool _inventoryNavXHeld;
+    private bool _inventoryNavYHeld;
     private bool _itemCollectedOpen;
     private string _itemCollectedItemId = "";
     private int _itemCollectedCount;
@@ -118,6 +121,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private float _fps;
 
     private BasicWorldRenderer _world = null!;
+    private GameplayUiLayer _gameplayUi = null!;
 
     private bool _editorEnabled;
     private bool _prevLeftMouseDown;
@@ -148,6 +152,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private float _physicsMaxStep = 1f / 120f;
 
     public InputState InputState => _inputState;
+    private bool GameplayModalOpen => !_editorEnabled && (_inventoryOpen || _itemCollectedOpen);
 
     private string PrototypeSavePath => Path.Combine(AppContext.BaseDirectory, "Saves", "prototype_save.json");
 
@@ -159,6 +164,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _ctx.Renderer.GraphicsDevice,
             _ctx.Renderer.WorldOutputDescription,
             shaderDirRelativeToApp: "Shaders");
+
+        _gameplayUi = GameplayUiLayer.CreateRmlUi(Path.Combine(AppContext.BaseDirectory, "Content", "UI"));
 
         BuildActions();
         _scriptRegistry.Register<MovingPlatformParams>("MovingPlatform",e => new MovingPlatform(e));
@@ -220,12 +227,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _inputState.Update(snapshot);
         _inputSystem.Update();
 
+        if (GameplayModalOpen)
+            _ui.OpenUI();
+
         if (_inputState.WasPressed(Key.F2))
         {
             _editorEnabled = !_editorEnabled;
 
             if (_editorEnabled)
             {
+                _inventoryOpen = false;
+                _itemCollectedOpen = false;
                 _ui.OpenUI();
             }
             else
@@ -240,10 +252,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         {
             _interactionPrompt = "";
             if (InteractPressedThisFrame())
+            {
                 _itemCollectedOpen = false;
+                if (!_inventoryOpen)
+                    _ui.CloseUI();
+            }
         }
 
-        if (!_editorEnabled && !_itemCollectedOpen)
+        if (!_editorEnabled && _inventoryOpen)
+            UpdateInventoryNavigation();
+
+        if (!_editorEnabled && !_itemCollectedOpen && !_inventoryOpen)
         {
             TryPickupDropThrow();
             UpdateInteractionPrompt();
@@ -252,6 +271,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         if (!_editorEnabled && ResetLevelPressedThisFrame())
         {
             ResetPrototypeLevelToStart();
+            UpdateGameplayUi(dt);
             return;
         }
 
@@ -265,7 +285,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         }
 
         if (!_editorEnabled && ToggleInventoryPressedThisFrame())
-            _inventoryOpen = !_inventoryOpen;
+            SetInventoryOpen(!_inventoryOpen);
 
         if (_gameMessageTimer > 0f)
         {
@@ -274,8 +294,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 _gameMessage = "";
         }
 
-        if (_toggleUi.Pressed) _ui.ToggleUI();
-        if (_forceGame.Pressed) _ui.CloseUI();
+        if (_toggleUi.Pressed && !_inventoryOpen) _ui.ToggleUI();
+        if (_forceGame.Pressed && !_inventoryOpen) _ui.CloseUI();
 
         if (_editorEnabled)
         {
@@ -286,6 +306,16 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
             _wishDir = Vector3.Zero;
             _wishSpeed = 0f;
             _jumpPressedThisFrame = false;
+            UpdateGameplayUi(dt);
+            return;
+        }
+
+        if (_inventoryOpen || _itemCollectedOpen)
+        {
+            _wishDir = Vector3.Zero;
+            _wishSpeed = 0f;
+            _jumpPressedThisFrame = false;
+            UpdateGameplayUi(dt);
             return;
         }
 
@@ -343,6 +373,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
                 _jumpPressedThisFrame = true;
 
         }
+
+        UpdateGameplayUi(dt);
     }
 
     private static Func<LevelFile> GetDefaultLevelFactoryForPath(string path)
@@ -351,6 +383,74 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         return string.Equals(file, "interaction_test.json", StringComparison.OrdinalIgnoreCase)
             ? SimpleLevel.BuildInteractionTestFile
             : SimpleLevel.BuildRoom01File;
+    }
+
+    private void UpdateGameplayUi(float dt)
+    {
+        _gameplayUi.SubmitState(BuildGameplayUiState());
+        _gameplayUi.Update(new RmlUiFrameContext(
+            _ctx.Renderer,
+            _inputState,
+            _ctx.Window.Window.Width,
+            _ctx.Window.Window.Height,
+            dt));
+    }
+
+    private GameplayUiState BuildGameplayUiState()
+    {
+        List<GameplayUiInventoryItem> items = new(_inventory.StackCount);
+        IReadOnlyList<InventoryItemStack> stacks = _inventory.Stacks;
+        for (int i = 0; i < stacks.Count; i++)
+        {
+            InventoryItemStack stack = stacks[i];
+            InventoryItemDefinition definition = ItemCatalog.Get(stack.ItemId);
+            items.Add(new GameplayUiInventoryItem
+            {
+                SlotIndex = stack.SlotIndex,
+                Id = definition.Id,
+                DisplayName = definition.DisplayName,
+                Description = definition.Description,
+                Type = definition.Type.ToString(),
+                Count = stack.Count,
+                SlotWidth = definition.SlotWidth,
+                SlotHeight = definition.SlotHeight,
+                MaxStack = definition.MaxStack
+            });
+        }
+
+        return new GameplayUiState
+        {
+            InventoryOpen = !_editorEnabled && _inventoryOpen,
+            ItemCollectedOpen = !_editorEnabled && _itemCollectedOpen,
+            InteractionPrompt = !_editorEnabled ? _interactionPrompt : "",
+            GameMessage = !_editorEnabled ? _gameMessage : "",
+            GridWidth = _inventory.GridWidth,
+            GridHeight = _inventory.GridHeight,
+            UsedSlotCount = _inventory.UsedSlotCount,
+            SelectedSlot = _selectedInventoryStackIndex,
+            SaveCount = _savePointUseCount,
+            InventoryItems = items,
+            CollectedItem = BuildCollectedItemUiState()
+        };
+    }
+
+    private GameplayUiCollectedItem? BuildCollectedItemUiState()
+    {
+        if (!_itemCollectedOpen || string.IsNullOrWhiteSpace(_itemCollectedItemId))
+            return null;
+
+        InventoryItemDefinition definition = ItemCatalog.Get(_itemCollectedItemId);
+        return new GameplayUiCollectedItem
+        {
+            Id = definition.Id,
+            DisplayName = definition.DisplayName,
+            Description = definition.Description,
+            Type = definition.Type.ToString(),
+            Count = _itemCollectedCount,
+            SlotWidth = definition.SlotWidth,
+            SlotHeight = definition.SlotHeight,
+            MaxStack = definition.MaxStack
+        };
     }
 
     private static void EnsureInteractionTestLevelTemplate(string path)
@@ -520,11 +620,94 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _collectedInteractables.Clear();
         _openedDoors.Clear();
         _savePointUseCount = 0;
-        _inventoryOpen = false;
+        SetInventoryOpen(false);
         _selectedInventoryStackIndex = -1;
         _itemCollectedOpen = false;
         _itemCollectedItemId = "";
         _itemCollectedCount = 0;
+    }
+
+    private void SetInventoryOpen(bool open)
+    {
+        if (_inventoryOpen == open)
+            return;
+
+        _inventoryOpen = open;
+        _inventoryNavXHeld = false;
+        _inventoryNavYHeld = false;
+
+        if (_inventoryOpen)
+        {
+            if (!_inventory.IsEmpty && _selectedInventoryStackIndex < 0)
+                _selectedInventoryStackIndex = _inventory.Stacks[0].SlotIndex;
+
+            _ui.OpenUI();
+        }
+        else if (!_editorEnabled && !_itemCollectedOpen)
+        {
+            _ui.CloseUI();
+        }
+    }
+
+    private void UpdateInventoryNavigation()
+    {
+        if (_inventory.IsEmpty)
+        {
+            _selectedInventoryStackIndex = -1;
+            return;
+        }
+
+        if (_selectedInventoryStackIndex < 0)
+            _selectedInventoryStackIndex = _inventory.Stacks[0].SlotIndex;
+
+        int dx = 0;
+        int dy = 0;
+
+        if (_inputState.WasPressed(Key.A) || _inputState.GetGamepadPressed(GamepadButton.DpadLeft))
+            dx = -1;
+        else if (_inputState.WasPressed(Key.D) || _inputState.GetGamepadPressed(GamepadButton.DpadRight))
+            dx = 1;
+
+        if (_inputState.WasPressed(Key.W) || _inputState.GetGamepadPressed(GamepadButton.DpadUp))
+            dy = -1;
+        else if (_inputState.WasPressed(Key.S) || _inputState.GetGamepadPressed(GamepadButton.DpadDown))
+            dy = 1;
+
+        Vector2 stick = _move.Value2D;
+        const float pressThreshold = 0.55f;
+        const float releaseThreshold = 0.35f;
+
+        if (!_inventoryNavXHeld && MathF.Abs(stick.X) >= pressThreshold)
+        {
+            dx = stick.X > 0f ? 1 : -1;
+            _inventoryNavXHeld = true;
+        }
+        else if (_inventoryNavXHeld && MathF.Abs(stick.X) <= releaseThreshold)
+        {
+            _inventoryNavXHeld = false;
+        }
+
+        if (!_inventoryNavYHeld && MathF.Abs(stick.Y) >= pressThreshold)
+        {
+            dy = stick.Y > 0f ? -1 : 1;
+            _inventoryNavYHeld = true;
+        }
+        else if (_inventoryNavYHeld && MathF.Abs(stick.Y) <= releaseThreshold)
+        {
+            _inventoryNavYHeld = false;
+        }
+
+        if (dx == 0 && dy == 0)
+            return;
+
+        int slot = Math.Clamp(_selectedInventoryStackIndex, 0, _inventory.SlotCapacity - 1);
+        int col = slot % _inventory.GridWidth;
+        int row = slot / _inventory.GridWidth;
+
+        col = Math.Clamp(col + dx, 0, _inventory.GridWidth - 1);
+        row = Math.Clamp(row + dy, 0, Math.Max(0, (_inventory.SlotCapacity - 1) / _inventory.GridWidth));
+
+        _selectedInventoryStackIndex = Math.Clamp(row * _inventory.GridWidth + col, 0, _inventory.SlotCapacity - 1);
     }
 
     private void ApplyPersistentInteractionStateToRuntime()
@@ -627,6 +810,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         _itemCollectedItemId = itemId;
         _itemCollectedCount = Math.Max(1, count);
         _itemCollectedOpen = true;
+        if (!_editorEnabled)
+            _ui.OpenUI();
     }
 
     private static bool TryGetLockedChestReward(Entity chest, out string itemId, out int count)
@@ -2904,6 +3089,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         if (_editorEnabled)
             return;
 
+        if (_inventoryOpen || _itemCollectedOpen)
+        {
+            _jumpPressedThisFrame = false;
+            return;
+        }
+
         if (!_ui.IsMouseCaptured)
         {
             _jumpPressedThisFrame = false;
@@ -3142,6 +3333,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     public void DrawImGui()
     {
+        ImGui.GetIO().MouseDrawCursor = GameplayModalOpen;
+
         _mouseOverEditorUi = false;
         _keyboardOverEditorUi = false;
 
@@ -3203,6 +3396,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         ImGui.Text($"Runtime Entities: {_runtimeEntities.Count}");
         ImGui.Text($"Runtime Renderables: {_runtimeEntities.Count(e => e.Render.Enabled)}");
         ImGui.Text($"Runtime Colliders: {_runtimeWorldColliders.Count}");
+        ImGui.Text($"Gameplay UI: {_gameplayUi.BackendName} ({(_gameplayUi.IsReady ? "ready" : "pending")})");
+        ImGui.TextWrapped(_gameplayUi.Status);
+        ImGui.TextWrapped(_gameplayUi.RenderStatus);
 
         if (_runtimeEntities.Count > 0)
         {
@@ -3215,6 +3411,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private void DrawGameplayHud()
     {
         if (_editorEnabled)
+            return;
+
+        if (_gameplayUi.DrawPreview(out int previewSelectedSlot))
+        {
+            if (previewSelectedSlot >= 0)
+                _selectedInventoryStackIndex = previewSelectedSlot;
+
+            return;
+        }
+
+        if (_gameplayUi.UsesNativePresentation)
             return;
 
         ImGuiViewportPtr viewport = ImGui.GetMainViewport();
@@ -3249,7 +3456,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
         ImGui.SetNextWindowPos(new Vector2(viewport.Pos.X + 24f, viewport.Pos.Y + 90f), ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(260f, 0f), ImGuiCond.Always);
         ImGui.SetNextWindowBgAlpha(0.85f);
-        ImGui.Begin("Inventory", ref _inventoryOpen, ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoSavedSettings);
+        ImGui.Begin("Inventory", ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoSavedSettings);
         ImGui.Text("Inventory");
         ImGui.Separator();
 
@@ -3310,22 +3517,30 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
     private void DrawInventoryGrid()
     {
         IReadOnlyList<InventoryItemStack> stacks = _inventory.Stacks;
-        if (_selectedInventoryStackIndex >= stacks.Count)
-            _selectedInventoryStackIndex = stacks.Count - 1;
+        Dictionary<int, InventoryItemStack> stacksBySlot = stacks.ToDictionary(stack => stack.SlotIndex);
 
         ImGui.Columns(_inventory.GridWidth, "InventoryGrid", false);
         for (int slot = 0; slot < _inventory.SlotCapacity; slot++)
         {
             string label = $"##slot{slot}";
-            if (slot < stacks.Count)
+            bool slotSelected = slot == _selectedInventoryStackIndex;
+            if (slotSelected)
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.35f, 0.46f, 0.68f, 1f));
+
+            if (stacksBySlot.TryGetValue(slot, out InventoryItemStack? stack))
             {
-                InventoryItemStack stack = stacks[slot];
                 InventoryItemDefinition definition = ItemCatalog.Get(stack.ItemId);
                 string countSuffix = stack.Count > 1 ? $" x{stack.Count}" : "";
                 label = $"{ShortItemLabel(definition.DisplayName)}{countSuffix}\n{definition.SlotWidth}x{definition.SlotHeight}##slot{slot}";
             }
 
-            if (ImGui.Button(label, new Vector2(56f, 44f)) && slot < stacks.Count)
+            if (ImGui.Button(label, new Vector2(56f, 44f)) && stacksBySlot.ContainsKey(slot))
+                _selectedInventoryStackIndex = slot;
+
+            if (slotSelected)
+                ImGui.PopStyleColor();
+
+            if (stacksBySlot.ContainsKey(slot) && ImGui.IsItemHovered())
                 _selectedInventoryStackIndex = slot;
 
             ImGui.NextColumn();
@@ -3333,12 +3548,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
         ImGui.Columns(1);
 
-        if (_selectedInventoryStackIndex >= 0 && _selectedInventoryStackIndex < stacks.Count)
+        if (_selectedInventoryStackIndex >= 0 &&
+            stacksBySlot.TryGetValue(_selectedInventoryStackIndex, out InventoryItemStack? selectedStack))
         {
-            InventoryItemStack selected = stacks[_selectedInventoryStackIndex];
-            InventoryItemDefinition definition = ItemCatalog.Get(selected.ItemId);
+            InventoryItemDefinition definition = ItemCatalog.Get(selectedStack.ItemId);
             ImGui.Separator();
-            string countSuffix = selected.Count > 1 ? $" x{selected.Count}" : "";
+            string countSuffix = selectedStack.Count > 1 ? $" x{selectedStack.Count}" : "";
             ImGui.Text($"{definition.DisplayName}{countSuffix}");
             ImGui.TextDisabled($"{definition.Type} | {definition.SlotWidth}x{definition.SlotHeight} | Stack {definition.MaxStack}");
             if (!string.IsNullOrWhiteSpace(definition.Description))
@@ -3529,6 +3744,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
             DrawPrimitive(renderer, ent.Render.Shape, pos, size, rot, col, ent.Render.Radius, ent.Render.Height);
         }
+    }
+
+    public void RenderOverlay(Renderer renderer)
+    {
+        _gameplayUi.RenderOverlay(renderer);
     }
 
 
@@ -5163,6 +5383,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IInputConsumer
 
     public void Dispose()
     {
+        _gameplayUi?.Dispose();
         _world?.Dispose();
     }
 }

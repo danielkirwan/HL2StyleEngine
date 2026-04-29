@@ -1,7 +1,27 @@
 {
   "LevelName": "interaction_test.json",
   "Inventory": [
-    "ArchiveKey"
+    "ArchiveKey",
+    "CrankHandle",
+    "Scrap"
+  ],
+  "InventoryItems": [
+    {
+      "ItemId": "InkRibbon",
+      "Count": 1
+    },
+    {
+      "ItemId": "Scrap",
+      "Count": 3
+    },
+    {
+      "ItemId": "CrankHandle",
+      "Count": 1
+    },
+    {
+      "ItemId": "ArchiveKey",
+      "Count": 1
+    }
   ],
   "CollectedInteractables": [
     "ItemInkRibbon_Foyer",
@@ -18,9 +38,9 @@
   ],
   "InkRibbons": 1,
   "SavePointUseCount": 1,
-  "PlayerX": -6.0776362,
+  "PlayerX": -6.3870525,
   "PlayerY": 0,
   "PlayerZ": 0.67999995,
-  "CameraYaw": -0.15500107,
-  "CameraPitch": -0.8574992
+  "CameraYaw": 0.032502577,
+  "CameraPitch": -0.73499984
 }

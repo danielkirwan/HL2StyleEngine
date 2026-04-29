@@ -12,7 +12,8 @@
           "Engine.Editor": "1.0.0",
           "Engine.Input": "1.0.0",
           "Engine.Physics": "1.0.0",
-          "Engine.Runtime": "1.0.0"
+          "Engine.Runtime": "1.0.0",
+          "Engine.UI": "1.0.0"
         },
         "runtime": {
           "Game.dll": {}
@@ -626,6 +627,19 @@
             "fileVersion": "1.0.0.0"
           }
         }
+      },
+      "Engine.UI/1.0.0": {
+        "dependencies": {
+          "Engine.Input": "1.0.0",
+          "Engine.Render": "1.0.0",
+          "ImGui.NET": "1.91.6.1"
+        },
+        "runtime": {
+          "Engine.UI.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
       }
     }
   },
@@ -1037,6 +1051,11 @@
       "sha512": ""
     },
     "Engine.Runtime/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Engine.UI/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

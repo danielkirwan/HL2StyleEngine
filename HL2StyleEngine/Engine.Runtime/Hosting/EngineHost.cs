@@ -107,6 +107,11 @@ public sealed class EngineHost : IDisposable
 
             _renderer.ResolveWorldToSwapchain();
 
+            if (module is IOverlayRenderer overlay)
+            {
+                overlay.RenderOverlay(_renderer);
+            }
+
             _imgui.Render(_renderer.GraphicsDevice, _renderer.CommandList);
 
             _renderer.EndFrame();

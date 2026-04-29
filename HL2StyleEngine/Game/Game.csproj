@@ -12,5 +12,11 @@
     <ProjectReference Include="..\Engine.Physics\Engine.Physics.csproj" />
     <ProjectReference Include="..\Engine.Input\Engine.Input.csproj" />
     <ProjectReference Include="..\Engine.Editor\Engine.Editor.csproj" />
+    <ProjectReference Include="..\Engine.UI\Engine.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Content\UI\**\*.rml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\UI\**\*.rcss" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

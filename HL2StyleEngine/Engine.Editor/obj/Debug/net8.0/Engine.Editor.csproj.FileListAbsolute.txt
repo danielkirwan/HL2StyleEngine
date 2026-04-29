@@ -64,3 +64,7 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Editor\obj\Debug\net8.0\Engine.Edi
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Editor\obj\Debug\net8.0\refint\Engine.Editor.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Editor\obj\Debug\net8.0\Engine.Editor.pdb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Editor\obj\Debug\net8.0\ref\Engine.Editor.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Shaders\RmlUiPS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Shaders\RmlUiVS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Shaders\RmlUiPS.hlsl
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\bin\Debug\net8.0\Shaders\RmlUiVS.hlsl

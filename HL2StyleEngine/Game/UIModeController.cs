@@ -26,15 +26,17 @@ public sealed class UIModeController
 
     public void OpenUI()
     {
-        if (IsUIOpen) return;
-        IsUIOpen = true;
+        if (!IsUIOpen)
+            IsUIOpen = true;
+
         ApplyMouseState();
     }
 
     public void CloseUI()
     {
-        if (!IsUIOpen) return;
-        IsUIOpen = false;
+        if (IsUIOpen)
+            IsUIOpen = false;
+
         ApplyMouseState();
     }
 

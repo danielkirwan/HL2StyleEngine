@@ -44,3 +44,7 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.Ren
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\refint\Engine.Render.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\Engine.Render.pdb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Render\obj\Debug\net8.0\ref\Engine.Render.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\bin\Debug\net8.0\Shaders\RmlUiPS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\bin\Debug\net8.0\Shaders\RmlUiVS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\bin\Debug\net8.0\Shaders\RmlUiPS.hlsl
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\bin\Debug\net8.0\Shaders\RmlUiVS.hlsl

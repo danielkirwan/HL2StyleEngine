@@ -1,0 +1,26 @@
+<rml>
+  <head>
+    <title>Inventory Prototype</title>
+    <link type="text/rcss" href="inventory.rcss" />
+  </head>
+  <body>
+    <div id="inventory-root">
+      <section id="storage-panel">
+        <h1>Inventory</h1>
+        <p class="muted">RmlUi gameplay UI placeholder</p>
+      </section>
+      <section id="item-grid">
+        <div class="slot selected">Key</div>
+        <div class="slot">Ink</div>
+        <div class="slot wide">Crank</div>
+        <div class="slot empty"></div>
+        <div class="slot empty"></div>
+        <div class="slot empty"></div>
+      </section>
+      <section id="description-panel">
+        <h2>Selected Item</h2>
+        <p>This document is staged for the RmlUi backend spike.</p>
+      </section>
+    </div>
+  </body>
+</rml>

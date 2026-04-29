@@ -1,6 +1,6 @@
 # Project Overview
 
-Last updated: 2026-04-27
+Last updated: 2026-04-29
 
 ## Purpose
 
@@ -111,6 +111,8 @@ The current implementation state is:
 - first-pass pickup/examine overlay for collected items
 - locked chests can now grant prototype reward items from the item catalog
 - the temporary inventory overlay now shows grid slots, stack counts, item footprints, and selected-item descriptions
+- opening inventory pauses gameplay and allows mouse hover or controller/keyboard navigation over the inventory grid
+- inventory item stacks now have stable grid slot indices and save/load those positions
 - a developer reset hotkey for clean interaction-test runs
 - a small multi-room key route that is playable and starts shaping the horror vertical slice
 - controller parity for new player-facing actions
@@ -125,6 +127,17 @@ The intended inventory direction is Resident Evil Requiem-inspired:
 - ink ribbons remain consumable save resources and are not part of the reusable-key expiry rule
 - locked chests should later reveal items such as puzzle objects, upgrade materials, or other pickups
 - safe storage should let the player transfer items between inventory and a shared global box, retrievable from any safe storage point
+- RmlUi is the preferred long-term gameplay UI interface candidate for themed inventory, item examine, save/storage, and puzzle UI, pending a focused integration spike
+- ImGui should remain useful for editor/debug tooling and short-term gameplay prototyping, but it should not become the final survival-horror menu presentation layer
+- `Engine.UI` now provides the gameplay UI integration seam, with a first `GameplayUiLayer` and RmlUi backend facade
+- RmlUi content assets are starting under `Game/Content/UI`, with staged inventory styling and generated runtime RML for the native bridge spike
+- the expected native bridge contract is now defined under `Native/HS2RmlUiBridge`, and `Engine.UI` can bind those exports when a bridge DLL is present
+- the native-to-managed render-command handoff is now defined for RmlUi overlay data, but managed Veldrid draw consumption is still a scaffold
+- the first managed Veldrid draw consumer exists for RmlUi render commands, using dynamic buffers, scissor rectangles, indexed draws, and a fallback white texture
+- dedicated RmlUi UI shaders and managed texture-id lookup are in place, though real native texture upload is still pending
+- the game now publishes inventory, pickup modal, prompt, message, selection, and save-count state to `Engine.UI`; ImGui is now only the gameplay UI fallback when RmlUi is not ready
+- the generated RmlUi document path targets `Content/UI/Runtime/gameplay_ui.rml` and can live-refresh through the optional `hs2_rmlui_set_document_body` bridge export once the native DLL implements it
+- an `Engine.UI` ImGui-backed preview renderer now lets the interaction test level show the new RmlUi-style gameplay UI layout before the native RmlUi DLL exists
 
 The recent physics work remains important but is now parked as a foundation rather than the only active task.
 
@@ -149,8 +162,13 @@ That work is aimed at fixing several visible problems:
 
 - gameplay interactions are still authored by name prefixes such as `ItemKey_`, `LockedDoor_`, `LockedChest_`, `ItemInkRibbon_`, and `SavePoint_`
 - the inventory UI is still a simple list rather than a proper inspect/combine/use survival-horror inventory
-- inventory items now have data-model support for slot footprints, stack limits, categories, and descriptions, but the UI does not yet present them in a real grid
+- inventory items now have data-model support for slot footprints, stack limits, categories, descriptions, and stable slot indices, but item moving/rotation/storage transfer is not implemented yet
 - the item-collected/examine screen is a first pass and still needs final Resident Evil-style presentation and pause behavior
+- the current inventory UI is still an ImGui prototype rather than the final themed menu layer
+- RmlUi is set up at the project/asset/backend-seam level with generated gameplay RML, but it is not rendering until the native bridge DLL exists
+- the current in-game test path uses an `Engine.UI` preview renderer for the new UI layout; this is intentionally temporary and should be replaced by the native RmlUi renderer when the bridge lands
+- the native bridge named `HS2RmlUiBridge` is defined but not implemented yet
+- the first Veldrid render-command consumer is implemented, but it still needs native render-command production, native texture upload/binding, richer input routing, font/assets, and RmlUi-side mouse/controller focus events
 - safe storage boxes and inventory/storage transfer are not implemented yet
 - locked chests currently disappear after granting prototype rewards rather than playing an authored open animation/state
 - save/load is prototype-local JSON state, not a full slot/save-profile system
@@ -166,8 +184,18 @@ That work is aimed at fixing several visible problems:
 - validate save reload behavior after keys are collected, locks are opened, and a key has expired
 - validate pickup/examine overlay flow on key pickups, ink ribbons, and chest rewards
 - validate chest rewards for the Service Key supply chests: Scrap and Crank Handle
+- validate inventory pause, mouse hover descriptions, and controller/keyboard grid navigation in game
+- validate the latest inventory modal fix: opening inventory should stop camera/movement input and show a visible cursor for mouse hover
+- validate the `Engine.UI` preview path in the interaction test level: prompts, item-collected overlay, inventory grid, mouse hover, and controller/keyboard selection
 - polish prompt/readability feedback for locked doors, locked chests, expired keys, ink ribbon count, and typewriter state
-- improve the temporary grid inventory into a true slot-placement UI with item movement
+- evaluate whether to keep custom ImGui/Veldrid UI for tooling only and move gameplay menus to a dedicated game UI library
+- implement the RmlUi native bridge and Veldrid overlay renderer before building the final inventory/storage UI
+- implement the C++ `HS2RmlUiBridge` DLL against the staged C ABI
+- add native texture upload/delete exports so RmlUi font/image texture ids bind real Veldrid textures
+- implement `hs2_rmlui_set_document_body` so generated inventory/pickup/prompt RML refreshes live
+- implement native render-command production in `HS2RmlUiBridge` and validate it against the managed Veldrid consumer
+- load the generated RmlUi gameplay document and validate mouse/controller focus navigation through the new `Engine.UI` layer
+- improve the slot-indexed inventory into true item movement/rotation and storage transfer
 - tune interaction prompt readability and raycast distance
 - replace the first-pass name-prefix interaction prototype with level-authored components if the flow feels right
 - build a proper inventory screen with item descriptions and selected-item focus

@@ -1,0 +1,10 @@
+﻿<rml>
+  <head>
+    <title>Gameplay UI</title>
+    <link type="text/rcss" href="../Inventory/inventory.rcss" />
+  </head>
+  <body>
+    <div id="gameplay-root">
+    </div>
+  </body>
+</rml>

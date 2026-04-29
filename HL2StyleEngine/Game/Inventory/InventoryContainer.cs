@@ -31,6 +31,10 @@ public sealed class InventoryContainer
         if (string.IsNullOrWhiteSpace(itemId) || count <= 0)
             return false;
 
+        List<InventoryItemStack> snapshot = _stacks
+            .Select(stack => new InventoryItemStack(stack.ItemId, stack.Count, stack.SlotIndex))
+            .ToList();
+
         InventoryItemDefinition definition = ItemCatalog.Get(itemId);
         if (definition.MaxStack == 1 && Contains(itemId))
             return true;
@@ -55,7 +59,14 @@ public sealed class InventoryContainer
         while (remaining > 0)
         {
             int stackCount = Math.Min(definition.MaxStack, remaining);
-            _stacks.Add(new InventoryItemStack(itemId, stackCount));
+            int slotIndex = FindFirstFreeSlot(definition);
+            if (slotIndex < 0)
+            {
+                Restore(snapshot);
+                return false;
+            }
+
+            _stacks.Add(new InventoryItemStack(itemId, stackCount, slotIndex));
             remaining -= stackCount;
         }
 
@@ -103,13 +114,90 @@ public sealed class InventoryContainer
 
     public List<InventoryItemSaveData> ToSaveData()
         => _stacks
-            .Select(stack => new InventoryItemSaveData { ItemId = stack.ItemId, Count = stack.Count })
+            .Select(stack => new InventoryItemSaveData { ItemId = stack.ItemId, Count = stack.Count, SlotIndex = stack.SlotIndex })
             .ToList();
 
     public void LoadFromSave(IEnumerable<InventoryItemSaveData> items)
     {
         Clear();
-        foreach (InventoryItemSaveData item in items)
+        foreach (InventoryItemSaveData item in items.OrderBy(item => item.SlotIndex < 0 ? int.MaxValue : item.SlotIndex))
+        {
+            if (item.SlotIndex >= 0 && TryAddStackAt(item.ItemId, item.Count, item.SlotIndex))
+                continue;
+
             Add(item.ItemId, item.Count);
+        }
+    }
+
+    private bool TryAddStackAt(string itemId, int count, int slotIndex)
+    {
+        if (string.IsNullOrWhiteSpace(itemId) || count <= 0)
+            return false;
+
+        InventoryItemDefinition definition = ItemCatalog.Get(itemId);
+        if (count > definition.MaxStack)
+            return false;
+
+        if (!CanPlaceAt(definition, slotIndex, ignoredStack: null))
+            return false;
+
+        _stacks.Add(new InventoryItemStack(itemId, count, slotIndex));
+        return true;
+    }
+
+    private int FindFirstFreeSlot(InventoryItemDefinition definition)
+    {
+        for (int slot = 0; slot < SlotCapacity; slot++)
+        {
+            if (CanPlaceAt(definition, slot, ignoredStack: null))
+                return slot;
+        }
+
+        return -1;
+    }
+
+    private bool CanPlaceAt(InventoryItemDefinition definition, int slotIndex, InventoryItemStack? ignoredStack)
+    {
+        if (slotIndex < 0 || slotIndex >= SlotCapacity)
+            return false;
+
+        int startX = slotIndex % GridWidth;
+        int startY = slotIndex / GridWidth;
+        if (startX + definition.SlotWidth > GridWidth || startY + definition.SlotHeight > GridHeight)
+            return false;
+
+        foreach (InventoryItemStack stack in _stacks)
+        {
+            if (ReferenceEquals(stack, ignoredStack))
+                continue;
+
+            if (FootprintsOverlap(slotIndex, definition, stack.SlotIndex, ItemCatalog.Get(stack.ItemId)))
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool FootprintsOverlap(
+        int aSlot,
+        InventoryItemDefinition a,
+        int bSlot,
+        InventoryItemDefinition b)
+    {
+        int ax = aSlot % GridWidth;
+        int ay = aSlot / GridWidth;
+        int bx = bSlot % GridWidth;
+        int by = bSlot / GridWidth;
+
+        return ax < bx + b.SlotWidth &&
+               ax + a.SlotWidth > bx &&
+               ay < by + b.SlotHeight &&
+               ay + a.SlotHeight > by;
+    }
+
+    private void Restore(List<InventoryItemStack> snapshot)
+    {
+        _stacks.Clear();
+        _stacks.AddRange(snapshot);
     }
 }
