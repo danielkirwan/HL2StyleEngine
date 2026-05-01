@@ -5,6 +5,67 @@
   </head>
   <body>
     <div id="gameplay-root">
+      <section id="inventory-panel">
+        <div id="inventory-header">
+          <div>
+            <p class="eyebrow">Item Box</p>
+            <h1>Inventory</h1>
+          </div>
+          <p class="slot-count">Slots: 4/32</p>
+        </div>
+        <div id="inventory-grid" class="cols-8">
+          <div class="slot filled" data-slot="0">
+            <p class="slot-name">Archive Ke</p>
+            <p class="slot-footprint">1x1</p>
+          </div>
+          <div class="slot empty" data-slot="1"></div>
+          <div class="slot empty" data-slot="2"></div>
+          <div class="slot empty" data-slot="3"></div>
+          <div class="slot empty" data-slot="4"></div>
+          <div class="slot empty" data-slot="5"></div>
+          <div class="slot filled footprint-origin" data-slot="6">
+            <p class="slot-name">Crank Hand</p>
+            <p class="slot-footprint">1x2</p>
+          </div>
+          <div class="slot empty" data-slot="7"></div>
+          <div class="slot empty" data-slot="8"></div>
+          <div class="slot empty" data-slot="9"></div>
+          <div class="slot empty" data-slot="10"></div>
+          <div class="slot empty" data-slot="11"></div>
+          <div class="slot filled" data-slot="12">
+            <p class="slot-name">Scrap x3</p>
+            <p class="slot-footprint">1x1</p>
+          </div>
+          <div class="slot empty" data-slot="13"></div>
+          <div class="slot filled footprint-covered selected" data-slot="14">
+            <p class="slot-name">Crank Hand</p>
+          </div>
+          <div class="slot empty" data-slot="15"></div>
+          <div class="slot empty" data-slot="16"></div>
+          <div class="slot empty" data-slot="17"></div>
+          <div class="slot empty" data-slot="18"></div>
+          <div class="slot empty" data-slot="19"></div>
+          <div class="slot empty" data-slot="20"></div>
+          <div class="slot empty" data-slot="21"></div>
+          <div class="slot empty" data-slot="22"></div>
+          <div class="slot empty" data-slot="23"></div>
+          <div class="slot empty" data-slot="24"></div>
+          <div class="slot empty" data-slot="25"></div>
+          <div class="slot empty" data-slot="26"></div>
+          <div class="slot empty" data-slot="27"></div>
+          <div class="slot empty" data-slot="28"></div>
+          <div class="slot empty" data-slot="29"></div>
+          <div class="slot empty" data-slot="30"></div>
+          <div class="slot empty" data-slot="31"></div>
+        </div>
+        <aside id="description-panel">
+          <h2>Crank Handle</h2>
+          <p class="muted">Puzzle | 1x2 slots | Stack 1</p>
+          <p class="description">A sturdy handle for a square crank mechanism.</p>
+          <p class="muted">Saves used: 2</p>
+          <p class="footer-hint">E / X: Move | I / Back: Close</p>
+        </aside>
+      </section>
     </div>
   </body>
 </rml>

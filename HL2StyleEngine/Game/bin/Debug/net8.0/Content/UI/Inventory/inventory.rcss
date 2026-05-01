@@ -93,8 +93,36 @@ h2 {
   background-color: rgba(73, 83, 82, 0.98);
 }
 
+.slot.moving-source {
+  border: 2px #c9b462;
+  background-color: rgba(65, 57, 31, 0.98);
+}
+
+.slot.move-valid {
+  border: 2px #80c98e;
+  background-color: rgba(36, 86, 56, 0.98);
+}
+
+.slot.move-invalid {
+  border: 2px #d16a5d;
+  background-color: rgba(92, 36, 34, 0.98);
+}
+
 .slot.empty {
   background-color: rgba(13, 17, 18, 0.82);
+}
+
+.slot.footprint-origin {
+  border: 2px rgba(180, 184, 166, 0.88);
+}
+
+.slot.footprint-covered {
+  border: 1px rgba(139, 148, 139, 0.70);
+  background-color: rgba(18, 28, 28, 0.94);
+}
+
+.slot.footprint-covered .slot-name {
+  color: #6f7771;
 }
 
 .slot-name {

@@ -10,6 +10,11 @@ public sealed class GameplayUiState
     public int GridHeight { get; init; } = 4;
     public int UsedSlotCount { get; init; }
     public int SelectedSlot { get; init; } = -1;
+    public bool MovingInventoryItem { get; init; }
+    public int MovingFromSlot { get; init; } = -1;
+    public int MovingTargetSlot { get; init; } = -1;
+    public bool CanPlaceMovingItem { get; init; }
+    public bool CanSwapMovingItem { get; init; }
     public int SaveCount { get; init; }
     public IReadOnlyList<GameplayUiInventoryItem> InventoryItems { get; init; } = Array.Empty<GameplayUiInventoryItem>();
     public GameplayUiCollectedItem? CollectedItem { get; init; }
@@ -18,6 +23,7 @@ public sealed class GameplayUiState
 public sealed class GameplayUiInventoryItem
 {
     public int SlotIndex { get; init; }
+    public IReadOnlyList<int> CoveredSlots { get; init; } = Array.Empty<int>();
     public string Id { get; init; } = "";
     public string DisplayName { get; init; } = "";
     public string Description { get; init; } = "";

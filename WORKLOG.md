@@ -1,6 +1,6 @@
 # Work Log
 
-Last updated: 2026-04-29
+Last updated: 2026-05-01
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
@@ -41,6 +41,61 @@ The current gameplay issues being worked first are:
 - the current gameplay prototype now has a playable interaction test level for key-door-save flow
 - the user has confirmed the playable area is good and keys can be found and used
 - RmlUi is now the preferred direction for final gameplay UI, while ImGui remains the current prototype/editor UI layer
+
+## 2026-05-01
+
+### Summary
+
+- added inventory item movement across the slot-indexed grid
+- added `InventoryContainer.CanMoveStackToSlot(...)` and `MoveStackToSlot(...)` so item footprint validation happens in the inventory model rather than the UI
+- added inventory move state to gameplay UI data: moving flag, source slot, target slot, and target validity
+- wired keyboard/controller confirm to inventory movement: `E` / controller `X` picks up the selected item, moves the target with existing navigation, and places it if the item fits
+- wired mouse movement support: clicking an item starts moving it, hovering/clicking a destination slot targets placement, and clicking a valid destination places it
+- made `I` / controller `Back` cancel an active item move before closing the inventory
+- updated the Engine.UI preview renderer to highlight the moving source slot, valid destination slots, and invalid destination slots
+- updated generated RML and inventory RCSS with matching move-valid / move-invalid / moving-source state classes for the future native RmlUi path
+- copied the validated isolated build into `Game/bin/Debug/net8.0` so the interaction test level can immediately test inventory movement
+- made multi-slot item footprints visible in the Engine.UI preview, so a 1x2 item now occupies both grid slots instead of only showing `1x2` text
+- added covered-slot data to gameplay UI inventory items so generated RML and the preview can distinguish item origin slots from footprint-covered slots
+- added move-or-swap support in `InventoryContainer`; dragging an item over another item can swap their positions when both item footprints fit after the exchange
+- updated move feedback so valid swaps show as allowed and display a swap hint instead of an invalid placement message
+
+### Why
+
+- the inventory needs real case-management behavior before shared storage, item transfer, or item action menus will feel useful
+- movement validation belongs in the inventory model so ImGui preview, generated RML, future native RmlUi, and safe storage all share the same rules
+- keeping movement on the existing confirm/cancel controls preserves controller parity without adding surprise new bindings
+- Resident Evil-style inventory readability depends on item footprints being visible, especially before final item art exists
+- swap behavior avoids busywork when reorganizing the case and keeps the prototype closer to modern survival-horror inventory feel
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryContainer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiImGuiPreviewRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `Engine.UI` compile check succeeded
+- `Engine.Runtime` compile check succeeded
+- isolated `Game` compile check succeeded
+- copied the validated `Game.dll`, `Engine.UI.dll`, and `Engine.Runtime.dll` into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.UI` compile check succeeded after adding footprint-covered slots and swap hints
+- isolated `Game` compile check succeeded after adding inventory swap behavior
+- copied the validated footprint/swap build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+
+### Next
+
+- playtest inventory movement: pick up keys, ink ribbons, Scrap, and the 1x2 Crank Handle, then move them to valid and invalid slots
+- playtest swapping: drag a key or ribbon onto Scrap/Crank Handle and confirm both items trade positions only when both footprints fit
+- verify `I` / controller `Back` cancels an active move and only closes inventory on the next press
+- verify moved slot positions persist after saving at the typewriter and reloading
+- add shared safe storage using the same grid movement and placement rules
 
 ## 2026-04-29
 

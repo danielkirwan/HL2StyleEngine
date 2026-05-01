@@ -109,7 +109,8 @@ internal sealed class GameplayUiImGuiPreviewRenderer
             ImGuiWindowFlags.NoMove |
             ImGuiWindowFlags.NoSavedSettings;
 
-        Dictionary<int, GameplayUiInventoryItem> bySlot = state.InventoryItems.ToDictionary(item => item.SlotIndex);
+        Dictionary<int, GameplayUiInventoryItem> byOriginSlot = state.InventoryItems.ToDictionary(item => item.SlotIndex);
+        Dictionary<int, GameplayUiInventoryItem> byCoveredSlot = BuildCoveredSlotLookup(state);
 
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.018f, 0.022f, 0.024f, 0.96f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.66f, 0.68f, 0.61f, 0.36f));
@@ -137,37 +138,93 @@ internal sealed class GameplayUiImGuiPreviewRenderer
             Vector2 slotPos = gridStart + new Vector2(col * (slotSize + gap), row * (slotSize + gap));
             ImGui.SetCursorScreenPos(slotPos);
 
-            bool hasItem = bySlot.TryGetValue(slot, out GameplayUiInventoryItem? item);
+            bool hasItemOrigin = byOriginSlot.TryGetValue(slot, out GameplayUiInventoryItem? item);
+            bool hasCoveredItem = byCoveredSlot.TryGetValue(slot, out GameplayUiInventoryItem? coveredItem);
             bool selected = slot == state.SelectedSlot;
-            Vector4 fill = hasItem
+            bool movingSource = state.MovingInventoryItem && slot == state.MovingFromSlot;
+            bool movingTarget = state.MovingInventoryItem && slot == state.MovingTargetSlot;
+            bool occupiedByFootprint = hasCoveredItem && !hasItemOrigin;
+            Vector4 fill = hasCoveredItem
                 ? new Vector4(0.11f, 0.14f, 0.14f, 0.94f)
                 : new Vector4(0.055f, 0.065f, 0.070f, 0.88f);
+            if (occupiedByFootprint)
+                fill = new Vector4(0.085f, 0.11f, 0.11f, 0.94f);
             if (selected)
                 fill = new Vector4(0.29f, 0.34f, 0.33f, 0.98f);
+            if (movingSource)
+                fill = new Vector4(0.23f, 0.22f, 0.13f, 0.98f);
+            if (movingTarget)
+                fill = state.CanPlaceMovingItem
+                    ? new Vector4(0.16f, 0.35f, 0.25f, 0.98f)
+                    : new Vector4(0.42f, 0.16f, 0.15f, 0.98f);
 
             ImGui.PushStyleColor(ImGuiCol.Button, fill);
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.24f, 0.28f, 0.27f, 0.98f));
             ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.36f, 0.40f, 0.37f, 1f));
-            string label = hasItem
+            string label = hasItemOrigin
                 ? $"{ShortLabel(item!.DisplayName)}{(item.Count > 1 ? $" x{item.Count}" : "")}\n{item.SlotWidth}x{item.SlotHeight}##previewSlot{slot}"
+                : occupiedByFootprint
+                    ? $"({ShortLabel(coveredItem!.DisplayName)})##previewSlot{slot}"
                 : $"##previewSlot{slot}";
 
-            if (ImGui.Button(label, new Vector2(slotSize, slotSize)) && hasItem)
+            bool clicked = ImGui.Button(label, new Vector2(slotSize, slotSize));
+            if (clicked && (hasCoveredItem || state.MovingInventoryItem))
                 selectedSlot = slot;
 
-            if (hasItem && ImGui.IsItemHovered())
+            if ((hasCoveredItem || state.MovingInventoryItem) && ImGui.IsItemHovered())
                 selectedSlot = slot;
 
             ImGui.PopStyleColor(3);
         }
 
-        DrawDescriptionPanel(state, bySlot);
+        DrawFootprintOverlays(state, gridStart, slotSize, gap);
+        DrawDescriptionPanel(state, byCoveredSlot);
 
         ImGui.End();
         ImGui.PopStyleVar();
         ImGui.PopStyleColor(2);
 
         return selectedSlot;
+    }
+
+    private static Dictionary<int, GameplayUiInventoryItem> BuildCoveredSlotLookup(GameplayUiState state)
+    {
+        Dictionary<int, GameplayUiInventoryItem> lookup = new();
+        foreach (GameplayUiInventoryItem item in state.InventoryItems)
+        {
+            if (item.CoveredSlots.Count == 0)
+            {
+                lookup[item.SlotIndex] = item;
+                continue;
+            }
+
+            foreach (int slot in item.CoveredSlots)
+                lookup[slot] = item;
+        }
+
+        return lookup;
+    }
+
+    private static void DrawFootprintOverlays(GameplayUiState state, Vector2 gridStart, float slotSize, float gap)
+    {
+        ImDrawListPtr drawList = ImGui.GetWindowDrawList();
+        foreach (GameplayUiInventoryItem item in state.InventoryItems)
+        {
+            if (item.SlotWidth <= 1 && item.SlotHeight <= 1)
+                continue;
+
+            int col = item.SlotIndex % state.GridWidth;
+            int row = item.SlotIndex / state.GridWidth;
+            Vector2 min = gridStart + new Vector2(col * (slotSize + gap), row * (slotSize + gap));
+            Vector2 max = min + new Vector2(
+                item.SlotWidth * slotSize + Math.Max(0, item.SlotWidth - 1) * gap,
+                item.SlotHeight * slotSize + Math.Max(0, item.SlotHeight - 1) * gap);
+
+            uint fill = ImGui.ColorConvertFloat4ToU32(new Vector4(0.18f, 0.23f, 0.22f, 0.34f));
+            uint border = ImGui.ColorConvertFloat4ToU32(new Vector4(0.70f, 0.72f, 0.65f, 0.78f));
+            drawList.AddRectFilled(min, max, fill, 4f);
+            drawList.AddRect(min, max, border, 4f, ImDrawFlags.None, 2f);
+        }
     }
 
     private static void DrawDescriptionPanel(GameplayUiState state, Dictionary<int, GameplayUiInventoryItem> bySlot)
@@ -193,7 +250,25 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         ImGui.Spacing();
         if (state.SaveCount > 0)
             ImGui.TextDisabled($"Saves used: {state.SaveCount}");
-        ImGui.TextDisabled("I / Back: Close");
+        if (state.MovingInventoryItem)
+        {
+            ImGui.Spacing();
+            string moveHint = state.CanSwapMovingItem
+                ? "Release here to swap items."
+                : state.CanPlaceMovingItem
+                    ? "Move target is valid."
+                    : "That item will not fit there.";
+            ImGui.TextColored(
+                state.CanPlaceMovingItem ? new Vector4(0.48f, 0.78f, 0.55f, 1f) : new Vector4(0.92f, 0.42f, 0.36f, 1f),
+                moveHint);
+            ImGui.TextDisabled("E / X: Place");
+            ImGui.TextDisabled("I / Back: Cancel move");
+        }
+        else
+        {
+            ImGui.TextDisabled("E / X: Move item");
+            ImGui.TextDisabled("I / Back: Close");
+        }
 
         ImGui.EndChild();
     }

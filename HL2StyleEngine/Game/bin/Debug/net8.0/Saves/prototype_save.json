@@ -7,20 +7,19 @@
   ],
   "InventoryItems": [
     {
-      "ItemId": "InkRibbon",
-      "Count": 1
-    },
-    {
       "ItemId": "Scrap",
-      "Count": 3
+      "Count": 3,
+      "SlotIndex": 20
     },
     {
       "ItemId": "CrankHandle",
-      "Count": 1
+      "Count": 1,
+      "SlotIndex": 4
     },
     {
       "ItemId": "ArchiveKey",
-      "Count": 1
+      "Count": 1,
+      "SlotIndex": 2
     }
   ],
   "CollectedInteractables": [
@@ -36,11 +35,11 @@
     "LockedDoor_RustedKey",
     "LockedDoor_ServiceKey__SaveOffice"
   ],
-  "InkRibbons": 1,
-  "SavePointUseCount": 1,
-  "PlayerX": -6.3870525,
+  "InkRibbons": 0,
+  "SavePointUseCount": 2,
+  "PlayerX": -6.357394,
   "PlayerY": 0,
-  "PlayerZ": 0.67999995,
-  "CameraYaw": 0.032502577,
-  "CameraPitch": -0.73499984
+  "PlayerZ": 0.46502715,
+  "CameraYaw": 0.050002147,
+  "CameraPitch": -0.6975
 }

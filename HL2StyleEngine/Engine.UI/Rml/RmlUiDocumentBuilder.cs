@@ -58,8 +58,9 @@ internal static class RmlUiDocumentBuilder
 
     private static void AppendInventory(StringBuilder sb, GameplayUiState state)
     {
-        Dictionary<int, GameplayUiInventoryItem> bySlot = state.InventoryItems.ToDictionary(item => item.SlotIndex);
-        GameplayUiInventoryItem? selected = state.InventoryItems.FirstOrDefault(item => item.SlotIndex == state.SelectedSlot);
+        Dictionary<int, GameplayUiInventoryItem> byOriginSlot = state.InventoryItems.ToDictionary(item => item.SlotIndex);
+        Dictionary<int, GameplayUiInventoryItem> byCoveredSlot = BuildCoveredSlotLookup(state);
+        GameplayUiInventoryItem? selected = byCoveredSlot.GetValueOrDefault(state.SelectedSlot);
 
         sb.AppendLine("      <section id=\"inventory-panel\">");
         sb.AppendLine("        <div id=\"inventory-header\">");
@@ -76,12 +77,25 @@ internal static class RmlUiDocumentBuilder
         {
             bool isSelected = slot == state.SelectedSlot;
             string selectedClass = isSelected ? " selected" : "";
-            if (bySlot.TryGetValue(slot, out GameplayUiInventoryItem? item))
+            if (state.MovingInventoryItem && slot == state.MovingFromSlot)
+                selectedClass += " moving-source";
+            if (state.MovingInventoryItem && slot == state.MovingTargetSlot)
+                selectedClass += state.CanPlaceMovingItem ? " move-valid" : " move-invalid";
+            bool covered = byCoveredSlot.TryGetValue(slot, out GameplayUiInventoryItem? coveredItem);
+            bool origin = byOriginSlot.TryGetValue(slot, out GameplayUiInventoryItem? item);
+            if (origin && item != null)
             {
                 string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
-                sb.AppendLine($"          <div class=\"slot filled{selectedClass}\" data-slot=\"{slot}\">");
+                string footprintClass = item.SlotWidth > 1 || item.SlotHeight > 1 ? " footprint-origin" : "";
+                sb.AppendLine($"          <div class=\"slot filled{footprintClass}{selectedClass}\" data-slot=\"{slot}\">");
                 sb.AppendLine($"            <p class=\"slot-name\">{Esc(ShortLabel(item.DisplayName))}{Esc(countSuffix)}</p>");
                 sb.AppendLine($"            <p class=\"slot-footprint\">{item.SlotWidth}x{item.SlotHeight}</p>");
+                sb.AppendLine("          </div>");
+            }
+            else if (covered && coveredItem != null)
+            {
+                sb.AppendLine($"          <div class=\"slot filled footprint-covered{selectedClass}\" data-slot=\"{slot}\">");
+                sb.AppendLine($"            <p class=\"slot-name\">{Esc(ShortLabel(coveredItem.DisplayName))}</p>");
                 sb.AppendLine("          </div>");
             }
             else
@@ -109,13 +123,44 @@ internal static class RmlUiDocumentBuilder
         if (state.SaveCount > 0)
             sb.AppendLine($"          <p class=\"muted\">Saves used: {state.SaveCount}</p>");
 
-        sb.AppendLine("          <p class=\"footer-hint\">I / Back: Close</p>");
+        if (state.MovingInventoryItem)
+        {
+            string moveHint = state.CanSwapMovingItem
+                ? "Release here to swap items."
+                : state.CanPlaceMovingItem
+                    ? "Move target is valid."
+                    : "That item will not fit there.";
+            sb.AppendLine($"          <p class=\"muted\">{Esc(moveHint)}</p>");
+            sb.AppendLine("          <p class=\"footer-hint\">E / X: Place | I / Back: Cancel</p>");
+        }
+        else
+        {
+            sb.AppendLine("          <p class=\"footer-hint\">E / X: Move | I / Back: Close</p>");
+        }
         sb.AppendLine("        </aside>");
         sb.AppendLine("      </section>");
     }
 
     private static string ShortLabel(string text)
         => text.Length <= 10 ? text : text[..10];
+
+    private static Dictionary<int, GameplayUiInventoryItem> BuildCoveredSlotLookup(GameplayUiState state)
+    {
+        Dictionary<int, GameplayUiInventoryItem> lookup = new();
+        foreach (GameplayUiInventoryItem item in state.InventoryItems)
+        {
+            if (item.CoveredSlots.Count == 0)
+            {
+                lookup[item.SlotIndex] = item;
+                continue;
+            }
+
+            foreach (int slot in item.CoveredSlots)
+                lookup[slot] = item;
+        }
+
+        return lookup;
+    }
 
     private static string Esc(string text)
         => WebUtility.HtmlEncode(text);
