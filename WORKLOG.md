@@ -59,6 +59,11 @@ The current gameplay issues being worked first are:
 - added covered-slot data to gameplay UI inventory items so generated RML and the preview can distinguish item origin slots from footprint-covered slots
 - added move-or-swap support in `InventoryContainer`; dragging an item over another item can swap their positions when both item footprints fit after the exchange
 - updated move feedback so valid swaps show as allowed and display a swap hint instead of an invalid placement message
+- added inventory item rotation for non-square items using `R` / controller `Y`
+- persisted each inventory stack's rotated state in prototype save data
+- updated movement, placement, and swap validation so rotated footprints are checked by the inventory model
+- improved multi-slot selection so covered cells resolve back to the item origin when browsing, while moving items can still target individual destination cells
+- updated the gameplay UI state, preview renderer, and generated RML hints to show the held item's rotated footprint during placement
 
 ### Why
 
@@ -67,11 +72,15 @@ The current gameplay issues being worked first are:
 - keeping movement on the existing confirm/cancel controls preserves controller parity without adding surprise new bindings
 - Resident Evil-style inventory readability depends on item footprints being visible, especially before final item art exists
 - swap behavior avoids busywork when reorganizing the case and keeps the prototype closer to modern survival-horror inventory feel
+- rotation is needed before larger puzzle items, weapons, and storage transfer can share the same case-management rules
+- controller navigation should feel like selecting items, not accidentally selecting unreachable covered cells
 
 ### Files
 
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryContainer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryItemStack.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryItemSaveData.cs`
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiImGuiPreviewRenderer.cs`
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
@@ -88,14 +97,19 @@ The current gameplay issues being worked first are:
 - `Engine.UI` compile check succeeded after adding footprint-covered slots and swap hints
 - isolated `Game` compile check succeeded after adding inventory swap behavior
 - copied the validated footprint/swap build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.UI` compile check succeeded after adding rotation UI state and hints
+- `Engine.Runtime` compile check succeeded after the UI state change
+- isolated `Game` compile check succeeded after adding inventory rotation and rotated save data
 
 ### Next
 
 - playtest inventory movement: pick up keys, ink ribbons, Scrap, and the 1x2 Crank Handle, then move them to valid and invalid slots
 - playtest swapping: drag a key or ribbon onto Scrap/Crank Handle and confirm both items trade positions only when both footprints fit
+- playtest rotation: move the Crank Handle, press `R` / controller `Y`, and confirm it can place as `2x1` only where that footprint fits
+- verify rotated slot positions persist after saving at the typewriter and reloading
 - verify `I` / controller `Back` cancels an active move and only closes inventory on the next press
 - verify moved slot positions persist after saving at the typewriter and reloading
-- add shared safe storage using the same grid movement and placement rules
+- add item action menus and stack split/merge rules before shared safe storage
 
 ## 2026-04-29
 

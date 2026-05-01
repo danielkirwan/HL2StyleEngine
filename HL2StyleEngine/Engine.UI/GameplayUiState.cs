@@ -13,6 +13,9 @@ public sealed class GameplayUiState
     public bool MovingInventoryItem { get; init; }
     public int MovingFromSlot { get; init; } = -1;
     public int MovingTargetSlot { get; init; } = -1;
+    public bool MovingItemRotated { get; init; }
+    public int MovingItemSlotWidth { get; init; } = 1;
+    public int MovingItemSlotHeight { get; init; } = 1;
     public bool CanPlaceMovingItem { get; init; }
     public bool CanSwapMovingItem { get; init; }
     public int SaveCount { get; init; }
@@ -31,6 +34,7 @@ public sealed class GameplayUiInventoryItem
     public int Count { get; init; } = 1;
     public int SlotWidth { get; init; } = 1;
     public int SlotHeight { get; init; } = 1;
+    public bool Rotated { get; init; }
     public int MaxStack { get; init; } = 1;
 }
 

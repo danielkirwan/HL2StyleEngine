@@ -99,6 +99,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private bool _inventoryOpen;
     private int _selectedInventoryStackIndex = -1;
     private int _movingInventoryFromSlot = -1;
+    private bool _movingInventoryRotated;
     private bool _inventoryNavXHeld;
     private bool _inventoryNavYHeld;
     private bool _itemCollectedOpen;
@@ -421,10 +422,23 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 Description = definition.Description,
                 Type = definition.Type.ToString(),
                 Count = stack.Count,
-                SlotWidth = definition.SlotWidth,
-                SlotHeight = definition.SlotHeight,
+                SlotWidth = _inventory.GetSlotWidth(stack),
+                SlotHeight = _inventory.GetSlotHeight(stack),
+                Rotated = stack.Rotated,
                 MaxStack = definition.MaxStack
             });
+        }
+
+        int movingWidth = 1;
+        int movingHeight = 1;
+        InventoryItemStack? movingStack = IsMovingInventoryItem
+            ? _inventory.GetStackAtSlot(_movingInventoryFromSlot)
+            : null;
+        if (movingStack != null)
+        {
+            InventoryItemDefinition movingDefinition = ItemCatalog.Get(movingStack.ItemId);
+            movingWidth = _inventory.GetSlotWidth(movingDefinition, _movingInventoryRotated);
+            movingHeight = _inventory.GetSlotHeight(movingDefinition, _movingInventoryRotated);
         }
 
         return new GameplayUiState
@@ -439,7 +453,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             SelectedSlot = _selectedInventoryStackIndex,
             MovingInventoryItem = IsMovingInventoryItem,
             MovingFromSlot = _movingInventoryFromSlot,
-            MovingTargetSlot = _selectedInventoryStackIndex,
+            MovingTargetSlot = GetMovingInventoryTargetSlot(),
+            MovingItemRotated = _movingInventoryRotated,
+            MovingItemSlotWidth = movingWidth,
+            MovingItemSlotHeight = movingHeight,
             CanPlaceMovingItem = CanPlaceMovingInventoryItem(),
             CanSwapMovingItem = CanSwapMovingInventoryItem(),
             SaveCount = _savePointUseCount,
@@ -637,6 +654,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         SetInventoryOpen(false);
         _selectedInventoryStackIndex = -1;
         _movingInventoryFromSlot = -1;
+        _movingInventoryRotated = false;
         _itemCollectedOpen = false;
         _itemCollectedItemId = "";
         _itemCollectedCount = 0;
@@ -675,6 +693,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
         if (_selectedInventoryStackIndex < 0)
             _selectedInventoryStackIndex = _inventory.Stacks[0].SlotIndex;
+
+        if (InventoryRotatePressedThisFrame())
+        {
+            TryRotateInventorySelection();
+            return;
+        }
 
         if (InteractPressedThisFrame())
         {
@@ -729,7 +753,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         col = Math.Clamp(col + dx, 0, _inventory.GridWidth - 1);
         row = Math.Clamp(row + dy, 0, Math.Max(0, (_inventory.SlotCapacity - 1) / _inventory.GridWidth));
 
-        _selectedInventoryStackIndex = Math.Clamp(row * _inventory.GridWidth + col, 0, _inventory.SlotCapacity - 1);
+        SelectInventorySlot(Math.Clamp(row * _inventory.GridWidth + col, 0, _inventory.SlotCapacity - 1));
     }
 
     private bool IsMovingInventoryItem => _movingInventoryFromSlot >= 0;
@@ -742,12 +766,30 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
         }
 
-        InventoryItemStack? selectedStack = _inventory.GetStackAtSlot(_selectedInventoryStackIndex);
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
         if (selectedStack == null)
             return;
 
+        _selectedInventoryStackIndex = selectedStack.SlotIndex;
         _movingInventoryFromSlot = selectedStack.SlotIndex;
+        _movingInventoryRotated = selectedStack.Rotated;
         ShowGameMessage($"Moving {ItemCatalog.GetDisplayName(selectedStack.ItemId)}.", 1.5f);
+    }
+
+    private void SelectInventorySlot(int slotIndex)
+    {
+        int clamped = Math.Clamp(slotIndex, 0, Math.Max(0, _inventory.SlotCapacity - 1));
+        if (!IsMovingInventoryItem)
+        {
+            InventoryItemStack? covered = _inventory.GetStackCoveringSlot(clamped);
+            if (covered != null)
+            {
+                _selectedInventoryStackIndex = covered.SlotIndex;
+                return;
+            }
+        }
+
+        _selectedInventoryStackIndex = clamped;
     }
 
     private bool CanPlaceMovingInventoryItem()
@@ -755,7 +797,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         if (!IsMovingInventoryItem)
             return false;
 
-        return _inventory.CanMoveOrSwapStackToSlot(_movingInventoryFromSlot, _selectedInventoryStackIndex);
+        return _inventory.CanMoveOrSwapStackToSlot(_movingInventoryFromSlot, GetMovingInventoryTargetSlot(), _movingInventoryRotated);
     }
 
     private bool CanSwapMovingInventoryItem()
@@ -768,7 +810,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         if (moving == null || target == null || ReferenceEquals(moving, target))
             return false;
 
-        return _inventory.CanMoveOrSwapStackToSlot(_movingInventoryFromSlot, _selectedInventoryStackIndex);
+        return _inventory.CanMoveOrSwapStackToSlot(_movingInventoryFromSlot, target.SlotIndex, _movingInventoryRotated);
     }
 
     private void TryPlaceMovingInventoryItem()
@@ -777,19 +819,20 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
 
         int fromSlot = _movingInventoryFromSlot;
-        int targetSlot = _selectedInventoryStackIndex;
+        int targetSlot = GetMovingInventoryTargetSlot();
         InventoryItemStack? movingStack = _inventory.GetStackAtSlot(fromSlot);
         string itemName = movingStack != null
             ? ItemCatalog.GetDisplayName(movingStack.ItemId)
             : "Item";
 
-        if (!_inventory.MoveOrSwapStackToSlot(fromSlot, targetSlot, out bool swapped))
+        if (!_inventory.MoveOrSwapStackToSlot(fromSlot, targetSlot, _movingInventoryRotated, out bool swapped))
         {
             ShowGameMessage($"{itemName} will not fit there.", 1.75f);
             return;
         }
 
         _movingInventoryFromSlot = -1;
+        _movingInventoryRotated = false;
         _selectedInventoryStackIndex = targetSlot;
         ShowGameMessage(swapped ? $"{itemName} swapped." : $"{itemName} moved.", 1.25f);
     }
@@ -800,8 +843,68 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
 
         _movingInventoryFromSlot = -1;
+        _movingInventoryRotated = false;
         if (showMessage)
             ShowGameMessage("Move cancelled.", 1.25f);
+    }
+
+    private int GetMovingInventoryTargetSlot()
+    {
+        int selectedSlot = Math.Clamp(_selectedInventoryStackIndex, 0, Math.Max(0, _inventory.SlotCapacity - 1));
+        if (!IsMovingInventoryItem)
+            return selectedSlot;
+
+        InventoryItemStack? moving = _inventory.GetStackAtSlot(_movingInventoryFromSlot);
+        InventoryItemStack? target = _inventory.GetStackCoveringSlot(selectedSlot);
+        if (moving != null && target != null && !ReferenceEquals(moving, target))
+            return target.SlotIndex;
+
+        return selectedSlot;
+    }
+
+    private void TryRotateInventorySelection()
+    {
+        if (IsMovingInventoryItem)
+        {
+            InventoryItemStack? moving = _inventory.GetStackAtSlot(_movingInventoryFromSlot);
+            if (moving == null)
+                return;
+
+            InventoryItemDefinition definition = ItemCatalog.Get(moving.ItemId);
+            if (definition.SlotWidth == definition.SlotHeight)
+            {
+                ShowGameMessage($"{definition.DisplayName} cannot rotate.", 1.25f);
+                return;
+            }
+
+            _movingInventoryRotated = !_movingInventoryRotated;
+            int width = _inventory.GetSlotWidth(definition, _movingInventoryRotated);
+            int height = _inventory.GetSlotHeight(definition, _movingInventoryRotated);
+            ShowGameMessage($"{definition.DisplayName} rotated to {width}x{height}.", 1.25f);
+            return;
+        }
+
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (selectedStack == null)
+            return;
+
+        InventoryItemDefinition selectedDefinition = ItemCatalog.Get(selectedStack.ItemId);
+        if (selectedDefinition.SlotWidth == selectedDefinition.SlotHeight)
+        {
+            ShowGameMessage($"{selectedDefinition.DisplayName} cannot rotate.", 1.25f);
+            return;
+        }
+
+        if (!_inventory.RotateStackAtSlot(selectedStack.SlotIndex))
+        {
+            ShowGameMessage($"{selectedDefinition.DisplayName} cannot rotate there.", 1.5f);
+            return;
+        }
+
+        _selectedInventoryStackIndex = selectedStack.SlotIndex;
+        int placedWidth = _inventory.GetSlotWidth(selectedStack);
+        int placedHeight = _inventory.GetSlotHeight(selectedStack);
+        ShowGameMessage($"{selectedDefinition.DisplayName} rotated to {placedWidth}x{placedHeight}.", 1.25f);
     }
 
     private void ApplyPersistentInteractionStateToRuntime()
@@ -3511,7 +3614,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         {
             if (previewSelectedSlot >= 0)
             {
-                _selectedInventoryStackIndex = previewSelectedSlot;
+                SelectInventorySlot(previewSelectedSlot);
                 if (_inventoryOpen && _inputState.LeftMousePressedThisFrame)
                     HandleInventoryConfirm();
             }
@@ -4379,6 +4482,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private bool ToggleInventoryPressedThisFrame()
         => _inputState.WasPressed(Key.I) ||
            _inputState.GetGamepadPressed(GamepadButton.Back);
+
+    private bool InventoryRotatePressedThisFrame()
+        => _inputState.WasPressed(Key.R) ||
+           _inputState.GetGamepadPressed(GamepadButton.Y);
 
     private bool ResetLevelPressedThisFrame()
         => _inputState.WasPressed(Key.F6);

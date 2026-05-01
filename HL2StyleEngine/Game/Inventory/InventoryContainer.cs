@@ -31,7 +31,7 @@ public sealed class InventoryContainer
 
         foreach (InventoryItemStack stack in _stacks)
         {
-            if (FootprintContainsSlot(stack.SlotIndex, ItemCatalog.Get(stack.ItemId), slotIndex))
+            if (FootprintContainsSlot(stack.SlotIndex, ItemCatalog.Get(stack.ItemId), stack.Rotated, slotIndex))
                 return stack;
         }
 
@@ -49,7 +49,7 @@ public sealed class InventoryContainer
             return false;
 
         List<InventoryItemStack> snapshot = _stacks
-            .Select(stack => new InventoryItemStack(stack.ItemId, stack.Count, stack.SlotIndex))
+            .Select(stack => new InventoryItemStack(stack.ItemId, stack.Count, stack.SlotIndex, stack.Rotated))
             .ToList();
 
         InventoryItemDefinition definition = ItemCatalog.Get(itemId);
@@ -131,7 +131,13 @@ public sealed class InventoryContainer
 
     public List<InventoryItemSaveData> ToSaveData()
         => _stacks
-            .Select(stack => new InventoryItemSaveData { ItemId = stack.ItemId, Count = stack.Count, SlotIndex = stack.SlotIndex })
+            .Select(stack => new InventoryItemSaveData
+            {
+                ItemId = stack.ItemId,
+                Count = stack.Count,
+                SlotIndex = stack.SlotIndex,
+                Rotated = stack.Rotated
+            })
             .ToList();
 
     public void LoadFromSave(IEnumerable<InventoryItemSaveData> items)
@@ -139,7 +145,7 @@ public sealed class InventoryContainer
         Clear();
         foreach (InventoryItemSaveData item in items.OrderBy(item => item.SlotIndex < 0 ? int.MaxValue : item.SlotIndex))
         {
-            if (item.SlotIndex >= 0 && TryAddStackAt(item.ItemId, item.Count, item.SlotIndex))
+            if (item.SlotIndex >= 0 && TryAddStackAt(item.ItemId, item.Count, item.SlotIndex, item.Rotated))
                 continue;
 
             Add(item.ItemId, item.Count);
@@ -152,10 +158,13 @@ public sealed class InventoryContainer
         if (stack == null)
             return false;
 
-        return CanPlaceAt(ItemCatalog.Get(stack.ItemId), toSlotIndex, stack);
+        return CanPlaceAt(ItemCatalog.Get(stack.ItemId), stack.Rotated, toSlotIndex, stack);
     }
 
     public bool CanMoveOrSwapStackToSlot(int fromSlotIndex, int toSlotIndex)
+        => CanMoveOrSwapStackToSlot(fromSlotIndex, toSlotIndex, GetStackAtSlot(fromSlotIndex)?.Rotated ?? false);
+
+    public bool CanMoveOrSwapStackToSlot(int fromSlotIndex, int toSlotIndex, bool movingRotated)
     {
         InventoryItemStack? moving = GetStackAtSlot(fromSlotIndex);
         if (moving == null)
@@ -163,9 +172,9 @@ public sealed class InventoryContainer
 
         InventoryItemStack? target = GetStackCoveringSlot(toSlotIndex);
         if (target == null || ReferenceEquals(target, moving))
-            return CanPlaceAt(ItemCatalog.Get(moving.ItemId), toSlotIndex, moving);
+            return CanPlaceAt(ItemCatalog.Get(moving.ItemId), movingRotated, toSlotIndex, moving);
 
-        return CanSwap(moving, toSlotIndex, target);
+        return CanSwap(moving, movingRotated, toSlotIndex, target);
     }
 
     public bool MoveStackToSlot(int fromSlotIndex, int toSlotIndex)
@@ -174,7 +183,7 @@ public sealed class InventoryContainer
         if (stack == null)
             return false;
 
-        if (!CanPlaceAt(ItemCatalog.Get(stack.ItemId), toSlotIndex, stack))
+        if (!CanPlaceAt(ItemCatalog.Get(stack.ItemId), stack.Rotated, toSlotIndex, stack))
             return false;
 
         stack.MoveToSlot(toSlotIndex);
@@ -182,6 +191,9 @@ public sealed class InventoryContainer
     }
 
     public bool MoveOrSwapStackToSlot(int fromSlotIndex, int toSlotIndex, out bool swapped)
+        => MoveOrSwapStackToSlot(fromSlotIndex, toSlotIndex, GetStackAtSlot(fromSlotIndex)?.Rotated ?? false, out swapped);
+
+    public bool MoveOrSwapStackToSlot(int fromSlotIndex, int toSlotIndex, bool movingRotated, out bool swapped)
     {
         swapped = false;
         InventoryItemStack? moving = GetStackAtSlot(fromSlotIndex);
@@ -190,12 +202,20 @@ public sealed class InventoryContainer
 
         InventoryItemStack? target = GetStackCoveringSlot(toSlotIndex);
         if (target == null || ReferenceEquals(target, moving))
-            return MoveStackToSlot(fromSlotIndex, toSlotIndex);
+        {
+            if (!CanPlaceAt(ItemCatalog.Get(moving.ItemId), movingRotated, toSlotIndex, moving))
+                return false;
 
-        if (!CanSwap(moving, toSlotIndex, target))
+            moving.SetRotation(movingRotated);
+            moving.MoveToSlot(toSlotIndex);
+            return true;
+        }
+
+        if (!CanSwap(moving, movingRotated, toSlotIndex, target))
             return false;
 
         int originalSlot = moving.SlotIndex;
+        moving.SetRotation(movingRotated);
         moving.MoveToSlot(toSlotIndex);
         target.MoveToSlot(originalSlot);
         swapped = true;
@@ -203,9 +223,47 @@ public sealed class InventoryContainer
     }
 
     public IEnumerable<int> CoveredSlots(InventoryItemStack stack)
-        => CoveredSlots(stack.SlotIndex, ItemCatalog.Get(stack.ItemId));
+        => CoveredSlots(stack.SlotIndex, ItemCatalog.Get(stack.ItemId), stack.Rotated);
 
-    private bool TryAddStackAt(string itemId, int count, int slotIndex)
+    public IEnumerable<int> CoveredSlots(InventoryItemStack stack, bool rotated)
+        => CoveredSlots(stack.SlotIndex, ItemCatalog.Get(stack.ItemId), rotated);
+
+    public int GetSlotWidth(InventoryItemStack stack)
+        => GetSlotWidth(ItemCatalog.Get(stack.ItemId), stack.Rotated);
+
+    public int GetSlotHeight(InventoryItemStack stack)
+        => GetSlotHeight(ItemCatalog.Get(stack.ItemId), stack.Rotated);
+
+    public int GetSlotWidth(InventoryItemDefinition definition, bool rotated)
+        => rotated ? definition.SlotHeight : definition.SlotWidth;
+
+    public int GetSlotHeight(InventoryItemDefinition definition, bool rotated)
+        => rotated ? definition.SlotWidth : definition.SlotHeight;
+
+    public bool CanRotateStackAtSlot(int slotIndex)
+    {
+        InventoryItemStack? stack = GetStackCoveringSlot(slotIndex);
+        if (stack == null)
+            return false;
+
+        InventoryItemDefinition definition = ItemCatalog.Get(stack.ItemId);
+        if (definition.SlotWidth == definition.SlotHeight)
+            return false;
+
+        return CanPlaceAt(definition, !stack.Rotated, stack.SlotIndex, stack);
+    }
+
+    public bool RotateStackAtSlot(int slotIndex)
+    {
+        InventoryItemStack? stack = GetStackCoveringSlot(slotIndex);
+        if (stack == null || !CanRotateStackAtSlot(slotIndex))
+            return false;
+
+        stack.SetRotation(!stack.Rotated);
+        return true;
+    }
+
+    private bool TryAddStackAt(string itemId, int count, int slotIndex, bool rotated)
     {
         if (string.IsNullOrWhiteSpace(itemId) || count <= 0)
             return false;
@@ -214,10 +272,10 @@ public sealed class InventoryContainer
         if (count > definition.MaxStack)
             return false;
 
-        if (!CanPlaceAt(definition, slotIndex, ignoredStack: null))
+        if (!CanPlaceAt(definition, rotated, slotIndex, ignoredStack: null))
             return false;
 
-        _stacks.Add(new InventoryItemStack(itemId, count, slotIndex));
+        _stacks.Add(new InventoryItemStack(itemId, count, slotIndex, rotated));
         return true;
     }
 
@@ -225,21 +283,22 @@ public sealed class InventoryContainer
     {
         for (int slot = 0; slot < SlotCapacity; slot++)
         {
-            if (CanPlaceAt(definition, slot, ignoredStack: null))
+            if (CanPlaceAt(definition, rotated: false, slot, ignoredStack: null))
                 return slot;
         }
 
         return -1;
     }
 
-    private bool CanPlaceAt(InventoryItemDefinition definition, int slotIndex, InventoryItemStack? ignoredStack)
+    private bool CanPlaceAt(InventoryItemDefinition definition, bool rotated, int slotIndex, InventoryItemStack? ignoredStack)
     {
         if (slotIndex < 0 || slotIndex >= SlotCapacity)
             return false;
 
         int startX = slotIndex % GridWidth;
         int startY = slotIndex / GridWidth;
-        if (startX + definition.SlotWidth > GridWidth || startY + definition.SlotHeight > GridHeight)
+        if (startX + GetSlotWidth(definition, rotated) > GridWidth ||
+            startY + GetSlotHeight(definition, rotated) > GridHeight)
             return false;
 
         foreach (InventoryItemStack stack in _stacks)
@@ -247,27 +306,28 @@ public sealed class InventoryContainer
             if (ReferenceEquals(stack, ignoredStack))
                 continue;
 
-            if (FootprintsOverlap(slotIndex, definition, stack.SlotIndex, ItemCatalog.Get(stack.ItemId)))
+            if (FootprintsOverlap(slotIndex, definition, rotated, stack.SlotIndex, ItemCatalog.Get(stack.ItemId), stack.Rotated))
                 return false;
         }
 
         return true;
     }
 
-    private bool CanSwap(InventoryItemStack moving, int movingTargetSlot, InventoryItemStack target)
+    private bool CanSwap(InventoryItemStack moving, bool movingRotated, int movingTargetSlot, InventoryItemStack target)
     {
         InventoryItemDefinition movingDefinition = ItemCatalog.Get(moving.ItemId);
         InventoryItemDefinition targetDefinition = ItemCatalog.Get(target.ItemId);
         int movingOriginalSlot = moving.SlotIndex;
         int targetOriginalSlot = target.SlotIndex;
 
-        return CanPlaceAt(movingDefinition, movingTargetSlot, moving, target) &&
-               CanPlaceAt(targetDefinition, movingOriginalSlot, target, moving) &&
-               !FootprintsOverlap(movingTargetSlot, movingDefinition, movingOriginalSlot, targetDefinition);
+        return CanPlaceAt(movingDefinition, movingRotated, movingTargetSlot, moving, target) &&
+               CanPlaceAt(targetDefinition, target.Rotated, movingOriginalSlot, target, moving) &&
+               !FootprintsOverlap(movingTargetSlot, movingDefinition, movingRotated, movingOriginalSlot, targetDefinition, target.Rotated);
     }
 
     private bool CanPlaceAt(
         InventoryItemDefinition definition,
+        bool rotated,
         int slotIndex,
         InventoryItemStack? ignoredA,
         InventoryItemStack? ignoredB)
@@ -277,7 +337,8 @@ public sealed class InventoryContainer
 
         int startX = slotIndex % GridWidth;
         int startY = slotIndex / GridWidth;
-        if (startX + definition.SlotWidth > GridWidth || startY + definition.SlotHeight > GridHeight)
+        if (startX + GetSlotWidth(definition, rotated) > GridWidth ||
+            startY + GetSlotHeight(definition, rotated) > GridHeight)
             return false;
 
         foreach (InventoryItemStack stack in _stacks)
@@ -285,7 +346,7 @@ public sealed class InventoryContainer
             if (ReferenceEquals(stack, ignoredA) || ReferenceEquals(stack, ignoredB))
                 continue;
 
-            if (FootprintsOverlap(slotIndex, definition, stack.SlotIndex, ItemCatalog.Get(stack.ItemId)))
+            if (FootprintsOverlap(slotIndex, definition, rotated, stack.SlotIndex, ItemCatalog.Get(stack.ItemId), stack.Rotated))
                 return false;
         }
 
@@ -295,31 +356,35 @@ public sealed class InventoryContainer
     private bool FootprintsOverlap(
         int aSlot,
         InventoryItemDefinition a,
+        bool aRotated,
         int bSlot,
-        InventoryItemDefinition b)
+        InventoryItemDefinition b,
+        bool bRotated)
     {
         int ax = aSlot % GridWidth;
         int ay = aSlot / GridWidth;
         int bx = bSlot % GridWidth;
         int by = bSlot / GridWidth;
 
-        return ax < bx + b.SlotWidth &&
-               ax + a.SlotWidth > bx &&
-               ay < by + b.SlotHeight &&
-               ay + a.SlotHeight > by;
+        return ax < bx + GetSlotWidth(b, bRotated) &&
+               ax + GetSlotWidth(a, aRotated) > bx &&
+               ay < by + GetSlotHeight(b, bRotated) &&
+               ay + GetSlotHeight(a, aRotated) > by;
     }
 
-    private bool FootprintContainsSlot(int originSlot, InventoryItemDefinition definition, int slotIndex)
-        => CoveredSlots(originSlot, definition).Contains(slotIndex);
+    private bool FootprintContainsSlot(int originSlot, InventoryItemDefinition definition, bool rotated, int slotIndex)
+        => CoveredSlots(originSlot, definition, rotated).Contains(slotIndex);
 
-    private IEnumerable<int> CoveredSlots(int originSlot, InventoryItemDefinition definition)
+    private IEnumerable<int> CoveredSlots(int originSlot, InventoryItemDefinition definition, bool rotated)
     {
         int originX = originSlot % GridWidth;
         int originY = originSlot / GridWidth;
+        int width = GetSlotWidth(definition, rotated);
+        int height = GetSlotHeight(definition, rotated);
 
-        for (int y = 0; y < definition.SlotHeight; y++)
+        for (int y = 0; y < height; y++)
         {
-            for (int x = 0; x < definition.SlotWidth; x++)
+            for (int x = 0; x < width; x++)
             {
                 int slotX = originX + x;
                 int slotY = originY + y;

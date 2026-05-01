@@ -258,15 +258,19 @@ internal sealed class GameplayUiImGuiPreviewRenderer
                 : state.CanPlaceMovingItem
                     ? "Move target is valid."
                     : "That item will not fit there.";
+            string rotationText = state.MovingItemRotated ? "rotated" : "normal";
             ImGui.TextColored(
                 state.CanPlaceMovingItem ? new Vector4(0.48f, 0.78f, 0.55f, 1f) : new Vector4(0.92f, 0.42f, 0.36f, 1f),
                 moveHint);
+            ImGui.TextDisabled($"Held footprint: {state.MovingItemSlotWidth}x{state.MovingItemSlotHeight} ({rotationText})");
+            ImGui.TextDisabled("R / Y: Rotate");
             ImGui.TextDisabled("E / X: Place");
             ImGui.TextDisabled("I / Back: Cancel move");
         }
         else
         {
             ImGui.TextDisabled("E / X: Move item");
+            ImGui.TextDisabled("R / Y: Rotate selected item");
             ImGui.TextDisabled("I / Back: Close");
         }
 

@@ -116,6 +116,10 @@ h2 {
   border: 2px rgba(180, 184, 166, 0.88);
 }
 
+.slot.rotated .slot-footprint {
+  color: #c8c29a;
+}
+
 .slot.footprint-covered {
   border: 1px rgba(139, 148, 139, 0.70);
   background-color: rgba(18, 28, 28, 0.94);

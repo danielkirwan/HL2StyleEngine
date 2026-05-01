@@ -87,7 +87,8 @@ internal static class RmlUiDocumentBuilder
             {
                 string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
                 string footprintClass = item.SlotWidth > 1 || item.SlotHeight > 1 ? " footprint-origin" : "";
-                sb.AppendLine($"          <div class=\"slot filled{footprintClass}{selectedClass}\" data-slot=\"{slot}\">");
+                string rotatedClass = item.Rotated ? " rotated" : "";
+                sb.AppendLine($"          <div class=\"slot filled{footprintClass}{rotatedClass}{selectedClass}\" data-slot=\"{slot}\">");
                 sb.AppendLine($"            <p class=\"slot-name\">{Esc(ShortLabel(item.DisplayName))}{Esc(countSuffix)}</p>");
                 sb.AppendLine($"            <p class=\"slot-footprint\">{item.SlotWidth}x{item.SlotHeight}</p>");
                 sb.AppendLine("          </div>");
@@ -131,11 +132,13 @@ internal static class RmlUiDocumentBuilder
                     ? "Move target is valid."
                     : "That item will not fit there.";
             sb.AppendLine($"          <p class=\"muted\">{Esc(moveHint)}</p>");
-            sb.AppendLine("          <p class=\"footer-hint\">E / X: Place | I / Back: Cancel</p>");
+            string rotationText = state.MovingItemRotated ? "rotated" : "normal";
+            sb.AppendLine($"          <p class=\"muted\">Held footprint: {state.MovingItemSlotWidth}x{state.MovingItemSlotHeight} ({Esc(rotationText)})</p>");
+            sb.AppendLine("          <p class=\"footer-hint\">E / X: Place | R / Y: Rotate | I / Back: Cancel</p>");
         }
         else
         {
-            sb.AppendLine("          <p class=\"footer-hint\">E / X: Move | I / Back: Close</p>");
+            sb.AppendLine("          <p class=\"footer-hint\">E / X: Move | R / Y: Rotate | I / Back: Close</p>");
         }
         sb.AppendLine("        </aside>");
         sb.AppendLine("      </section>");

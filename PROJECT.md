@@ -115,6 +115,8 @@ The current implementation state is:
 - inventory item stacks now have stable grid slot indices and save/load those positions
 - inventory items can now be picked up inside the inventory screen, moved to another grid slot, validated against their slot footprint, placed, or cancelled
 - multi-slot inventory items now visibly occupy their covered grid slots in the UI preview, and occupied items can swap positions when their footprints fit after the exchange
+- non-square inventory items can now rotate with `R` / controller `Y`, including rotated placement validation and save/load persistence
+- inventory navigation now treats covered multi-slot cells as part of the same item when browsing, while still allowing cell-level targeting during item placement
 - a developer reset hotkey for clean interaction-test runs
 - a small multi-room key route that is playable and starts shaping the horror vertical slice
 - controller parity for new player-facing actions
@@ -164,7 +166,7 @@ That work is aimed at fixing several visible problems:
 
 - gameplay interactions are still authored by name prefixes such as `ItemKey_`, `LockedDoor_`, `LockedChest_`, `ItemInkRibbon_`, and `SavePoint_`
 - the inventory UI is still a simple list rather than a proper inspect/combine/use survival-horror inventory
-- inventory items now have data-model support for slot footprints, stack limits, categories, descriptions, stable slot indices, moving between valid grid slots, and swapping with occupied items when footprints fit, but item rotation/storage transfer is not implemented yet
+- inventory items now have data-model support for slot footprints, stack limits, categories, descriptions, stable slot indices, movement, swapping, rotation, and rotated save/load, but storage transfer is not implemented yet
 - the item-collected/examine screen is a first pass and still needs final Resident Evil-style presentation and pause behavior
 - the current inventory UI is still an ImGui prototype rather than the final themed menu layer
 - RmlUi is set up at the project/asset/backend-seam level with generated gameplay RML, but it is not rendering until the native bridge DLL exists
@@ -189,6 +191,7 @@ That work is aimed at fixing several visible problems:
 - validate inventory pause, mouse hover descriptions, and controller/keyboard grid navigation in game
 - validate the latest inventory modal fix: opening inventory should stop camera/movement input and show a visible cursor for mouse hover
 - validate the `Engine.UI` preview path in the interaction test level: prompts, item-collected overlay, inventory grid, mouse hover, and controller/keyboard selection
+- validate inventory rotation using the Crank Handle: `R` / controller `Y` should swap between `1x2` and `2x1`, reject invalid placements, and persist through typewriter save/load
 - polish prompt/readability feedback for locked doors, locked chests, expired keys, ink ribbon count, and typewriter state
 - evaluate whether to keep custom ImGui/Veldrid UI for tooling only and move gameplay menus to a dedicated game UI library
 - implement the RmlUi native bridge and Veldrid overlay renderer before building the final inventory/storage UI
@@ -197,7 +200,7 @@ That work is aimed at fixing several visible problems:
 - implement `hs2_rmlui_set_document_body` so generated inventory/pickup/prompt RML refreshes live
 - implement native render-command production in `HS2RmlUiBridge` and validate it against the managed Veldrid consumer
 - load the generated RmlUi gameplay document and validate mouse/controller focus navigation through the new `Engine.UI` layer
-- extend slot-indexed inventory movement into item rotation and storage transfer
+- extend slot-indexed inventory movement into item action menus, stack split/merge behavior, filtered usable-item screens, and storage transfer
 - tune interaction prompt readability and raycast distance
 - replace the first-pass name-prefix interaction prototype with level-authored components if the flow feels right
 - build a proper inventory screen with item descriptions and selected-item focus
