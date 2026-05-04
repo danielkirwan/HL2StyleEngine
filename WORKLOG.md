@@ -1,6 +1,6 @@
 # Work Log
 
-Last updated: 2026-05-01
+Last updated: 2026-05-04
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
@@ -110,6 +110,67 @@ The current gameplay issues being worked first are:
 - verify `I` / controller `Back` cancels an active move and only closes inventory on the next press
 - verify moved slot positions persist after saving at the typewriter and reloading
 - add item action menus and stack split/merge rules before shared safe storage
+
+## 2026-05-04
+
+### Summary
+
+- added stack merge behavior when moving one compatible stackable item onto another
+- added stack overflow handling so a partly merged source stack keeps any leftover count
+- added stack splitting with `Q` / controller `LeftShoulder`, now opening a quantity picker before creating the split stack
+- added a developer item spawn prompt on `T` with commands like `spawn ink x3`, `spawn crank`, and `spawn testkey`
+- added generic spawned world item pickup support through `Item_<ItemId>__xN` runtime entities
+- added a `Test Key` / `MasterKey` catalog item that can open any prototype lock without consuming the authored key
+- added first-pass inventory action menu entries for `Use`, `Examine`, `Move`, `Combine`, `Split`, and `Discard`
+- replaced immediate half-stack splitting with a quantity picker opened from `Q` / controller `LeftShoulder` or the action menu
+- added `Gunpowder` and `Bullets` item definitions, plus spawn aliases such as `spawn gunpowder x3`, `spawn powder`, and `spawn bullets x12`
+- added a prototype combine recipe: `Scrap` + `Gunpowder` consumes one of each and creates `Bullets x12`
+- made `I` / controller `Back` cancel action, split, and combine sub-menus before closing the inventory
+- updated inventory UI hints so merge and split controls are visible in the preview and generated RML path
+- fixed inventory mouse movement so press-hold-release now drags an item to a target slot instead of requiring separate pick/place clicks
+- added mouse release tracking in `Engine.Input` so UI interactions can respond to drag release cleanly
+- made hovered-slot split handling work in the same UI frame, so `Q` / controller `LeftShoulder` can open the split picker on the hovered stack without first pressing confirm
+
+### Why
+
+- stack rules need to be model-level before storage transfer, item action menus, combine recipes, and crafting materials can be reliable
+- quantity-picked splitting gives enough control for playtesting stackable materials without waiting for the final RmlUi inventory styling
+- action menus are the bridge toward Resident Evil-style item management, where using, examining, combining, splitting, moving, and eventually discarding/storage all share one focused interaction flow
+- the first combine recipe proves the data/model/UI loop for future puzzle objects, upgrade materials, ammo crafting, and chest rewards
+- the spawn prompt lets future item definitions be tested immediately without editing JSON or rebuilding the level
+- inventory interaction should feel direct with mouse: drag items, release to place, and split stacks without a setup click
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Input\Devices\InputState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryContainer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\ItemCatalog.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiImGuiPreviewRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `Engine.UI` compile check succeeded
+- `Engine.Input` compile check succeeded
+- `Engine.Runtime` compile check succeeded
+- isolated `Game` compile check succeeded
+- copied the validated `Game.dll`, `Engine.Input.dll`, `Engine.UI.dll`, and `Engine.Runtime.dll` into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- isolated `Game` compile initially hit the known local `obj` permission issue, then succeeded when run outside the sandbox
+- copied the validated action-menu/split-picker/combine build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+
+### Next
+
+- playtest `T`, then `spawn ink x3`, pick up the spawned item, and confirm it merges into existing Ink Ribbon stacks
+- playtest `T`, then `spawn gunpowder x3` and `spawn scrap x3`, pick both up, open inventory, choose `Combine`, and confirm `Bullets x12` is created
+- playtest dragging compatible stacks together, including a nearly full stack, and confirm overflow remains in the source stack
+- playtest `Q` / controller `LeftShoulder` on a stack with count greater than one and confirm the quantity picker can split a chosen amount
+- playtest mouse drag: press on an inventory item, drag over an empty/occupied compatible slot, release to move/merge/swap
+- expand combine recipes into data-driven item definitions instead of hardcoded prototype recipes
+- add safe storage transfer once action-menu and stack rules feel good
 
 ## 2026-04-29
 

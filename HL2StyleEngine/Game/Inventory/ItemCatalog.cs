@@ -3,6 +3,10 @@ namespace Game.Inventory;
 public static class ItemCatalog
 {
     public const string InkRibbon = "InkRibbon";
+    public const string MasterKey = "MasterKey";
+    public const string Scrap = "Scrap";
+    public const string Gunpowder = "Gunpowder";
+    public const string Bullets = "Bullets";
 
     private static readonly Dictionary<string, InventoryItemDefinition> KnownItems = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -45,14 +49,41 @@ public static class ItemCatalog
             maxStack: 1,
             expiresWhenMatchingLocksOpened: true),
 
-        ["Scrap"] = new(
-            "Scrap",
+        [MasterKey] = new(
+            MasterKey,
+            "Test Key",
+            "A developer test key that can open any prototype lock.",
+            InventoryItemType.Key,
+            slotWidth: 1,
+            slotHeight: 1,
+            maxStack: 1),
+
+        [Scrap] = new(
+            Scrap,
             "Scrap",
             "Crafting material. Combine it later to create or improve useful items.",
             InventoryItemType.Material,
             slotWidth: 1,
             slotHeight: 1,
             maxStack: 99),
+
+        [Gunpowder] = new(
+            Gunpowder,
+            "Gunpowder",
+            "A volatile powder. Combine it with scrap to make test ammunition.",
+            InventoryItemType.Material,
+            slotWidth: 1,
+            slotHeight: 1,
+            maxStack: 30),
+
+        [Bullets] = new(
+            Bullets,
+            "Bullets",
+            "Prototype ammunition made by combining scrap with gunpowder.",
+            InventoryItemType.Consumable,
+            slotWidth: 1,
+            slotHeight: 1,
+            maxStack: 60),
 
         ["CrankHandle"] = new(
             "CrankHandle",

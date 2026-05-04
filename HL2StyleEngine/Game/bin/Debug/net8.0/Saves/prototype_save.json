@@ -7,22 +7,57 @@
   ],
   "InventoryItems": [
     {
-      "ItemId": "Scrap",
-      "Count": 3,
-      "SlotIndex": 20
+      "ItemId": "ArchiveKey",
+      "Count": 1,
+      "SlotIndex": 2,
+      "Rotated": false
     },
     {
       "ItemId": "CrankHandle",
       "Count": 1,
-      "SlotIndex": 4
+      "SlotIndex": 4,
+      "Rotated": true
     },
     {
-      "ItemId": "ArchiveKey",
-      "Count": 1,
-      "SlotIndex": 2
+      "ItemId": "Scrap",
+      "Count": 99,
+      "SlotIndex": 21,
+      "Rotated": false
+    },
+    {
+      "ItemId": "InkRibbon",
+      "Count": 6,
+      "SlotIndex": 0,
+      "Rotated": false
+    },
+    {
+      "ItemId": "InkRibbon",
+      "Count": 6,
+      "SlotIndex": 1,
+      "Rotated": false
+    },
+    {
+      "ItemId": "InkRibbon",
+      "Count": 5,
+      "SlotIndex": 3,
+      "Rotated": false
+    },
+    {
+      "ItemId": "Scrap",
+      "Count": 99,
+      "SlotIndex": 19,
+      "Rotated": false
+    },
+    {
+      "ItemId": "Scrap",
+      "Count": 5,
+      "SlotIndex": 11,
+      "Rotated": false
     }
   ],
   "CollectedInteractables": [
+    "Item_InkRibbon__x20__Spawn1",
+    "Item_Scrap__x200__Spawn2",
     "ItemInkRibbon_Foyer",
     "ItemInkRibbon_SaveOffice",
     "ItemKey_ArchiveKey",
@@ -35,11 +70,11 @@
     "LockedDoor_RustedKey",
     "LockedDoor_ServiceKey__SaveOffice"
   ],
-  "InkRibbons": 0,
-  "SavePointUseCount": 2,
-  "PlayerX": -6.357394,
+  "InkRibbons": 17,
+  "SavePointUseCount": 5,
+  "PlayerX": -6.7767105,
   "PlayerY": 0,
-  "PlayerZ": 0.46502715,
-  "CameraYaw": 0.050002147,
-  "CameraPitch": -0.6975
+  "PlayerZ": 0.28695735,
+  "CameraYaw": 0.1825005,
+  "CameraPitch": -0.62750024
 }

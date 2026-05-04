@@ -1,0 +1,6 @@
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\GameObj\Debug\net8.0\Game.csproj.AssemblyReference.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\GameObj\Debug\net8.0\Game.GeneratedMSBuildEditorConfig.editorconfig
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\GameObj\Debug\net8.0\Game.AssemblyInfoInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\GameObj\Debug\net8.0\Game.AssemblyInfo.cs
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\GameObj\Debug\net8.0\Game.csproj.CoreCompileInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\.codex-build\GameObj\Debug\net8.0\Game.sourcelink.json

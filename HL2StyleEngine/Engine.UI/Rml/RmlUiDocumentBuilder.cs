@@ -128,6 +128,8 @@ internal static class RmlUiDocumentBuilder
         {
             string moveHint = state.CanSwapMovingItem
                 ? "Release here to swap items."
+                : state.CanMergeMovingItem
+                    ? "Release here to merge stacks."
                 : state.CanPlaceMovingItem
                     ? "Move target is valid."
                     : "That item will not fit there.";
@@ -138,7 +140,7 @@ internal static class RmlUiDocumentBuilder
         }
         else
         {
-            sb.AppendLine("          <p class=\"footer-hint\">E / X: Move | R / Y: Rotate | I / Back: Close</p>");
+            sb.AppendLine("          <p class=\"footer-hint\">E / X: Move | R / Y: Rotate | Q / LB: Split | I / Back: Close</p>");
         }
         sb.AppendLine("        </aside>");
         sb.AppendLine("      </section>");

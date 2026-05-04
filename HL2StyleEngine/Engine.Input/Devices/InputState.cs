@@ -20,6 +20,8 @@ public sealed class InputState
     // NEW: pressed-this-frame for mouse buttons
     public bool LeftMousePressedThisFrame { get; private set; }
     public bool RightMousePressedThisFrame { get; private set; }
+    public bool LeftMouseReleasedThisFrame { get; private set; }
+    public bool RightMouseReleasedThisFrame { get; private set; }
 
     private bool _prevLeftMouseDown;
     private bool _prevRightMouseDown;
@@ -208,6 +210,8 @@ public sealed class InputState
         // NEW: pressed this frame
         LeftMousePressedThisFrame = LeftMouseDown && !_prevLeftMouseDown;
         RightMousePressedThisFrame = RightMouseDown && !_prevRightMouseDown;
+        LeftMouseReleasedThisFrame = !LeftMouseDown && _prevLeftMouseDown;
+        RightMouseReleasedThisFrame = !RightMouseDown && _prevRightMouseDown;
 
         _prevLeftMouseDown = LeftMouseDown;
         _prevRightMouseDown = RightMouseDown;

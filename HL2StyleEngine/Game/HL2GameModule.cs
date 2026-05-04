@@ -102,6 +102,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private bool _movingInventoryRotated;
     private bool _inventoryNavXHeld;
     private bool _inventoryNavYHeld;
+    private bool _inventorySplitHandledThisFrame;
+    private bool _inventoryToggleConsumedThisFrame;
+    private bool _inventoryActionMenuOpen;
+    private int _inventoryActionIndex;
+    private bool _inventorySplitPickerOpen;
+    private int _inventorySplitAmount = 1;
+    private int _combineSourceSlot = -1;
     private bool _itemCollectedOpen;
     private string _itemCollectedItemId = "";
     private int _itemCollectedCount;
@@ -109,6 +116,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private string _gameMessage = "";
     private float _gameMessageTimer;
     private int _savePointUseCount;
+    private bool _spawnCommandOpen;
+    private string _spawnCommandText = "";
+    private int _spawnedItemSequence;
 
     private readonly FpsCamera _camera = new(new Vector3(0, 1.8f, -5f));
     private UIModeController _ui = null!;
@@ -154,7 +164,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private float _physicsMaxStep = 1f / 120f;
 
     public InputState InputState => _inputState;
-    private bool GameplayModalOpen => !_editorEnabled && (_inventoryOpen || _itemCollectedOpen);
+    private bool GameplayModalOpen => !_editorEnabled && (_inventoryOpen || _itemCollectedOpen || _spawnCommandOpen);
 
     private string PrototypeSavePath => Path.Combine(AppContext.BaseDirectory, "Saves", "prototype_save.json");
 
@@ -225,6 +235,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     public void Update(float dt, InputSnapshot snapshot)
     {
         _fps = dt > 0 ? 1f / dt : 0f;
+        _inventorySplitHandledThisFrame = false;
+        _inventoryToggleConsumedThisFrame = false;
 
         _inputState.Update(snapshot);
         _inputSystem.Update();
@@ -241,6 +253,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 _inventoryOpen = false;
                 CancelInventoryMove();
                 _itemCollectedOpen = false;
+                SetSpawnCommandOpen(false);
                 _ui.OpenUI();
             }
             else
@@ -250,6 +263,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 ApplySpawnFromEditor(forceResetVelocity: true);
             }
         }
+
+        if (!_editorEnabled && !_inventoryOpen && !_itemCollectedOpen && _inputState.WasPressed(Key.T))
+            SetSpawnCommandOpen(!_spawnCommandOpen);
+
+        if (!_editorEnabled && _spawnCommandOpen && _inputState.WasPressed(Key.Escape))
+            SetSpawnCommandOpen(false);
 
         if (!_editorEnabled && _itemCollectedOpen)
         {
@@ -265,7 +284,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         if (!_editorEnabled && _inventoryOpen)
             UpdateInventoryNavigation();
 
-        if (!_editorEnabled && !_itemCollectedOpen && !_inventoryOpen)
+        if (!_editorEnabled && !_itemCollectedOpen && !_inventoryOpen && !_spawnCommandOpen)
         {
             TryPickupDropThrow();
             UpdateInteractionPrompt();
@@ -287,7 +306,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 ApplySpawnFromEditor(forceResetVelocity: true);
         }
 
-        if (!_editorEnabled && ToggleInventoryPressedThisFrame())
+        if (!_editorEnabled && !_spawnCommandOpen && !_inventoryToggleConsumedThisFrame && ToggleInventoryPressedThisFrame())
         {
             if (_inventoryOpen && IsMovingInventoryItem)
                 CancelInventoryMove(showMessage: true);
@@ -318,7 +337,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
         }
 
-        if (_inventoryOpen || _itemCollectedOpen)
+        if (_inventoryOpen || _itemCollectedOpen || _spawnCommandOpen)
         {
             _wishDir = Vector3.Zero;
             _wishSpeed = 0f;
@@ -459,6 +478,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             MovingItemSlotHeight = movingHeight,
             CanPlaceMovingItem = CanPlaceMovingInventoryItem(),
             CanSwapMovingItem = CanSwapMovingInventoryItem(),
+            CanMergeMovingItem = CanMergeMovingInventoryItem(),
             SaveCount = _savePointUseCount,
             InventoryItems = items,
             CollectedItem = BuildCollectedItemUiState()
@@ -658,6 +678,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         _itemCollectedOpen = false;
         _itemCollectedItemId = "";
         _itemCollectedCount = 0;
+        SetSpawnCommandOpen(false);
     }
 
     private void SetInventoryOpen(bool open)
@@ -679,6 +700,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         else if (!_editorEnabled && !_itemCollectedOpen)
         {
             CancelInventoryMove();
+            CloseInventoryActionUi();
             _ui.CloseUI();
         }
     }
@@ -688,11 +710,38 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         if (_inventory.IsEmpty)
         {
             _selectedInventoryStackIndex = -1;
+            CloseInventoryActionUi();
             return;
         }
 
         if (_selectedInventoryStackIndex < 0)
             _selectedInventoryStackIndex = _inventory.Stacks[0].SlotIndex;
+
+        if (_inventorySplitPickerOpen)
+        {
+            UpdateInventorySplitPicker();
+            return;
+        }
+
+        if (_inventoryActionMenuOpen)
+        {
+            UpdateInventoryActionMenu();
+            return;
+        }
+
+        if (_combineSourceSlot >= 0 && (ToggleInventoryPressedThisFrame() || _inputState.WasPressed(Key.Escape)))
+        {
+            _combineSourceSlot = -1;
+            _inventoryToggleConsumedThisFrame = true;
+            ShowGameMessage("Combine cancelled.", 1.25f);
+            return;
+        }
+
+        if (InventorySplitPressedThisFrame())
+        {
+            OpenSplitPickerForSelection();
+            return;
+        }
 
         if (InventoryRotatePressedThisFrame())
         {
@@ -702,7 +751,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
         if (InteractPressedThisFrame())
         {
-            HandleInventoryConfirm();
+            if (_combineSourceSlot >= 0)
+                TryCombineWithSelection();
+            else
+                OpenInventoryActionMenu();
             return;
         }
 
@@ -766,14 +818,23 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
         }
 
+        BeginInventoryMoveFromSelection();
+    }
+
+    private bool BeginInventoryMoveFromSelection()
+    {
+        if (IsMovingInventoryItem)
+            return false;
+
         InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
         if (selectedStack == null)
-            return;
+            return false;
 
         _selectedInventoryStackIndex = selectedStack.SlotIndex;
         _movingInventoryFromSlot = selectedStack.SlotIndex;
         _movingInventoryRotated = selectedStack.Rotated;
         ShowGameMessage($"Moving {ItemCatalog.GetDisplayName(selectedStack.ItemId)}.", 1.5f);
+        return true;
     }
 
     private void SelectInventorySlot(int slotIndex)
@@ -813,6 +874,22 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         return _inventory.CanMoveOrSwapStackToSlot(_movingInventoryFromSlot, target.SlotIndex, _movingInventoryRotated);
     }
 
+    private bool CanMergeMovingInventoryItem()
+    {
+        if (!IsMovingInventoryItem)
+            return false;
+
+        InventoryItemStack? moving = _inventory.GetStackAtSlot(_movingInventoryFromSlot);
+        InventoryItemStack? target = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (moving == null || target == null || ReferenceEquals(moving, target))
+            return false;
+
+        InventoryItemDefinition definition = ItemCatalog.Get(moving.ItemId);
+        return definition.MaxStack > 1 &&
+               string.Equals(moving.ItemId, target.ItemId, StringComparison.OrdinalIgnoreCase) &&
+               target.Count < definition.MaxStack;
+    }
+
     private void TryPlaceMovingInventoryItem()
     {
         if (!IsMovingInventoryItem)
@@ -825,7 +902,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             ? ItemCatalog.GetDisplayName(movingStack.ItemId)
             : "Item";
 
-        if (!_inventory.MoveOrSwapStackToSlot(fromSlot, targetSlot, _movingInventoryRotated, out bool swapped))
+        if (!_inventory.MoveOrMergeOrSwapStackToSlot(fromSlot, targetSlot, _movingInventoryRotated, out InventoryMoveResult moveResult))
         {
             ShowGameMessage($"{itemName} will not fit there.", 1.75f);
             return;
@@ -833,9 +910,19 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
         _movingInventoryFromSlot = -1;
         _movingInventoryRotated = false;
-        _selectedInventoryStackIndex = targetSlot;
-        ShowGameMessage(swapped ? $"{itemName} swapped." : $"{itemName} moved.", 1.25f);
+        _selectedInventoryStackIndex = moveResult == InventoryMoveResult.PartiallyMerged ? fromSlot : targetSlot;
+        ShowGameMessage(GetInventoryMoveMessage(itemName, moveResult), 1.25f);
     }
+
+    private static string GetInventoryMoveMessage(string itemName, InventoryMoveResult moveResult)
+        => moveResult switch
+        {
+            InventoryMoveResult.Swapped => $"{itemName} swapped.",
+            InventoryMoveResult.Merged => $"{itemName} merged.",
+            InventoryMoveResult.PartiallyMerged => $"{itemName} partly merged. Source stack kept the overflow.",
+            InventoryMoveResult.StackFull => $"{itemName} stack is full.",
+            _ => $"{itemName} moved."
+        };
 
     private void CancelInventoryMove(bool showMessage = false)
     {
@@ -905,6 +992,323 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         int placedWidth = _inventory.GetSlotWidth(selectedStack);
         int placedHeight = _inventory.GetSlotHeight(selectedStack);
         ShowGameMessage($"{selectedDefinition.DisplayName} rotated to {placedWidth}x{placedHeight}.", 1.25f);
+    }
+
+    private void TrySplitInventorySelection()
+    {
+        _inventorySplitHandledThisFrame = true;
+
+        if (IsMovingInventoryItem)
+            return;
+
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (selectedStack == null)
+            return;
+
+        InventoryItemDefinition definition = ItemCatalog.Get(selectedStack.ItemId);
+        if (definition.MaxStack <= 1 || selectedStack.Count <= 1)
+        {
+            ShowGameMessage($"{definition.DisplayName} cannot be split.", 1.25f);
+            return;
+        }
+
+        if (!_inventory.SplitStackAtSlot(selectedStack.SlotIndex, out int newSlot, out int splitCount))
+        {
+            ShowGameMessage($"No room to split {definition.DisplayName}.", 1.5f);
+            return;
+        }
+
+        _selectedInventoryStackIndex = newSlot;
+        ShowGameMessage($"Split {definition.DisplayName} x{splitCount}.", 1.25f);
+    }
+
+    private void TrySplitInventorySelection(int amount)
+    {
+        _inventorySplitHandledThisFrame = true;
+
+        if (IsMovingInventoryItem)
+            return;
+
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (selectedStack == null)
+            return;
+
+        InventoryItemDefinition definition = ItemCatalog.Get(selectedStack.ItemId);
+        if (definition.MaxStack <= 1 || selectedStack.Count <= 1)
+        {
+            ShowGameMessage($"{definition.DisplayName} cannot be split.", 1.25f);
+            return;
+        }
+
+        int splitAmount = Math.Clamp(amount, 1, selectedStack.Count - 1);
+        if (!_inventory.SplitStackAtSlot(selectedStack.SlotIndex, splitAmount, out int newSlot, out int splitCount))
+        {
+            ShowGameMessage($"No room to split {definition.DisplayName}.", 1.5f);
+            return;
+        }
+
+        _selectedInventoryStackIndex = newSlot;
+        ShowGameMessage($"Split {definition.DisplayName} x{splitCount}.", 1.25f);
+    }
+
+    private void UpdateInventoryMouseDrag()
+    {
+        if (_inventoryActionMenuOpen || _inventorySplitPickerOpen)
+            return;
+
+        if (_combineSourceSlot >= 0 && _inputState.LeftMousePressedThisFrame)
+        {
+            TryCombineWithSelection();
+            return;
+        }
+
+        if (_inputState.LeftMousePressedThisFrame)
+        {
+            BeginInventoryMoveFromSelection();
+            return;
+        }
+
+        if (IsMovingInventoryItem && _inputState.LeftMouseReleasedThisFrame)
+            TryPlaceMovingInventoryItem();
+    }
+
+    private static readonly string[] InventoryActionLabels =
+    [
+        "Use",
+        "Examine",
+        "Move",
+        "Combine",
+        "Split",
+        "Discard"
+    ];
+
+    private void OpenInventoryActionMenu()
+    {
+        if (IsMovingInventoryItem)
+        {
+            TryPlaceMovingInventoryItem();
+            return;
+        }
+
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (selectedStack == null)
+            return;
+
+        _selectedInventoryStackIndex = selectedStack.SlotIndex;
+        _inventoryActionMenuOpen = true;
+        _inventorySplitPickerOpen = false;
+        _inventoryActionIndex = 0;
+    }
+
+    private void CloseInventoryActionUi()
+    {
+        _inventoryActionMenuOpen = false;
+        _inventorySplitPickerOpen = false;
+        _inventoryActionIndex = 0;
+        _inventorySplitAmount = 1;
+        _combineSourceSlot = -1;
+    }
+
+    private void UpdateInventoryActionMenu()
+    {
+        if (ToggleInventoryPressedThisFrame() || _inputState.WasPressed(Key.Escape))
+        {
+            _inventoryActionMenuOpen = false;
+            _inventoryToggleConsumedThisFrame = true;
+            return;
+        }
+
+        if (_inputState.WasPressed(Key.W) || _inputState.GetGamepadPressed(GamepadButton.DpadUp))
+            _inventoryActionIndex--;
+        else if (_inputState.WasPressed(Key.S) || _inputState.GetGamepadPressed(GamepadButton.DpadDown))
+            _inventoryActionIndex++;
+
+        _inventoryActionIndex = WrapIndex(_inventoryActionIndex, InventoryActionLabels.Length);
+
+        if (InteractPressedThisFrame())
+            ExecuteSelectedInventoryAction();
+    }
+
+    private void ExecuteSelectedInventoryAction()
+    {
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (selectedStack == null)
+        {
+            _inventoryActionMenuOpen = false;
+            return;
+        }
+
+        string action = InventoryActionLabels[Math.Clamp(_inventoryActionIndex, 0, InventoryActionLabels.Length - 1)];
+        InventoryItemDefinition definition = ItemCatalog.Get(selectedStack.ItemId);
+        switch (action)
+        {
+            case "Use":
+                ShowGameMessage($"{definition.DisplayName} cannot be used here yet.", 1.75f);
+                _inventoryActionMenuOpen = false;
+                break;
+            case "Examine":
+                ShowGameMessage(string.IsNullOrWhiteSpace(definition.Description) ? $"Examined {definition.DisplayName}." : definition.Description, 3.5f);
+                _inventoryActionMenuOpen = false;
+                break;
+            case "Move":
+                _inventoryActionMenuOpen = false;
+                BeginInventoryMoveFromSelection();
+                break;
+            case "Combine":
+                _combineSourceSlot = selectedStack.SlotIndex;
+                _inventoryActionMenuOpen = false;
+                ShowGameMessage($"Select an item to combine with {definition.DisplayName}.", 2.0f);
+                break;
+            case "Split":
+                _inventoryActionMenuOpen = false;
+                OpenSplitPickerForSelection();
+                break;
+            case "Discard":
+                ShowGameMessage("Discard is not enabled in this prototype yet.", 1.75f);
+                _inventoryActionMenuOpen = false;
+                break;
+        }
+    }
+
+    private void OpenSplitPickerForSelection()
+    {
+        _inventorySplitHandledThisFrame = true;
+
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (selectedStack == null)
+            return;
+
+        InventoryItemDefinition definition = ItemCatalog.Get(selectedStack.ItemId);
+        if (definition.MaxStack <= 1 || selectedStack.Count <= 1)
+        {
+            ShowGameMessage($"{definition.DisplayName} cannot be split.", 1.25f);
+            return;
+        }
+
+        if (!_inventory.CanSplitStackAtSlot(selectedStack.SlotIndex))
+        {
+            ShowGameMessage($"No room to split {definition.DisplayName}.", 1.5f);
+            return;
+        }
+
+        _selectedInventoryStackIndex = selectedStack.SlotIndex;
+        _inventorySplitPickerOpen = true;
+        _inventoryActionMenuOpen = false;
+        _inventorySplitAmount = Math.Max(1, selectedStack.Count / 2);
+    }
+
+    private void UpdateInventorySplitPicker()
+    {
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (selectedStack == null)
+        {
+            _inventorySplitPickerOpen = false;
+            return;
+        }
+
+        int maxAmount = Math.Max(1, selectedStack.Count - 1);
+        if (_inputState.WasPressed(Key.A) || _inputState.WasPressed(Key.W) ||
+            _inputState.GetGamepadPressed(GamepadButton.DpadLeft) || _inputState.GetGamepadPressed(GamepadButton.DpadUp))
+        {
+            _inventorySplitAmount--;
+        }
+        else if (_inputState.WasPressed(Key.D) || _inputState.WasPressed(Key.S) ||
+                 _inputState.GetGamepadPressed(GamepadButton.DpadRight) || _inputState.GetGamepadPressed(GamepadButton.DpadDown))
+        {
+            _inventorySplitAmount++;
+        }
+
+        _inventorySplitAmount = Math.Clamp(_inventorySplitAmount, 1, maxAmount);
+
+        if (ToggleInventoryPressedThisFrame() || _inputState.WasPressed(Key.Escape))
+        {
+            _inventorySplitPickerOpen = false;
+            _inventoryToggleConsumedThisFrame = true;
+            return;
+        }
+
+        if (InteractPressedThisFrame())
+        {
+            _inventorySplitPickerOpen = false;
+            TrySplitInventorySelection(_inventorySplitAmount);
+        }
+    }
+
+    private void TryCombineWithSelection()
+    {
+        if (_combineSourceSlot < 0)
+            return;
+
+        InventoryItemStack? source = _inventory.GetStackAtSlot(_combineSourceSlot);
+        InventoryItemStack? target = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (source == null || target == null)
+            return;
+
+        if (ReferenceEquals(source, target))
+        {
+            ShowGameMessage("Choose a different item to combine.", 1.5f);
+            return;
+        }
+
+        if (!TryGetCombineRecipe(source.ItemId, target.ItemId, out string resultItemId, out int resultCount))
+        {
+            ShowGameMessage($"{ItemCatalog.GetDisplayName(source.ItemId)} cannot combine with {ItemCatalog.GetDisplayName(target.ItemId)}.", 2.0f);
+            _combineSourceSlot = -1;
+            return;
+        }
+
+        string sourceName = ItemCatalog.GetDisplayName(source.ItemId);
+        string targetName = ItemCatalog.GetDisplayName(target.ItemId);
+        if (!_inventory.RemoveCount(source.ItemId, 1) || !_inventory.RemoveCount(target.ItemId, 1))
+        {
+            ShowGameMessage("Could not combine those items.", 1.75f);
+            _combineSourceSlot = -1;
+            return;
+        }
+
+        if (!_inventory.Add(resultItemId, resultCount))
+        {
+            _inventory.Add(source.ItemId, 1);
+            _inventory.Add(target.ItemId, 1);
+            ShowGameMessage("No room for the combined item.", 1.75f);
+            _combineSourceSlot = -1;
+            return;
+        }
+
+        _combineSourceSlot = -1;
+        InventoryItemDefinition result = ItemCatalog.Get(resultItemId);
+        ShowGameMessage($"Combined {sourceName} with {targetName}. Created {result.DisplayName} x{resultCount}.", 2.5f);
+    }
+
+    private static bool TryGetCombineRecipe(string a, string b, out string resultItemId, out int resultCount)
+    {
+        bool scrapAndGunpowder =
+            (string.Equals(a, ItemCatalog.Scrap, StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(b, ItemCatalog.Gunpowder, StringComparison.OrdinalIgnoreCase)) ||
+            (string.Equals(a, ItemCatalog.Gunpowder, StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(b, ItemCatalog.Scrap, StringComparison.OrdinalIgnoreCase));
+
+        if (scrapAndGunpowder)
+        {
+            resultItemId = ItemCatalog.Bullets;
+            resultCount = 12;
+            return true;
+        }
+
+        resultItemId = "";
+        resultCount = 0;
+        return false;
+    }
+
+    private static int WrapIndex(int value, int count)
+    {
+        if (count <= 0)
+            return 0;
+
+        value %= count;
+        if (value < 0)
+            value += count;
+        return value;
     }
 
     private void ApplyPersistentInteractionStateToRuntime()
@@ -3615,10 +4019,20 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             if (previewSelectedSlot >= 0)
             {
                 SelectInventorySlot(previewSelectedSlot);
-                if (_inventoryOpen && _inputState.LeftMousePressedThisFrame)
-                    HandleInventoryConfirm();
+                if (_inventoryOpen)
+                {
+                    if (!_inventorySplitHandledThisFrame && InventorySplitPressedThisFrame())
+                    {
+                        _inventorySplitHandledThisFrame = true;
+                        OpenSplitPickerForSelection();
+                        return;
+                    }
+
+                    UpdateInventoryMouseDrag();
+                }
             }
 
+            DrawInventoryActionOverlays();
             return;
         }
 
@@ -3950,6 +4364,176 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     public void RenderOverlay(Renderer renderer)
     {
         _gameplayUi.RenderOverlay(renderer);
+        DrawSpawnCommandOverlay();
+    }
+
+    private void DrawSpawnCommandOverlay()
+    {
+        if (!_spawnCommandOpen)
+            return;
+
+        ImGuiViewportPtr viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(
+            new Vector2(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + 92f),
+            ImGuiCond.Always,
+            new Vector2(0.5f, 0f));
+        ImGui.SetNextWindowSize(new Vector2(520f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.94f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings;
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.02f, 0.024f, 0.026f, 0.96f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.62f, 0.66f, 0.60f, 0.45f));
+        ImGui.Begin("SpawnCommandOverlay", flags);
+        ImGui.TextColored(new Vector4(0.92f, 0.91f, 0.84f, 1f), "Spawn item");
+        ImGui.TextDisabled("Example: spawn ink x3, spawn crank, spawn testkey");
+        ImGui.SetKeyboardFocusHere();
+        bool submitted = ImGui.InputText(
+            "##SpawnCommandInput",
+            ref _spawnCommandText,
+            128,
+            ImGuiInputTextFlags.EnterReturnsTrue);
+        ImGui.TextDisabled("Enter: spawn | Escape: close");
+        ImGui.End();
+        ImGui.PopStyleColor(2);
+
+        if (submitted)
+            ExecuteSpawnCommand(_spawnCommandText);
+    }
+
+    private void DrawInventoryActionOverlays()
+    {
+        if (!_inventoryOpen)
+            return;
+
+        if (_inventoryActionMenuOpen)
+            DrawInventoryActionMenuOverlay();
+
+        if (_inventorySplitPickerOpen)
+            DrawInventorySplitPickerOverlay();
+
+        if (_combineSourceSlot >= 0)
+            DrawCombinePromptOverlay();
+    }
+
+    private void DrawInventoryActionMenuOverlay()
+    {
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (selectedStack == null)
+            return;
+
+        InventoryItemDefinition definition = ItemCatalog.Get(selectedStack.ItemId);
+        ImGui.SetNextWindowPos(new Vector2(720f, 435f), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(230f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.96f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings;
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.025f, 0.03f, 0.032f, 0.97f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.66f, 0.68f, 0.61f, 0.50f));
+        ImGui.Begin("InventoryActionMenu", flags);
+        ImGui.TextColored(new Vector4(0.92f, 0.91f, 0.84f, 1f), definition.DisplayName);
+        ImGui.Separator();
+        for (int i = 0; i < InventoryActionLabels.Length; i++)
+        {
+            bool selected = i == _inventoryActionIndex;
+            if (selected)
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.92f, 0.88f, 0.58f, 1f));
+
+            if (ImGui.Selectable(InventoryActionLabels[i], selected))
+            {
+                _inventoryActionIndex = i;
+                ExecuteSelectedInventoryAction();
+            }
+
+            if (selected)
+                ImGui.PopStyleColor();
+        }
+
+        ImGui.Separator();
+        ImGui.TextDisabled("E/X: Confirm | I/Back: Cancel");
+        ImGui.End();
+        ImGui.PopStyleColor(2);
+    }
+
+    private void DrawInventorySplitPickerOverlay()
+    {
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (selectedStack == null)
+            return;
+
+        InventoryItemDefinition definition = ItemCatalog.Get(selectedStack.ItemId);
+        int maxAmount = Math.Max(1, selectedStack.Count - 1);
+        _inventorySplitAmount = Math.Clamp(_inventorySplitAmount, 1, maxAmount);
+
+        ImGui.SetNextWindowPos(new Vector2(710f, 435f), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(250f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.96f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings;
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.025f, 0.03f, 0.032f, 0.97f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.66f, 0.68f, 0.61f, 0.50f));
+        ImGui.Begin("InventorySplitPicker", flags);
+        ImGui.TextColored(new Vector4(0.92f, 0.91f, 0.84f, 1f), $"Split {definition.DisplayName}");
+        ImGui.TextDisabled($"Stack: {selectedStack.Count} | Max split: {maxAmount}");
+        int amount = _inventorySplitAmount;
+        if (ImGui.SliderInt("Amount", ref amount, 1, maxAmount))
+            _inventorySplitAmount = amount;
+
+        if (ImGui.Button("Confirm", new Vector2(102f, 0f)))
+        {
+            _inventorySplitPickerOpen = false;
+            TrySplitInventorySelection(_inventorySplitAmount);
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Cancel", new Vector2(102f, 0f)))
+            _inventorySplitPickerOpen = false;
+
+        ImGui.TextDisabled("A/D or D-pad: Amount | E/X: Confirm");
+        ImGui.End();
+        ImGui.PopStyleColor(2);
+    }
+
+    private void DrawCombinePromptOverlay()
+    {
+        InventoryItemStack? source = _inventory.GetStackAtSlot(_combineSourceSlot);
+        if (source == null)
+            return;
+
+        string sourceName = ItemCatalog.GetDisplayName(source.ItemId);
+        ImGui.SetNextWindowPos(new Vector2(710f, 435f), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(260f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.92f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings;
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.025f, 0.03f, 0.032f, 0.94f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.66f, 0.68f, 0.61f, 0.50f));
+        ImGui.Begin("InventoryCombinePrompt", flags);
+        ImGui.TextColored(new Vector4(0.92f, 0.91f, 0.84f, 1f), $"Combining {sourceName}");
+        ImGui.TextWrapped("Select another item, then press E/X or click it.");
+        if (ImGui.Button("Cancel"))
+            _combineSourceSlot = -1;
+        ImGui.End();
+        ImGui.PopStyleColor(2);
     }
 
 
@@ -4286,7 +4870,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     }
 
     private static bool IsGameplayInteractable(Entity e)
-        => IsKeyItem(e) || IsInkRibbon(e) || IsLockedObject(e) || IsSavePoint(e);
+        => IsWorldItem(e) || IsLockedObject(e) || IsSavePoint(e);
+
+    private static bool IsWorldItem(Entity e)
+        => IsKeyItem(e) || IsInkRibbon(e) || e.Name.StartsWith("Item_", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsKeyItem(Entity e)
         => e.Name.StartsWith("ItemKey_", StringComparison.OrdinalIgnoreCase);
@@ -4306,10 +4893,66 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private static bool IsSavePoint(Entity e)
         => e.Name.StartsWith("SavePoint_", StringComparison.OrdinalIgnoreCase);
 
+    private static bool TryGetWorldItem(Entity e, out string itemId, out int count)
+    {
+        count = 1;
+
+        if (IsKeyItem(e))
+        {
+            itemId = GetNameToken(e, "ItemKey_");
+            return true;
+        }
+
+        if (IsInkRibbon(e))
+        {
+            itemId = ItemCatalog.InkRibbon;
+            return true;
+        }
+
+        if (e.Name.StartsWith("Item_", StringComparison.OrdinalIgnoreCase))
+        {
+            itemId = GetNameToken(e, "Item_");
+            count = GetWorldItemCount(e.Name);
+            return !string.IsNullOrWhiteSpace(itemId);
+        }
+
+        itemId = "";
+        return false;
+    }
+
+    private static int GetWorldItemCount(string entityName)
+    {
+        string[] parts = entityName.Split("__", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        for (int i = 1; i < parts.Length; i++)
+        {
+            string part = parts[i];
+            if (part.Length > 1 && (part[0] == 'x' || part[0] == 'X') &&
+                int.TryParse(part[1..], out int count))
+            {
+                return Math.Clamp(count, 1, 999);
+            }
+        }
+
+        return 1;
+    }
+
     private static string GetLockRequiredItem(Entity e)
         => IsLockedChest(e)
             ? GetNameToken(e, "LockedChest_")
             : GetNameToken(e, "LockedDoor_");
+
+    private bool HasUnlockItem(string requiredItem)
+        => _inventory.Contains(requiredItem) || _inventory.Contains(ItemCatalog.MasterKey);
+
+    private string? GetHeldUnlockItemForLock(string requiredItem)
+    {
+        if (_inventory.Contains(requiredItem))
+            return requiredItem;
+
+        return _inventory.Contains(ItemCatalog.MasterKey)
+            ? ItemCatalog.MasterKey
+            : null;
+    }
 
     private static string GetNameToken(Entity e, string prefix)
         => GetNameToken(e.Name, prefix);
@@ -4348,18 +4991,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
     private string GetInteractionPrompt(Entity e)
     {
-        if (IsKeyItem(e))
-            return $"Take {ItemCatalog.GetDisplayName(GetNameToken(e, "ItemKey_"))}";
-
-        if (IsInkRibbon(e))
-            return "Take Ink Ribbon";
+        if (TryGetWorldItem(e, out string worldItemId, out int worldItemCount))
+        {
+            string countSuffix = worldItemCount > 1 ? $" x{worldItemCount}" : "";
+            return $"Take {ItemCatalog.GetDisplayName(worldItemId)}{countSuffix}";
+        }
 
         if (IsLockedObject(e))
         {
             string requiredItem = GetLockRequiredItem(e);
-            string itemName = ItemCatalog.GetDisplayName(requiredItem);
+            string itemName = ItemCatalog.GetDisplayName(GetHeldUnlockItemForLock(requiredItem) ?? requiredItem);
             string lockName = IsLockedChest(e) ? "chest" : "door";
-            return _inventory.Contains(requiredItem)
+            return HasUnlockItem(requiredItem)
                 ? $"Unlock {lockName} with {itemName}"
                 : $"Locked - needs {itemName}";
         }
@@ -4398,33 +5041,23 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         if (hit == null)
             return false;
 
-        if (IsKeyItem(hit))
+        if (TryGetWorldItem(hit, out string itemId, out int itemCount))
         {
-            string keyId = GetNameToken(hit, "ItemKey_");
-            if (!AddInventoryItem(keyId, count: 1, showCollectedScreen: true))
+            if (!AddInventoryItem(itemId, itemCount, showCollectedScreen: true))
                 return true;
 
             _collectedInteractables.Add(hit.Name);
             HideRuntimeEntity(hit);
-            ShowGameMessage($"Picked up {ItemCatalog.GetDisplayName(keyId)}.");
-            return true;
-        }
-
-        if (IsInkRibbon(hit))
-        {
-            if (!AddInventoryItem(ItemCatalog.InkRibbon, count: 1, showCollectedScreen: true))
-                return true;
-
-            _collectedInteractables.Add(hit.Name);
-            HideRuntimeEntity(hit);
-            ShowGameMessage($"Picked up Ink Ribbon. Ink ribbons: {_inventory.GetCount(ItemCatalog.InkRibbon)}.");
+            string countSuffix = itemCount > 1 ? $" x{itemCount}" : "";
+            ShowGameMessage($"Picked up {ItemCatalog.GetDisplayName(itemId)}{countSuffix}.");
             return true;
         }
 
         if (IsLockedObject(hit))
         {
             string requiredItem = GetLockRequiredItem(hit);
-            if (!_inventory.Contains(requiredItem))
+            string? unlockItem = GetHeldUnlockItemForLock(requiredItem);
+            if (unlockItem == null)
             {
                 ShowGameMessage($"It is locked. It needs {ItemCatalog.GetDisplayName(requiredItem)}.");
                 return true;
@@ -4432,7 +5065,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
             _openedDoors.Add(hit.Name);
             HideRuntimeEntity(hit);
-            string message = $"Unlocked with {ItemCatalog.GetDisplayName(requiredItem)}.";
+            string message = $"Unlocked with {ItemCatalog.GetDisplayName(unlockItem)}.";
 
             if (IsLockedChest(hit) && TryGetLockedChestReward(hit, out string rewardItemId, out int rewardCount))
             {
@@ -4441,8 +5074,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 message += $" Found {ItemCatalog.GetDisplayName(rewardItemId)}{countSuffix}.";
             }
 
-            if (TryRemoveInventoryItemIfFullyUsed(requiredItem))
+            if (!string.Equals(unlockItem, ItemCatalog.MasterKey, StringComparison.OrdinalIgnoreCase) &&
+                TryRemoveInventoryItemIfFullyUsed(requiredItem))
+            {
                 message += $" {ItemCatalog.GetDisplayName(requiredItem)} is no longer needed.";
+            }
 
             ShowGameMessage(message);
             return true;
@@ -4475,6 +5111,161 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         _gameMessageTimer = seconds;
     }
 
+    private void SetSpawnCommandOpen(bool open)
+    {
+        if (_spawnCommandOpen == open)
+            return;
+
+        _spawnCommandOpen = open;
+        if (_spawnCommandOpen)
+        {
+            _spawnCommandText = "";
+            _interactionPrompt = "";
+            _ui.OpenUI();
+        }
+        else if (!_editorEnabled && !_inventoryOpen && !_itemCollectedOpen)
+        {
+            _ui.CloseUI();
+        }
+    }
+
+    private void ExecuteSpawnCommand(string command)
+    {
+        if (!TryParseSpawnCommand(command, out string itemId, out int count, out string error))
+        {
+            ShowGameMessage(error, 2.5f);
+            return;
+        }
+
+        SpawnWorldItem(itemId, count);
+        SetSpawnCommandOpen(false);
+
+        string countSuffix = count > 1 ? $" x{count}" : "";
+        ShowGameMessage($"Spawned {ItemCatalog.GetDisplayName(itemId)}{countSuffix}.", 2.0f);
+    }
+
+    private static bool TryParseSpawnCommand(string command, out string itemId, out int count, out string error)
+    {
+        itemId = "";
+        count = 1;
+        error = "";
+
+        string[] parts = command.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0)
+        {
+            error = "Type a spawn command, e.g. spawn ink x3.";
+            return false;
+        }
+
+        int start = string.Equals(parts[0], "spawn", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        if (start >= parts.Length)
+        {
+            error = "Missing item name. Try spawn ink x3.";
+            return false;
+        }
+
+        List<string> itemParts = new();
+        for (int i = start; i < parts.Length; i++)
+        {
+            string token = parts[i];
+            if (TryParseSpawnCountToken(token, out int parsedCount))
+            {
+                count = parsedCount;
+                continue;
+            }
+
+            itemParts.Add(token);
+        }
+
+        if (itemParts.Count == 0)
+        {
+            error = "Missing item name. Try spawn crank.";
+            return false;
+        }
+
+        string requestedItem = string.Join("", itemParts);
+        itemId = ResolveSpawnItemId(requestedItem);
+        count = Math.Clamp(count, 1, 999);
+        return true;
+    }
+
+    private static bool TryParseSpawnCountToken(string token, out int count)
+    {
+        count = 1;
+        if (token.Length > 1 && (token[0] == 'x' || token[0] == 'X'))
+            return int.TryParse(token[1..], out count);
+
+        return int.TryParse(token, out count);
+    }
+
+    private static string ResolveSpawnItemId(string token)
+    {
+        string normalized = token.Replace("_", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal);
+        return normalized.ToLowerInvariant() switch
+        {
+            "ink" or "inkribbon" or "ribbon" => ItemCatalog.InkRibbon,
+            "crank" or "crankhandle" => "CrankHandle",
+            "scrap" => ItemCatalog.Scrap,
+            "gunpowder" or "powder" => ItemCatalog.Gunpowder,
+            "bullet" or "bullets" or "ammo" => ItemCatalog.Bullets,
+            "rustedkey" or "rustykey" => "RustedKey",
+            "servicekey" => "ServiceKey",
+            "archivekey" => "ArchiveKey",
+            "testkey" or "masterkey" or "anykey" => ItemCatalog.MasterKey,
+            _ => token
+        };
+    }
+
+    private void SpawnWorldItem(string itemId, int count)
+    {
+        InventoryItemDefinition definition = ItemCatalog.Get(itemId);
+        Vector3 forward = Vector3.Normalize(_camera.Forward);
+        Vector3 position = _camera.Position + forward * 2.0f;
+        Vector3 size = GetSpawnedItemSize(definition);
+
+        var entity = new Entity(Guid.NewGuid().ToString("N"), EntityTypes.RigidBody, $"Item_{definition.Id}__x{Math.Clamp(count, 1, 999)}__Spawn{++_spawnedItemSequence}")
+        {
+            CanPickUp = false
+        };
+
+        entity.Transform.Position = position;
+        entity.Transform.RotationEulerDeg = Vector3.Zero;
+        entity.Transform.Scale = Vector3.One;
+        entity.Physics.MotionType = MotionType.Static;
+        entity.Physics.RestRotation = Quaternion.Identity;
+        entity.Physics.Rotation = Quaternion.Identity;
+
+        entity.Render.Shape = RuntimeShapeKind.Box;
+        entity.Render.Size = size;
+        entity.Render.Color = GetSpawnedItemColor(definition);
+
+        entity.Collider.Shape = RuntimeShapeKind.Box;
+        entity.Collider.Size = size;
+        entity.Collider.Radius = 0.5f;
+        entity.Collider.Height = size.Y;
+        entity.Collider.IsSolid = false;
+        entity.Collider.PreviousPosition = position;
+        entity.Collider.Delta = Vector3.Zero;
+
+        _runtimeEntities.Add(entity);
+    }
+
+    private static Vector3 GetSpawnedItemSize(InventoryItemDefinition definition)
+        => new(
+            MathF.Max(0.28f, definition.SlotWidth * 0.26f),
+            0.22f,
+            MathF.Max(0.28f, definition.SlotHeight * 0.26f));
+
+    private static Vector4 GetSpawnedItemColor(InventoryItemDefinition definition)
+        => definition.Type switch
+        {
+            InventoryItemType.Key => new Vector4(0.95f, 0.72f, 0.28f, 1f),
+            InventoryItemType.Consumable => new Vector4(0.18f, 0.20f, 0.42f, 1f),
+            InventoryItemType.Material => new Vector4(0.55f, 0.55f, 0.50f, 1f),
+            InventoryItemType.Puzzle => new Vector4(0.45f, 0.32f, 0.18f, 1f),
+            _ => new Vector4(0.62f, 0.64f, 0.58f, 1f)
+        };
+
     private bool InteractPressedThisFrame()
         => _inputState.WasPressed(Key.E) ||
            _inputState.GetGamepadPressed(GamepadButton.X);
@@ -4486,6 +5277,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private bool InventoryRotatePressedThisFrame()
         => _inputState.WasPressed(Key.R) ||
            _inputState.GetGamepadPressed(GamepadButton.Y);
+
+    private bool InventorySplitPressedThisFrame()
+        => _inputState.WasPressed(Key.Q) ||
+           _inputState.GetGamepadPressed(GamepadButton.LeftShoulder);
 
     private bool ResetLevelPressedThisFrame()
         => _inputState.WasPressed(Key.F6);

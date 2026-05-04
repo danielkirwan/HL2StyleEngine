@@ -255,6 +255,8 @@ internal sealed class GameplayUiImGuiPreviewRenderer
             ImGui.Spacing();
             string moveHint = state.CanSwapMovingItem
                 ? "Release here to swap items."
+                : state.CanMergeMovingItem
+                    ? "Release here to merge stacks."
                 : state.CanPlaceMovingItem
                     ? "Move target is valid."
                     : "That item will not fit there.";
@@ -271,6 +273,7 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         {
             ImGui.TextDisabled("E / X: Move item");
             ImGui.TextDisabled("R / Y: Rotate selected item");
+            ImGui.TextDisabled("Q / LB: Split stack");
             ImGui.TextDisabled("I / Back: Close");
         }
 

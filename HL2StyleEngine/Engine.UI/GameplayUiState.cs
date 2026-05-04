@@ -18,6 +18,7 @@ public sealed class GameplayUiState
     public int MovingItemSlotHeight { get; init; } = 1;
     public bool CanPlaceMovingItem { get; init; }
     public bool CanSwapMovingItem { get; init; }
+    public bool CanMergeMovingItem { get; init; }
     public int SaveCount { get; init; }
     public IReadOnlyList<GameplayUiInventoryItem> InventoryItems { get; init; } = Array.Empty<GameplayUiInventoryItem>();
     public GameplayUiCollectedItem? CollectedItem { get; init; }
