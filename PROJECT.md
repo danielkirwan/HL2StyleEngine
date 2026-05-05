@@ -1,6 +1,6 @@
 # Project Overview
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
 ## Purpose
 
@@ -122,7 +122,15 @@ The current implementation state is:
 - a developer item spawn prompt on `T` can create test pickups from text commands such as `spawn ink x3`, `spawn crank`, `spawn gunpowder x3`, or `spawn testkey`
 - a `Test Key` / `MasterKey` exists for prototype testing and can open any authored lock without being consumed
 - the inventory has a first-pass action menu for `Use`, `Examine`, `Move`, `Combine`, `Split`, and `Discard`
-- `Scrap` and `Gunpowder` can be combined as a prototype recipe to create `Bullets x12`
+- inventory combine mode highlights the selected source item, valid combine targets, and invalid occupied items
+- combine recipes are now catalog data; the current prototype recipe is `Scrap` + `Gunpowder` creating `Bullets x12`
+- a first shared item-box storage flow exists in the save office, with partial-stack transfer for stackable items
+- locked doors, locked chests, and typewriter saves now open a focused usable-item list; locks/chests show key/puzzle candidates, and typewriters show ink ribbons
+- item pickup and `Examine` now share a larger focused item presentation panel
+- the utility room now has a first crank-slot puzzle: using the Crank Handle raises a matching door over time and saves that solved state
+- the crank-door route now leads into a small service alcove containing a cataloged Fuse puzzle item
+- the Fuse can now be used on a power panel to raise a second powered gate from the crank alcove
+- the crank and Fuse gate geometry has been adjusted so panels sit beside passages and lift doors cover their intended openings
 - a developer reset hotkey for clean interaction-test runs
 - a small multi-room key route that is playable and starts shaping the horror vertical slice
 - controller parity for new player-facing actions
@@ -131,13 +139,13 @@ The intended inventory direction is Resident Evil Requiem-inspired:
 
 - item pickup can show a focused item-collected/examine screen with the world blurred behind it
 - the inventory should become a grid-based case rather than a plain list
-- every inventory item should define a slot footprint, stack limit, display name, description, and item type
+- every inventory item should define a slot footprint, stack limit, display name, description, item type, and any relevant combine recipes
 - stackable items can occupy one footprint while holding a count up to their stack limit
 - stackable items should merge, split, and preserve overflow predictably across inventory, future storage, and save/load
 - keys and puzzle objects are reusable until their authored uses are exhausted, then they are removed from inventory with feedback
 - ink ribbons remain consumable save resources and are not part of the reusable-key expiry rule
 - locked chests should later reveal items such as puzzle objects, upgrade materials, or other pickups
-- safe storage should let the player transfer items between inventory and a shared global box, retrievable from any safe storage point
+- safe storage should let the player transfer items between inventory and a shared global box, retrievable from any storage point; the first prototype supports stack quantity transfer and save/load
 - RmlUi is the preferred long-term gameplay UI interface candidate for themed inventory, item examine, save/storage, and puzzle UI, pending a focused integration spike
 - ImGui should remain useful for editor/debug tooling and short-term gameplay prototyping, but it should not become the final survival-horror menu presentation layer
 - `Engine.UI` now provides the gameplay UI integration seam, with a first `GameplayUiLayer` and RmlUi backend facade
@@ -173,14 +181,14 @@ That work is aimed at fixing several visible problems:
 
 - gameplay interactions are still authored by name prefixes such as `ItemKey_`, `LockedDoor_`, `LockedChest_`, `ItemInkRibbon_`, and `SavePoint_`
 - the inventory UI has a first-pass inspect/combine/use action menu, but it is still prototype presentation rather than a finished survival-horror inventory screen
-- inventory items now have data-model support for slot footprints, stack limits, categories, descriptions, stable slot indices, movement, swapping, rotation, stack merging, quantity-picked splitting, a prototype combine recipe, and rotated save/load, but storage transfer and data-driven combine recipes are not implemented yet
+- inventory items now have data-model support for slot footprints, stack limits, categories, descriptions, stable slot indices, movement, swapping, rotation, stack merging, quantity-picked splitting, data-driven combine recipes, filtered use-item selection, shared storage transfer, and rotated save/load
 - the item-collected/examine screen is a first pass and still needs final Resident Evil-style presentation and pause behavior
 - the current inventory UI is still an ImGui prototype rather than the final themed menu layer
 - RmlUi is set up at the project/asset/backend-seam level with generated gameplay RML, but it is not rendering until the native bridge DLL exists
 - the current in-game test path uses an `Engine.UI` preview renderer for the new UI layout; this is intentionally temporary and should be replaced by the native RmlUi renderer when the bridge lands
 - the native bridge named `HS2RmlUiBridge` is defined but not implemented yet
 - the first Veldrid render-command consumer is implemented, but it still needs native render-command production, native texture upload/binding, richer input routing, font/assets, and RmlUi-side mouse/controller focus events
-- safe storage boxes and inventory/storage transfer are not implemented yet
+- safe storage boxes and inventory/storage transfer are implemented as a first pass, but need final RmlUi presentation and multi-storage-point validation
 - locked chests currently disappear after granting prototype rewards rather than playing an authored open animation/state
 - save/load is prototype-local JSON state, not a full slot/save-profile system
 - `F6` reset is currently keyboard-only as a developer hotkey until a controller debug chord is chosen
@@ -201,8 +209,12 @@ That work is aimed at fixing several visible problems:
 - validate inventory rotation using the Crank Handle: `R` / controller `Y` should swap between `1x2` and `2x1`, reject invalid placements, and persist through typewriter save/load
 - validate stack behavior: spawned Ink Ribbons and Scrap should merge up to max stack, keep overflow in the source stack, split chosen quantities with `Q` / controller `LeftShoulder`, and save/load counts cleanly
 - validate the `T` developer spawn prompt with `spawn ink x3`, `spawn scrap x20`, `spawn gunpowder x3`, `spawn bullets x12`, `spawn crank`, and `spawn testkey`
-- validate the first action menu: `E` / controller `X` opens item actions, `Move` starts grid movement, `Split` opens the quantity picker, and `Combine` lets Scrap + Gunpowder create Bullets
-- move combine recipes into item data rather than hardcoding prototype combinations in gameplay code
+- validate the first action menu: `E` / controller `X` opens item actions, `Move` starts grid movement, `Split` opens the quantity picker, and `Combine` highlights valid targets before letting Scrap + Gunpowder create Bullets
+- validate `StorageBox_SaveOffice`: transfer items to/from storage, save, reload, and confirm stored items persist
+- validate partial storage transfer for Ink Ribbons, Scrap, Gunpowder, and Bullets
+- validate focused use-item lists for locked doors, locked chests, and typewriter saving
+- validate `Examine` opening the focused item details panel from inventory
+- add more data-driven combine recipes once puzzle/material needs are known
 - polish prompt/readability feedback for locked doors, locked chests, expired keys, ink ribbon count, and typewriter state
 - evaluate whether to keep custom ImGui/Veldrid UI for tooling only and move gameplay menus to a dedicated game UI library
 - implement the RmlUi native bridge and Veldrid overlay renderer before building the final inventory/storage UI
@@ -211,7 +223,7 @@ That work is aimed at fixing several visible problems:
 - implement `hs2_rmlui_set_document_body` so generated inventory/pickup/prompt RML refreshes live
 - implement native render-command production in `HS2RmlUiBridge` and validate it against the managed Veldrid consumer
 - load the generated RmlUi gameplay document and validate mouse/controller focus navigation through the new `Engine.UI` layer
-- extend slot-indexed inventory movement into item action menus, filtered usable-item screens, proper quantity picker UI, and storage transfer
+- extend slot-indexed inventory movement into final RmlUi item action menus, filtered usable-item screens, proper quantity picker styling, and storage transfer presentation
 - tune interaction prompt readability and raycast distance
 - replace the first-pass name-prefix interaction prototype with level-authored components if the flow feels right
 - build a proper inventory screen with item descriptions and selected-item focus

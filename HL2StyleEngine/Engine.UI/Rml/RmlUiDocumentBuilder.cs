@@ -22,7 +22,12 @@ internal static class RmlUiDocumentBuilder
             AppendCollectedItem(sb, state.CollectedItem);
 
         if (state.InventoryOpen)
-            AppendInventory(sb, state);
+        {
+            if (state.UsingInventoryItem)
+                AppendUseItemPanel(sb, state);
+            else
+                AppendInventory(sb, state);
+        }
 
         sb.AppendLine("    </div>");
         sb.AppendLine("  </body>");
@@ -47,9 +52,10 @@ internal static class RmlUiDocumentBuilder
     {
         string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
         sb.AppendLine("      <section id=\"collected-panel\">");
-        sb.AppendLine("        <p class=\"eyebrow\">Item Collected</p>");
+        sb.AppendLine($"        <p class=\"eyebrow\">{Esc(item.Title)}</p>");
         sb.AppendLine($"        <h1>{Esc(item.DisplayName)}{Esc(countSuffix)}</h1>");
         sb.AppendLine($"        <p class=\"muted\">{Esc(item.Type)} | {item.SlotWidth}x{item.SlotHeight} slots | Stack {item.MaxStack}</p>");
+        sb.AppendLine($"        <p class=\"muted\">Case footprint: {item.SlotWidth} x {item.SlotHeight}</p>");
         if (!string.IsNullOrWhiteSpace(item.Description))
             sb.AppendLine($"        <p class=\"description\">{Esc(item.Description)}</p>");
         sb.AppendLine("        <p class=\"footer-hint\">E / X: Confirm</p>");
@@ -83,6 +89,21 @@ internal static class RmlUiDocumentBuilder
                 selectedClass += state.CanPlaceMovingItem ? " move-valid" : " move-invalid";
             bool covered = byCoveredSlot.TryGetValue(slot, out GameplayUiInventoryItem? coveredItem);
             bool origin = byOriginSlot.TryGetValue(slot, out GameplayUiInventoryItem? item);
+            if (covered && coveredItem != null)
+            {
+                if (coveredItem.IsCombineSource)
+                    selectedClass += " combine-source";
+                else if (coveredItem.IsValidCombineTarget)
+                    selectedClass += " combine-valid";
+                else if (coveredItem.IsInvalidCombineTarget)
+                    selectedClass += " combine-invalid";
+
+                if (coveredItem.IsValidUseTarget)
+                    selectedClass += " use-valid";
+                else if (coveredItem.IsInvalidUseTarget)
+                    selectedClass += " use-invalid";
+            }
+
             if (origin && item != null)
             {
                 string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
@@ -124,7 +145,34 @@ internal static class RmlUiDocumentBuilder
         if (state.SaveCount > 0)
             sb.AppendLine($"          <p class=\"muted\">Saves used: {state.SaveCount}</p>");
 
-        if (state.MovingInventoryItem)
+        if (state.UsingInventoryItem)
+        {
+            if (!string.IsNullOrWhiteSpace(state.UseTargetPrompt))
+                sb.AppendLine($"          <p class=\"use-hint\">{Esc(state.UseTargetPrompt)}</p>");
+
+            if (selected?.IsValidUseTarget == true)
+                sb.AppendLine("          <p class=\"use-hint good\">This item can be used here. E / X: Use</p>");
+            else if (selected?.IsInvalidUseTarget == true)
+                sb.AppendLine("          <p class=\"use-hint bad\">This item does not fit this use. Choose a highlighted item.</p>");
+            else
+                sb.AppendLine("          <p class=\"use-hint\">Select a highlighted item to use.</p>");
+
+            sb.AppendLine("          <p class=\"footer-hint\">I / Back: Cancel use</p>");
+        }
+        else if (state.CombiningInventoryItem)
+        {
+            if (selected?.IsValidCombineTarget == true)
+                sb.AppendLine("          <p class=\"combine-hint good\">This item can be combined. E / X: Combine</p>");
+            else if (selected?.IsCombineSource == true)
+                sb.AppendLine("          <p class=\"combine-hint source\">Combining from this item. Select a highlighted target.</p>");
+            else if (selected?.IsInvalidCombineTarget == true)
+                sb.AppendLine("          <p class=\"combine-hint bad\">This item cannot combine here. Choose a highlighted item.</p>");
+            else
+                sb.AppendLine("          <p class=\"combine-hint\">Select a highlighted item to combine.</p>");
+
+            sb.AppendLine("          <p class=\"footer-hint\">I / Back: Cancel combine</p>");
+        }
+        else if (state.MovingInventoryItem)
         {
             string moveHint = state.CanSwapMovingItem
                 ? "Release here to swap items."
@@ -140,9 +188,44 @@ internal static class RmlUiDocumentBuilder
         }
         else
         {
-            sb.AppendLine("          <p class=\"footer-hint\">E / X: Move | R / Y: Rotate | Q / LB: Split | I / Back: Close</p>");
+            sb.AppendLine("          <p class=\"footer-hint\">E / X: Actions | R / Y: Rotate | Q / LB: Split | I / Back: Close</p>");
         }
         sb.AppendLine("        </aside>");
+        sb.AppendLine("      </section>");
+    }
+
+    private static void AppendUseItemPanel(StringBuilder sb, GameplayUiState state)
+    {
+        List<GameplayUiInventoryItem> candidates = state.InventoryItems
+            .Where(item => item.IsUseCandidate)
+            .ToList();
+
+        sb.AppendLine("      <section id=\"use-item-panel\">");
+        sb.AppendLine("        <p class=\"eyebrow\">Use Item</p>");
+        if (!string.IsNullOrWhiteSpace(state.UseTargetPrompt))
+            sb.AppendLine($"        <p class=\"description\">{Esc(state.UseTargetPrompt)}</p>");
+
+        sb.AppendLine("        <div id=\"use-item-list\">");
+        if (candidates.Count == 0)
+        {
+            sb.AppendLine("          <p class=\"muted\">No usable items are being carried.</p>");
+        }
+        else
+        {
+            foreach (GameplayUiInventoryItem item in candidates)
+            {
+                string selectedClass = item.SlotIndex == state.SelectedSlot ? " selected" : "";
+                string validClass = item.IsValidUseTarget ? " valid" : " invalid";
+                string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
+                string validity = item.IsValidUseTarget ? "Ready" : "Doesn't fit";
+                sb.AppendLine($"          <div class=\"use-item-row{selectedClass}{validClass}\" data-slot=\"{item.SlotIndex}\">");
+                sb.AppendLine($"            <span class=\"use-item-name\">{Esc(item.DisplayName)}{Esc(countSuffix)}</span>");
+                sb.AppendLine($"            <span class=\"use-item-validity\">{Esc(validity)}</span>");
+                sb.AppendLine("          </div>");
+            }
+        }
+        sb.AppendLine("        </div>");
+        sb.AppendLine("        <p class=\"footer-hint\">W/S or D-pad: Select | E / X: Use | I / Back: Cancel</p>");
         sb.AppendLine("      </section>");
     }
 

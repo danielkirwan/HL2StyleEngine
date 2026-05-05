@@ -193,8 +193,10 @@ public static class SimpleLevel
         Vector4 ink = new(0.12f, 0.12f, 0.18f, 1f);
         Vector4 desk = new(0.28f, 0.18f, 0.11f, 1f);
         Vector4 save = new(0.12f, 0.22f, 0.34f, 1f);
+        Vector4 storage = new(0.16f, 0.18f, 0.16f, 1f);
         Vector4 crate = new(0.45f, 0.32f, 0.18f, 1f);
         Vector4 archive = new(0.22f, 0.27f, 0.24f, 1f);
+        Vector4 fuse = new(0.72f, 0.76f, 0.62f, 1f);
 
         level.Entities.Add(new LevelEntityDef
         {
@@ -209,6 +211,7 @@ public static class SimpleLevel
         level.Entities.Add(Light("Light_Central_Flicker", new Vector3(1.8f, 3.1f, -2.2f), new Vector4(0.8f, 0.95f, 1f, 1f), 1.8f, 8.0f));
         level.Entities.Add(Light("Light_SaveRoom_Cool", new Vector3(-6.1f, 2.8f, 1.6f), new Vector4(0.45f, 0.65f, 1f, 1f), 2.5f, 6.5f));
         level.Entities.Add(Light("Light_Archive_Amber", new Vector3(2.8f, 3.0f, 9.0f), new Vector4(1f, 0.62f, 0.35f, 1f), 2.2f, 7.0f));
+        level.Entities.Add(Light("Light_CrankAlcove_Work", new Vector3(6.0f, 2.6f, -5.45f), new Vector4(0.55f, 0.78f, 1f, 1f), 1.5f, 4.2f));
 
         level.Entities.Add(Box("Floor_InteractionTest", new Vector3(0f, -0.1f, 0f), new Vector3(18f, 0.2f, 28f), floor));
         level.Entities.Add(Box("Ceiling_InteractionTest", new Vector3(0f, 3.4f, 0f), new Vector3(18f, 0.2f, 28f), trim));
@@ -233,9 +236,18 @@ public static class SimpleLevel
         level.Entities.Add(Box("Wall_SaveOffice_Side_North", new Vector3(-3.05f, 1.7f, 1.25f), new Vector3(0.35f, 3.4f, 4.1f), wall));
         level.Entities.Add(Box("LockedDoor_ServiceKey__SaveOffice", new Vector3(-3.08f, 1.2f, -1.95f), new Vector3(0.28f, 2.4f, 2.5f), door));
 
-        level.Entities.Add(Box("Wall_Utility_Side_South", new Vector3(3.15f, 1.7f, -4.45f), new Vector3(0.35f, 3.4f, 4.3f), wall));
+        level.Entities.Add(Box("Wall_Utility_Side_South_Front", new Vector3(3.15f, 1.7f, -3.45f), new Vector3(0.35f, 3.4f, 2.3f), wall));
+        level.Entities.Add(Box("Wall_Utility_Side_South_Rear", new Vector3(3.15f, 1.7f, -6.15f), new Vector3(0.35f, 3.4f, 0.9f), wall));
+        level.Entities.Add(Box("PuzzleDoor_Fuse__PowerGate", new Vector3(3.12f, 1.2f, -5.05f), new Vector3(0.28f, 2.4f, 1.35f), door));
+        level.Entities.Add(Box("PuzzleSlot_Fuse__PowerGate", new Vector3(3.35f, 1.05f, -4.25f), new Vector3(0.16f, 0.42f, 0.42f), fuse));
         level.Entities.Add(Box("Wall_Utility_Side_North", new Vector3(3.15f, 1.7f, 1.15f), new Vector3(0.35f, 3.4f, 4.5f), wall));
-        level.Entities.Add(Box("Wall_Utility_Back", new Vector3(6.05f, 1.7f, -3.6f), new Vector3(5.9f, 3.4f, 0.35f), wall));
+        level.Entities.Add(Box("Wall_Utility_Back_Left", new Vector3(4.2f, 1.7f, -3.6f), new Vector3(2.2f, 3.4f, 0.35f), wall));
+        level.Entities.Add(Box("Wall_Utility_Back_Right", new Vector3(8.05f, 1.7f, -3.6f), new Vector3(1.9f, 3.4f, 0.35f), wall));
+        level.Entities.Add(Box("PuzzleDoor_CrankHandle__UtilityLift", new Vector3(6.05f, 1.2f, -3.58f), new Vector3(2.1f, 2.4f, 0.32f), door));
+        level.Entities.Add(Box("PuzzleSlot_CrankHandle__UtilityLift", new Vector3(5.05f, 1.05f, -3.35f), new Vector3(0.42f, 0.42f, 0.16f), brass));
+        level.Entities.Add(Box("Wall_CrankAlcove_Back", new Vector3(6.05f, 1.7f, -6.55f), new Vector3(5.9f, 3.4f, 0.35f), wall));
+        level.Entities.Add(Box("Shelf_CrankAlcove_Fuse", new Vector3(6.05f, 0.5f, -5.55f), new Vector3(1.4f, 0.35f, 0.75f), archive));
+        level.Entities.Add(Box("Item_Fuse__CrankAlcove", new Vector3(6.05f, 0.78f, -5.55f), new Vector3(0.36f, 0.14f, 0.24f), fuse, new Vector3(0f, 22f, 0f)));
 
         level.Entities.Add(Box("Desk_RustedKeyTable", new Vector3(-5.65f, 0.45f, -11.2f), new Vector3(2.2f, 0.35f, 1.1f), desk));
         level.Entities.Add(Box("ItemKey_RustedKey", new Vector3(-5.5f, 0.72f, -11.2f), new Vector3(0.42f, 0.08f, 0.18f), brass, new Vector3(0f, 28f, 0f)));
@@ -247,6 +259,7 @@ public static class SimpleLevel
         level.Entities.Add(Box("LockedChest_ServiceKey__SupplyB", new Vector3(7.25f, 0.45f, -2.25f), new Vector3(0.9f, 0.7f, 0.8f), desk, new Vector3(0f, -5f, 0f)));
         level.Entities.Add(Box("SaveDesk", new Vector3(-6.2f, 0.3f, 1.55f), new Vector3(1.8f, 0.35f, 1.1f), desk));
         level.Entities.Add(Box("SavePoint_Typewriter", new Vector3(-6.2f, 0.7f, 1.55f), new Vector3(1.2f, 0.38f, 0.75f), save));
+        level.Entities.Add(Box("StorageBox_SaveOffice", new Vector3(-8.05f, 0.45f, 1.55f), new Vector3(1.0f, 0.9f, 1.0f), storage, new Vector3(0f, 10f, 0f)));
         level.Entities.Add(Box("ItemInkRibbon_SaveOffice", new Vector3(-7.25f, 0.62f, 0.1f), new Vector3(0.48f, 0.12f, 0.32f), ink, new Vector3(0f, 12f, 0f)));
         level.Entities.Add(Box("ItemKey_ArchiveKey", new Vector3(-5.25f, 0.78f, 2.45f), new Vector3(0.42f, 0.08f, 0.18f), brass, new Vector3(0f, 65f, 0f)));
 

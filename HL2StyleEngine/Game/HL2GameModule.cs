@@ -70,8 +70,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         public string LevelName { get; set; } = "";
         public List<string> Inventory { get; set; } = new();
         public List<InventoryItemSaveData> InventoryItems { get; set; } = new();
+        public List<InventoryItemSaveData> StorageItems { get; set; } = new();
         public List<string> CollectedInteractables { get; set; } = new();
         public List<string> OpenedDoors { get; set; } = new();
+        public List<string> SolvedPuzzles { get; set; } = new();
         public int InkRibbons { get; set; }
         public int SavePointUseCount { get; set; }
         public float PlayerX { get; set; }
@@ -94,8 +96,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private InputAction _look = null!;
     private bool _prevRightTriggerDown;
     private readonly InventoryContainer _inventory = new(gridWidth: 8, gridHeight: 4);
+    private readonly InventoryContainer _storage = new(gridWidth: 8, gridHeight: 6);
     private readonly HashSet<string> _collectedInteractables = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _openedDoors = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _solvedPuzzles = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Vector3> _puzzleDoorClosedPositions = new(StringComparer.OrdinalIgnoreCase);
     private bool _inventoryOpen;
     private int _selectedInventoryStackIndex = -1;
     private int _movingInventoryFromSlot = -1;
@@ -109,7 +114,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private bool _inventorySplitPickerOpen;
     private int _inventorySplitAmount = 1;
     private int _combineSourceSlot = -1;
+    private bool _storageOpen;
+    private int _selectedStorageSlot = -1;
+    private bool _storageFocusStorage;
+    private bool _storageTransferPickerOpen;
+    private int _storageTransferAmount = 1;
+    private bool _storageTransferFromStorage;
+    private string _pendingUseTargetName = "";
+    private string _pendingUseRequiredItem = "";
+    private string _pendingUseKind = "";
+    private int _pendingUseCandidateIndex;
     private bool _itemCollectedOpen;
+    private string _itemCollectedTitle = "Item Collected";
     private string _itemCollectedItemId = "";
     private int _itemCollectedCount;
     private string _interactionPrompt = "";
@@ -162,9 +178,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
     private int _physicsMaxSubsteps = 12;
     private float _physicsMaxStep = 1f / 120f;
+    private const float PuzzleDoorLiftHeight = 3.0f;
+    private const float PuzzleDoorLiftSpeed = 0.85f;
 
     public InputState InputState => _inputState;
-    private bool GameplayModalOpen => !_editorEnabled && (_inventoryOpen || _itemCollectedOpen || _spawnCommandOpen);
+    private bool GameplayModalOpen => !_editorEnabled && (_inventoryOpen || _storageOpen || _itemCollectedOpen || _spawnCommandOpen);
 
     private string PrototypeSavePath => Path.Combine(AppContext.BaseDirectory, "Saves", "prototype_save.json");
 
@@ -251,7 +269,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             if (_editorEnabled)
             {
                 _inventoryOpen = false;
+                _storageOpen = false;
                 CancelInventoryMove();
+                ClearPendingUseSelection();
                 _itemCollectedOpen = false;
                 SetSpawnCommandOpen(false);
                 _ui.OpenUI();
@@ -264,7 +284,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             }
         }
 
-        if (!_editorEnabled && !_inventoryOpen && !_itemCollectedOpen && _inputState.WasPressed(Key.T))
+        if (!_editorEnabled && !_inventoryOpen && !_storageOpen && !_itemCollectedOpen && _inputState.WasPressed(Key.T))
             SetSpawnCommandOpen(!_spawnCommandOpen);
 
         if (!_editorEnabled && _spawnCommandOpen && _inputState.WasPressed(Key.Escape))
@@ -279,12 +299,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 if (!_inventoryOpen)
                     _ui.CloseUI();
             }
+
+            UpdateGameplayUi(dt);
+            return;
         }
 
         if (!_editorEnabled && _inventoryOpen)
             UpdateInventoryNavigation();
 
-        if (!_editorEnabled && !_itemCollectedOpen && !_inventoryOpen && !_spawnCommandOpen)
+        if (!_editorEnabled && _storageOpen)
+            UpdateStorageNavigation();
+
+        if (!_editorEnabled && !_itemCollectedOpen && !_inventoryOpen && !_storageOpen && !_spawnCommandOpen)
         {
             TryPickupDropThrow();
             UpdateInteractionPrompt();
@@ -308,7 +334,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
         if (!_editorEnabled && !_spawnCommandOpen && !_inventoryToggleConsumedThisFrame && ToggleInventoryPressedThisFrame())
         {
-            if (_inventoryOpen && IsMovingInventoryItem)
+            if (_storageOpen)
+                SetStorageOpen(false);
+            else if (_inventoryOpen && IsMovingInventoryItem)
                 CancelInventoryMove(showMessage: true);
             else
                 SetInventoryOpen(!_inventoryOpen);
@@ -321,8 +349,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 _gameMessage = "";
         }
 
-        if (_toggleUi.Pressed && !_inventoryOpen) _ui.ToggleUI();
-        if (_forceGame.Pressed && !_inventoryOpen) _ui.CloseUI();
+        if (_toggleUi.Pressed && !_inventoryOpen && !_storageOpen) _ui.ToggleUI();
+        if (_forceGame.Pressed && !_inventoryOpen && !_storageOpen) _ui.CloseUI();
 
         if (_editorEnabled)
         {
@@ -337,7 +365,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
         }
 
-        if (_inventoryOpen || _itemCollectedOpen || _spawnCommandOpen)
+        if (_inventoryOpen || _storageOpen || _itemCollectedOpen || _spawnCommandOpen)
         {
             _wishDir = Vector3.Zero;
             _wishSpeed = 0f;
@@ -427,11 +455,26 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     {
         List<GameplayUiInventoryItem> items = new(_inventory.StackCount);
         IReadOnlyList<InventoryItemStack> stacks = _inventory.Stacks;
+        InventoryItemStack? combineSource = _combineSourceSlot >= 0
+            ? _inventory.GetStackAtSlot(_combineSourceSlot)
+            : null;
+
         for (int i = 0; i < stacks.Count; i++)
         {
             InventoryItemStack stack = stacks[i];
             InventoryItemDefinition definition = ItemCatalog.Get(stack.ItemId);
             List<int> coveredSlots = _inventory.CoveredSlots(stack).ToList();
+            bool combineSourceItem = combineSource != null && ReferenceEquals(stack, combineSource);
+            bool validCombineTarget = combineSource != null &&
+                                      !combineSourceItem &&
+                                      ItemCatalog.CanCombine(combineSource.ItemId, stack.ItemId);
+            bool invalidCombineTarget = combineSource != null &&
+                                        !combineSourceItem &&
+                                        !validCombineTarget;
+            bool useCandidate = IsPendingUseSelectionActive && IsCandidateItemForPendingUse(stack.ItemId);
+            bool validUseTarget = useCandidate && CanUseItemForPendingTarget(stack.ItemId);
+            bool invalidUseTarget = useCandidate && !validUseTarget;
+
             items.Add(new GameplayUiInventoryItem
             {
                 SlotIndex = stack.SlotIndex,
@@ -444,7 +487,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 SlotWidth = _inventory.GetSlotWidth(stack),
                 SlotHeight = _inventory.GetSlotHeight(stack),
                 Rotated = stack.Rotated,
-                MaxStack = definition.MaxStack
+                MaxStack = definition.MaxStack,
+                IsCombineSource = combineSourceItem,
+                IsValidCombineTarget = validCombineTarget,
+                IsInvalidCombineTarget = invalidCombineTarget,
+                IsValidUseTarget = validUseTarget,
+                IsInvalidUseTarget = invalidUseTarget,
+                IsUseCandidate = useCandidate
             });
         }
 
@@ -479,6 +528,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             CanPlaceMovingItem = CanPlaceMovingInventoryItem(),
             CanSwapMovingItem = CanSwapMovingInventoryItem(),
             CanMergeMovingItem = CanMergeMovingInventoryItem(),
+            CombiningInventoryItem = combineSource != null,
+            CombineSourceSlot = combineSource?.SlotIndex ?? -1,
+            UsingInventoryItem = IsPendingUseSelectionActive,
+            UseTargetPrompt = GetPendingUsePrompt(),
             SaveCount = _savePointUseCount,
             InventoryItems = items,
             CollectedItem = BuildCollectedItemUiState()
@@ -493,6 +546,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         InventoryItemDefinition definition = ItemCatalog.Get(_itemCollectedItemId);
         return new GameplayUiCollectedItem
         {
+            Title = _itemCollectedTitle,
             Id = definition.Id,
             DisplayName = definition.DisplayName,
             Description = definition.Description,
@@ -525,6 +579,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 !HasNamedEntity(level, "LockedDoor_ArchiveKey") ||
                 !HasNamedEntity(level, "LockedChest_ServiceKey__SupplyA") ||
                 !HasNamedEntity(level, "LockedChest_ServiceKey__SupplyB") ||
+                !HasNamedEntity(level, "StorageBox_SaveOffice") ||
+                !HasNamedEntity(level, "PuzzleSlot_CrankHandle__UtilityLift") ||
+                !HasNamedEntity(level, "PuzzleDoor_CrankHandle__UtilityLift") ||
+                !HasNamedEntity(level, "Item_Fuse__CrankAlcove") ||
+                !HasNamedEntity(level, "PuzzleSlot_Fuse__PowerGate") ||
+                !HasNamedEntity(level, "PuzzleDoor_Fuse__PowerGate") ||
+                !HasEntityPosition(level, "PuzzleSlot_Fuse__PowerGate", static position => MathF.Abs(position.Z - -4.25f) <= 0.01f) ||
+                !HasDoorBlockerSize(level, "PuzzleDoor_CrankHandle__UtilityLift", static size => size.X >= 2.05f) ||
                 !HasDoorBlockerSize(level, "LockedDoor_RustedKey", static size => size.X >= 3.0f) ||
                 !HasDoorBlockerSize(level, "LockedDoor_ArchiveKey", static size => size.X >= 3.0f) ||
                 !HasNamedEntity(level, "LockedDoor_ServiceKey__SaveOffice") ||
@@ -567,8 +629,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 return false;
 
             _inventory.Clear();
+            _storage.Clear();
             _collectedInteractables.Clear();
             _openedDoors.Clear();
+            _solvedPuzzles.Clear();
 
             if (data.InventoryItems.Count > 0)
             {
@@ -583,10 +647,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             if (data.InkRibbons > 0 && !_inventory.Contains(ItemCatalog.InkRibbon))
                 _inventory.Add(ItemCatalog.InkRibbon, data.InkRibbons);
 
+            if (data.StorageItems.Count > 0)
+                _storage.LoadFromSave(data.StorageItems);
+
             foreach (string item in data.CollectedInteractables)
                 _collectedInteractables.Add(item);
             foreach (string item in data.OpenedDoors)
                 _openedDoors.Add(item);
+            foreach (string item in data.SolvedPuzzles)
+                _solvedPuzzles.Add(item);
 
             _savePointUseCount = Math.Max(0, data.SavePointUseCount);
 
@@ -620,8 +689,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                     .OrderBy(static x => x)
                     .ToList(),
                 InventoryItems = _inventory.ToSaveData(),
+                StorageItems = _storage.ToSaveData(),
                 CollectedInteractables = _collectedInteractables.OrderBy(static x => x).ToList(),
                 OpenedDoors = _openedDoors.OrderBy(static x => x).ToList(),
+                SolvedPuzzles = _solvedPuzzles.OrderBy(static x => x).ToList(),
                 InkRibbons = _inventory.GetCount(ItemCatalog.InkRibbon),
                 SavePointUseCount = _savePointUseCount,
                 PlayerX = _motor.Position.X,
@@ -668,14 +739,21 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private void ClearPrototypeInteractionState()
     {
         _inventory.Clear();
+        _storage.Clear();
         _collectedInteractables.Clear();
         _openedDoors.Clear();
+        _solvedPuzzles.Clear();
         _savePointUseCount = 0;
         SetInventoryOpen(false);
+        SetStorageOpen(false);
+        ClearPendingUseSelection();
         _selectedInventoryStackIndex = -1;
+        _selectedStorageSlot = -1;
+        _storageFocusStorage = false;
         _movingInventoryFromSlot = -1;
         _movingInventoryRotated = false;
         _itemCollectedOpen = false;
+        _itemCollectedTitle = "Item Collected";
         _itemCollectedItemId = "";
         _itemCollectedCount = 0;
         SetSpawnCommandOpen(false);
@@ -692,6 +770,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
         if (_inventoryOpen)
         {
+            SetStorageOpen(false);
             if (!_inventory.IsEmpty && _selectedInventoryStackIndex < 0)
                 _selectedInventoryStackIndex = _inventory.Stacks[0].SlotIndex;
 
@@ -701,6 +780,36 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         {
             CancelInventoryMove();
             CloseInventoryActionUi();
+            ClearPendingUseSelection();
+            _ui.CloseUI();
+        }
+    }
+
+    private void SetStorageOpen(bool open)
+    {
+        if (_storageOpen == open)
+            return;
+
+        _storageOpen = open;
+        _inventoryNavXHeld = false;
+        _inventoryNavYHeld = false;
+        _storageTransferPickerOpen = false;
+        _storageTransferAmount = 1;
+
+        if (_storageOpen)
+        {
+            SetInventoryOpen(false);
+            CancelInventoryMove();
+            CloseInventoryActionUi();
+            ClearPendingUseSelection();
+            if (!_inventory.IsEmpty && _selectedInventoryStackIndex < 0)
+                _selectedInventoryStackIndex = _inventory.Stacks[0].SlotIndex;
+            if (!_storage.IsEmpty && _selectedStorageSlot < 0)
+                _selectedStorageSlot = _storage.Stacks[0].SlotIndex;
+            _ui.OpenUI();
+        }
+        else if (!_editorEnabled && !_inventoryOpen && !_itemCollectedOpen && !_spawnCommandOpen)
+        {
             _ui.CloseUI();
         }
     }
@@ -716,6 +825,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
         if (_selectedInventoryStackIndex < 0)
             _selectedInventoryStackIndex = _inventory.Stacks[0].SlotIndex;
+
+        if (IsPendingUseSelectionActive)
+        {
+            UpdatePendingUseNavigation();
+            return;
+        }
 
         if (_inventorySplitPickerOpen)
         {
@@ -810,6 +925,168 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
     private bool IsMovingInventoryItem => _movingInventoryFromSlot >= 0;
 
+    private bool IsPendingUseSelectionActive
+        => !string.IsNullOrWhiteSpace(_pendingUseTargetName) &&
+           !string.IsNullOrWhiteSpace(_pendingUseKind);
+
+    private void UpdatePendingUseNavigation()
+    {
+        List<InventoryItemStack> candidates = GetPendingUseCandidates();
+        if (ToggleInventoryPressedThisFrame() || _inputState.WasPressed(Key.Escape))
+        {
+            ClearPendingUseSelection();
+            _inventoryToggleConsumedThisFrame = true;
+            SetInventoryOpen(false);
+            ShowGameMessage("Use cancelled.", 1.25f);
+            return;
+        }
+
+        if (candidates.Count == 0)
+        {
+            if (InteractPressedThisFrame())
+                ShowGameMessage("You are not carrying anything usable here.", 1.75f);
+            return;
+        }
+
+        _pendingUseCandidateIndex = Math.Clamp(_pendingUseCandidateIndex, 0, candidates.Count - 1);
+        _selectedInventoryStackIndex = candidates[_pendingUseCandidateIndex].SlotIndex;
+
+        if (InteractPressedThisFrame())
+        {
+            TryUseSelectedInventoryItemOnPendingTarget();
+            return;
+        }
+
+        if (TryGetUseListNavigationDelta(out int dy) && dy != 0)
+        {
+            _pendingUseCandidateIndex = WrapIndex(_pendingUseCandidateIndex + dy, candidates.Count);
+            _selectedInventoryStackIndex = candidates[_pendingUseCandidateIndex].SlotIndex;
+        }
+    }
+
+    private bool TryGetUseListNavigationDelta(out int dy)
+    {
+        dy = 0;
+
+        if (_inputState.WasPressed(Key.W) || _inputState.GetGamepadPressed(GamepadButton.DpadUp))
+            dy = -1;
+        else if (_inputState.WasPressed(Key.S) || _inputState.GetGamepadPressed(GamepadButton.DpadDown))
+            dy = 1;
+
+        Vector2 stick = _move.Value2D;
+        const float pressThreshold = 0.55f;
+        const float releaseThreshold = 0.35f;
+
+        if (!_inventoryNavYHeld && MathF.Abs(stick.Y) >= pressThreshold)
+        {
+            dy = stick.Y > 0f ? -1 : 1;
+            _inventoryNavYHeld = true;
+        }
+        else if (_inventoryNavYHeld && MathF.Abs(stick.Y) <= releaseThreshold)
+        {
+            _inventoryNavYHeld = false;
+        }
+
+        return dy != 0;
+    }
+
+    private void UpdateStorageNavigation()
+    {
+        if (_storageTransferPickerOpen)
+        {
+            UpdateStorageTransferPicker();
+            return;
+        }
+
+        if (ToggleInventoryPressedThisFrame() || _inputState.WasPressed(Key.Escape))
+        {
+            _inventoryToggleConsumedThisFrame = true;
+            SetStorageOpen(false);
+            return;
+        }
+
+        if (_inputState.WasPressed(Key.Tab) ||
+            _inputState.GetGamepadPressed(GamepadButton.LeftShoulder) ||
+            _inputState.GetGamepadPressed(GamepadButton.RightShoulder))
+        {
+            _storageFocusStorage = !_storageFocusStorage;
+        }
+
+        if (InteractPressedThisFrame())
+        {
+            OpenOrTransferSelectedStorageStack();
+            return;
+        }
+
+        if (!TryGetGridNavigationDelta(out int dx, out int dy))
+            return;
+
+        if (_storageFocusStorage)
+            _selectedStorageSlot = SelectSlotInContainer(MoveGridSlot(_selectedStorageSlot, dx, dy, _storage), _storage);
+        else
+            _selectedInventoryStackIndex = SelectSlotInContainer(MoveGridSlot(_selectedInventoryStackIndex, dx, dy, _inventory), _inventory);
+    }
+
+    private bool TryGetGridNavigationDelta(out int dx, out int dy)
+    {
+        dx = 0;
+        dy = 0;
+
+        if (_inputState.WasPressed(Key.A) || _inputState.GetGamepadPressed(GamepadButton.DpadLeft))
+            dx = -1;
+        else if (_inputState.WasPressed(Key.D) || _inputState.GetGamepadPressed(GamepadButton.DpadRight))
+            dx = 1;
+
+        if (_inputState.WasPressed(Key.W) || _inputState.GetGamepadPressed(GamepadButton.DpadUp))
+            dy = -1;
+        else if (_inputState.WasPressed(Key.S) || _inputState.GetGamepadPressed(GamepadButton.DpadDown))
+            dy = 1;
+
+        Vector2 stick = _move.Value2D;
+        const float pressThreshold = 0.55f;
+        const float releaseThreshold = 0.35f;
+
+        if (!_inventoryNavXHeld && MathF.Abs(stick.X) >= pressThreshold)
+        {
+            dx = stick.X > 0f ? 1 : -1;
+            _inventoryNavXHeld = true;
+        }
+        else if (_inventoryNavXHeld && MathF.Abs(stick.X) <= releaseThreshold)
+        {
+            _inventoryNavXHeld = false;
+        }
+
+        if (!_inventoryNavYHeld && MathF.Abs(stick.Y) >= pressThreshold)
+        {
+            dy = stick.Y > 0f ? -1 : 1;
+            _inventoryNavYHeld = true;
+        }
+        else if (_inventoryNavYHeld && MathF.Abs(stick.Y) <= releaseThreshold)
+        {
+            _inventoryNavYHeld = false;
+        }
+
+        return dx != 0 || dy != 0;
+    }
+
+    private static int MoveGridSlot(int slotIndex, int dx, int dy, InventoryContainer container)
+    {
+        int slot = Math.Clamp(slotIndex, 0, Math.Max(0, container.SlotCapacity - 1));
+        int col = slot % container.GridWidth;
+        int row = slot / container.GridWidth;
+
+        col = Math.Clamp(col + dx, 0, container.GridWidth - 1);
+        row = Math.Clamp(row + dy, 0, Math.Max(0, (container.SlotCapacity - 1) / container.GridWidth));
+        return Math.Clamp(row * container.GridWidth + col, 0, container.SlotCapacity - 1);
+    }
+
+    private static int SelectSlotInContainer(int slotIndex, InventoryContainer container)
+    {
+        int clamped = Math.Clamp(slotIndex, 0, Math.Max(0, container.SlotCapacity - 1));
+        InventoryItemStack? covered = container.GetStackCoveringSlot(clamped);
+        return covered?.SlotIndex ?? clamped;
+    }
+
     private void HandleInventoryConfirm()
     {
         if (IsMovingInventoryItem)
@@ -851,6 +1128,111 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         }
 
         _selectedInventoryStackIndex = clamped;
+    }
+
+    private void OpenOrTransferSelectedStorageStack()
+    {
+        InventoryContainer source = _storageFocusStorage ? _storage : _inventory;
+        int sourceSlot = _storageFocusStorage ? _selectedStorageSlot : _selectedInventoryStackIndex;
+        InventoryItemStack? stack = source.GetStackCoveringSlot(sourceSlot);
+        if (stack == null)
+        {
+            ShowGameMessage(_storageFocusStorage ? "No stored item selected." : "No inventory item selected.", 1.25f);
+            return;
+        }
+
+        if (stack.Count <= 1)
+        {
+            TransferSelectedStorageStack(1);
+            return;
+        }
+
+        _storageTransferFromStorage = _storageFocusStorage;
+        _storageTransferAmount = Math.Max(1, stack.Count / 2);
+        _storageTransferPickerOpen = true;
+    }
+
+    private void UpdateStorageTransferPicker()
+    {
+        InventoryContainer source = _storageTransferFromStorage ? _storage : _inventory;
+        int sourceSlot = _storageTransferFromStorage ? _selectedStorageSlot : _selectedInventoryStackIndex;
+        InventoryItemStack? stack = source.GetStackCoveringSlot(sourceSlot);
+        if (stack == null)
+        {
+            _storageTransferPickerOpen = false;
+            return;
+        }
+
+        int maxAmount = Math.Max(1, stack.Count);
+        if (_inputState.WasPressed(Key.A) || _inputState.WasPressed(Key.W) ||
+            _inputState.GetGamepadPressed(GamepadButton.DpadLeft) || _inputState.GetGamepadPressed(GamepadButton.DpadUp))
+        {
+            _storageTransferAmount--;
+        }
+        else if (_inputState.WasPressed(Key.D) || _inputState.WasPressed(Key.S) ||
+                 _inputState.GetGamepadPressed(GamepadButton.DpadRight) || _inputState.GetGamepadPressed(GamepadButton.DpadDown))
+        {
+            _storageTransferAmount++;
+        }
+
+        _storageTransferAmount = Math.Clamp(_storageTransferAmount, 1, maxAmount);
+
+        if (ToggleInventoryPressedThisFrame() || _inputState.WasPressed(Key.Escape))
+        {
+            _storageTransferPickerOpen = false;
+            _inventoryToggleConsumedThisFrame = true;
+            return;
+        }
+
+        if (InteractPressedThisFrame())
+        {
+            int amount = _storageTransferAmount;
+            _storageTransferPickerOpen = false;
+            TransferSelectedStorageStack(amount);
+        }
+    }
+
+    private void TransferSelectedStorageStack(int amount)
+    {
+        if (_storageFocusStorage)
+        {
+            InventoryItemStack? stack = _storage.GetStackCoveringSlot(_selectedStorageSlot);
+            if (stack == null)
+            {
+                ShowGameMessage("No stored item selected.", 1.25f);
+                return;
+            }
+
+            string itemName = ItemCatalog.GetDisplayName(stack.ItemId);
+            if (!_storage.TransferStackTo(stack.SlotIndex, amount, _inventory, out int transferredCount))
+            {
+                ShowGameMessage($"No room to take {itemName}.", 1.5f);
+                return;
+            }
+
+            _selectedStorageSlot = _storage.IsEmpty ? -1 : SelectSlotInContainer(_selectedStorageSlot, _storage);
+            string countSuffix = transferredCount > 1 ? $" x{transferredCount}" : "";
+            ShowGameMessage($"Took {itemName}{countSuffix}.", 1.25f);
+            return;
+        }
+
+        InventoryItemStack? inventoryStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (inventoryStack == null)
+        {
+            ShowGameMessage("No inventory item selected.", 1.25f);
+            return;
+        }
+
+        string inventoryItemName = ItemCatalog.GetDisplayName(inventoryStack.ItemId);
+        if (!_inventory.TransferStackTo(inventoryStack.SlotIndex, amount, _storage, out int storedCount))
+        {
+            ShowGameMessage($"No storage room for {inventoryItemName}.", 1.5f);
+            return;
+        }
+
+        _selectedInventoryStackIndex = _inventory.IsEmpty ? -1 : SelectSlotInContainer(_selectedInventoryStackIndex, _inventory);
+        string storedCountSuffix = storedCount > 1 ? $" x{storedCount}" : "";
+        ShowGameMessage($"Stored {inventoryItemName}{storedCountSuffix}.", 1.25f);
     }
 
     private bool CanPlaceMovingInventoryItem()
@@ -1147,7 +1529,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 _inventoryActionMenuOpen = false;
                 break;
             case "Examine":
-                ShowGameMessage(string.IsNullOrWhiteSpace(definition.Description) ? $"Examined {definition.DisplayName}." : definition.Description, 3.5f);
+                ShowItemPresentation(selectedStack.ItemId, selectedStack.Count, "Item Details");
                 _inventoryActionMenuOpen = false;
                 break;
             case "Move":
@@ -1250,54 +1632,46 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
         }
 
-        if (!TryGetCombineRecipe(source.ItemId, target.ItemId, out string resultItemId, out int resultCount))
+        if (!ItemCatalog.TryGetCombineRecipe(
+                source.ItemId,
+                target.ItemId,
+                out InventoryCombineRecipe? recipe,
+                out int sourceConsumedCount,
+                out int targetConsumedCount) ||
+            recipe == null)
         {
             ShowGameMessage($"{ItemCatalog.GetDisplayName(source.ItemId)} cannot combine with {ItemCatalog.GetDisplayName(target.ItemId)}.", 2.0f);
-            _combineSourceSlot = -1;
             return;
         }
 
         string sourceName = ItemCatalog.GetDisplayName(source.ItemId);
         string targetName = ItemCatalog.GetDisplayName(target.ItemId);
-        if (!_inventory.RemoveCount(source.ItemId, 1) || !_inventory.RemoveCount(target.ItemId, 1))
+        if (source.Count < sourceConsumedCount || target.Count < targetConsumedCount)
+        {
+            ShowGameMessage("Not enough items to combine.", 1.75f);
+            return;
+        }
+
+        if (!_inventory.RemoveCount(source.ItemId, sourceConsumedCount) ||
+            !_inventory.RemoveCount(target.ItemId, targetConsumedCount))
         {
             ShowGameMessage("Could not combine those items.", 1.75f);
             _combineSourceSlot = -1;
             return;
         }
 
-        if (!_inventory.Add(resultItemId, resultCount))
+        if (!_inventory.Add(recipe.ResultItemId, recipe.ResultCount))
         {
-            _inventory.Add(source.ItemId, 1);
-            _inventory.Add(target.ItemId, 1);
+            _inventory.Add(source.ItemId, sourceConsumedCount);
+            _inventory.Add(target.ItemId, targetConsumedCount);
             ShowGameMessage("No room for the combined item.", 1.75f);
             _combineSourceSlot = -1;
             return;
         }
 
         _combineSourceSlot = -1;
-        InventoryItemDefinition result = ItemCatalog.Get(resultItemId);
-        ShowGameMessage($"Combined {sourceName} with {targetName}. Created {result.DisplayName} x{resultCount}.", 2.5f);
-    }
-
-    private static bool TryGetCombineRecipe(string a, string b, out string resultItemId, out int resultCount)
-    {
-        bool scrapAndGunpowder =
-            (string.Equals(a, ItemCatalog.Scrap, StringComparison.OrdinalIgnoreCase) &&
-             string.Equals(b, ItemCatalog.Gunpowder, StringComparison.OrdinalIgnoreCase)) ||
-            (string.Equals(a, ItemCatalog.Gunpowder, StringComparison.OrdinalIgnoreCase) &&
-             string.Equals(b, ItemCatalog.Scrap, StringComparison.OrdinalIgnoreCase));
-
-        if (scrapAndGunpowder)
-        {
-            resultItemId = ItemCatalog.Bullets;
-            resultCount = 12;
-            return true;
-        }
-
-        resultItemId = "";
-        resultCount = 0;
-        return false;
+        InventoryItemDefinition result = ItemCatalog.Get(recipe.ResultItemId);
+        ShowGameMessage($"Combined {sourceName} with {targetName}. Created {result.DisplayName} x{recipe.ResultCount}.", 2.5f);
     }
 
     private static int WrapIndex(int value, int count)
@@ -1319,6 +1693,47 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             if (_collectedInteractables.Contains(e.Name) || _openedDoors.Contains(e.Name))
                 HideRuntimeEntity(e);
         }
+
+        foreach (string puzzleSlotName in _solvedPuzzles)
+        {
+            string doorName = GetPuzzleDoorNameForSlot(puzzleSlotName);
+            Entity? door = FindRuntimeEntity(doorName);
+            if (door != null)
+                MovePuzzleDoorToOpenPosition(door);
+        }
+    }
+
+    private void UpdatePuzzleDoorAnimations(float dt)
+    {
+        foreach (string puzzleSlotName in _solvedPuzzles)
+        {
+            string doorName = GetPuzzleDoorNameForSlot(puzzleSlotName);
+            Entity? door = FindRuntimeEntity(doorName);
+            if (door == null || !_puzzleDoorClosedPositions.TryGetValue(door.Name, out Vector3 closedPosition))
+                continue;
+
+            Vector3 target = closedPosition + Vector3.UnitY * PuzzleDoorLiftHeight;
+            door.Transform.Position = MoveTowards(door.Transform.Position, target, PuzzleDoorLiftSpeed * dt);
+        }
+    }
+
+    private void MovePuzzleDoorToOpenPosition(Entity door)
+    {
+        if (_puzzleDoorClosedPositions.TryGetValue(door.Name, out Vector3 closedPosition))
+            door.Transform.Position = closedPosition + Vector3.UnitY * PuzzleDoorLiftHeight;
+    }
+
+    private Entity? FindRuntimeEntity(string name)
+        => _runtimeEntities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    private static Vector3 MoveTowards(Vector3 current, Vector3 target, float maxDelta)
+    {
+        Vector3 delta = target - current;
+        float distance = delta.Length();
+        if (distance <= maxDelta || distance <= 1e-5f)
+            return target;
+
+        return current + delta / distance * maxDelta;
     }
 
     private void RemoveExpiredInventoryItems(bool showMessage)
@@ -1407,7 +1822,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     }
 
     private void ShowItemCollected(string itemId, int count)
+        => ShowItemPresentation(itemId, count, "Item Collected");
+
+    private void ShowItemPresentation(string itemId, int count, string title)
     {
+        _itemCollectedTitle = title;
         _itemCollectedItemId = itemId;
         _itemCollectedCount = Math.Max(1, count);
         _itemCollectedOpen = true;
@@ -3311,6 +3730,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     {
         _runtimeEntities.Clear();
         _runtimeWorldColliders.Clear();
+        _puzzleDoorClosedPositions.Clear();
 
         foreach (var def in _editor.LevelFile.Entities)
         {
@@ -3496,6 +3916,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             }
 
             _runtimeEntities.Add(e);
+            if (IsPuzzleDoor(e))
+                _puzzleDoorClosedPositions[e.Name] = e.Transform.Position;
         }
 
         ApplyPersistentInteractionStateToRuntime();
@@ -3718,6 +4140,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             for (int j = 0; j < ent.Components.Count; j++)
                 ent.Components[j].Update(fixedDt);
         }
+
+        UpdatePuzzleDoorAnimations(fixedDt);
 
         // 2) If an entity is kinematic, drive its body from its transform
         for (int i = 0; i < _runtimeEntities.Count; i++)
@@ -4021,6 +4445,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 SelectInventorySlot(previewSelectedSlot);
                 if (_inventoryOpen)
                 {
+                    if (IsPendingUseSelectionActive)
+                    {
+                        List<InventoryItemStack> candidates = GetPendingUseCandidates();
+                        int candidateIndex = candidates.FindIndex(stack => stack.SlotIndex == _selectedInventoryStackIndex);
+                        if (candidateIndex >= 0)
+                            _pendingUseCandidateIndex = candidateIndex;
+
+                        if (_inputState.LeftMousePressedThisFrame || _inputState.LeftMouseReleasedThisFrame)
+                            TryUseSelectedInventoryItemOnPendingTarget();
+                        return;
+                    }
+
                     if (!_inventorySplitHandledThisFrame && InventorySplitPressedThisFrame())
                     {
                         _inventorySplitHandledThisFrame = true;
@@ -4101,7 +4537,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         InventoryItemDefinition definition = ItemCatalog.Get(_itemCollectedItemId);
         Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);
         ImGui.SetNextWindowPos(center, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
-        ImGui.SetNextWindowSize(new Vector2(420f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(500f, 0f), ImGuiCond.Always);
         ImGui.SetNextWindowBgAlpha(0.92f);
 
         ImGuiWindowFlags flags =
@@ -4112,12 +4548,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             ImGuiWindowFlags.NoFocusOnAppearing;
 
         ImGui.Begin("ItemCollected", flags);
-        ImGui.Text("Item Collected");
+        ImGui.Text(_itemCollectedTitle);
         ImGui.Separator();
 
         string countSuffix = _itemCollectedCount > 1 ? $" x{_itemCollectedCount}" : "";
         ImGui.Text($"{definition.DisplayName}{countSuffix}");
         ImGui.TextDisabled($"{definition.Type} | {definition.SlotWidth}x{definition.SlotHeight} slots | Stack {definition.MaxStack}");
+        ImGui.TextDisabled($"Case footprint: {definition.SlotWidth} x {definition.SlotHeight}");
         if (!string.IsNullOrWhiteSpace(definition.Description))
         {
             ImGui.Spacing();
@@ -4364,7 +4801,190 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     public void RenderOverlay(Renderer renderer)
     {
         _gameplayUi.RenderOverlay(renderer);
+        DrawStorageOverlay();
         DrawSpawnCommandOverlay();
+    }
+
+    private void DrawStorageOverlay()
+    {
+        if (!_storageOpen)
+            return;
+
+        ImGuiViewportPtr viewport = ImGui.GetMainViewport();
+        Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);
+        ImGui.SetNextWindowPos(center, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(980f, 620f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.96f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings;
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.018f, 0.022f, 0.024f, 0.97f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.66f, 0.68f, 0.61f, 0.42f));
+        ImGui.Begin("StorageBoxOverlay", flags);
+        ImGui.TextColored(new Vector4(0.92f, 0.91f, 0.84f, 1f), "Item Box");
+        ImGui.SameLine();
+        ImGui.TextDisabled("Shared storage");
+        ImGui.Separator();
+
+        ImGui.BeginChild("InventoryStoragePane", new Vector2(455f, 500f));
+        DrawStorageGridPane("Inventory", _inventory, _selectedInventoryStackIndex, !_storageFocusStorage, transferToStorage: true);
+        ImGui.EndChild();
+
+        ImGui.SameLine();
+
+        ImGui.BeginChild("SharedStoragePane", new Vector2(455f, 500f));
+        DrawStorageGridPane("Storage", _storage, _selectedStorageSlot, _storageFocusStorage, transferToStorage: false);
+        ImGui.EndChild();
+
+        ImGui.Separator();
+        ImGui.TextDisabled("E / X: Transfer selected stack or choose amount | Tab / LB / RB: Switch side | I / Back: Close");
+        ImGui.End();
+        ImGui.PopStyleColor(2);
+
+        DrawStorageTransferPickerOverlay();
+    }
+
+    private void DrawStorageTransferPickerOverlay()
+    {
+        if (!_storageTransferPickerOpen)
+            return;
+
+        InventoryContainer source = _storageTransferFromStorage ? _storage : _inventory;
+        int sourceSlot = _storageTransferFromStorage ? _selectedStorageSlot : _selectedInventoryStackIndex;
+        InventoryItemStack? stack = source.GetStackCoveringSlot(sourceSlot);
+        if (stack == null)
+            return;
+
+        InventoryItemDefinition definition = ItemCatalog.Get(stack.ItemId);
+        int maxAmount = Math.Max(1, stack.Count);
+        _storageTransferAmount = Math.Clamp(_storageTransferAmount, 1, maxAmount);
+
+        ImGuiViewportPtr viewport = ImGui.GetMainViewport();
+        Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);
+        ImGui.SetNextWindowPos(center, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(310f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.98f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings;
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.025f, 0.03f, 0.032f, 0.98f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.66f, 0.68f, 0.61f, 0.55f));
+        ImGui.Begin("StorageTransferPicker", flags);
+        string direction = _storageTransferFromStorage ? "Take" : "Store";
+        ImGui.TextColored(new Vector4(0.92f, 0.91f, 0.84f, 1f), $"{direction} {definition.DisplayName}");
+        ImGui.TextDisabled($"Stack: {stack.Count} | Max: {maxAmount}");
+        int amount = _storageTransferAmount;
+        if (ImGui.SliderInt("Amount", ref amount, 1, maxAmount))
+            _storageTransferAmount = amount;
+
+        if (ImGui.Button("Confirm", new Vector2(132f, 0f)))
+        {
+            int transferAmount = _storageTransferAmount;
+            _storageTransferPickerOpen = false;
+            TransferSelectedStorageStack(transferAmount);
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Cancel", new Vector2(132f, 0f)))
+            _storageTransferPickerOpen = false;
+
+        ImGui.TextDisabled("A/D or D-pad: Amount | E/X: Confirm");
+        ImGui.End();
+        ImGui.PopStyleColor(2);
+    }
+
+    private void DrawStorageGridPane(
+        string title,
+        InventoryContainer container,
+        int selectedSlot,
+        bool focused,
+        bool transferToStorage)
+    {
+        ImGui.TextColored(
+            focused ? new Vector4(0.92f, 0.88f, 0.58f, 1f) : new Vector4(0.78f, 0.78f, 0.72f, 1f),
+            focused ? $"> {title}" : title);
+        ImGui.TextDisabled($"Slots: {container.UsedSlotCount}/{container.SlotCapacity}");
+        ImGui.Spacing();
+
+        Dictionary<int, InventoryItemStack> byOriginSlot = container.Stacks.ToDictionary(stack => stack.SlotIndex);
+        Dictionary<int, InventoryItemStack> byCoveredSlot = BuildStackCoveredSlotLookup(container);
+
+        const float slotSize = 44f;
+        for (int slot = 0; slot < container.SlotCapacity; slot++)
+        {
+            int col = slot % container.GridWidth;
+            if (col > 0)
+                ImGui.SameLine();
+
+            bool selected = focused && slot == selectedSlot;
+            bool origin = byOriginSlot.TryGetValue(slot, out InventoryItemStack? stack);
+            bool covered = byCoveredSlot.TryGetValue(slot, out InventoryItemStack? coveredStack);
+            bool coveredOnly = covered && !origin;
+
+            Vector4 fill = covered ? new Vector4(0.11f, 0.14f, 0.14f, 0.96f) : new Vector4(0.055f, 0.065f, 0.070f, 0.88f);
+            if (coveredOnly)
+                fill = new Vector4(0.08f, 0.10f, 0.10f, 0.92f);
+            if (selected)
+                fill = new Vector4(0.29f, 0.34f, 0.33f, 0.98f);
+
+            ImGui.PushStyleColor(ImGuiCol.Button, fill);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.24f, 0.28f, 0.27f, 0.98f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.36f, 0.40f, 0.37f, 1f));
+
+            string label = origin && stack != null
+                ? $"{ShortItemLabel(ItemCatalog.GetDisplayName(stack.ItemId))}{(stack.Count > 1 ? $" x{stack.Count}" : "")}##storage{title}{slot}"
+                : coveredOnly && coveredStack != null
+                    ? $"({ShortItemLabel(ItemCatalog.GetDisplayName(coveredStack.ItemId))})##storage{title}{slot}"
+                    : $"##storage{title}{slot}";
+
+            bool clicked = ImGui.Button(label, new Vector2(slotSize, slotSize));
+            if (clicked)
+            {
+                if (transferToStorage)
+                {
+                    _storageFocusStorage = false;
+                    _selectedInventoryStackIndex = SelectSlotInContainer(slot, _inventory);
+                }
+                else
+                {
+                    _storageFocusStorage = true;
+                    _selectedStorageSlot = SelectSlotInContainer(slot, _storage);
+                }
+
+                if (covered)
+                    OpenOrTransferSelectedStorageStack();
+            }
+
+            if (ImGui.IsItemHovered())
+            {
+                if (transferToStorage)
+                    _selectedInventoryStackIndex = SelectSlotInContainer(slot, _inventory);
+                else
+                    _selectedStorageSlot = SelectSlotInContainer(slot, _storage);
+            }
+
+            ImGui.PopStyleColor(3);
+        }
+    }
+
+    private static Dictionary<int, InventoryItemStack> BuildStackCoveredSlotLookup(InventoryContainer container)
+    {
+        Dictionary<int, InventoryItemStack> lookup = new();
+        foreach (InventoryItemStack stack in container.Stacks)
+        {
+            foreach (int slot in container.CoveredSlots(stack))
+                lookup[slot] = stack;
+        }
+
+        return lookup;
     }
 
     private void DrawSpawnCommandOverlay()
@@ -4870,7 +5490,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     }
 
     private static bool IsGameplayInteractable(Entity e)
-        => IsWorldItem(e) || IsLockedObject(e) || IsSavePoint(e);
+        => IsWorldItem(e) || IsLockedObject(e) || IsSavePoint(e) || IsStorageBox(e) || IsPuzzleSlot(e);
 
     private static bool IsWorldItem(Entity e)
         => IsKeyItem(e) || IsInkRibbon(e) || e.Name.StartsWith("Item_", StringComparison.OrdinalIgnoreCase);
@@ -4892,6 +5512,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
     private static bool IsSavePoint(Entity e)
         => e.Name.StartsWith("SavePoint_", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsStorageBox(Entity e)
+        => e.Name.StartsWith("StorageBox_", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsPuzzleSlot(Entity e)
+        => e.Name.StartsWith("PuzzleSlot_", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsPuzzleDoor(Entity e)
+        => e.Name.StartsWith("PuzzleDoor_", StringComparison.OrdinalIgnoreCase);
 
     private static bool TryGetWorldItem(Entity e, out string itemId, out int count)
     {
@@ -4941,6 +5570,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             ? GetNameToken(e, "LockedChest_")
             : GetNameToken(e, "LockedDoor_");
 
+    private static string GetPuzzleSlotRequiredItem(Entity e)
+        => GetNameToken(e, "PuzzleSlot_");
+
+    private static string GetPuzzleDoorNameForSlot(string puzzleSlotName)
+    {
+        const string slotPrefix = "PuzzleSlot_";
+        if (!puzzleSlotName.StartsWith(slotPrefix, StringComparison.OrdinalIgnoreCase))
+            return puzzleSlotName;
+
+        return "PuzzleDoor_" + puzzleSlotName[slotPrefix.Length..];
+    }
+
     private bool HasUnlockItem(string requiredItem)
         => _inventory.Contains(requiredItem) || _inventory.Contains(ItemCatalog.MasterKey);
 
@@ -4952,6 +5593,188 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         return _inventory.Contains(ItemCatalog.MasterKey)
             ? ItemCatalog.MasterKey
             : null;
+    }
+
+    private bool CanUseItemForPendingTarget(string itemId)
+    {
+        if (!IsPendingUseSelectionActive)
+            return false;
+
+        if (string.Equals(_pendingUseKind, "Lock", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Equals(itemId, _pendingUseRequiredItem, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(itemId, ItemCatalog.MasterKey, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (string.Equals(_pendingUseKind, "SavePoint", StringComparison.OrdinalIgnoreCase))
+            return string.Equals(itemId, ItemCatalog.InkRibbon, StringComparison.OrdinalIgnoreCase);
+
+        if (string.Equals(_pendingUseKind, "Puzzle", StringComparison.OrdinalIgnoreCase))
+            return string.Equals(itemId, _pendingUseRequiredItem, StringComparison.OrdinalIgnoreCase);
+
+        return false;
+    }
+
+    private bool IsCandidateItemForPendingUse(string itemId)
+    {
+        if (!IsPendingUseSelectionActive)
+            return false;
+
+        if (string.Equals(_pendingUseKind, "SavePoint", StringComparison.OrdinalIgnoreCase))
+            return string.Equals(itemId, ItemCatalog.InkRibbon, StringComparison.OrdinalIgnoreCase);
+
+        if (string.Equals(_pendingUseKind, "Lock", StringComparison.OrdinalIgnoreCase))
+        {
+            InventoryItemDefinition definition = ItemCatalog.Get(itemId);
+            return definition.Type == InventoryItemType.Key ||
+                   definition.Type == InventoryItemType.Puzzle ||
+                   itemId.Contains("Crank", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (string.Equals(_pendingUseKind, "Puzzle", StringComparison.OrdinalIgnoreCase))
+            return string.Equals(itemId, _pendingUseRequiredItem, StringComparison.OrdinalIgnoreCase);
+
+        return false;
+    }
+
+    private List<InventoryItemStack> GetPendingUseCandidates()
+        => _inventory.Stacks
+            .Where(stack => IsCandidateItemForPendingUse(stack.ItemId))
+            .OrderByDescending(stack => CanUseItemForPendingTarget(stack.ItemId))
+            .ThenBy(stack => ItemCatalog.GetDisplayName(stack.ItemId), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private string GetPendingUsePrompt()
+    {
+        if (!IsPendingUseSelectionActive)
+            return "";
+
+        if (string.Equals(_pendingUseKind, "SavePoint", StringComparison.OrdinalIgnoreCase))
+            return "Choose an Ink Ribbon to save.";
+
+        if (string.Equals(_pendingUseKind, "Puzzle", StringComparison.OrdinalIgnoreCase))
+            return $"Choose {ItemCatalog.GetDisplayName(_pendingUseRequiredItem)} to use with the mechanism.";
+
+        return $"Choose {ItemCatalog.GetDisplayName(_pendingUseRequiredItem)}.";
+    }
+
+    private void BeginUseItemSelection(Entity target, string requiredItem, string useKind)
+    {
+        _pendingUseTargetName = target.Name;
+        _pendingUseRequiredItem = requiredItem;
+        _pendingUseKind = useKind;
+        _pendingUseCandidateIndex = 0;
+        CloseInventoryActionUi();
+        CancelInventoryMove();
+        SetInventoryOpen(true);
+
+        InventoryItemStack? firstCandidate = GetPendingUseCandidates().FirstOrDefault();
+        if (firstCandidate != null)
+            _selectedInventoryStackIndex = firstCandidate.SlotIndex;
+
+        ShowGameMessage(GetPendingUsePrompt(), 2.0f);
+    }
+
+    private void ClearPendingUseSelection()
+    {
+        _pendingUseTargetName = "";
+        _pendingUseRequiredItem = "";
+        _pendingUseKind = "";
+        _pendingUseCandidateIndex = 0;
+    }
+
+    private void TryUseSelectedInventoryItemOnPendingTarget()
+    {
+        InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
+        if (selectedStack == null)
+        {
+            ShowGameMessage("Select an item first.", 1.25f);
+            return;
+        }
+
+        if (!CanUseItemForPendingTarget(selectedStack.ItemId))
+        {
+            ShowGameMessage($"{ItemCatalog.GetDisplayName(selectedStack.ItemId)} cannot be used there.", 1.75f);
+            return;
+        }
+
+        Entity? target = _runtimeEntities.FirstOrDefault(e => string.Equals(e.Name, _pendingUseTargetName, StringComparison.OrdinalIgnoreCase));
+        if (target == null)
+        {
+            ShowGameMessage("That target is no longer available.", 1.75f);
+            ClearPendingUseSelection();
+            SetInventoryOpen(false);
+            return;
+        }
+
+        if (string.Equals(_pendingUseKind, "Lock", StringComparison.OrdinalIgnoreCase))
+        {
+            UseSelectedItemOnLock(target, selectedStack.ItemId);
+            return;
+        }
+
+        if (string.Equals(_pendingUseKind, "SavePoint", StringComparison.OrdinalIgnoreCase))
+        {
+            UseSelectedInkRibbonAtSavePoint(target);
+            return;
+        }
+
+        if (string.Equals(_pendingUseKind, "Puzzle", StringComparison.OrdinalIgnoreCase))
+            UseSelectedItemOnPuzzleSlot(target, selectedStack.ItemId);
+    }
+
+    private void UseSelectedItemOnLock(Entity target, string itemId)
+    {
+        string requiredItem = GetLockRequiredItem(target);
+        _openedDoors.Add(target.Name);
+        HideRuntimeEntity(target);
+
+        string message = $"Unlocked with {ItemCatalog.GetDisplayName(itemId)}.";
+        if (IsLockedChest(target) && TryGetLockedChestReward(target, out string rewardItemId, out int rewardCount))
+        {
+            AddInventoryItem(rewardItemId, rewardCount, showCollectedScreen: true);
+            string countSuffix = rewardCount > 1 ? $" x{rewardCount}" : "";
+            message += $" Found {ItemCatalog.GetDisplayName(rewardItemId)}{countSuffix}.";
+        }
+
+        if (!string.Equals(itemId, ItemCatalog.MasterKey, StringComparison.OrdinalIgnoreCase) &&
+            TryRemoveInventoryItemIfFullyUsed(requiredItem))
+        {
+            message += $" {ItemCatalog.GetDisplayName(requiredItem)} is no longer needed.";
+        }
+
+        ClearPendingUseSelection();
+        SetInventoryOpen(false);
+        ShowGameMessage(message);
+    }
+
+    private void UseSelectedInkRibbonAtSavePoint(Entity target)
+    {
+        _inventory.RemoveCount(ItemCatalog.InkRibbon);
+        _savePointUseCount++;
+        if (!SavePrototypeGame(target))
+        {
+            _inventory.Add(ItemCatalog.InkRibbon);
+            _savePointUseCount--;
+            return;
+        }
+
+        ClearPendingUseSelection();
+        SetInventoryOpen(false);
+    }
+
+    private void UseSelectedItemOnPuzzleSlot(Entity target, string itemId)
+    {
+        _solvedPuzzles.Add(target.Name);
+
+        string doorName = GetPuzzleDoorNameForSlot(target.Name);
+        Entity? door = FindRuntimeEntity(doorName);
+        if (door != null)
+            ShowRuntimePuzzleDoor(door);
+
+        ClearPendingUseSelection();
+        SetInventoryOpen(false);
+        ShowGameMessage($"{ItemCatalog.GetDisplayName(itemId)} turns the mechanism. The door is lifting.", 3.0f);
     }
 
     private static string GetNameToken(Entity e, string prefix)
@@ -5012,6 +5835,20 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 ? $"Use Ink Ribbon at {PrettifyToken(GetNameToken(e, "SavePoint_"))}"
                 : $"{PrettifyToken(GetNameToken(e, "SavePoint_"))} - needs Ink Ribbon";
 
+        if (IsStorageBox(e))
+            return $"Open {PrettifyToken(GetNameToken(e, "StorageBox_"))}";
+
+        if (IsPuzzleSlot(e))
+        {
+            if (_solvedPuzzles.Contains(e.Name))
+                return "Mechanism already turned";
+
+            string requiredItem = GetPuzzleSlotRequiredItem(e);
+            return _inventory.Contains(requiredItem)
+                ? $"Use {ItemCatalog.GetDisplayName(requiredItem)}"
+                : $"A crank slot - needs {ItemCatalog.GetDisplayName(requiredItem)}";
+        }
+
         return "Interact";
     }
 
@@ -5063,24 +5900,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 return true;
             }
 
-            _openedDoors.Add(hit.Name);
-            HideRuntimeEntity(hit);
-            string message = $"Unlocked with {ItemCatalog.GetDisplayName(unlockItem)}.";
-
-            if (IsLockedChest(hit) && TryGetLockedChestReward(hit, out string rewardItemId, out int rewardCount))
-            {
-                AddInventoryItem(rewardItemId, rewardCount, showCollectedScreen: true);
-                string countSuffix = rewardCount > 1 ? $" x{rewardCount}" : "";
-                message += $" Found {ItemCatalog.GetDisplayName(rewardItemId)}{countSuffix}.";
-            }
-
-            if (!string.Equals(unlockItem, ItemCatalog.MasterKey, StringComparison.OrdinalIgnoreCase) &&
-                TryRemoveInventoryItemIfFullyUsed(requiredItem))
-            {
-                message += $" {ItemCatalog.GetDisplayName(requiredItem)} is no longer needed.";
-            }
-
-            ShowGameMessage(message);
+            BeginUseItemSelection(hit, requiredItem, "Lock");
             return true;
         }
 
@@ -5092,13 +5912,32 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 return true;
             }
 
-            _inventory.RemoveCount(ItemCatalog.InkRibbon);
-            _savePointUseCount++;
-            if (!SavePrototypeGame(hit))
+            BeginUseItemSelection(hit, ItemCatalog.InkRibbon, "SavePoint");
+            return true;
+        }
+
+        if (IsStorageBox(hit))
+        {
+            SetStorageOpen(true);
+            return true;
+        }
+
+        if (IsPuzzleSlot(hit))
+        {
+            if (_solvedPuzzles.Contains(hit.Name))
             {
-                _inventory.Add(ItemCatalog.InkRibbon);
-                _savePointUseCount--;
+                ShowGameMessage("The mechanism has already been turned.", 1.75f);
+                return true;
             }
+
+            string requiredItem = GetPuzzleSlotRequiredItem(hit);
+            if (!_inventory.Contains(requiredItem))
+            {
+                ShowGameMessage($"There is a square slot here. It needs {ItemCatalog.GetDisplayName(requiredItem)}.", 2.5f);
+                return true;
+            }
+
+            BeginUseItemSelection(hit, requiredItem, "Puzzle");
             return true;
         }
 
@@ -5204,7 +6043,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         return normalized.ToLowerInvariant() switch
         {
             "ink" or "inkribbon" or "ribbon" => ItemCatalog.InkRibbon,
-            "crank" or "crankhandle" => "CrankHandle",
+            "crank" or "crankhandle" => ItemCatalog.CrankHandle,
+            "fuse" or "ceramicfuse" => ItemCatalog.Fuse,
             "scrap" => ItemCatalog.Scrap,
             "gunpowder" or "powder" => ItemCatalog.Gunpowder,
             "bullet" or "bullets" or "ammo" => ItemCatalog.Bullets,
@@ -5289,6 +6129,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     {
         e.Render.Shape = RuntimeShapeKind.None;
         e.Collider.Shape = RuntimeShapeKind.None;
+    }
+
+    private static void ShowRuntimePuzzleDoor(Entity e)
+    {
+        if (e.Render.Shape == RuntimeShapeKind.None)
+            e.Render.Shape = RuntimeShapeKind.Box;
+        if (e.Collider.Shape == RuntimeShapeKind.None)
+            e.Collider.Shape = RuntimeShapeKind.Box;
     }
 
     private void TryPickupDropThrow()

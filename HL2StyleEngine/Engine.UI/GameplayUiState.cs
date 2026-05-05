@@ -19,6 +19,10 @@ public sealed class GameplayUiState
     public bool CanPlaceMovingItem { get; init; }
     public bool CanSwapMovingItem { get; init; }
     public bool CanMergeMovingItem { get; init; }
+    public bool CombiningInventoryItem { get; init; }
+    public int CombineSourceSlot { get; init; } = -1;
+    public bool UsingInventoryItem { get; init; }
+    public string UseTargetPrompt { get; init; } = "";
     public int SaveCount { get; init; }
     public IReadOnlyList<GameplayUiInventoryItem> InventoryItems { get; init; } = Array.Empty<GameplayUiInventoryItem>();
     public GameplayUiCollectedItem? CollectedItem { get; init; }
@@ -37,10 +41,17 @@ public sealed class GameplayUiInventoryItem
     public int SlotHeight { get; init; } = 1;
     public bool Rotated { get; init; }
     public int MaxStack { get; init; } = 1;
+    public bool IsCombineSource { get; init; }
+    public bool IsValidCombineTarget { get; init; }
+    public bool IsInvalidCombineTarget { get; init; }
+    public bool IsValidUseTarget { get; init; }
+    public bool IsInvalidUseTarget { get; init; }
+    public bool IsUseCandidate { get; init; }
 }
 
 public sealed class GameplayUiCollectedItem
 {
+    public string Title { get; init; } = "Item Collected";
     public string Id { get; init; } = "";
     public string DisplayName { get; init; } = "";
     public string Description { get; init; } = "";

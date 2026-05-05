@@ -7,6 +7,8 @@ public static class ItemCatalog
     public const string Scrap = "Scrap";
     public const string Gunpowder = "Gunpowder";
     public const string Bullets = "Bullets";
+    public const string CrankHandle = "CrankHandle";
+    public const string Fuse = "Fuse";
 
     private static readonly Dictionary<string, InventoryItemDefinition> KnownItems = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -85,15 +87,29 @@ public static class ItemCatalog
             slotHeight: 1,
             maxStack: 60),
 
-        ["CrankHandle"] = new(
-            "CrankHandle",
+        [CrankHandle] = new(
+            CrankHandle,
             "Crank Handle",
             "A sturdy handle for a square crank mechanism.",
             InventoryItemType.Puzzle,
             slotWidth: 1,
             slotHeight: 2,
+            maxStack: 1),
+
+        [Fuse] = new(
+            Fuse,
+            "Fuse",
+            "An old ceramic fuse. It might restore power to a small mechanism.",
+            InventoryItemType.Puzzle,
+            slotWidth: 1,
+            slotHeight: 1,
             maxStack: 1)
     };
+
+    private static readonly IReadOnlyList<InventoryCombineRecipe> CombineRecipes =
+    [
+        new(Scrap, Gunpowder, Bullets, resultCount: 12)
+    ];
 
     public static InventoryItemDefinition Get(string itemId)
     {
@@ -117,6 +133,31 @@ public static class ItemCatalog
 
     public static string GetDisplayName(string itemId)
         => Get(itemId).DisplayName;
+
+    public static bool CanCombine(string firstItemId, string secondItemId)
+        => TryGetCombineRecipe(firstItemId, secondItemId, out _, out _, out _);
+
+    public static bool TryGetCombineRecipe(
+        string firstItemId,
+        string secondItemId,
+        out InventoryCombineRecipe? recipe,
+        out int firstConsumedCount,
+        out int secondConsumedCount)
+    {
+        foreach (InventoryCombineRecipe candidate in CombineRecipes)
+        {
+            if (!candidate.Matches(firstItemId, secondItemId, out firstConsumedCount, out secondConsumedCount))
+                continue;
+
+            recipe = candidate;
+            return true;
+        }
+
+        recipe = null;
+        firstConsumedCount = 0;
+        secondConsumedCount = 0;
+        return false;
+    }
 
     public static string Prettify(string token)
     {

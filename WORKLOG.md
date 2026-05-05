@@ -1,6 +1,6 @@
 # Work Log
 
-Last updated: 2026-05-04
+Last updated: 2026-05-05
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
@@ -171,6 +171,108 @@ The current gameplay issues being worked first are:
 - playtest mouse drag: press on an inventory item, drag over an empty/occupied compatible slot, release to move/merge/swap
 - expand combine recipes into data-driven item definitions instead of hardcoded prototype recipes
 - add safe storage transfer once action-menu and stack rules feel good
+
+## 2026-05-05
+
+### Summary
+
+- moved inventory combine recipes out of the gameplay combine flow and into catalog data
+- added an `InventoryCombineRecipe` data model with ingredient ids, result item id, result count, and consumed counts
+- kept the current prototype recipe as data: `Scrap` + `Gunpowder` creates `Bullets x12`
+- exposed combine mode, combine source slot, valid combine targets, and invalid combine targets through `Engine.UI` gameplay state
+- updated the current inventory preview so choosing `Combine` highlights the source item, highlights valid targets, and dims invalid occupied items
+- updated generated RML classes and inventory RCSS for the same combine-source/combine-valid/combine-invalid states
+- changed invalid combine attempts so they show feedback but keep combine mode active, letting the player choose a highlighted target without restarting the action
+- added a shared item-box storage container with its own saved inventory data
+- added `StorageBox_SaveOffice` to the interaction test level template as a first safe-storage point
+- added a first-pass storage overlay with inventory/storage panes and whole-stack transfer in both directions
+- added partial-stack transfer for storage, so stackable items open an amount picker before storing or taking
+- changed locked doors, locked chests, and typewriter saves to open inventory in a filtered use-item mode with valid items highlighted
+- changed the filtered use-item flow into a separate focused list panel instead of showing the full inventory grid
+- use-item lists now show key and puzzle candidates for locks/chests, and ink ribbons for typewriters
+- changed `Examine` to open the larger item presentation panel instead of only showing a short text message
+- upgraded the item presentation state so pickup and examine panels can show different titles and footprint details
+- added a crank-socket puzzle in the utility room using `PuzzleSlot_CrankHandle__UtilityLift`
+- split the utility room back wall and added `PuzzleDoor_CrankHandle__UtilityLift`, which slowly raises after the Crank Handle is used
+- added saved solved-puzzle state so the crank door remains open after saving and reloading
+- added a small crank-door service alcove with a shelf reward pickup, `Item_Fuse__CrankAlcove`
+- added a cataloged `Fuse` puzzle item and `spawn fuse` dev-command alias
+- added `PuzzleSlot_Fuse__PowerGate` and `PuzzleDoor_Fuse__PowerGate` so the Fuse opens a second powered lift gate from the crank alcove
+- moved the Fuse power panel out of the side-gate passage so it no longer blocks the player after the gate opens
+- widened the crank lift door so it overlaps and covers the utility-back doorway more reliably when closed
+
+### Why
+
+- recipes need to be data-shaped before puzzle objects, upgrade materials, ammo crafting, and chest rewards start adding more combinations
+- highlighting valid targets makes combine mode readable with mouse, keyboard, and controller selection
+- keeping the generated RML path updated prevents the future native RmlUi swap-over from having to rediscover this UI state later
+- storage is the next survival-horror foundation and should reuse the same stack/footprint/save rules as the player inventory
+- storage needs quantity transfer so resources like Ink Ribbons, Scrap, Gunpowder, and Bullets can be managed without awkward all-or-nothing movement
+- filtered use-item selection makes locks, chests, puzzle slots, and save points feel closer to Resident Evil-style interaction instead of silently consuming or using items
+- the focused use list is closer to classic survival-horror item-use presentation and avoids making players scan the whole inventory grid for one valid object
+- examine and pickup should share a stronger presentation path before final item art/model previews exist
+- crank-operated doors are the next small puzzle interaction after key locks, chests, storage, and typewriter saving
+- the crank route needs a concrete reward/follow-up item so the mechanism becomes part of the exploration chain instead of only a movement test
+- chaining the Fuse into another powered gate proves puzzle items can drive more than one authored interaction step
+- puzzle interactables need to sit beside traversal paths, not inside them, so they do not become accidental blockers
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\World\SimpleLevel.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryContainer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryCombineRecipe.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\ItemCatalog.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiImGuiPreviewRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `Engine.Input` compile check succeeded
+- `Engine.UI` compile check succeeded
+- `Engine.Runtime` compile check succeeded
+- isolated `Game` compile initially hit the known local `obj` permission issue, then succeeded when run outside the sandbox
+- copied the validated combine-highlight build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.Input`, `Engine.UI`, and `Engine.Runtime` compile checks succeeded after adding storage/use/presentation state
+- isolated `Game` compile initially hit the known local `obj` permission issue, then succeeded when run outside the sandbox after one ImGui signature fix
+- copied the validated storage/use/presentation build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.Input`, `Engine.UI`, and `Engine.Runtime` compile checks succeeded after adding partial storage transfer
+- isolated `Game` compile initially hit the known local `obj` permission issue, then succeeded when run outside the sandbox
+- copied the validated partial-storage-transfer build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.UI` and `Engine.Runtime` compile checks succeeded after adding the crank puzzle door
+- isolated `Game` compile check succeeded after adding solved-puzzle save state and crank-door animation
+- copied the validated crank-puzzle build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.UI` and `Engine.Runtime` compile checks succeeded after adding the crank alcove Fuse reward
+- isolated `Game` compile check succeeded after adding the `Fuse` item and level reward
+- copied the validated Fuse-reward build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.UI` and `Engine.Runtime` compile checks succeeded after adding the Fuse power-gate step
+- isolated `Game` compile check succeeded after adding the Fuse panel and powered lift door
+- copied the validated Fuse-gate build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- playable `interaction_test.json` parsed successfully after the gate geometry correction
+- `Engine.UI`, `Engine.Runtime`, and isolated `Game` compile checks succeeded after moving the panel and widening the crank door
+- copied the validated geometry-fix build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+
+### Next
+
+- playtest `spawn scrap x3` and `spawn gunpowder x3`, then choose `Combine` and confirm only Gunpowder/Scrap highlights as a valid target
+- verify clicking or confirming an invalid item keeps combine mode active and shows feedback
+- playtest `StorageBox_SaveOffice`: store and retrieve keys, ink, Scrap, Gunpowder, Bullets, and the Crank Handle
+- verify stacked resources open the transfer amount picker, while single-count items transfer immediately
+- verify storage contents persist after saving at the typewriter and reloading
+- playtest locked doors/chests and the typewriter: interaction should open inventory, highlight valid usable items, and reject invalid items without closing the selection
+- verify the use-item panel lists keys/puzzle items for doors and chests, while the typewriter lists only ink ribbons
+- verify `Examine` opens the focused item detail panel from inside inventory
+- playtest the utility room crank socket: use the Crank Handle, confirm the door raises slowly, and confirm the solved state persists after saving/reloading
+- playtest the new crank-door alcove, pick up the Fuse, and confirm it appears as a 1-slot puzzle item
+- playtest `PuzzleSlot_Fuse__PowerGate`: use the Fuse at the power panel and confirm the side gate lifts and persists after save/reload
+- confirm the Fuse panel no longer blocks the side-gate passage and the crank door fully covers its doorway while closed
+- decide what the Fuse gate should lead to long-term: shortcut, next key, saferoom loopback, or puzzle reward room
+- add more recipes by adding `InventoryCombineRecipe` rows to `ItemCatalog`
+- consider adding recipe names/descriptions and a combined-item preview panel before final RmlUi styling
 
 ## 2026-04-29
 

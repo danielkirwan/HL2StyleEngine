@@ -2,7 +2,7 @@
   "Version": 2,
   "Entities": [
     {
-      "Id": "1ef7eaae7c444b8990f17c00273c28ab",
+      "Id": "b28cdb9840a44cf29fa3ffb472548055",
       "Type": "PlayerSpawn",
       "Name": "PlayerSpawn",
       "Scripts": [],
@@ -61,7 +61,7 @@
       "Height": 1
     },
     {
-      "Id": "f3a9ea1c8b40476391bc8621d617daa6",
+      "Id": "d8f21673981245e1bba0b26b968fa2a5",
       "Type": "PointLight",
       "Name": "Light_Foyer_Dim",
       "Scripts": [],
@@ -120,7 +120,7 @@
       "Height": 1
     },
     {
-      "Id": "b08433e66b9141058d3a4bf39c6b2383",
+      "Id": "1ac1fbbec9e24ef0b2d522717e5a0275",
       "Type": "PointLight",
       "Name": "Light_Central_Flicker",
       "Scripts": [],
@@ -179,7 +179,7 @@
       "Height": 1
     },
     {
-      "Id": "d46fe5dc01914690b2e87ed8127b3fde",
+      "Id": "99a9aa040f2f432294b3c12da68c04e9",
       "Type": "PointLight",
       "Name": "Light_SaveRoom_Cool",
       "Scripts": [],
@@ -238,7 +238,7 @@
       "Height": 1
     },
     {
-      "Id": "cac080d9c0534eae899b1ce63b424539",
+      "Id": "b5a50abe77b643cfbfee5c5ff7570ff5",
       "Type": "PointLight",
       "Name": "Light_Archive_Amber",
       "Scripts": [],
@@ -297,7 +297,66 @@
       "Height": 1
     },
     {
-      "Id": "32ac216d8c794936ae3807bf0799ef68",
+      "Id": "57c44aaa516948bda4d4e7670f1982f0",
+      "Type": "PointLight",
+      "Name": "Light_CrankAlcove_Work",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 6,
+        "Y": 2.6,
+        "Z": -5.45
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 0.55,
+        "Y": 0.78,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 1.5,
+      "Range": 4.2,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "f39d0872354b487097584fa4bfebd1ed",
       "Type": "Box",
       "Name": "Floor_InteractionTest",
       "Scripts": [],
@@ -356,7 +415,7 @@
       "Height": 1
     },
     {
-      "Id": "c62ba3355e6f4a47815d781b8bd0120d",
+      "Id": "f0f4864f1ff74c3fbb6ce92cb086ec02",
       "Type": "Box",
       "Name": "Ceiling_InteractionTest",
       "Scripts": [],
@@ -415,7 +474,7 @@
       "Height": 1
     },
     {
-      "Id": "b6eacc59eac543e9a52c320de47cd9b5",
+      "Id": "fdd9948924b141b781a620e9087cfd49",
       "Type": "Box",
       "Name": "Carpet_Foyer",
       "Scripts": [],
@@ -474,7 +533,7 @@
       "Height": 1
     },
     {
-      "Id": "1085aca9a1d649dea89ebb507b782a91",
+      "Id": "55cf20d2fb5d42599b65808802b9b1ff",
       "Type": "Box",
       "Name": "Carpet_Archive",
       "Scripts": [],
@@ -533,7 +592,7 @@
       "Height": 1
     },
     {
-      "Id": "6e1351e6220e41829cde1a8d2ccd2b52",
+      "Id": "24f7a4f936ab43adaf978344a1351b5b",
       "Type": "Box",
       "Name": "Wall_North",
       "Scripts": [],
@@ -592,7 +651,7 @@
       "Height": 1
     },
     {
-      "Id": "35c8acbb61384ff79dd1f7a0c8535f7d",
+      "Id": "85b2de7179a841728c667a25a592639b",
       "Type": "Box",
       "Name": "Wall_South",
       "Scripts": [],
@@ -651,7 +710,7 @@
       "Height": 1
     },
     {
-      "Id": "0953ccbaba824948ba4ab9c709af4283",
+      "Id": "35d6a8785387462cb3b2c2acc7278891",
       "Type": "Box",
       "Name": "Wall_West",
       "Scripts": [],
@@ -710,7 +769,7 @@
       "Height": 1
     },
     {
-      "Id": "bd5a5c89875c4370adeea88d59c842dc",
+      "Id": "262179f9381d4c85a0fc92cf9ee4a2a8",
       "Type": "Box",
       "Name": "Wall_East",
       "Scripts": [],
@@ -769,7 +828,7 @@
       "Height": 1
     },
     {
-      "Id": "f9ce25e55a3f421b9e36872952a99a5e",
+      "Id": "0e39e3cf0b2f48879d024440e3f44d20",
       "Type": "Box",
       "Name": "Divider_Foyer_LeftOfDoor",
       "Scripts": [],
@@ -828,7 +887,7 @@
       "Height": 1
     },
     {
-      "Id": "0db0fe3d0add443f921cdf21b2348746",
+      "Id": "913964b40fed45c990305973e2da87f1",
       "Type": "Box",
       "Name": "Divider_Foyer_RightOfDoor",
       "Scripts": [],
@@ -887,7 +946,7 @@
       "Height": 1
     },
     {
-      "Id": "1195dd2d890e46f6b78de87764cf642a",
+      "Id": "75cd33ceb9934ab28e173d3008c407be",
       "Type": "Box",
       "Name": "LockedDoor_RustedKey",
       "Scripts": [],
@@ -946,7 +1005,7 @@
       "Height": 1
     },
     {
-      "Id": "2f9783ebe7c94333a800fd5457d3c008",
+      "Id": "9191d98c2ba64e31a14f4da5018c3981",
       "Type": "Box",
       "Name": "Divider_Archive_LeftOfDoor",
       "Scripts": [],
@@ -1005,7 +1064,7 @@
       "Height": 1
     },
     {
-      "Id": "815e523bc1f84f338312157dd5270140",
+      "Id": "08711f2b9230474bb6e42e57d948f94f",
       "Type": "Box",
       "Name": "Divider_Archive_RightOfDoor",
       "Scripts": [],
@@ -1064,7 +1123,7 @@
       "Height": 1
     },
     {
-      "Id": "7f951ccc8eb141a583dfd9c3805de414",
+      "Id": "ab9791154f3349afbdd0def84db42ed2",
       "Type": "Box",
       "Name": "LockedDoor_ArchiveKey",
       "Scripts": [],
@@ -1123,7 +1182,7 @@
       "Height": 1
     },
     {
-      "Id": "908fee22a81b4e7da7035bb295f38a12",
+      "Id": "9e860817e6d4412aac984dae1bfa9cb9",
       "Type": "Box",
       "Name": "Wall_SaveOffice_Back",
       "Scripts": [],
@@ -1182,7 +1241,7 @@
       "Height": 1
     },
     {
-      "Id": "1e9662acb52648ffbb8ad5128184d359",
+      "Id": "2e2eefbc5b234e17bb8a4cf27e7ae993",
       "Type": "Box",
       "Name": "Wall_SaveOffice_Side_South",
       "Scripts": [],
@@ -1241,7 +1300,7 @@
       "Height": 1
     },
     {
-      "Id": "888f182afe864d0cbfb0a4819132cfa7",
+      "Id": "7843c6fb864f4c4fa41a942a623e645c",
       "Type": "Box",
       "Name": "Wall_SaveOffice_Side_North",
       "Scripts": [],
@@ -1300,7 +1359,7 @@
       "Height": 1
     },
     {
-      "Id": "94bca3ce58f44bdb9a907198693c9dac",
+      "Id": "4320928fd2b54610b069a216b95ef9c9",
       "Type": "Box",
       "Name": "LockedDoor_ServiceKey__SaveOffice",
       "Scripts": [],
@@ -1359,15 +1418,15 @@
       "Height": 1
     },
     {
-      "Id": "57477915df89432fb7fd0eb500cd6392",
+      "Id": "f3103f42ac8d4afda4bbdeb428662245",
       "Type": "Box",
-      "Name": "Wall_Utility_Side_South",
+      "Name": "Wall_Utility_Side_South_Front",
       "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": 3.15,
         "Y": 1.7,
-        "Z": -4.45
+        "Z": -3.45
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -1384,7 +1443,7 @@
       "Size": {
         "X": 0.35,
         "Y": 3.4,
-        "Z": 4.3
+        "Z": 2.3
       },
       "Color": {
         "X": 0.27,
@@ -1418,7 +1477,184 @@
       "Height": 1
     },
     {
-      "Id": "021dc70152fa415fb14ed5600743a8a3",
+      "Id": "8baa6859e9984b02b9c0d67572a7f499",
+      "Type": "Box",
+      "Name": "Wall_Utility_Side_South_Rear",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 3.15,
+        "Y": 1.7,
+        "Z": -6.15
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.35,
+        "Y": 3.4,
+        "Z": 0.9
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "598c11c05c644125a826657177e70912",
+      "Type": "Box",
+      "Name": "PuzzleDoor_Fuse__PowerGate",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 3.12,
+        "Y": 1.2,
+        "Z": -5.05
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.28,
+        "Y": 2.4,
+        "Z": 1.35
+      },
+      "Color": {
+        "X": 0.34,
+        "Y": 0.18,
+        "Z": 0.1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "1e1482f868464bed93c6f4f53093cdc8",
+      "Type": "Box",
+      "Name": "PuzzleSlot_Fuse__PowerGate",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 3.35,
+        "Y": 1.05,
+        "Z": -4.25
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.16,
+        "Y": 0.42,
+        "Z": 0.42
+      },
+      "Color": {
+        "X": 0.72,
+        "Y": 0.76,
+        "Z": 0.62,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "3de36e824a9f4082811670fc8282d67e",
       "Type": "Box",
       "Name": "Wall_Utility_Side_North",
       "Scripts": [],
@@ -1477,15 +1713,251 @@
       "Height": 1
     },
     {
-      "Id": "daadf146be03452f9771a0f47021d128",
+      "Id": "12e384d0c1734d18b000ca6777d2062c",
       "Type": "Box",
-      "Name": "Wall_Utility_Back",
+      "Name": "Wall_Utility_Back_Left",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 4.2,
+        "Y": 1.7,
+        "Z": -3.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 2.2,
+        "Y": 3.4,
+        "Z": 0.35
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "8e6db180985c400aac6e14816fa4bd5f",
+      "Type": "Box",
+      "Name": "Wall_Utility_Back_Right",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 8.05,
+        "Y": 1.7,
+        "Z": -3.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.9,
+        "Y": 3.4,
+        "Z": 0.35
+      },
+      "Color": {
+        "X": 0.27,
+        "Y": 0.28,
+        "Z": 0.3,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "49fef04015a140018377f81775d6ed8f",
+      "Type": "Box",
+      "Name": "PuzzleDoor_CrankHandle__UtilityLift",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 6.05,
+        "Y": 1.2,
+        "Z": -3.58
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 2.1,
+        "Y": 2.4,
+        "Z": 0.32
+      },
+      "Color": {
+        "X": 0.34,
+        "Y": 0.18,
+        "Z": 0.1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "7b7e53b3799546e1a0c0f94fc0afd154",
+      "Type": "Box",
+      "Name": "PuzzleSlot_CrankHandle__UtilityLift",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 5.05,
+        "Y": 1.05,
+        "Z": -3.35
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.42,
+        "Y": 0.42,
+        "Z": 0.16
+      },
+      "Color": {
+        "X": 0.95,
+        "Y": 0.72,
+        "Z": 0.28,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "55c7d1954cfe41d0929a8a1c9a1d3026",
+      "Type": "Box",
+      "Name": "Wall_CrankAlcove_Back",
       "Scripts": [],
       "Parent": null,
       "LocalPosition": {
         "X": 6.05,
         "Y": 1.7,
-        "Z": -3.6
+        "Z": -6.55
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -1536,7 +2008,125 @@
       "Height": 1
     },
     {
-      "Id": "e82613d5b9774b708af0a12f7b6ee176",
+      "Id": "a27c9086dd874daf98bd0b09cf7bf07f",
+      "Type": "Box",
+      "Name": "Shelf_CrankAlcove_Fuse",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 6.05,
+        "Y": 0.5,
+        "Z": -5.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.4,
+        "Y": 0.35,
+        "Z": 0.75
+      },
+      "Color": {
+        "X": 0.22,
+        "Y": 0.27,
+        "Z": 0.24,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "c2ec34aa02134bf4aa997acb91f133b4",
+      "Type": "Box",
+      "Name": "Item_Fuse__CrankAlcove",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": 6.05,
+        "Y": 0.78,
+        "Z": -5.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 22,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.36,
+        "Y": 0.14,
+        "Z": 0.24
+      },
+      "Color": {
+        "X": 0.72,
+        "Y": 0.76,
+        "Z": 0.62,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "9a3dfb82ffb24177bb969034e67513ff",
       "Type": "Box",
       "Name": "Desk_RustedKeyTable",
       "Scripts": [],
@@ -1595,7 +2185,7 @@
       "Height": 1
     },
     {
-      "Id": "3e8b7f3ba20a4d96ba15cc9ff8d73f79",
+      "Id": "067930ec9ca049d886d28a5049ec7836",
       "Type": "Box",
       "Name": "ItemKey_RustedKey",
       "Scripts": [],
@@ -1654,7 +2244,7 @@
       "Height": 1
     },
     {
-      "Id": "7b8ae3c700eb4fb0b3c5194aa71e8beb",
+      "Id": "c5aa8b0364f44466811498c4907a5b5c",
       "Type": "Box",
       "Name": "ItemInkRibbon_Foyer",
       "Scripts": [],
@@ -1713,7 +2303,7 @@
       "Height": 1
     },
     {
-      "Id": "3ab7ea4a61b0491faa768d0509ee5ffb",
+      "Id": "8407c22aaffb4e8f8ee9c931408683ae",
       "Type": "Box",
       "Name": "Shelf_ServiceKey",
       "Scripts": [],
@@ -1772,7 +2362,7 @@
       "Height": 1
     },
     {
-      "Id": "0f6a348b39ed480db232bf3232658cd2",
+      "Id": "6afc2f93d6aa4825b824ee23352d6e13",
       "Type": "Box",
       "Name": "ItemKey_ServiceKey",
       "Scripts": [],
@@ -1831,7 +2421,7 @@
       "Height": 1
     },
     {
-      "Id": "7dfed01b4ff749c09e40e8c692570e8e",
+      "Id": "0b05ab0c87b64b0aa0e345b1f9e6d73e",
       "Type": "Box",
       "Name": "LockedChest_ServiceKey__SupplyA",
       "Scripts": [],
@@ -1890,7 +2480,7 @@
       "Height": 1
     },
     {
-      "Id": "2d03b7993589458c968ac7127c5a51fc",
+      "Id": "1f2e627613574bb1afc7ff4f64f1cc25",
       "Type": "Box",
       "Name": "LockedChest_ServiceKey__SupplyB",
       "Scripts": [],
@@ -1949,7 +2539,7 @@
       "Height": 1
     },
     {
-      "Id": "9ed1bb201eaa4f4b99f4a7935a71db2e",
+      "Id": "75007203f9634be0b14d72f229b8e3f5",
       "Type": "Box",
       "Name": "SaveDesk",
       "Scripts": [],
@@ -2008,7 +2598,7 @@
       "Height": 1
     },
     {
-      "Id": "0e851849d3a04669b50bcde6fe6d3ee6",
+      "Id": "46359bad20df42e296b69865ef751c32",
       "Type": "Box",
       "Name": "SavePoint_Typewriter",
       "Scripts": [],
@@ -2067,7 +2657,66 @@
       "Height": 1
     },
     {
-      "Id": "fe0adb3494b1449fb80814d7041a1357",
+      "Id": "3cb92732072d44c3828dd74932e73bff",
+      "Type": "Box",
+      "Name": "StorageBox_SaveOffice",
+      "Scripts": [],
+      "Parent": null,
+      "LocalPosition": {
+        "X": -8.05,
+        "Y": 0.45,
+        "Z": 1.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 10,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 0.9,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.16,
+        "Y": 0.18,
+        "Z": 0.16,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "736c6f1cc5ed46c1a471bc983db5f54f",
       "Type": "Box",
       "Name": "ItemInkRibbon_SaveOffice",
       "Scripts": [],
@@ -2126,7 +2775,7 @@
       "Height": 1
     },
     {
-      "Id": "131617860e624723a6cd1e25ff6b67d2",
+      "Id": "2fc8d7c1bb33499cb1e4b47b436eb0b0",
       "Type": "Box",
       "Name": "ItemKey_ArchiveKey",
       "Scripts": [],
@@ -2185,7 +2834,7 @@
       "Height": 1
     },
     {
-      "Id": "a088fe3cf0364008b7308f2207834e99",
+      "Id": "1305e28f12364d06a6b955511f22a5bb",
       "Type": "Box",
       "Name": "ArchiveCabinet_A",
       "Scripts": [],
@@ -2244,7 +2893,7 @@
       "Height": 1
     },
     {
-      "Id": "874f9703baf2453591b6acf8220b28df",
+      "Id": "593b3431c3fe4dd8bca59b8853b9fef4",
       "Type": "Box",
       "Name": "ArchiveCabinet_B",
       "Scripts": [],
@@ -2303,7 +2952,7 @@
       "Height": 1
     },
     {
-      "Id": "913f0d9d43464b29abe43d02e00cfbe6",
+      "Id": "ded4056f357645198a1e4b85c6872d56",
       "Type": "RigidBody",
       "Name": "Crate_FoyerCorner",
       "Scripts": [],
@@ -2362,7 +3011,7 @@
       "Height": 1
     },
     {
-      "Id": "a7a1fc2b00954b37885f31c0ddbdfd01",
+      "Id": "4a48c3926eaf48fa90ea43f90b3f26b1",
       "Type": "RigidBody",
       "Name": "Crate_Utility_A",
       "Scripts": [],
@@ -2421,7 +3070,7 @@
       "Height": 1
     },
     {
-      "Id": "b7db06c772ce41f7b17863277f5bd0f5",
+      "Id": "0d7745d1b42d453f983d74dc698af74e",
       "Type": "RigidBody",
       "Name": "Crate_Utility_B",
       "Scripts": [],
@@ -2480,7 +3129,7 @@
       "Height": 1
     },
     {
-      "Id": "66f2f2e32cf34e13bbf47da6e3c5b133",
+      "Id": "077fe28452644e82a72b5e02abaec072",
       "Type": "RigidBody",
       "Name": "Crate_SaveOffice",
       "Scripts": [],
@@ -2539,7 +3188,7 @@
       "Height": 1
     },
     {
-      "Id": "196184e7a5664f55ad5e0eac885d589e",
+      "Id": "da87f791118143a192acbf9ab3bcdf05",
       "Type": "RigidBody",
       "Name": "Crate_ArchiveLoose",
       "Scripts": [],
@@ -2598,7 +3247,7 @@
       "Height": 1
     },
     {
-      "Id": "4b9263a2e16749369c84152c694bd40c",
+      "Id": "5357b10db28f4ca288d6cfc8115777fe",
       "Type": "TriggerVolume",
       "Name": "Trigger_SaveRoomEntry",
       "Scripts": [],

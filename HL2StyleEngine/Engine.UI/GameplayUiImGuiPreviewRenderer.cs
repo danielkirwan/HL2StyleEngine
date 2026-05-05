@@ -23,7 +23,9 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         DrawCollectedItemPanel(state, viewport);
 
         if (state.InventoryOpen)
-            selectedSlot = DrawInventoryPanel(state, viewport);
+            selectedSlot = state.UsingInventoryItem
+                ? DrawUseItemPanel(state, viewport)
+                : DrawInventoryPanel(state, viewport);
 
         return true;
     }
@@ -78,11 +80,12 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.02f, 0.025f, 0.028f, 0.96f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.74f, 0.74f, 0.66f, 0.50f));
         ImGui.Begin("RmlUiPreviewCollectedItem", flags);
-        ImGui.TextColored(new Vector4(0.56f, 0.58f, 0.53f, 1f), "ITEM COLLECTED");
+        ImGui.TextColored(new Vector4(0.56f, 0.58f, 0.53f, 1f), item.Title.ToUpperInvariant());
         ImGui.Spacing();
         string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
         ImGui.TextColored(new Vector4(0.93f, 0.92f, 0.84f, 1f), $"{item.DisplayName}{countSuffix}");
         ImGui.TextColored(new Vector4(0.58f, 0.60f, 0.56f, 1f), $"{item.Type} | {item.SlotWidth}x{item.SlotHeight} slots | Stack {item.MaxStack}");
+        ImGui.TextDisabled($"Case footprint: {item.SlotWidth} x {item.SlotHeight}");
         if (!string.IsNullOrWhiteSpace(item.Description))
         {
             ImGui.Spacing();
@@ -144,13 +147,34 @@ internal sealed class GameplayUiImGuiPreviewRenderer
             bool movingSource = state.MovingInventoryItem && slot == state.MovingFromSlot;
             bool movingTarget = state.MovingInventoryItem && slot == state.MovingTargetSlot;
             bool occupiedByFootprint = hasCoveredItem && !hasItemOrigin;
+            bool combineSource = hasCoveredItem && coveredItem!.IsCombineSource;
+            bool combineTarget = hasCoveredItem && coveredItem!.IsValidCombineTarget;
+            bool combineInvalid = hasCoveredItem && coveredItem!.IsInvalidCombineTarget;
+            bool useTarget = hasCoveredItem && coveredItem!.IsValidUseTarget;
+            bool useInvalid = hasCoveredItem && coveredItem!.IsInvalidUseTarget;
             Vector4 fill = hasCoveredItem
                 ? new Vector4(0.11f, 0.14f, 0.14f, 0.94f)
                 : new Vector4(0.055f, 0.065f, 0.070f, 0.88f);
             if (occupiedByFootprint)
                 fill = new Vector4(0.085f, 0.11f, 0.11f, 0.94f);
+            if (useInvalid)
+                fill = new Vector4(0.060f, 0.064f, 0.070f, 0.76f);
+            if (useTarget)
+                fill = new Vector4(0.13f, 0.28f, 0.46f, 0.98f);
+            if (combineInvalid)
+                fill = new Vector4(0.060f, 0.064f, 0.064f, 0.76f);
+            if (combineTarget)
+                fill = new Vector4(0.12f, 0.34f, 0.25f, 0.98f);
+            if (combineSource)
+                fill = new Vector4(0.28f, 0.23f, 0.10f, 0.98f);
             if (selected)
                 fill = new Vector4(0.29f, 0.34f, 0.33f, 0.98f);
+            if (selected && useTarget)
+                fill = new Vector4(0.16f, 0.36f, 0.62f, 1f);
+            if (selected && combineTarget)
+                fill = new Vector4(0.16f, 0.45f, 0.32f, 1f);
+            if (selected && combineSource)
+                fill = new Vector4(0.36f, 0.30f, 0.13f, 1f);
             if (movingSource)
                 fill = new Vector4(0.23f, 0.22f, 0.13f, 0.98f);
             if (movingTarget)
@@ -159,7 +183,11 @@ internal sealed class GameplayUiImGuiPreviewRenderer
                     : new Vector4(0.42f, 0.16f, 0.15f, 0.98f);
 
             ImGui.PushStyleColor(ImGuiCol.Button, fill);
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.24f, 0.28f, 0.27f, 0.98f));
+            ImGui.PushStyleColor(
+                ImGuiCol.ButtonHovered,
+                combineTarget ? new Vector4(0.20f, 0.52f, 0.38f, 1f)
+                    : useTarget ? new Vector4(0.22f, 0.42f, 0.70f, 1f)
+                    : new Vector4(0.24f, 0.28f, 0.27f, 0.98f));
             ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.36f, 0.40f, 0.37f, 1f));
             string label = hasItemOrigin
                 ? $"{ShortLabel(item!.DisplayName)}{(item.Count > 1 ? $" x{item.Count}" : "")}\n{item.SlotWidth}x{item.SlotHeight}##previewSlot{slot}"
@@ -184,6 +212,75 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         ImGui.PopStyleVar();
         ImGui.PopStyleColor(2);
 
+        return selectedSlot;
+    }
+
+    private static int DrawUseItemPanel(GameplayUiState state, ImGuiViewportPtr viewport)
+    {
+        int selectedSlot = -1;
+        List<GameplayUiInventoryItem> candidates = state.InventoryItems
+            .Where(item => item.IsUseCandidate)
+            .ToList();
+
+        Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);
+        ImGui.SetNextWindowPos(center, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(560f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.96f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings;
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.018f, 0.022f, 0.026f, 0.97f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.66f, 0.68f, 0.61f, 0.48f));
+        ImGui.Begin("RmlUiPreviewUseItem", flags);
+        ImGui.TextColored(new Vector4(0.92f, 0.91f, 0.84f, 1f), "Use Item");
+        if (!string.IsNullOrWhiteSpace(state.UseTargetPrompt))
+            ImGui.TextWrapped(state.UseTargetPrompt);
+        ImGui.Separator();
+
+        if (candidates.Count == 0)
+        {
+            ImGui.TextDisabled("No usable items are being carried.");
+        }
+        else
+        {
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                GameplayUiInventoryItem item = candidates[i];
+                bool selected = item.SlotIndex == state.SelectedSlot;
+                Vector4 fill = item.IsValidUseTarget
+                    ? new Vector4(0.13f, 0.28f, 0.46f, 0.98f)
+                    : new Vector4(0.12f, 0.13f, 0.14f, 0.92f);
+                if (selected)
+                    fill = item.IsValidUseTarget
+                        ? new Vector4(0.16f, 0.36f, 0.62f, 1f)
+                        : new Vector4(0.28f, 0.29f, 0.30f, 1f);
+
+                ImGui.PushStyleColor(ImGuiCol.Button, fill);
+                ImGui.PushStyleColor(
+                    ImGuiCol.ButtonHovered,
+                    item.IsValidUseTarget ? new Vector4(0.22f, 0.42f, 0.70f, 1f) : new Vector4(0.24f, 0.26f, 0.27f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.36f, 0.40f, 0.42f, 1f));
+
+                string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
+                string validity = item.IsValidUseTarget ? "Ready" : "Doesn't fit";
+                if (ImGui.Button($"{item.DisplayName}{countSuffix}    {validity}##useCandidate{i}", new Vector2(510f, 42f)))
+                    selectedSlot = item.SlotIndex;
+
+                if (ImGui.IsItemHovered())
+                    selectedSlot = item.SlotIndex;
+
+                ImGui.PopStyleColor(3);
+            }
+        }
+
+        ImGui.Separator();
+        ImGui.TextDisabled("W/S or D-pad: Select | E / X: Use | I / Back: Cancel");
+        ImGui.End();
+        ImGui.PopStyleColor(2);
         return selectedSlot;
     }
 
@@ -232,14 +329,18 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         ImGui.SetCursorPos(new Vector2(690f, 148f));
         ImGui.BeginChild("RmlUiPreviewDescription", new Vector2(250f, 320f));
 
-        if (state.SelectedSlot >= 0 && bySlot.TryGetValue(state.SelectedSlot, out GameplayUiInventoryItem? item))
+        GameplayUiInventoryItem? selectedItem = state.SelectedSlot >= 0 && bySlot.TryGetValue(state.SelectedSlot, out GameplayUiInventoryItem? item)
+            ? item
+            : null;
+
+        if (selectedItem != null)
         {
-            string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
-            ImGui.TextColored(new Vector4(0.90f, 0.89f, 0.82f, 1f), $"{item.DisplayName}{countSuffix}");
-            ImGui.TextDisabled($"{item.Type} | {item.SlotWidth}x{item.SlotHeight} slots | Stack {item.MaxStack}");
+            string countSuffix = selectedItem.Count > 1 ? $" x{selectedItem.Count}" : "";
+            ImGui.TextColored(new Vector4(0.90f, 0.89f, 0.82f, 1f), $"{selectedItem.DisplayName}{countSuffix}");
+            ImGui.TextDisabled($"{selectedItem.Type} | {selectedItem.SlotWidth}x{selectedItem.SlotHeight} slots | Stack {selectedItem.MaxStack}");
             ImGui.Spacing();
-            if (!string.IsNullOrWhiteSpace(item.Description))
-                ImGui.TextWrapped(item.Description);
+            if (!string.IsNullOrWhiteSpace(selectedItem.Description))
+                ImGui.TextWrapped(selectedItem.Description);
         }
         else
         {
@@ -250,7 +351,55 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         ImGui.Spacing();
         if (state.SaveCount > 0)
             ImGui.TextDisabled($"Saves used: {state.SaveCount}");
-        if (state.MovingInventoryItem)
+        if (state.UsingInventoryItem)
+        {
+            ImGui.Spacing();
+            if (!string.IsNullOrWhiteSpace(state.UseTargetPrompt))
+                ImGui.TextWrapped(state.UseTargetPrompt);
+
+            if (selectedItem?.IsValidUseTarget == true)
+            {
+                ImGui.TextColored(new Vector4(0.46f, 0.68f, 0.98f, 1f), "This item can be used here.");
+                ImGui.TextDisabled("E / X or click: Use item");
+            }
+            else if (selectedItem?.IsInvalidUseTarget == true)
+            {
+                ImGui.TextColored(new Vector4(0.78f, 0.48f, 0.42f, 1f), "This item does not fit this use.");
+                ImGui.TextDisabled("Choose a blue highlighted item.");
+            }
+            else
+            {
+                ImGui.TextDisabled("Select a highlighted item to use.");
+            }
+
+            ImGui.TextDisabled("I / Back: Cancel use");
+        }
+        else if (state.CombiningInventoryItem)
+        {
+            ImGui.Spacing();
+            if (selectedItem?.IsValidCombineTarget == true)
+            {
+                ImGui.TextColored(new Vector4(0.48f, 0.82f, 0.58f, 1f), "This item can be combined.");
+                ImGui.TextDisabled("E / X or click: Combine");
+            }
+            else if (selectedItem?.IsCombineSource == true)
+            {
+                ImGui.TextColored(new Vector4(0.86f, 0.76f, 0.38f, 1f), "Combining from this item.");
+                ImGui.TextDisabled("Select a highlighted target.");
+            }
+            else if (selectedItem?.IsInvalidCombineTarget == true)
+            {
+                ImGui.TextColored(new Vector4(0.78f, 0.48f, 0.42f, 1f), "This item cannot combine here.");
+                ImGui.TextDisabled("Choose a highlighted item instead.");
+            }
+            else
+            {
+                ImGui.TextDisabled("Select a highlighted item to combine.");
+            }
+
+            ImGui.TextDisabled("I / Back: Cancel combine");
+        }
+        else if (state.MovingInventoryItem)
         {
             ImGui.Spacing();
             string moveHint = state.CanSwapMovingItem
@@ -271,7 +420,7 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         }
         else
         {
-            ImGui.TextDisabled("E / X: Move item");
+            ImGui.TextDisabled("E / X: Item actions");
             ImGui.TextDisabled("R / Y: Rotate selected item");
             ImGui.TextDisabled("Q / LB: Split stack");
             ImGui.TextDisabled("I / Back: Close");

@@ -133,6 +133,34 @@ public sealed class InventoryContainer
         return true;
     }
 
+    public bool TransferStackTo(int slotIndex, InventoryContainer destination)
+    {
+        InventoryItemStack? stack = GetStackCoveringSlot(slotIndex);
+        if (stack == null)
+            return false;
+
+        return TransferStackTo(slotIndex, stack.Count, destination, out _);
+    }
+
+    public bool TransferStackTo(int slotIndex, int count, InventoryContainer destination, out int transferredCount)
+    {
+        transferredCount = 0;
+        InventoryItemStack? stack = GetStackCoveringSlot(slotIndex);
+        if (stack == null || count <= 0)
+            return false;
+
+        int amount = Math.Clamp(count, 1, stack.Count);
+        if (!destination.Add(stack.ItemId, amount))
+            return false;
+
+        stack.Remove(amount);
+        transferredCount = amount;
+        if (stack.Count <= 0)
+            _stacks.Remove(stack);
+
+        return true;
+    }
+
     public void Clear()
         => _stacks.Clear();
 
