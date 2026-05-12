@@ -1,25 +1,59 @@
 <rml>
   <head>
-    <title>Inventory Prototype</title>
+    <title>Inventory Presentation Mock</title>
     <link type="text/rcss" href="inventory.rcss" />
   </head>
   <body>
     <div id="inventory-root">
-      <section id="storage-panel">
-        <h1>Inventory</h1>
-        <p class="muted">RmlUi gameplay UI placeholder</p>
-      </section>
-      <section id="item-grid">
-        <div class="slot selected">Key</div>
-        <div class="slot">Ink</div>
-        <div class="slot wide">Crank</div>
-        <div class="slot empty"></div>
-        <div class="slot empty"></div>
-        <div class="slot empty"></div>
-      </section>
-      <section id="description-panel">
-        <h2>Selected Item</h2>
-        <p>This document is staged for the RmlUi backend spike.</p>
+      <section id="inventory-panel" class="glass-panel">
+        <div class="inventory-backplate"></div>
+        <div id="inventory-header">
+          <div>
+            <p class="eyebrow">Attache Case</p>
+            <h1>Inventory</h1>
+          </div>
+          <p class="slot-count">7/32 occupied</p>
+        </div>
+        <div id="case-panel">
+          <div id="inventory-grid" class="cols-8">
+            <div class="slot filled selected">
+              <div class="mini-icon tone-key">KEY</div>
+              <p class="slot-name">Service Key</p>
+              <p class="slot-footprint">1 x 1</p>
+            </div>
+            <div class="slot filled">
+              <div class="mini-icon tone-consumable">INK</div>
+              <p class="slot-name">Ink x3</p>
+              <p class="slot-footprint">1 x 1</p>
+            </div>
+            <div class="slot filled footprint-origin">
+              <div class="mini-icon tone-puzzle">CRK</div>
+              <p class="slot-name">Crank</p>
+              <p class="slot-footprint">1 x 2</p>
+            </div>
+            <div class="slot filled footprint-covered">
+              <div class="covered-stitch"></div>
+              <p class="slot-name">Crank</p>
+            </div>
+            <div class="slot filled">
+              <div class="mini-icon tone-puzzle">FUS</div>
+              <p class="slot-name">Fuse</p>
+              <p class="slot-footprint">1 x 1</p>
+            </div>
+            <div class="slot empty"></div>
+            <div class="slot empty"></div>
+            <div class="slot empty"></div>
+          </div>
+          <aside id="description-panel">
+            <div class="item-preview-card tone-key">
+              <div class="preview-symbol">KEY</div>
+            </div>
+            <h2>Service Key</h2>
+            <p class="muted">Key | 1x1 slots | Stack 1</p>
+            <p class="description">A utility key for service rooms and supply boxes.</p>
+            <p class="footer-hint">E / X: Actions | R / Y: Rotate | Q / LB: Split | I / Back: Close</p>
+          </aside>
+        </div>
       </section>
     </div>
   </body>

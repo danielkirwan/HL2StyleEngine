@@ -8,7 +8,9 @@ public sealed class InventoryCombineRecipe
         string resultItemId,
         int resultCount,
         int firstConsumedCount = 1,
-        int secondConsumedCount = 1)
+        int secondConsumedCount = 1,
+        string displayName = "",
+        string description = "")
     {
         FirstItemId = firstItemId;
         SecondItemId = secondItemId;
@@ -16,6 +18,8 @@ public sealed class InventoryCombineRecipe
         ResultCount = Math.Max(1, resultCount);
         FirstConsumedCount = Math.Max(1, firstConsumedCount);
         SecondConsumedCount = Math.Max(1, secondConsumedCount);
+        DisplayName = displayName;
+        Description = description;
     }
 
     public string FirstItemId { get; }
@@ -24,6 +28,8 @@ public sealed class InventoryCombineRecipe
     public int ResultCount { get; }
     public int FirstConsumedCount { get; }
     public int SecondConsumedCount { get; }
+    public string DisplayName { get; }
+    public string Description { get; }
 
     public bool Matches(string firstItemId, string secondItemId, out int firstConsumedCount, out int secondConsumedCount)
     {

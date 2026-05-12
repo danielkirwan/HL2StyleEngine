@@ -108,7 +108,13 @@ public static class ItemCatalog
 
     private static readonly IReadOnlyList<InventoryCombineRecipe> CombineRecipes =
     [
-        new(Scrap, Gunpowder, Bullets, resultCount: 12)
+        new(
+            Scrap,
+            Gunpowder,
+            Bullets,
+            resultCount: 12,
+            displayName: "Craft Bullets",
+            description: "Combines scrap metal and gunpowder into a small batch of prototype ammunition.")
     ];
 
     public static InventoryItemDefinition Get(string itemId)

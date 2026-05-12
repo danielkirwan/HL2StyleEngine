@@ -106,6 +106,15 @@ public sealed class InventoryContainer
         return removed > 0;
     }
 
+    public bool RemoveStackAtSlot(int slotIndex, out InventoryItemStack? removedStack)
+    {
+        removedStack = GetStackCoveringSlot(slotIndex);
+        if (removedStack == null)
+            return false;
+
+        return _stacks.Remove(removedStack);
+    }
+
     public bool RemoveCount(string itemId, int count = 1)
     {
         if (count <= 0)

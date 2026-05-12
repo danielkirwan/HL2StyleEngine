@@ -3,6 +3,7 @@ namespace Engine.UI;
 public sealed class GameplayUiState
 {
     public bool InventoryOpen { get; init; }
+    public bool StorageOpen { get; init; }
     public bool ItemCollectedOpen { get; init; }
     public string InteractionPrompt { get; init; } = "";
     public string GameMessage { get; init; } = "";
@@ -10,6 +11,11 @@ public sealed class GameplayUiState
     public int GridHeight { get; init; } = 4;
     public int UsedSlotCount { get; init; }
     public int SelectedSlot { get; init; } = -1;
+    public int SelectedStorageSlot { get; init; } = -1;
+    public bool StorageFocusStorage { get; init; }
+    public bool StorageTransferPickerOpen { get; init; }
+    public int StorageTransferAmount { get; init; } = 1;
+    public bool StorageTransferFromStorage { get; init; }
     public bool MovingInventoryItem { get; init; }
     public int MovingFromSlot { get; init; } = -1;
     public int MovingTargetSlot { get; init; } = -1;
@@ -21,10 +27,21 @@ public sealed class GameplayUiState
     public bool CanMergeMovingItem { get; init; }
     public bool CombiningInventoryItem { get; init; }
     public int CombineSourceSlot { get; init; } = -1;
+    public string CombinePreviewTitle { get; init; } = "";
+    public string CombinePreviewDescription { get; init; } = "";
+    public string CombinePreviewResultName { get; init; } = "";
+    public int CombinePreviewResultCount { get; init; }
+    public bool InventoryActionMenuOpen { get; init; }
+    public IReadOnlyList<string> InventoryActionLabels { get; init; } = Array.Empty<string>();
+    public int SelectedInventoryActionIndex { get; init; }
+    public bool InventorySplitPickerOpen { get; init; }
+    public int InventorySplitAmount { get; init; }
+    public bool InventoryDiscardConfirmOpen { get; init; }
     public bool UsingInventoryItem { get; init; }
     public string UseTargetPrompt { get; init; } = "";
     public int SaveCount { get; init; }
     public IReadOnlyList<GameplayUiInventoryItem> InventoryItems { get; init; } = Array.Empty<GameplayUiInventoryItem>();
+    public IReadOnlyList<GameplayUiInventoryItem> StorageItems { get; init; } = Array.Empty<GameplayUiInventoryItem>();
     public GameplayUiCollectedItem? CollectedItem { get; init; }
 }
 
@@ -33,6 +50,7 @@ public sealed class GameplayUiInventoryItem
     public int SlotIndex { get; init; }
     public IReadOnlyList<int> CoveredSlots { get; init; } = Array.Empty<int>();
     public string Id { get; init; } = "";
+    public string IconPath { get; init; } = "";
     public string DisplayName { get; init; } = "";
     public string Description { get; init; } = "";
     public string Type { get; init; } = "";
@@ -53,6 +71,7 @@ public sealed class GameplayUiCollectedItem
 {
     public string Title { get; init; } = "Item Collected";
     public string Id { get; init; } = "";
+    public string IconPath { get; init; } = "";
     public string DisplayName { get; init; } = "";
     public string Description { get; init; } = "";
     public string Type { get; init; } = "";

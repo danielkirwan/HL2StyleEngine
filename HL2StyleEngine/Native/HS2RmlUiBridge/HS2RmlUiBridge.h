@@ -53,6 +53,15 @@ typedef struct hs2_rmlui_render_data
     int32_t viewport_height;
 } hs2_rmlui_render_data;
 
+typedef struct hs2_rmlui_texture_data
+{
+    uint64_t texture_id;
+    const uint8_t* rgba;
+    int32_t width;
+    int32_t height;
+    int32_t byte_count;
+} hs2_rmlui_texture_data;
+
 HS2_RMLUI_API int32_t hs2_rmlui_create_context(
     const char* content_root_utf8,
     int32_t width,
@@ -100,11 +109,23 @@ HS2_RMLUI_API void hs2_rmlui_submit_text(
     hs2_rmlui_context context,
     const char* text_utf8);
 
+HS2_RMLUI_API int32_t hs2_rmlui_get_hovered_data_slot(
+    hs2_rmlui_context context,
+    int32_t* out_slot);
+
 HS2_RMLUI_API int32_t hs2_rmlui_get_render_data(
     hs2_rmlui_context context,
     hs2_rmlui_render_data* out_render_data);
 
 HS2_RMLUI_API void hs2_rmlui_release_render_data(
+    hs2_rmlui_context context);
+
+HS2_RMLUI_API int32_t hs2_rmlui_get_texture_data(
+    hs2_rmlui_context context,
+    const hs2_rmlui_texture_data** out_textures,
+    int32_t* out_count);
+
+HS2_RMLUI_API void hs2_rmlui_release_texture_data(
     hs2_rmlui_context context);
 
 // Optional but recommended for live gameplay menus. Replaces the contents of

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Engine.Physics")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3b7c93f27745dbe963356f252d129fe064fd1f77")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+80c799a19de06bf71c3cc0027f63db6f166f1a3c")]
 [assembly: System.Reflection.AssemblyProductAttribute("Engine.Physics")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Engine.Physics")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

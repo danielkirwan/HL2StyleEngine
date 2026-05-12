@@ -1,6 +1,6 @@
 # Work Log
 
-Last updated: 2026-05-05
+Last updated: 2026-05-12
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
@@ -200,6 +200,13 @@ The current gameplay issues being worked first are:
 - added `PuzzleSlot_Fuse__PowerGate` and `PuzzleDoor_Fuse__PowerGate` so the Fuse opens a second powered lift gate from the crank alcove
 - moved the Fuse power panel out of the side-gate passage so it no longer blocks the player after the gate opens
 - widened the crank lift door so it overlaps and covers the utility-back doorway more reliably when closed
+- upgraded the generated RmlUi gameplay document structure for pickup/examine and inventory presentation, including item showcase cards and per-item placeholder icons
+- replaced the starter `inventory.rcss` with a darker survival-horror case layout for inventory, use-item, prompt, and pickup modal screens
+- replaced the static `inventory.rml` placeholder with a proper presentation mock that matches the generated runtime inventory structure
+- added `Content/UI/IconPrompts.md` with image-generator descriptions for the current inventory items
+- upgraded the focused use-item panel for doors, puzzle slots, and typewriters so each candidate row has an icon tile, item details, and ready/invalid state
+- added optional `IconPath` UI state for inventory and collected items; the game now passes `Content/UI/Icons/<ItemId>.png` only when the file exists, otherwise RmlUi falls back to text glyphs
+- created the `Content/UI/Icons` folder and documented exact icon filenames for generated art
 
 ### Why
 
@@ -215,6 +222,9 @@ The current gameplay issues being worked first are:
 - the crank route needs a concrete reward/follow-up item so the mechanism becomes part of the exploration chain instead of only a movement test
 - chaining the Fuse into another powered gate proves puzzle items can drive more than one authored interaction step
 - puzzle interactables need to sit beside traversal paths, not inside them, so they do not become accidental blockers
+- the inventory and pickup screens need an authored RmlUi visual direction before final item art and the native bridge are complete
+- icon prompts let item artwork start in parallel while the UI still uses styled placeholders
+- in-world item-use prompts should feel like intentional puzzle UI, not a plain filtered list, and need to be ready for final icon art
 
 ### Files
 
@@ -227,6 +237,9 @@ The current gameplay issues being worked first are:
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiImGuiPreviewRenderer.cs`
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rml`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\IconPrompts.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Icons`
 - `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
 - `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
 
@@ -255,6 +268,11 @@ The current gameplay issues being worked first are:
 - playable `interaction_test.json` parsed successfully after the gate geometry correction
 - `Engine.UI`, `Engine.Runtime`, and isolated `Game` compile checks succeeded after moving the panel and widening the crank door
 - copied the validated geometry-fix build into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.UI` compile check succeeded after the RmlUi inventory/pickup presentation pass
+- isolated `Game` compile check succeeded after the UI presentation changes
+- copied the validated UI presentation build and UI content into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.UI`, `Engine.Runtime`, and isolated `Game` compile checks succeeded after adding use-item icon/fallback support
+- copied the validated use-item UI build and UI content into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
 
 ### Next
 
@@ -270,9 +288,71 @@ The current gameplay issues being worked first are:
 - playtest the new crank-door alcove, pick up the Fuse, and confirm it appears as a 1-slot puzzle item
 - playtest `PuzzleSlot_Fuse__PowerGate`: use the Fuse at the power panel and confirm the side gate lifts and persists after save/reload
 - confirm the Fuse panel no longer blocks the side-gate passage and the crank door fully covers its doorway while closed
+- review the new pickup/inventory presentation in-game through the Engine.UI preview path, then tune spacing/readability before wiring final item images
+- generate item icon images from `Content/UI/IconPrompts.md` and add an icon asset lookup to replace placeholder text glyphs
+- place generated icons in `Content/UI/Icons` using exact item ids, then verify doors, puzzle panels, inventory, and pickup/examine screens show images instead of text fallback
 - decide what the Fuse gate should lead to long-term: shortcut, next key, saferoom loopback, or puzzle reward room
 - add more recipes by adding `InventoryCombineRecipe` rows to `ItemCatalog`
 - consider adding recipe names/descriptions and a combined-item preview panel before final RmlUi styling
+
+## 2026-05-06
+
+### Summary
+
+- added exact stack removal by selected slot to `InventoryContainer`
+- enabled the inventory `Discard` action with a confirmation panel for disposable stacks
+- protected important item types from discard, including keys, puzzle items, and future weapons
+- upgraded the inventory action, split, discard, storage, and storage-transfer overlays with a shared item detail block
+- added fallback icon text badges in those overlays so they remain readable while final sprite icons are being split
+- extended data-driven combine recipes with optional display names and descriptions
+- added combine result preview state to `Engine.UI` and surfaced it in both the ImGui preview renderer and generated RML path
+- updated the Scrap + Gunpowder recipe to preview `Craft Bullets`, its result count, and recipe description before confirm
+- checked the added inventory icon PNGs and confirmed coverage for the current item catalog
+- added `.png` UI asset copying to `Game.csproj` so icons are included in runtime output
+- made inventory icon lookup tolerant of current art filenames, including `Crank.png` for `CrankHandle` and `GunPowder.png` for `Gunpowder`
+- copied the validated build into the normal game output for immediate interaction-test playtesting
+
+### Why
+
+- discard needs to be safe before the action menu becomes a real survival-horror inventory menu
+- key and puzzle items should not be accidentally removed by the player, especially while reusable key expiry and puzzle-slot flows are still being validated
+- storage and action overlays need clearer item identity, footprint, stack, and description feedback before the final RmlUi/native presentation replaces the prototype UI
+- combine mode should preview what a highlighted valid target will create so recipes remain readable as more puzzle/material combinations are added
+- icon filenames need to survive normal builds and should not require manual renaming every time art arrives from a sprite-sheet split
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryContainer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\InventoryCombineRecipe.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Inventory\ItemCatalog.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiImGuiPreviewRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `Engine.UI` compile check succeeded
+- `Engine.Runtime` compile check succeeded
+- isolated `Game` compile check succeeded
+- copied the validated `Game.dll`, `Engine.UI.dll`, `Engine.Runtime.dll`, and UI content into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.UI`, `Engine.Runtime`, and isolated `Game` compile checks succeeded after adding combine recipe preview state
+- copied the validated recipe-preview build and UI content into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- icon filename check matched all current catalog ids: Ink Ribbon, Rusted Key, Service Key, Archive Key, Test Key, Scrap, Gunpowder, Bullets, Crank Handle, and Fuse
+- `Engine.UI`, `Engine.Runtime`, and isolated `Game` compile checks succeeded after adding icon asset copying and filename aliases
+- copied the validated icon-aware build and PNG assets into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+
+### Next
+
+- playtest discard on disposable stacks such as Scrap, Gunpowder, Bullets, and Ink Ribbons
+- verify keys, the Crank Handle, and the Fuse show protected discard feedback and remain in inventory
+- verify storage item details and transfer quantity panels stay readable with keyboard, mouse, and controller navigation
+- combine `Scrap` with `Gunpowder` and confirm the selected valid target shows the `Craft Bullets` result preview before confirming
+- verify pickup/examine, generated RML inventory, and generated RML use-item panels point to PNG icon paths instead of fallback text where supported
 
 ## 2026-04-29
 
@@ -767,6 +847,281 @@ The current gameplay issues being worked first are:
 - test a thrown box-on-box impact and confirm the losing box now topples off corners instead of hanging in a diamond pose
 - test a capsule on its side and confirm it no longer tries to stand upright after settling
 - test single-corner and two-corner box rests and confirm `stable` now flips false when the COM projection is outside the actual support polygon
+
+## 2026-05-06
+
+### Summary
+
+- implemented the first native `HS2RmlUiBridge` DLL against the existing C ABI
+- added native RmlUi context creation, document loading, live generated-document refresh, input forwarding stubs, update/render calls, and render-command export
+- added native PNG loading through `lodepng` and texture-data export for RmlUi image/font texture ids
+- added managed texture-data binding and Veldrid RGBA texture upload in `Engine.UI`
+- added a small bridge-local pixel-font fallback so text remains readable even though this first RmlUi build uses `RMLUI_FONT_ENGINE=none`
+- copied `HS2RmlUiBridge.dll`, updated `Engine.UI.dll`, `Engine.Runtime.dll`, `Game.dll`, shaders, and `Content/UI` assets into the normal `Game/bin/Debug/net8.0` test output
+
+### Why
+
+- the inventory and pickup UI had reached the point where the generated RML path needed to render for real, especially to validate the new item icon PNGs in-game
+- keeping texture upload in the managed Veldrid renderer preserves the engine's current graphics ownership while letting native RmlUi focus on layout and geometry production
+- the pixel-font fallback keeps the bridge testable without adding a FreeType dependency yet
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Native\HS2RmlUiBridge\HS2RmlUiBridge.h`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Native\HS2RmlUiBridge\HS2RmlUiBridge.cpp`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Native\HS2RmlUiBridge\CMakeLists.txt`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\RmlUiBackend.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Native\RmlUiNativeApi.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Native\RmlUiRenderData.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rendering\RmlUiOverlayRenderer.cs`
+
+### Validation
+
+- native `HS2RmlUiBridge` CMake configure succeeded
+- native `HS2RmlUiBridge` Release build succeeded
+- `Engine.UI` build succeeded
+- `Engine.Runtime` build succeeded
+- isolated `Game` build succeeded
+- Win32 load/export smoke check found `hs2_rmlui_create_context`, `hs2_rmlui_get_texture_data`, and `hs2_rmlui_set_document_body`
+- bridge smoke test created a context, loaded a document, refreshed RML live, produced render commands, and exported one `InkRibbon.png` texture
+
+### Next
+
+- playtest the interaction test level and confirm native RmlUi replaces the ImGui preview when the bridge DLL is present
+- pick up Rusted Key and Ink Ribbon and verify their icons appear on the collection card and inventory screen
+- validate prompt/inventory readability with the temporary pixel-font fallback, then decide whether to add FreeType or a proper game bitmap font path
+- wire richer RmlUi mouse/controller focus events once the rendered presentation is confirmed stable
+
+## 2026-05-07
+
+### Summary
+
+- fixed the gameplay UI disappearing when the native `HS2RmlUiBridge.dll` is present
+- changed native RmlUi presentation from automatic takeover to opt-in behind `HS2_RMLUI_NATIVE_PRESENTATION=1`
+- kept the ImGui gameplay preview as the default presentation while the native bridge render path is still being validated
+- kept the native bridge/backend probe path intact so bridge status can still be inspected and native presentation can be re-enabled for focused tests
+- added `HS2_RMLUI_TEST_DOCUMENT=1` to render a hardcoded native diagnostic panel with text, colored blocks, and an icon
+- added native overlay render-success tracking so the ImGui preview remains visible until RmlUi has actually submitted an overlay frame
+- fixed RmlUi dynamic buffer rebinding after buffer growth so large generated UI documents do not keep drawing against stale vertex/index buffers
+- added texture-command diagnostics to the RmlUi overlay renderer and changed the UI sampler to avoid mip-linear sampling on single-mip PNG uploads
+- changed the native diagnostic RML from inline-only styles to a proper `<style>` block with explicit image width/height attributes
+- confirmed the native bridge receives a textured diagnostic image command for `../Icons/InkRibbon.png`, so the remaining missing-icon issue is in the managed Veldrid texture presentation path rather than RmlUi document pathing
+
+### Why
+
+- the bridge being ready made `GameplayUiLayer.UsesNativePresentation` immediately true, which disabled the ImGui preview before the native overlay was proven visible in-game
+- if the native overlay has a shader, layout, document, or draw-order issue, the gameplay UI should fall back safely instead of disappearing completely
+- the diagnostic document gives the engine a small known-good RML target before debugging the full inventory/pickup layout
+- generated RmlUi documents can exceed the initial overlay buffer sizes, so the command list must rebind any grown buffers before drawing
+- the diagnostic panel rendered text but not the icon image, so the next fix focused on the managed textured-command path rather than native RmlUi layout
+- RmlUi resolves URLs relative to the referencing document before calling the bridge loader, so runtime documents under `Runtime/` should keep using paths such as `../Icons/InkRibbon.png`
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiLayer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\RmlUiBackend.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rendering\RmlUiOverlayRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rml`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+
+### Validation
+
+- `Engine.UI` build succeeded
+- `Engine.Runtime` build succeeded
+- isolated `Game` build succeeded
+- copied the validated `Game.dll`, `Engine.UI.dll`, and `Engine.Runtime.dll` into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- `Engine.UI` and isolated `Game` builds succeeded again after adding the RmlUi diagnostic document and buffer rebind fix
+- copied the updated `Game.dll` and `Engine.UI.dll` into the normal `Game/bin/Debug/net8.0` output
+- native command inspection confirmed the diagnostic `<img>` produces a textured draw command and exports `InkRibbon.png` as a `1254x1254` texture
+- `Engine.UI` and isolated `Game` builds succeeded after the sampler/texture diagnostics update
+- copied the updated `Game.dll` and `Engine.UI.dll` into the normal `Game/bin/Debug/net8.0` output
+- `Engine.UI` and isolated `Game` builds succeeded after the diagnostic RML cleanup
+- copied the updated `Game.dll`, `Engine.UI.dll`, and inventory UI content into the normal `Game/bin/Debug/net8.0` output
+- native bridge inspection confirmed the runtime diagnostic emits a visible brown icon-tile quad plus one textured `InkRibbon.png` draw command
+
+### Next
+
+- verify the normal interaction test level shows prompts, pickup cards, and inventory again without setting any environment variables
+- use `HS2_RMLUI_NATIVE_PRESENTATION=1` and `HS2_RMLUI_TEST_DOCUMENT=1` for the first focused native RmlUi rendering test
+- if the diagnostic card and `InkRibbon.png` icon are visible, test `HS2_RMLUI_NATIVE_PRESENTATION=1` without the diagnostic document so the generated inventory/pickup RML renders
+- if diagnostic text and card geometry appear but the icon is still missing, inspect managed Veldrid texture upload/binding and blend state before changing inventory UI code
+
+## 2026-05-08
+
+### Summary
+
+- changed the managed RmlUi Veldrid overlay renderer to batch a full RmlUi frame into one vertex/index upload instead of rewriting the same dynamic buffer offset for each command
+- each native RmlUi draw command now renders from its own vertex and index offsets, preserving command order, scissor state, and texture bindings
+- copied the validated `Game.dll` and `Engine.UI.dll` into the normal `Game/bin/Debug/net8.0` output for immediate playtesting
+- confirmed in playtest that the diagnostic RmlUi card, styled panel, and `InkRibbon.png` image now render correctly in-game
+- added a native RmlUi hover-slot bridge query for elements with `data-slot`, so the game can reuse existing inventory selection/move logic with native RmlUi instead of relying on the hidden ImGui preview
+- exposed inventory action menu, split picker, and discard-confirm state through `Engine.UI` gameplay state and generated RML
+- added first native RmlUi styling for the inventory action menu and stack/discard modal panels
+- rebuilt and copied the updated `HS2RmlUiBridge.dll`, `Game.dll`, `Engine.UI.dll`, and inventory RCSS into the normal game output
+- after the generated document path caused a hard freeze on the user's laptop, added defensive RmlUi render-data validation before GPU upload/draw
+- the overlay renderer now rejects frames with too many commands, oversized combined geometry, non-finite vertex data, or out-of-range indices instead of submitting unsafe data to the graphics driver
+
+### Why
+
+- native inspection showed RmlUi was already producing the diagnostic card geometry and an `InkRibbon.png` textured command, but the game only showed pixel text
+- repeatedly updating the same dynamic buffer range before the command list is submitted can leave later draws using stale or overwritten geometry, which matches the text-only diagnostic symptom
+- this keeps the current RmlUi route alive for one focused attempt before falling back to a custom XML/CSS-style UI path if it still fails in-game
+- the first visible RmlUi result proved the render path, so the next blocker became native UI interactivity and missing generated RML state for button-driven overlays
+- inventory button presses were opening hidden gameplay states that only the ImGui overlay knew how to show, so those states needed to be promoted into the RmlUi presentation path
+- a full-machine freeze points more toward a native/GPU-driver hang than a normal managed exception, so the renderer must treat native UI geometry as untrusted until the generated document path is proven stable
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rendering\RmlUiOverlayRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiLayer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Native\RmlUiNativeApi.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\RmlUiBackend.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Native\HS2RmlUiBridge\HS2RmlUiBridge.cpp`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Native\HS2RmlUiBridge\HS2RmlUiBridge.h`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+
+### Validation
+
+- `Engine.UI` build succeeded
+- isolated `Game` build succeeded
+- copied the validated `Game.dll` and `Engine.UI.dll` into the normal `Game/bin/Debug/net8.0` output
+- native `HS2RmlUiBridge` Release build succeeded after rerunning CMake outside the sandbox because the existing build directory blocks timestamp updates in the sandbox
+- isolated `Game` build succeeded outside the sandbox because the local `obj` files still hit the known access-denied issue when project references are touched in the sandbox
+- copied the updated `HS2RmlUiBridge.dll`, `Game.dll`, `Engine.UI.dll`, and `inventory.rcss` into the normal `Game/bin/Debug/net8.0` output
+- `Engine.UI` build succeeded after adding render-data safety guards
+- isolated `Game` build succeeded outside the sandbox
+- copied the updated safety-guarded `Engine.UI.dll` into the normal `Game/bin/Debug/net8.0` output
+
+### Next
+
+- retest the generated native RmlUi path carefully; if the renderer rejects unsafe data, the game should stay alive and fall back instead of freezing
+- retest native gameplay UI with `HS2_RMLUI_NATIVE_PRESENTATION=1` and without `HS2_RMLUI_TEST_DOCUMENT`, because the diagnostic document intentionally does not show the real inventory/action states
+- open inventory with `I`, press `E` / controller `X` on an item, and confirm the RmlUi action menu appears
+- hover/click inventory slots with the mouse and confirm the native RmlUi `data-slot` bridge selects/moves the same way the ImGui preview did
+- if generated inventory UI appears but a specific submenu is still invisible, expose that missing gameplay state through `GameplayUiState` and `RmlUiDocumentBuilder` rather than changing the renderer again
+
+## 2026-05-11
+
+### Summary
+
+- fixed item-collected presentation auto-closing on the same `E` / controller `X` press that picked the item up
+- added a release gate so the collected-item card cannot be confirmed until the interact control has been released once
+- added a short confirm grace delay and made pickup stop the gameplay update frame immediately after opening the collected-item card
+- removed the duplicate pickup toast from world-item collection so the collected-item card is the only pickup feedback path
+- forced pickup/examine cards back through the stable preview renderer while native RmlUi modal presentation is hardened
+- made the native RmlUi inventory panel, backplate, grid, slots, covered-slot stitches, and preview card use stronger solid backgrounds and brighter borders
+- changed the generated RmlUi inventory grid from flow/inline wrapping to deterministic absolute slot positions based on slot index, row, and column
+- tightened item-collected close handling so camera/mouse capture is restored immediately when no other gameplay modal is open
+- copied the updated `Game.dll` and `inventory.rcss` into the normal game output for immediate testing
+
+### Why
+
+- the pickup interaction and collected-item confirm shared the same input edge, so the modal could open and close in the same update
+- continuing through the normal gameplay update after opening the card could leave UI capture and presentation state out of sync
+- the duplicate pickup toast made the focused pickup feedback harder to reason about while debugging the RmlUi card
+- native RmlUi suppresses the preview once it submits a visible frame, so a broken generated pickup card can leave the modal active with no reliable visible card
+- the native RmlUi inventory styling was too subtle and partly dependent on semi-transparent border/background rules that were not reading clearly in-game
+- RmlUi did not lay out the inventory like a browser-style inline-block grid, causing slots and description text to overlap and drift across the screen
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+
+### Validation
+
+- isolated `Game` build succeeded outside the sandbox
+- `Engine.UI` build succeeded outside the sandbox
+- copied the updated `Game.dll`, `Engine.UI.dll`, and `inventory.rcss` into `Game/bin/Debug/net8.0`
+- isolated `Game` build succeeded after tightening the pickup modal transition
+- `Engine.UI` and isolated `Game` builds succeeded after forcing pickup/examine cards through the stable preview renderer
+- copied the updated `Engine.UI.dll` and `Engine.UI.pdb` into `Game/bin/Debug/net8.0`
+
+### Next
+
+- pick up Ink Ribbon and key items with native RmlUi enabled and confirm the preview-backed card appears, stays open, and closes only after a fresh `E` / controller `X` press
+- after closing the card, confirm camera/mouse control returns without needing an extra hidden interaction press
+- open inventory and confirm the panel background and individual slot borders are visible in native RmlUi
+- confirm the inventory grid is now aligned in four fixed rows instead of overlapping the header/description panel
+- continue migrating any remaining ImGui-only gameplay UI overlays into generated RmlUi state
+
+## 2026-05-12
+
+### Summary
+
+- re-enabled native RmlUi pickup/examine cards by default now that the input/modal flow is stable again
+- added explicit `width` and `height` attributes to generated item `<img>` tags so RmlUi treats item icons like the working diagnostic image path
+- kept an emergency `HS2_RMLUI_FORCE_PREVIEW_MODALS=1` fallback for pickup/examine cards if native modal rendering regresses during testing
+- made the native collected-item card use a stronger fixed RmlUi layout and solid survival-horror panel styling
+- reduced the native pickup/examine card footprint, tightened its image size, and increased text spacing for readability
+- changed pickup/examine card text from paragraph/header flow into explicit fixed-position text rows so RmlUi does not merge title/name/metainfo together
+- changed interaction prompts and game messages to fixed native RmlUi prompt cards with an input pill and separate message row
+- fixed the look-at prompt disappearing after the ImGui safety frame by moving the native prompt to fixed top/left coordinates instead of `bottom` positioning
+- added a short interaction-prompt grace timer so raycast flicker does not immediately hide the prompt while looking at small items
+- added `.codex-build/` to `.gitignore` and removed the previously tracked `.codex-build` scratch/build artifacts from the git index
+- changed the native use-item panel for locks, puzzle slots, and typewriters to a fixed visible RmlUi panel with item icons and solid rows
+- changed inventory action, split, and discard overlays to fixed native RmlUi menu rows instead of paragraph flow
+- added a native RmlUi item-box storage panel with inventory/storage grids and a transfer quantity overlay
+- cleaned the current item PNGs by removing the baked edge-connected checkerboard background and cropping transparent padding
+
+### Why
+
+- the readable card from the previous fix was intentionally using the stable preview renderer, which made it look like old ImGui
+- the diagnostic RmlUi image worked with explicit image dimensions, while generated gameplay item images only had CSS class sizing
+- pickup/examine should validate the real RmlUi presentation and item PNGs now that card open/close behavior is no longer the main blocker
+- the first native card was too large and text-heavy, and the use-item panel could vanish because it relied on percentage centering
+- RmlUi's layout behavior with the temporary pixel-font path was merging pickup card text flow, so the card now uses fixed rows until richer text/layout support is in place
+- prompts, locked-door item choices, and inventory action overlays need to be authored with predictable boxes while the native bridge is still using a temporary font/layout path
+- the old ImGui prompt appearing briefly showed the prompt state was valid, but native RmlUi was taking over with an unreliable prompt layout
+- storage is player-facing survival-horror UI, so it should have a native RmlUi panel instead of remaining on ImGui
+- `.codex-build` contains local DLL/PDB copies, diagnostic logs, temporary build outputs, and local dependency build folders; it should be recreated locally rather than committed
+- the apparent transparent background was actually baked checkerboard pixels in the generated icon PNGs
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiLayer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Icons\*.png`
+- `C:\HS2StyleEngine\HL2StyleEngine\.gitignore`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `Engine.UI` build succeeded
+- isolated `Game` build succeeded
+- copied the updated `Engine.UI.dll`, `Engine.UI.pdb`, and `inventory.rcss` into `Game/bin/Debug/net8.0`
+- confirmed current icon PNGs are present in the game output: Rusted Key, Ink Ribbon, Service Key, Archive Key, Master Key, Scrap, Gunpowder, Bullets, Crank Handle, and Fuse
+- copied the cleaned icon PNGs into `Game/bin/Debug/net8.0\Content\UI\Icons`
+- `Engine.UI` and isolated `Game` builds succeeded after fixing pickup card text layout
+- `Engine.UI` and isolated `Game` builds succeeded after adding native prompt/use/action/storage UI panels
+- copied the updated `Engine.UI.dll`, `Engine.UI.pdb`, and `inventory.rcss` into `Game/bin/Debug/net8.0`
+- `Engine.UI` and isolated `Game` builds succeeded after fixing native prompt positioning and prompt grace timing
+- confirmed `.codex-build` files remain on disk locally but are no longer tracked by git
+
+### Next
+
+- with `HS2_RMLUI_NATIVE_PRESENTATION=1`, pick up Ink Ribbon and Rusted Key and confirm the card uses the styled RmlUi panel and item image
+- with a matching key/puzzle item in inventory, interact with a locked door or puzzle slot and confirm the native use-item panel appears
+- look at world items, doors, typewriters, puzzle slots, and storage boxes and confirm prompt/message panels use the native RmlUi styling
+- confirm the look-at prompt remains visible while the crosshair stays over an item and no longer flashes old ImGui for only one frame
+- open `StorageBox_SaveOffice` and confirm the native item-box panel appears and still transfers items with keyboard/controller input
+- if the card disappears again, temporarily set `HS2_RMLUI_FORCE_PREVIEW_MODALS=1` and inspect the generated runtime RML/card render data
+- continue moving inventory subpanels to native RmlUi once pickup/examine is visually stable
 
 ## Notes For Future Chats
 

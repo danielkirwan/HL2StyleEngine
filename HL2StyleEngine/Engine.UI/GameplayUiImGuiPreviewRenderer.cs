@@ -79,9 +79,20 @@ internal sealed class GameplayUiImGuiPreviewRenderer
 
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.02f, 0.025f, 0.028f, 0.96f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.74f, 0.74f, 0.66f, 0.50f));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(28f, 26f));
         ImGui.Begin("RmlUiPreviewCollectedItem", flags);
+
+        ImGui.BeginChild("RmlUiPreviewCollectedShowcase", new Vector2(155f, 205f), ImGuiChildFlags.Borders);
+        ImGui.SetCursorPosY(72f);
+        ImGui.SetCursorPosX(42f);
+        ImGui.TextColored(GetItemToneColor(item.Type), GetItemSymbol(item.Id, item.Type));
+        ImGui.SetCursorPosY(150f);
+        ImGui.Separator();
+        ImGui.EndChild();
+        ImGui.SameLine();
+
+        ImGui.BeginGroup();
         ImGui.TextColored(new Vector4(0.56f, 0.58f, 0.53f, 1f), item.Title.ToUpperInvariant());
-        ImGui.Spacing();
         string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
         ImGui.TextColored(new Vector4(0.93f, 0.92f, 0.84f, 1f), $"{item.DisplayName}{countSuffix}");
         ImGui.TextColored(new Vector4(0.58f, 0.60f, 0.56f, 1f), $"{item.Type} | {item.SlotWidth}x{item.SlotHeight} slots | Stack {item.MaxStack}");
@@ -94,7 +105,9 @@ internal sealed class GameplayUiImGuiPreviewRenderer
 
         ImGui.Separator();
         ImGui.TextDisabled("E / X: Confirm");
+        ImGui.EndGroup();
         ImGui.End();
+        ImGui.PopStyleVar();
         ImGui.PopStyleColor(2);
     }
 
@@ -224,7 +237,7 @@ internal sealed class GameplayUiImGuiPreviewRenderer
 
         Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);
         ImGui.SetNextWindowPos(center, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
-        ImGui.SetNextWindowSize(new Vector2(560f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(620f, 0f), ImGuiCond.Always);
         ImGui.SetNextWindowBgAlpha(0.96f);
 
         ImGuiWindowFlags flags =
@@ -265,10 +278,29 @@ internal sealed class GameplayUiImGuiPreviewRenderer
                     item.IsValidUseTarget ? new Vector4(0.22f, 0.42f, 0.70f, 1f) : new Vector4(0.24f, 0.26f, 0.27f, 1f));
                 ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.36f, 0.40f, 0.42f, 1f));
 
+                if (ImGui.Button($"##useCandidate{i}", new Vector2(570f, 66f)))
+                    selectedSlot = item.SlotIndex;
+
+                Vector2 min = ImGui.GetItemRectMin();
+                Vector2 max = ImGui.GetItemRectMax();
+                ImDrawListPtr drawList = ImGui.GetWindowDrawList();
+                uint iconBorder = ImGui.ColorConvertFloat4ToU32(new Vector4(0.72f, 0.72f, 0.64f, 0.35f));
+                uint textColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.94f, 0.93f, 0.86f, 1f));
+                uint mutedColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.62f, 0.65f, 0.61f, 1f));
+                uint validColor = ImGui.ColorConvertFloat4ToU32(item.IsValidUseTarget
+                    ? new Vector4(0.48f, 0.72f, 1f, 1f)
+                    : new Vector4(0.68f, 0.70f, 0.66f, 1f));
+                Vector2 iconMin = min + new Vector2(12f, 10f);
+                Vector2 iconMax = iconMin + new Vector2(46f, 46f);
+                drawList.AddRect(iconMin, iconMax, iconBorder, 3f, ImDrawFlags.None, 1.5f);
+                drawList.AddText(iconMin + new Vector2(10f, 16f), ImGui.ColorConvertFloat4ToU32(GetItemToneColor(item.Type)), GetItemSymbol(item.Id, item.Type));
+
                 string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
                 string validity = item.IsValidUseTarget ? "Ready" : "Doesn't fit";
-                if (ImGui.Button($"{item.DisplayName}{countSuffix}    {validity}##useCandidate{i}", new Vector2(510f, 42f)))
-                    selectedSlot = item.SlotIndex;
+                drawList.AddText(min + new Vector2(72f, 13f), textColor, $"{item.DisplayName}{countSuffix}");
+                drawList.AddText(min + new Vector2(72f, 36f), mutedColor, $"{item.Type} | {item.SlotWidth}x{item.SlotHeight}");
+                Vector2 validitySize = ImGui.CalcTextSize(validity);
+                drawList.AddText(new Vector2(max.X - validitySize.X - 18f, min.Y + 24f), validColor, validity);
 
                 if (ImGui.IsItemHovered())
                     selectedSlot = item.SlotIndex;
@@ -380,6 +412,17 @@ internal sealed class GameplayUiImGuiPreviewRenderer
             if (selectedItem?.IsValidCombineTarget == true)
             {
                 ImGui.TextColored(new Vector4(0.48f, 0.82f, 0.58f, 1f), "This item can be combined.");
+                if (!string.IsNullOrWhiteSpace(state.CombinePreviewTitle))
+                {
+                    ImGui.Spacing();
+                    ImGui.TextColored(new Vector4(0.78f, 0.90f, 0.70f, 1f), state.CombinePreviewTitle);
+                    string resultSuffix = state.CombinePreviewResultCount > 1 ? $" x{state.CombinePreviewResultCount}" : "";
+                    if (!string.IsNullOrWhiteSpace(state.CombinePreviewResultName))
+                        ImGui.TextDisabled($"Result: {state.CombinePreviewResultName}{resultSuffix}");
+                    if (!string.IsNullOrWhiteSpace(state.CombinePreviewDescription))
+                        ImGui.TextWrapped(state.CombinePreviewDescription);
+                }
+
                 ImGui.TextDisabled("E / X or click: Combine");
             }
             else if (selectedItem?.IsCombineSource == true)
@@ -431,4 +474,35 @@ internal sealed class GameplayUiImGuiPreviewRenderer
 
     private static string ShortLabel(string text)
         => text.Length <= 10 ? text : text[..10];
+
+    private static Vector4 GetItemToneColor(string itemType)
+        => itemType.ToLowerInvariant() switch
+        {
+            "key" => new Vector4(0.95f, 0.74f, 0.36f, 1f),
+            "puzzle" => new Vector4(0.58f, 0.80f, 0.86f, 1f),
+            "consumable" => new Vector4(0.58f, 0.66f, 1.00f, 1f),
+            "material" => new Vector4(0.72f, 0.70f, 0.54f, 1f),
+            _ => new Vector4(0.76f, 0.78f, 0.74f, 1f)
+        };
+
+    private static string GetItemSymbol(string itemId, string itemType)
+    {
+        string normalized = itemId.Replace("_", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal).ToLowerInvariant();
+        if (normalized.Contains("key", StringComparison.Ordinal))
+            return "KEY";
+        if (normalized.Contains("ink", StringComparison.Ordinal))
+            return "INK";
+        if (normalized.Contains("crank", StringComparison.Ordinal))
+            return "CRK";
+        if (normalized.Contains("fuse", StringComparison.Ordinal))
+            return "FUS";
+        if (normalized.Contains("powder", StringComparison.Ordinal))
+            return "PDR";
+        if (normalized.Contains("bullet", StringComparison.Ordinal))
+            return "AMO";
+        if (normalized.Contains("scrap", StringComparison.Ordinal))
+            return "SCR";
+
+        return itemType.Length >= 3 ? itemType[..3].ToUpperInvariant() : "ITM";
+    }
 }

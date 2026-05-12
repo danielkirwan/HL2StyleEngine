@@ -11,6 +11,7 @@ namespace Engine.UI;
 public sealed class RmlUiBackend : IDisposable
 {
     public const string DefaultNativeBridgeName = "HS2RmlUiBridge";
+    private const string TestDocumentEnvironmentVariable = "HS2_RMLUI_TEST_DOCUMENT";
     private const string RuntimeDocument = "Runtime/gameplay_ui.rml";
 
     private readonly IntPtr _nativeBridgeHandle;
@@ -22,6 +23,7 @@ public sealed class RmlUiBackend : IDisposable
     private bool _documentDirty = true;
     private IntPtr _context;
     private IntPtr _gameplayDocument;
+    private int _hoveredDataSlot = -1;
 
     private RmlUiBackend(string contentRoot, IntPtr nativeBridgeHandle, RmlUiNativeApi? nativeApi, string status)
     {
@@ -35,10 +37,20 @@ public sealed class RmlUiBackend : IDisposable
     public string ContentRoot { get; }
     public string Status { get; private set; }
     public string RenderStatus => _overlayRenderer.Status;
+    public bool HasSubmittedOverlayFrame => _overlayRenderer.LastRenderSubmitted;
+    public int LastSubmittedCommands => _overlayRenderer.LastSubmittedCommands;
+    public string OverlayDebugStatus => _overlayRenderer.Status;
+    public bool TestDocumentEnabled { get; } = TestDocumentOptedIn();
 
     public bool NativeBridgeFound => _nativeBridgeHandle != IntPtr.Zero;
 
     public bool IsReady => _nativeApi != null && _context != IntPtr.Zero;
+
+    public bool TryGetHoveredDataSlot(out int slot)
+    {
+        slot = _hoveredDataSlot;
+        return slot >= 0;
+    }
 
     public static RmlUiBackend Probe(string contentRoot, string nativeBridgeName = DefaultNativeBridgeName)
     {
@@ -72,7 +84,9 @@ public sealed class RmlUiBackend : IDisposable
     public void SubmitState(GameplayUiState state)
     {
         _state = state;
-        string document = RmlUiDocumentBuilder.Build(state);
+        string document = TestDocumentEnabled
+            ? BuildTestDocument(state)
+            : RmlUiDocumentBuilder.Build(state);
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(document)));
         if (hash == _lastDocumentHash)
             return;
@@ -87,7 +101,7 @@ public sealed class RmlUiBackend : IDisposable
             if (_nativeApi.TrySetDocumentBody(_gameplayDocument, document))
                 _documentDirty = false;
             else
-                Status = "RmlUi state updated on disk; native bridge needs hs2_rmlui_set_document_body for live UI refresh.";
+                Status = "RmlUi state updated on disk; native bridge failed live UI refresh.";
         }
     }
 
@@ -106,6 +120,9 @@ public sealed class RmlUiBackend : IDisposable
         _nativeApi.SetMouseButton(_context, 0, context.Input.LeftMouseDown);
         _nativeApi.SetMouseButton(_context, 1, context.Input.RightMouseDown);
         _nativeApi.Update(_context, context.DeltaTime);
+        _hoveredDataSlot = _nativeApi.TryGetHoveredDataSlot(_context, out int hoveredSlot)
+            ? hoveredSlot
+            : -1;
     }
 
     public void RenderOverlay(Renderer renderer)
@@ -114,6 +131,8 @@ public sealed class RmlUiBackend : IDisposable
             return;
 
         _nativeApi!.Render(_context);
+        UploadDirtyTextures(renderer);
+
         if (!_nativeApi.TryGetRenderData(_context, out RmlUiRenderData renderData))
         {
             Status = "RmlUi bridge rendered, but did not provide render data.";
@@ -167,7 +186,48 @@ public sealed class RmlUiBackend : IDisposable
 
         _nativeApi.ShowDocument(_gameplayDocument);
         _documentDirty = false;
-        Status = $"RmlUi context ready with generated '{RuntimeDocument}'. ImGui gameplay UI fallback can be disabled.";
+        Status = TestDocumentEnabled
+            ? $"RmlUi context ready with diagnostic '{RuntimeDocument}'."
+            : $"RmlUi context ready with generated '{RuntimeDocument}'.";
+    }
+
+    private void UploadDirtyTextures(Renderer renderer)
+    {
+        if (_nativeApi == null || _context == IntPtr.Zero)
+            return;
+
+        if (!_nativeApi.TryGetTextureData(_context, out IntPtr textures, out int count) ||
+            textures == IntPtr.Zero ||
+            count <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            int textureSize = Marshal.SizeOf<RmlUiTextureData>();
+            for (int i = 0; i < count; i++)
+            {
+                IntPtr texturePtr = IntPtr.Add(textures, i * textureSize);
+                RmlUiTextureData texture = Marshal.PtrToStructure<RmlUiTextureData>(texturePtr);
+                if (texture.TextureId == 0 ||
+                    texture.Rgba == IntPtr.Zero ||
+                    texture.Width <= 0 ||
+                    texture.Height <= 0 ||
+                    texture.ByteCount <= 0)
+                {
+                    continue;
+                }
+
+                byte[] rgba = new byte[texture.ByteCount];
+                Marshal.Copy(texture.Rgba, rgba, 0, rgba.Length);
+                _overlayRenderer.RegisterTextureRgba(texture.TextureId, renderer, texture.Width, texture.Height, rgba);
+            }
+        }
+        finally
+        {
+            _nativeApi.ReleaseTextureData(_context);
+        }
     }
 
     private void WriteRuntimeDocument(string document)
@@ -176,4 +236,113 @@ public sealed class RmlUiBackend : IDisposable
         Directory.CreateDirectory(runtimeDirectory);
         File.WriteAllText(Path.Combine(ContentRoot, RuntimeDocument), document, Encoding.UTF8);
     }
+
+    private static bool TestDocumentOptedIn()
+    {
+        string? value = Environment.GetEnvironmentVariable(TestDocumentEnvironmentVariable);
+        return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildTestDocument(GameplayUiState state)
+    {
+        string message = string.IsNullOrWhiteSpace(state.GameMessage)
+            ? "Native RmlUi diagnostic panel"
+            : state.GameMessage;
+
+        return $$"""
+<rml>
+  <head>
+    <title>RmlUi Diagnostic</title>
+    <style>
+      body {
+        font-family: serif;
+        color: #dedbd0;
+      }
+
+      #diagnostic-panel {
+        position: absolute;
+        left: 48px;
+        top: 48px;
+        width: 560px;
+        height: 260px;
+        padding: 28px;
+        background-color: rgba(7, 16, 18, 0.95);
+        border: 3px #d8d6c4;
+      }
+
+      h1 {
+        margin: 0 0 12px 0;
+        font-size: 34px;
+        color: #f4efd9;
+      }
+
+      p {
+        margin: 8px 0;
+        font-size: 18px;
+        color: #c9d3c8;
+      }
+
+      #diagnostic-counts {
+        font-size: 16px;
+        color: #8da89a;
+      }
+
+      #diagnostic-icon {
+        position: absolute;
+        left: 28px;
+        bottom: 26px;
+        width: 96px;
+        height: 96px;
+        background-color: #9f7842;
+        border: 2px #f2e8ca;
+      }
+
+      #diagnostic-icon img {
+        width: 96px;
+        height: 96px;
+      }
+
+      #diagnostic-status {
+        position: absolute;
+        left: 146px;
+        bottom: 26px;
+        width: 320px;
+        height: 96px;
+        padding: 16px;
+        background-color: #273b38;
+        border: 1px #77ccb2;
+      }
+
+      #diagnostic-status p {
+        margin: 0;
+        color: #e7eadc;
+        font-size: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="diagnostic-panel">
+      <h1>RmlUi Native Test</h1>
+      <p>{{EscapeRml(message)}}</p>
+      <p id="diagnostic-counts">Inventory: {{(state.InventoryOpen ? "open" : "closed")}} | Items: {{state.InventoryItems.Count}} | Saves: {{state.SaveCount}}</p>
+      <div id="diagnostic-icon">
+        <img src="../Icons/InkRibbon.png" width="96" height="96" />
+      </div>
+      <div id="diagnostic-status">
+        <p>If you see this card and the icon, native RmlUi is drawing styled UI.</p>
+      </div>
+    </div>
+  </body>
+</rml>
+""";
+    }
+
+    private static string EscapeRml(string text)
+        => text
+            .Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal)
+            .Replace("\"", "&quot;", StringComparison.Ordinal);
 }

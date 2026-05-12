@@ -37,3 +37,13 @@ internal readonly struct RmlUiVertex
     public readonly float V;
     public readonly uint ColorRgba;
 }
+
+[StructLayout(LayoutKind.Sequential)]
+internal readonly struct RmlUiTextureData
+{
+    public readonly ulong TextureId;
+    public readonly IntPtr Rgba;
+    public readonly int Width;
+    public readonly int Height;
+    public readonly int ByteCount;
+}

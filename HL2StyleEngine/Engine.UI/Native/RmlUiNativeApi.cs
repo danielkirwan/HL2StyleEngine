@@ -18,8 +18,11 @@ internal sealed class RmlUiNativeApi
     private readonly SetMouseButtonFn _setMouseButton;
     private readonly SetKeyFn _setKey;
     private readonly SubmitTextFn _submitText;
+    private readonly GetHoveredDataSlotFn? _getHoveredDataSlot;
     private readonly GetRenderDataFn _getRenderData;
     private readonly ReleaseRenderDataFn _releaseRenderData;
+    private readonly GetTextureDataFn? _getTextureData;
+    private readonly ReleaseTextureDataFn? _releaseTextureData;
     private readonly SetDocumentBodyFn? _setDocumentBody;
 
     private RmlUiNativeApi(
@@ -35,8 +38,11 @@ internal sealed class RmlUiNativeApi
         SetMouseButtonFn setMouseButton,
         SetKeyFn setKey,
         SubmitTextFn submitText,
+        GetHoveredDataSlotFn? getHoveredDataSlot,
         GetRenderDataFn getRenderData,
         ReleaseRenderDataFn releaseRenderData,
+        GetTextureDataFn? getTextureData,
+        ReleaseTextureDataFn? releaseTextureData,
         SetDocumentBodyFn? setDocumentBody)
     {
         _createContext = createContext;
@@ -51,8 +57,11 @@ internal sealed class RmlUiNativeApi
         _setMouseButton = setMouseButton;
         _setKey = setKey;
         _submitText = submitText;
+        _getHoveredDataSlot = getHoveredDataSlot;
         _getRenderData = getRenderData;
         _releaseRenderData = releaseRenderData;
+        _getTextureData = getTextureData;
+        _releaseTextureData = releaseTextureData;
         _setDocumentBody = setDocumentBody;
     }
 
@@ -82,6 +91,18 @@ internal sealed class RmlUiNativeApi
         if (TryExport(library, "hs2_rmlui_set_document_body", out SetDocumentBodyFn setDocumentBodyExport, out _))
             setDocumentBody = setDocumentBodyExport;
 
+        GetTextureDataFn? getTextureData = null;
+        if (TryExport(library, "hs2_rmlui_get_texture_data", out GetTextureDataFn getTextureDataExport, out _))
+            getTextureData = getTextureDataExport;
+
+        ReleaseTextureDataFn? releaseTextureData = null;
+        if (TryExport(library, "hs2_rmlui_release_texture_data", out ReleaseTextureDataFn releaseTextureDataExport, out _))
+            releaseTextureData = releaseTextureDataExport;
+
+        GetHoveredDataSlotFn? getHoveredDataSlot = null;
+        if (TryExport(library, "hs2_rmlui_get_hovered_data_slot", out GetHoveredDataSlotFn getHoveredDataSlotExport, out _))
+            getHoveredDataSlot = getHoveredDataSlotExport;
+
         api = new RmlUiNativeApi(
             createContext,
             destroyContext,
@@ -95,8 +116,11 @@ internal sealed class RmlUiNativeApi
             setMouseButton,
             setKey,
             submitText,
+            getHoveredDataSlot,
             getRenderData,
             releaseRenderData,
+            getTextureData,
+            releaseTextureData,
             setDocumentBody);
 
         error = "";
@@ -169,11 +193,27 @@ internal sealed class RmlUiNativeApi
         }
     }
 
+    public bool TryGetHoveredDataSlot(IntPtr context, out int slot)
+    {
+        slot = -1;
+        return _getHoveredDataSlot != null && _getHoveredDataSlot(context, out slot) != 0;
+    }
+
     public bool TryGetRenderData(IntPtr context, out RmlUiRenderData renderData)
         => _getRenderData(context, out renderData) != 0;
 
     public void ReleaseRenderData(IntPtr context)
         => _releaseRenderData(context);
+
+    public bool TryGetTextureData(IntPtr context, out IntPtr textures, out int count)
+    {
+        textures = IntPtr.Zero;
+        count = 0;
+        return _getTextureData != null && _getTextureData(context, out textures, out count) != 0;
+    }
+
+    public void ReleaseTextureData(IntPtr context)
+        => _releaseTextureData?.Invoke(context);
 
     public bool TrySetDocumentBody(IntPtr document, string bodyRml)
     {
@@ -243,10 +283,19 @@ internal sealed class RmlUiNativeApi
     private delegate void SubmitTextFn(IntPtr context, IntPtr textUtf8);
 
     [UnmanagedFunctionPointer(Convention)]
+    private delegate int GetHoveredDataSlotFn(IntPtr context, out int slot);
+
+    [UnmanagedFunctionPointer(Convention)]
     private delegate int GetRenderDataFn(IntPtr context, out RmlUiRenderData renderData);
 
     [UnmanagedFunctionPointer(Convention)]
     private delegate void ReleaseRenderDataFn(IntPtr context);
+
+    [UnmanagedFunctionPointer(Convention)]
+    private delegate int GetTextureDataFn(IntPtr context, out IntPtr textures, out int count);
+
+    [UnmanagedFunctionPointer(Convention)]
+    private delegate void ReleaseTextureDataFn(IntPtr context);
 
     [UnmanagedFunctionPointer(Convention)]
     private delegate int SetDocumentBodyFn(IntPtr document, IntPtr bodyRmlUtf8);

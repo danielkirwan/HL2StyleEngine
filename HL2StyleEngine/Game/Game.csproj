@@ -18,5 +18,6 @@
   <ItemGroup>
     <None Include="Content\UI\**\*.rml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\UI\**\*.rcss" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\UI\**\*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
