@@ -1,0 +1,50 @@
+{
+  "SaveSlot": 1,
+  "SavedAtUtc": "2026-05-28T19:01:34.2570846Z",
+  "LevelName": "interaction_test.json",
+  "LevelDisplayName": "interaction test",
+  "AreaName": "interaction test",
+  "SavePointName": "SavePoint_Typewriter",
+  "SavePointDisplayName": "Typewriter",
+  "Difficulty": "Prototype",
+  "ProfileId": "Default",
+  "PlayTimeSeconds": 47.38656,
+  "Inventory": [
+    "ArchiveKey",
+    "ServiceKey"
+  ],
+  "InventoryItems": [
+    {
+      "ItemId": "ServiceKey",
+      "Count": 1,
+      "SlotIndex": 0,
+      "Rotated": false
+    },
+    {
+      "ItemId": "ArchiveKey",
+      "Count": 1,
+      "SlotIndex": 2,
+      "Rotated": false
+    }
+  ],
+  "StorageItems": [],
+  "CollectedInteractables": [
+    "ItemInkRibbon_Foyer",
+    "ItemInkRibbon_SaveOffice",
+    "ItemKey_ArchiveKey",
+    "ItemKey_RustedKey",
+    "ItemKey_ServiceKey"
+  ],
+  "OpenedDoors": [
+    "Door_Foyer_RustedKey",
+    "Door_SaveOffice_ServiceKey"
+  ],
+  "SolvedPuzzles": [],
+  "InkRibbons": 0,
+  "SavePointUseCount": 2,
+  "PlayerX": -6.07321,
+  "PlayerY": 0,
+  "PlayerZ": 0.67999995,
+  "CameraYaw": 0.1481864,
+  "CameraPitch": -0.7500002
+}

@@ -1,6 +1,6 @@
 # Project Overview
 
-Last updated: 2026-05-12
+Last updated: 2026-05-28
 
 ## Purpose
 
@@ -51,7 +51,7 @@ The standalone editor should become the main environment for layout, object plac
 
 The project is in a foundation-plus-prototyping stage.
 
-Core engine structure is in place, the runtime and editor exist, and the project is now spending more time on feel-critical systems such as movement, collision, dynamic props, and debug tooling. The current work is moving from broad placeholder behavior toward more faithful physical behavior.
+Core engine structure is in place, the runtime and editor exist, and the current priority is turning the prototype into a small playable horror interaction loop. Physics polish remains important, but box stacking and pile stability are parked at good-enough prototype quality while inventory, keys, doors, puzzle objects, save points, storage, and player-facing UI are hardened.
 
 ## Solution Layout
 
@@ -80,6 +80,7 @@ Implemented or substantially present:
 - separate engine and game projects
 - runtime loop and editor/runtime split
 - rendering and debug UI foundations
+- `Engine.UI` gameplay UI seam with ImGui fallback/preview support and native RmlUi integration work in progress
 - first-person movement foundations
 - fixed-step simulation
 - basic world collision and simple dynamic body stepping
@@ -101,16 +102,21 @@ The main active workstream is now hardening the first horror interaction loop.
 The current implementation state is:
 
 - a separate `interaction_test.json` runtime level
-- key items that can be collected into a simple inventory
+- key items that can be collected into the prototype inventory
 - locked doors that check the inventory before opening
 - locked chest-style test objects that use the same reusable lock/item rule
+- level entities can now carry authored `Interaction` data for locks, chests, puzzle slots, puzzle doors, required items, state ids, target doors, success prompts, consume rules, and rewards
 - typewriter save points that require ink ribbons
-- prototype save persistence for collected keys, opened doors, ink count, save count, and player position
+- typewriter save points now open a four-slot save panel after choosing an Ink Ribbon
+- filled save slots now ask for overwrite confirmation before spending an Ink Ribbon or replacing the old save
+- `Escape` now opens a first-pass pause menu with a Load Save option that lists the local save slots
+- pause, save-slot, load-slot, inventory action, and storage panels now use native RmlUi hovered `data-slot` elements for mouse hover/click selection alongside keyboard/controller navigation, with old fixed hitboxes kept only as a non-native fallback
+- save slots persist collected keys, opened doors, solved puzzles, ink count, storage, inventory layout, save count, player position, playtime, level/area display name, save-point name, difficulty placeholder, and profile placeholder data
 - non-ink key/item expiry when every matching locked door or chest has been opened
 - first-pass item data model with item definitions, item types, slot footprints, stack limits, counts, and saveable inventory stacks
-- first-pass pickup/examine overlay for collected items
+- pickup/examine presentation for collected items, now moving through the native RmlUi path
 - locked chests can now grant prototype reward items from the item catalog
-- the temporary inventory overlay now shows grid slots, stack counts, item footprints, and selected-item descriptions
+- the inventory overlay now shows grid slots, stack counts, item footprints, and selected-item descriptions
 - opening inventory pauses gameplay and allows mouse hover or controller/keyboard navigation over the inventory grid
 - inventory item stacks now have stable grid slot indices and save/load those positions
 - inventory items can now be picked up inside the inventory screen, moved to another grid slot, validated against their slot footprint, placed, or cancelled
@@ -127,7 +133,7 @@ The current implementation state is:
 - valid combine targets now show a result preview through the shared `Engine.UI` state before the player confirms the recipe
 - a first shared item-box storage flow exists in the save office, with partial-stack transfer for stackable items
 - inventory discard is now enabled for disposable stacks behind a confirmation panel, while keys, puzzle items, and future weapons are protected from accidental discard
-- the prototype inventory action, split, discard, storage, and storage-transfer overlays now show clearer item identity, stack, footprint, and description feedback with fallback icon text badges
+- inventory action, split, discard, storage, and storage-transfer overlays now show clearer item identity, stack, footprint, and description feedback with item icons or fallback icon text badges
 - locked doors, locked chests, and typewriter saves now open a focused usable-item list; locks/chests show key/puzzle candidates, and typewriters show ink ribbons
 - item pickup and `Examine` now share a larger focused item presentation panel
 - the utility room now has a first crank-slot puzzle: using the Crank Handle raises a matching door over time and saves that solved state
@@ -149,10 +155,10 @@ The intended inventory direction is Resident Evil Requiem-inspired:
 - ink ribbons remain consumable save resources and are not part of the reusable-key expiry rule
 - locked chests should later reveal items such as puzzle objects, upgrade materials, or other pickups
 - safe storage should let the player transfer items between inventory and a shared global box, retrievable from any storage point; the first prototype supports stack quantity transfer and save/load
-- RmlUi is the preferred long-term gameplay UI interface candidate for themed inventory, item examine, save/storage, and puzzle UI, with the first native bridge now ready for in-game validation
+- RmlUi is the chosen gameplay UI direction for themed inventory, item examine, save/storage, and puzzle UI, with ImGui kept for editor/debug tooling and as a temporary safety preview
 - ImGui should remain useful for editor/debug tooling and short-term gameplay prototyping, but it should not become the final survival-horror menu presentation layer
 - `Engine.UI` now provides the gameplay UI integration seam, with a first `GameplayUiLayer` and RmlUi backend facade
-- RmlUi content assets are starting under `Game/Content/UI`, with staged inventory styling and generated runtime RML for the native bridge spike
+- RmlUi content assets live under `Game/Content/UI`, with staged inventory styling and generated runtime RML for the native bridge path
 - the RmlUi inventory and pickup/examine presentation now has a darker survival-horror case layout, item showcase cards, and placeholder icon slots ready for final item art
 - item icon generation prompts are tracked in `Game/Content/UI/IconPrompts.md`
 - focused use-item panels for doors, puzzle slots, and typewriters now use the same icon-ready presentation path, falling back to text glyphs until item PNGs exist under `Content/UI/Icons`
@@ -167,14 +173,16 @@ The intended inventory direction is Resident Evil Requiem-inspired:
 - the managed RmlUi overlay renderer now batches each full frame into one vertex/index upload and draws commands by offset, avoiding repeated same-offset dynamic-buffer rewrites while the command list is still being built
 - the first native RmlUi diagnostic has been confirmed in playtest with styled card geometry and an inventory icon image visible in-game
 - native RmlUi now exposes hovered `data-slot` elements back to managed code so inventory slot hover/click can reuse the existing gameplay selection logic
+- native RmlUi hover/click routing now covers pause rows, save/load slots, inventory action rows, inventory slots, use-item rows, and both sides of item-box storage, with separate native slot ranges where panels can overlap
 - generated RmlUi now includes first-pass inventory action menu, split picker, and discard confirmation panels instead of leaving those states visible only through ImGui
 - the managed RmlUi renderer now validates native render data before GPU submission and rejects unsafe frames instead of trusting bad geometry/indices
 - item-collected presentation now waits for the pickup/confirm button to be released, applies a short confirm grace delay, and stops the gameplay update frame after pickup so the card cannot be eaten by the collection press
 - native inventory styling now uses stronger solid backplates and clearer slot borders so the grid is readable in-game
 - generated native inventory slots now use absolute positions based on grid slot index instead of relying on RmlUi inline-flow layout
-- the game now publishes inventory, pickup modal, prompt, message, selection, and save-count state to `Engine.UI`; ImGui remains the default gameplay UI preview while native RmlUi presentation is validated
+- the game now publishes inventory, pickup modal, prompt, message, selection, and save-count state to `Engine.UI`
+- the gameplay overlay now includes a small center crosshair while normal gameplay control is active, with explicit pixel positioning and a renderer-side fallback so it is not dependent on RmlUi percentage layout support
 - the generated RmlUi document path targets `Content/UI/Runtime/gameplay_ui.rml` and can live-refresh through the implemented `hs2_rmlui_set_document_body` bridge export
-- an `Engine.UI` ImGui-backed preview renderer remains the default presentation path; native RmlUi presentation is opt-in with `HS2_RMLUI_NATIVE_PRESENTATION=1` until the overlay is visibly stable
+- an `Engine.UI` ImGui-backed preview renderer remains available as a fallback when native RmlUi presentation is disabled, but native mode no longer draws the old gameplay ImGui preview unless the emergency modal preview flag is explicitly enabled
 
 The recent physics work remains important but is now parked as a foundation rather than the only active task.
 
@@ -197,13 +205,12 @@ That work is aimed at fixing several visible problems:
 
 ## Known Current Limitations
 
-- gameplay interactions are still authored by name prefixes such as `ItemKey_`, `LockedDoor_`, `LockedChest_`, `ItemInkRibbon_`, and `SavePoint_`
-- the inventory UI has a first-pass inspect/combine/use action menu, but it is still prototype presentation rather than a finished survival-horror inventory screen
+- locks, chests, puzzle slots, and puzzle doors now support authored interaction data, but older name-prefix conventions still exist as a compatibility fallback
+- the inventory UI has inspect/combine/use/move/split/discard/storage flows, but it is still prototype presentation rather than a finished survival-horror inventory screen
 - inventory items now have data-model support for slot footprints, stack limits, categories, descriptions, stable slot indices, movement, swapping, rotation, stack merging, quantity-picked splitting, data-driven combine recipes with preview text, discard protection, filtered use-item selection, shared storage transfer, and rotated save/load
-- the item-collected/examine screen is a first pass and still needs final Resident Evil-style presentation and pause behavior
-- the current inventory UI is still an ImGui prototype rather than the final themed menu layer
-- RmlUi is set up at the project/asset/backend-seam level with generated gameplay RML, and the first native `HS2RmlUiBridge.dll` now renders through the managed Veldrid overlay when present
-- the current in-game test path still uses the `Engine.UI` ImGui preview renderer by default, even when the bridge DLL is present, until native RmlUi rendering is explicitly opted into
+- the item-collected/examine screen has a native RmlUi path with item PNG support, but it still needs final Resident Evil-style visual polish and full validation
+- RmlUi is set up at the project/asset/backend-seam level with generated gameplay RML, and the first native `HS2RmlUiBridge.dll` renders through the managed Veldrid overlay when native presentation is enabled
+- the ImGui preview renderer remains a fallback/safety path when native RmlUi is disabled; native RmlUi mode no longer draws the old gameplay preview by default
 - the native bridge now implements context creation, document loading, live generated-document refresh, render-command production, PNG texture export, and a temporary pixel-font fallback
 - the first Veldrid render-command consumer now uploads native RGBA texture data and binds RmlUi texture ids, but still needs richer input routing, final font/assets decisions, and RmlUi-side mouse/controller focus events
 - native RmlUi rendering can now be tested with `HS2_RMLUI_NATIVE_PRESENTATION=1`; `HS2_RMLUI_TEST_DOCUMENT=1` forces a known diagnostic panel before testing generated inventory RML
@@ -217,9 +224,9 @@ That work is aimed at fixing several visible problems:
 - interaction prompts, game messages, inventory action/split/discard overlays, and item-box storage now have native RmlUi presentation paths; the dev spawn textbox remains ImGui because it is a test/debug tool
 - look-at prompts now use fixed native RmlUi positioning plus a short prompt grace timer so small-item raycast flicker does not hide them immediately
 - native RmlUi presentation still needs visual validation across pickup cards, prompt/message cards, inventory grid, action menus, split/discard panels, use-item panels, and storage before ImGui gameplay preview can be retired
-- safe storage boxes and inventory/storage transfer are implemented as a first pass, but need final RmlUi presentation and multi-storage-point validation
+- safe storage boxes and inventory/storage transfer are implemented as a first pass, but need final RmlUi visual polish and multi-storage-point validation
 - locked chests currently disappear after granting prototype rewards rather than playing an authored open animation/state
-- save/load is prototype-local JSON state, not a full slot/save-profile system
+- save/load now supports four local JSON save slots with overwrite confirmation, richer metadata, and a first pause-menu load screen, but there is not yet a main-menu load screen or broader player profile system
 - `F6` reset is currently keyboard-only as a developer hotkey until a controller debug chord is chosen
 - collision for rotated capsules versus boxes is orientation-aware, but still approximate rather than a full rigid-body contact manifold solution
 - some support, picking, and ray logic may still rely on AABB-style fallbacks or broadphase approximations
@@ -233,8 +240,7 @@ That work is aimed at fixing several visible problems:
 - validate pickup/examine overlay flow on key pickups, ink ribbons, and chest rewards; native RmlUi pickup cards should show cleaned item PNGs, stay visible until a fresh confirm press, and return camera control immediately after closing
 - validate chest rewards for the Service Key supply chests: Scrap and Crank Handle
 - validate inventory pause, mouse hover descriptions, and controller/keyboard grid navigation in game
-- validate the latest inventory modal fix: opening inventory should stop camera/movement input and show a visible cursor for mouse hover
-- validate the `Engine.UI` preview path in the interaction test level: prompts, item-collected overlay, inventory grid, mouse hover, and controller/keyboard selection
+- validate native RmlUi inventory pause behavior: opening inventory should stop camera/movement input and show a visible cursor for mouse hover
 - validate inventory rotation using the Crank Handle: `R` / controller `Y` should swap between `1x2` and `2x1`, reject invalid placements, and persist through typewriter save/load
 - validate stack behavior: spawned Ink Ribbons and Scrap should merge up to max stack, keep overflow in the source stack, split chosen quantities with `Q` / controller `LeftShoulder`, and save/load counts cleanly
 - validate the `T` developer spawn prompt with `spawn ink x3`, `spawn scrap x20`, `spawn gunpowder x3`, `spawn bullets x12`, `spawn crank`, and `spawn testkey`
@@ -251,8 +257,7 @@ That work is aimed at fixing several visible problems:
 - validate the clearer storage/action detail panels with mouse, keyboard, and controller navigation
 - add more data-driven combine recipes once puzzle/material needs are known
 - polish prompt/readability feedback for locked doors, locked chests, expired keys, ink ribbon count, and typewriter state
-- evaluate whether to keep custom ImGui/Veldrid UI for tooling only and move gameplay menus to a dedicated game UI library
-- validate the first native RmlUi bridge in the interaction test level with `HS2_RMLUI_NATIVE_PRESENTATION=1`, especially pickup cards, inventory grid, use-item panels, prompts, and item icons
+- validate the native RmlUi bridge in the interaction test level with `HS2_RMLUI_NATIVE_PRESENTATION=1`, especially pickup cards, inventory grid, use-item panels, prompts, storage, and item icons
 - validate the native diagnostic panel first with `HS2_RMLUI_NATIVE_PRESENTATION=1` and `HS2_RMLUI_TEST_DOCUMENT=1`, confirming the styled card and `InkRibbon.png` icon both render
 - validate the generated native RmlUi gameplay UI with `HS2_RMLUI_NATIVE_PRESENTATION=1` and no diagnostic flag, especially `I` inventory open/close, `E` / controller `X` action menu, mouse hover/click slot selection, and item move/merge/swap
 - validate `hs2_rmlui_set_document_body` live refresh during rapid gameplay state changes such as opening inventory, selecting items, and picking up objects
@@ -260,9 +265,9 @@ That work is aimed at fixing several visible problems:
 - extend RmlUi mouse/controller focus navigation through the new `Engine.UI` layer once the rendered presentation is stable
 - extend slot-indexed inventory movement into final RmlUi item action menus, filtered usable-item screens, proper quantity picker styling, and storage transfer presentation
 - tune interaction prompt readability and raycast distance
-- replace the first-pass name-prefix interaction prototype with level-authored components if the flow feels right
-- build a proper inventory screen with item descriptions and selected-item focus
-- add shared safe storage after the item data model exists, so transfer/retrieve works with the same slot and stack rules
+- continue migrating interaction behavior from name-prefix fallbacks into authored `Interaction` data, then expose that cleanly in editor tooling
+- finish the proper native RmlUi inventory screen with item descriptions, selected-item focus, icons, action panels, quantity panels, and controller/mouse parity
+- expand shared safe storage beyond the first save-office box once the single storage point is validated
 - start shaping the interaction test into a small horror vertical-slice room sequence
 - keep multi-box pile stability and mixed box/capsule stack behavior parked unless it blocks the interaction loop
 - extend the new contact-manifold path so support and angular response are driven more consistently by contact points

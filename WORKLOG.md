@@ -1,6 +1,6 @@
 # Work Log
 
-Last updated: 2026-05-12
+Last updated: 2026-05-28
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
@@ -1122,6 +1122,256 @@ The current gameplay issues being worked first are:
 - open `StorageBox_SaveOffice` and confirm the native item-box panel appears and still transfers items with keyboard/controller input
 - if the card disappears again, temporarily set `HS2_RMLUI_FORCE_PREVIEW_MODALS=1` and inspect the generated runtime RML/card render data
 - continue moving inventory subpanels to native RmlUi once pickup/examine is visually stable
+
+## 2026-05-14
+
+### Summary
+
+- cleaned up stale and overlapping `PROJECT.md` wording around the current RmlUi and inventory state
+- clarified that RmlUi is the chosen gameplay UI direction, while ImGui remains a fallback/debug/editor path
+- refreshed immediate next steps so they focus on native RmlUi validation, inventory/storage polish, and interaction-loop hardening
+- confirmed there is no separate `PROGRESS.md`; `WORKLOG.md` is the current progress/handover file
+
+### Why
+
+- the project plan still contained older language implying the inventory was only an ImGui prototype, even though native RmlUi paths now exist for pickup cards, prompts, use-item panels, action panels, and storage
+- future chats need a cleaner high-level project snapshot without having to untangle historical UI migration notes
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- documentation-only change; no build required
+- checked repo markdown files and found `WORKLOG.md`, `PROJECT.md`, `PROJECT_GUIDELINES.md`, `README.md`, and UI/native readmes, but no `PROGRESS.md`
+
+### Next
+
+- continue validating native RmlUi presentation in the interaction test level with `HS2_RMLUI_NATIVE_PRESENTATION=1`
+- keep `WORKLOG.md` as the detailed progress file unless a shorter milestone-focused `PROGRESS.md` is intentionally added later
+
+## 2026-05-15
+
+### Summary
+
+- added authored `Interaction` data to level entities for data-driven locks, chests, puzzle slots, puzzle doors, target doors, stable state ids, success messages, consume rules, and rewards
+- converted the interaction test template's Rusted Key door, Archive Key door, Service Key save-office door, Service Key supply chests, Crank Handle lift puzzle, and Fuse power-gate puzzle to emit interaction data
+- routed lock, chest, puzzle-slot, puzzle-door animation, key expiry, save/load state checks, prompts, and chest rewards through the authored interaction data
+- kept the existing name-prefix behavior as a compatibility fallback for older levels and saves
+- updated `PROJECT.md` so it no longer says gameplay interactions are only name-prefix authored
+
+### Why
+
+- the existing `LockedDoor_`, `LockedChest_`, and `PuzzleSlot_` naming rules were useful for fast prototyping, but would become fragile once puzzles need multiple outputs, stable ids, custom messages, rewards, or consume rules
+- stable authored state ids make future puzzle/save behavior less dependent on object names
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor\Editor\LevelTypes.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\World\SimpleLevel.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj' -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+- the first sandboxed `Engine.Editor` build still hit the known local `obj` access-denied issue, so the full Game build was rerun outside the sandbox to rebuild dependencies
+
+### Next
+
+- reset or reload the interaction test level so the refreshed template writes the new `Interaction` objects into `interaction_test.json`
+- playtest the Rusted Key, Archive Key, Service Key, Crank Handle, and Fuse routes to confirm data-driven interactions behave the same as the previous naming-based version
+- expose `Interaction` editing in the level editor UI so new doors, chests, and puzzles can be authored without editing JSON directly
+
+## 2026-05-15
+
+### Summary
+
+- added four local save slots for typewriter saving
+- changed the typewriter flow so choosing an Ink Ribbon opens a save-slot panel instead of immediately overwriting one prototype save file
+- save slots are written as `Saves\slot_1.json` through `Saves\slot_4.json`
+- startup/reload now loads the newest slot save when one exists, with the old `Saves\prototype_save.json` still supported as a fallback
+- added save-slot state to `Engine.UI`, generated RmlUi, and the ImGui fallback preview
+- reset now clears all prototype slot saves as well as the old single save file
+- updated `PROJECT.md` to reflect save slots instead of a single prototype save file
+
+### Why
+
+- the Resident Evil-style typewriter flow needs the player to choose where to save before spending an Ink Ribbon
+- multiple slots make playtesting safer because the latest test run no longer has to overwrite the only save state
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiImGuiPreviewRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj' -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+
+### Next
+
+- playtest typewriter flow: choose Ink Ribbon, select each save slot, confirm saved slot metadata appears, and verify Ink Ribbon is only consumed after confirming a slot
+- restart/reload the game and confirm the newest slot is loaded automatically for now
+- later add a main-menu or pause-menu load panel so the player can choose which slot to load
+
+## 2026-05-20
+
+### Summary
+
+- added overwrite confirmation for filled typewriter save slots
+- kept empty save slots as one-confirm saves, while filled slots require a second `E` / controller `X` confirm before writing
+- prevented Ink Ribbons from being consumed until the final confirmed save write
+- added richer save metadata fields for playtime, level/area display name, save-point name, difficulty placeholder, and profile placeholder
+- restored saved playtime when loading a slot and reset it on level reset
+- surfaced playtime and save-point details in the generated RmlUi save-slot panel and ImGui fallback preview
+
+### Why
+
+- the typewriter save flow needs a clear Resident Evil-style “are you sure?” step before replacing an existing slot
+- slot metadata should be in the save file now so later load/profile UI can present useful save cards without reshaping old saves again
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiImGuiPreviewRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj' -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+
+### Next
+
+- playtest typewriter saving into an empty slot and confirm it saves immediately
+- playtest saving into a filled slot and confirm the overwrite panel appears, `I` / controller `Back` cancels only the overwrite step, and a second `E` / controller `X` overwrites
+- confirm Ink Ribbon count only decreases after the final save confirmation
+- later add a load-slot screen that uses the prepared level/playtime/save-point metadata
+
+## 2026-05-22
+
+### Summary
+
+- suppressed old gameplay ImGui preview drawing while native RmlUi presentation is active, except for the explicit emergency modal preview flag
+- removed the small decorative left-line effect from inventory item/icon cells by disabling the mini-icon border and covered-slot stitch border
+- added a first-pass pause menu opened with `Escape`
+- added a pause-menu Load Save screen that lists the four local save slots using the existing save metadata
+- loading an empty slot now gives feedback, while loading a filled slot restores that save and returns to gameplay
+- exposed pause/load state through `Engine.UI`, generated RmlUi, and the ImGui fallback preview
+
+### Why
+
+- first-hover prompts and newly opened menus should not briefly show old ImGui UI now that native RmlUi is the visible gameplay UI path
+- the inventory icons should read as clean item tiles without stray border fragments
+- prepared save-slot metadata needed a player-facing load path before broader main-menu/profile work
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiLayer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiImGuiPreviewRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj' -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+
+### Next
+
+- with native RmlUi enabled, hover pickups/doors/puzzles and confirm no old ImGui prompt flashes on the first frame
+- open inventory, pause, and load screens and confirm they do not flash old ImGui panels on first open
+- open inventory and confirm item icons no longer have the small left-side line
+- press `Escape`, confirm the pause menu appears, choose Load Save, and load a filled slot
+- confirm empty load slots show feedback and keep the load screen open
+- later add controller-specific pause/menu affordances once controller UI testing begins
+
+## 2026-05-22
+
+### Summary
+
+- added a small native RmlUi crosshair at the center of the gameplay camera view
+- switched the RmlUi crosshair to explicit pixel positioning from the current window size
+- added a renderer-side fallback crosshair so aiming does not depend on RmlUi percentage/margin CSS support
+- copied the updated `Engine.UI.dll` and inventory RCSS into the normal game output after the targeted builds
+- hid the crosshair automatically while gameplay modal UI is open
+- added managed mouse hover hit-testing for the pause menu rows
+- added managed mouse hover and click selection for typewriter save slots
+- added managed mouse hover and click selection for pause-menu load slots
+
+### Why
+
+- the interaction test level now has enough small pickups, doors, and puzzle panels that aiming without a crosshair slows playtesting down
+- pause/save/load screens should feel mouse-friendly while the native RmlUi input bridge is still presentation-first rather than full button-event driven
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\GameplayUiState.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\UI\Inventory\inventory.rcss`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- full `Game` build hit the known local `obj` temp-file access-denied issue
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Engine.UI.csproj' --no-restore --no-dependencies` succeeded with 0 warnings and 0 errors
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj' --no-restore --no-dependencies -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+
+### Next
+
+- confirm the crosshair is centered during gameplay and hidden during inventory, pause, save, load, item pickup, and storage UI
+- confirm mouse hover changes the selected row in Pause, Save Game, and Load Game panels
+- confirm mouse click activates Resume, Load Save, save slot selection, and load slot selection
+- later replace fixed managed menu hitboxes with native RmlUi element events once the UI bridge supports them broadly
+
+## 2026-05-28
+
+### Summary
+
+- moved pause-menu, save-slot, load-slot, inventory action, and storage mouse selection onto native RmlUi hovered `data-slot` elements
+- kept the older fixed mouse rectangles only as a fallback when native RmlUi presentation is not active
+- gave storage-box slots and inventory action rows separate native slot ranges so mouse hover can tell inventory-side slots, storage-side slots, and action rows apart
+- added clearer mouse hover/click hints to the native inventory, storage, pause, save, load, and action menu footers
+- copied the rebuilt `Engine.UI.dll`, `Engine.UI.pdb`, and updated inventory RCSS into the normal Game output folder
+
+### Why
+
+- the previous pause/save/load mouse support was based on guessed screen rectangles, which is fragile now that RmlUi owns the actual layout
+- storage and action menus need the same native UI input path as inventory slots before the gameplay UI can fully move away from ImGui-style interaction
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Rml\RmlUiDocumentBuilder.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\Engine.UI.csproj' --no-restore --no-dependencies` succeeded with 0 warnings and 0 errors
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj' --no-restore --no-dependencies -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+
+### Next
+
+- playtest native RmlUi mouse hover/click on pause, save, load, inventory action menu, use-item list, and item-box storage
+- start the next UI polish slice: tighten survival-horror menu readability, hover states, and selected-item feedback now that input is less brittle
 
 ## Notes For Future Chats
 

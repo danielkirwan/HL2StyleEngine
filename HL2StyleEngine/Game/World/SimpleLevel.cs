@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Engine.Editor.Level;
 using Engine.Physics.Dynamics;
@@ -184,6 +185,40 @@ public static class SimpleLevel
             };
         }
 
+        static LevelInteractionRewardDef Reward(string itemId, int count = 1)
+            => new()
+            {
+                ItemId = itemId,
+                Count = count
+            };
+
+        static LevelEntityDef WithInteraction(
+            LevelEntityDef entity,
+            string kind,
+            string stateId,
+            string requiredItem = "",
+            bool consumesItem = false,
+            string prompt = "",
+            string lockedPrompt = "",
+            string successMessage = "",
+            string[]? targets = null,
+            LevelInteractionRewardDef[]? rewards = null)
+        {
+            entity.Interaction = new LevelInteractionDef
+            {
+                Kind = kind,
+                StateId = stateId,
+                RequiredItem = requiredItem,
+                ConsumesItem = consumesItem,
+                Prompt = prompt,
+                LockedPrompt = lockedPrompt,
+                SuccessMessage = successMessage,
+                Targets = targets?.ToList() ?? new List<string>(),
+                Rewards = rewards?.ToList() ?? new List<LevelInteractionRewardDef>()
+            };
+            return entity;
+        }
+
         Vector4 floor = new(0.12f, 0.13f, 0.14f, 1f);
         Vector4 carpet = new(0.32f, 0.05f, 0.11f, 1f);
         Vector4 wall = new(0.27f, 0.28f, 0.30f, 1f);
@@ -225,26 +260,59 @@ public static class SimpleLevel
 
         level.Entities.Add(Box("Divider_Foyer_LeftOfDoor", new Vector3(-5.25f, 1.7f, -6.4f), new Vector3(7.5f, 3.4f, 0.35f), wall));
         level.Entities.Add(Box("Divider_Foyer_RightOfDoor", new Vector3(5.25f, 1.7f, -6.4f), new Vector3(7.5f, 3.4f, 0.35f), wall));
-        level.Entities.Add(Box("LockedDoor_RustedKey", new Vector3(0f, 1.2f, -6.45f), new Vector3(3.1f, 2.4f, 0.28f), door));
+        level.Entities.Add(WithInteraction(
+            Box("LockedDoor_RustedKey", new Vector3(0f, 1.2f, -6.45f), new Vector3(3.1f, 2.4f, 0.28f), door),
+            "LockedDoor",
+            "Door_Foyer_RustedKey",
+            requiredItem: "RustedKey",
+            successMessage: "The Rusted Key turns in the lock."));
 
         level.Entities.Add(Box("Divider_Archive_LeftOfDoor", new Vector3(-5.25f, 1.7f, 3.6f), new Vector3(7.5f, 3.4f, 0.35f), wall));
         level.Entities.Add(Box("Divider_Archive_RightOfDoor", new Vector3(5.25f, 1.7f, 3.6f), new Vector3(7.5f, 3.4f, 0.35f), wall));
-        level.Entities.Add(Box("LockedDoor_ArchiveKey", new Vector3(0f, 1.2f, 3.55f), new Vector3(3.1f, 2.4f, 0.28f), door));
+        level.Entities.Add(WithInteraction(
+            Box("LockedDoor_ArchiveKey", new Vector3(0f, 1.2f, 3.55f), new Vector3(3.1f, 2.4f, 0.28f), door),
+            "LockedDoor",
+            "Door_Archive",
+            requiredItem: "ArchiveKey",
+            successMessage: "The Archive Key opens the archive door."));
 
         level.Entities.Add(Box("Wall_SaveOffice_Back", new Vector3(-5.7f, 1.7f, 3.4f), new Vector3(6.2f, 3.4f, 0.35f), wall));
         level.Entities.Add(Box("Wall_SaveOffice_Side_South", new Vector3(-3.05f, 1.7f, -4.75f), new Vector3(0.35f, 3.4f, 3.4f), wall));
         level.Entities.Add(Box("Wall_SaveOffice_Side_North", new Vector3(-3.05f, 1.7f, 1.25f), new Vector3(0.35f, 3.4f, 4.1f), wall));
-        level.Entities.Add(Box("LockedDoor_ServiceKey__SaveOffice", new Vector3(-3.08f, 1.2f, -1.95f), new Vector3(0.28f, 2.4f, 2.5f), door));
+        level.Entities.Add(WithInteraction(
+            Box("LockedDoor_ServiceKey__SaveOffice", new Vector3(-3.08f, 1.2f, -1.95f), new Vector3(0.28f, 2.4f, 2.5f), door),
+            "LockedDoor",
+            "Door_SaveOffice_ServiceKey",
+            requiredItem: "ServiceKey",
+            successMessage: "The Service Key unlocks the save office."));
 
         level.Entities.Add(Box("Wall_Utility_Side_South_Front", new Vector3(3.15f, 1.7f, -3.45f), new Vector3(0.35f, 3.4f, 2.3f), wall));
         level.Entities.Add(Box("Wall_Utility_Side_South_Rear", new Vector3(3.15f, 1.7f, -6.15f), new Vector3(0.35f, 3.4f, 0.9f), wall));
-        level.Entities.Add(Box("PuzzleDoor_Fuse__PowerGate", new Vector3(3.12f, 1.2f, -5.05f), new Vector3(0.28f, 2.4f, 1.35f), door));
-        level.Entities.Add(Box("PuzzleSlot_Fuse__PowerGate", new Vector3(3.35f, 1.05f, -4.25f), new Vector3(0.16f, 0.42f, 0.42f), fuse));
+        level.Entities.Add(WithInteraction(
+            Box("PuzzleDoor_Fuse__PowerGate", new Vector3(3.12f, 1.2f, -5.05f), new Vector3(0.28f, 2.4f, 1.35f), door),
+            "PuzzleDoor",
+            "Puzzle_PowerGate"));
+        level.Entities.Add(WithInteraction(
+            Box("PuzzleSlot_Fuse__PowerGate", new Vector3(3.35f, 1.05f, -4.25f), new Vector3(0.16f, 0.42f, 0.42f), fuse),
+            "PuzzleSlot",
+            "Puzzle_PowerGate",
+            requiredItem: "Fuse",
+            successMessage: "The Fuse clicks into place. The powered gate is lifting.",
+            targets: new[] { "PuzzleDoor_Fuse__PowerGate" }));
         level.Entities.Add(Box("Wall_Utility_Side_North", new Vector3(3.15f, 1.7f, 1.15f), new Vector3(0.35f, 3.4f, 4.5f), wall));
         level.Entities.Add(Box("Wall_Utility_Back_Left", new Vector3(4.2f, 1.7f, -3.6f), new Vector3(2.2f, 3.4f, 0.35f), wall));
         level.Entities.Add(Box("Wall_Utility_Back_Right", new Vector3(8.05f, 1.7f, -3.6f), new Vector3(1.9f, 3.4f, 0.35f), wall));
-        level.Entities.Add(Box("PuzzleDoor_CrankHandle__UtilityLift", new Vector3(6.05f, 1.2f, -3.58f), new Vector3(2.1f, 2.4f, 0.32f), door));
-        level.Entities.Add(Box("PuzzleSlot_CrankHandle__UtilityLift", new Vector3(5.05f, 1.05f, -3.35f), new Vector3(0.42f, 0.42f, 0.16f), brass));
+        level.Entities.Add(WithInteraction(
+            Box("PuzzleDoor_CrankHandle__UtilityLift", new Vector3(6.05f, 1.2f, -3.58f), new Vector3(2.1f, 2.4f, 0.32f), door),
+            "PuzzleDoor",
+            "Puzzle_UtilityLift"));
+        level.Entities.Add(WithInteraction(
+            Box("PuzzleSlot_CrankHandle__UtilityLift", new Vector3(5.05f, 1.05f, -3.35f), new Vector3(0.42f, 0.42f, 0.16f), brass),
+            "PuzzleSlot",
+            "Puzzle_UtilityLift",
+            requiredItem: "CrankHandle",
+            successMessage: "The Crank Handle turns the mechanism. The door is lifting.",
+            targets: new[] { "PuzzleDoor_CrankHandle__UtilityLift" }));
         level.Entities.Add(Box("Wall_CrankAlcove_Back", new Vector3(6.05f, 1.7f, -6.55f), new Vector3(5.9f, 3.4f, 0.35f), wall));
         level.Entities.Add(Box("Shelf_CrankAlcove_Fuse", new Vector3(6.05f, 0.5f, -5.55f), new Vector3(1.4f, 0.35f, 0.75f), archive));
         level.Entities.Add(Box("Item_Fuse__CrankAlcove", new Vector3(6.05f, 0.78f, -5.55f), new Vector3(0.36f, 0.14f, 0.24f), fuse, new Vector3(0f, 22f, 0f)));
@@ -255,8 +323,20 @@ public static class SimpleLevel
 
         level.Entities.Add(Box("Shelf_ServiceKey", new Vector3(5.85f, 0.55f, -1.25f), new Vector3(1.7f, 0.35f, 0.9f), archive));
         level.Entities.Add(Box("ItemKey_ServiceKey", new Vector3(5.85f, 0.85f, -1.25f), new Vector3(0.42f, 0.08f, 0.18f), brass, new Vector3(0f, -35f, 0f)));
-        level.Entities.Add(Box("LockedChest_ServiceKey__SupplyA", new Vector3(7.25f, 0.45f, -1.05f), new Vector3(0.9f, 0.7f, 0.8f), desk, new Vector3(0f, 8f, 0f)));
-        level.Entities.Add(Box("LockedChest_ServiceKey__SupplyB", new Vector3(7.25f, 0.45f, -2.25f), new Vector3(0.9f, 0.7f, 0.8f), desk, new Vector3(0f, -5f, 0f)));
+        level.Entities.Add(WithInteraction(
+            Box("LockedChest_ServiceKey__SupplyA", new Vector3(7.25f, 0.45f, -1.05f), new Vector3(0.9f, 0.7f, 0.8f), desk, new Vector3(0f, 8f, 0f)),
+            "LockedChest",
+            "Chest_Service_SupplyA",
+            requiredItem: "ServiceKey",
+            successMessage: "The Service Key opens the supply box.",
+            rewards: new[] { Reward("Scrap", 3) }));
+        level.Entities.Add(WithInteraction(
+            Box("LockedChest_ServiceKey__SupplyB", new Vector3(7.25f, 0.45f, -2.25f), new Vector3(0.9f, 0.7f, 0.8f), desk, new Vector3(0f, -5f, 0f)),
+            "LockedChest",
+            "Chest_Service_SupplyB",
+            requiredItem: "ServiceKey",
+            successMessage: "The Service Key opens the supply box.",
+            rewards: new[] { Reward("CrankHandle") }));
         level.Entities.Add(Box("SaveDesk", new Vector3(-6.2f, 0.3f, 1.55f), new Vector3(1.8f, 0.35f, 1.1f), desk));
         level.Entities.Add(Box("SavePoint_Typewriter", new Vector3(-6.2f, 0.7f, 1.55f), new Vector3(1.2f, 0.38f, 0.75f), save));
         level.Entities.Add(Box("StorageBox_SaveOffice", new Vector3(-8.05f, 0.45f, 1.55f), new Vector3(1.0f, 0.9f, 1.0f), storage, new Vector3(0f, 10f, 0f)));

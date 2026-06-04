@@ -9,6 +9,54 @@ body {
   height: 100%;
 }
 
+#crosshair {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+}
+
+.crosshair-line {
+  position: absolute;
+  background-color: #eef2e8;
+}
+
+.crosshair-line.horizontal {
+  width: 10px;
+  height: 2px;
+  top: 17px;
+}
+
+.crosshair-line.vertical {
+  width: 2px;
+  height: 10px;
+  left: 17px;
+}
+
+.crosshair-line.left {
+  left: 0;
+}
+
+.crosshair-line.right {
+  left: 26px;
+}
+
+.crosshair-line.top {
+  top: 0;
+}
+
+.crosshair-line.bottom {
+  top: 26px;
+}
+
+.crosshair-dot {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  width: 4px;
+  height: 4px;
+  background-color: #eef2e8;
+}
+
 .glass-panel,
 .modal-card {
   background-color: rgba(4, 7, 8, 0.93);
@@ -231,7 +279,7 @@ h2 {
   top: 9px;
   right: 9px;
   bottom: 9px;
-  border: 1px #6f7b74;
+  border: 0;
 }
 
 .mini-icon {
@@ -243,7 +291,7 @@ h2 {
   color: #f3efe1;
   font-size: 11px;
   letter-spacing: 1px;
-  border: 1px #8b887c;
+  border: 0;
 }
 
 .item-icon-image {
@@ -707,6 +755,236 @@ h2 {
   width: 450px;
   height: 18px;
   color: #9aa098;
+  font-size: 12px;
+}
+
+#save-slot-panel {
+  position: absolute;
+  left: 360px;
+  top: 104px;
+  width: 520px;
+  padding: 24px;
+  background-color: #070a0b;
+  border: 2px #d2cfbd;
+}
+
+#load-slot-panel {
+  position: absolute;
+  left: 360px;
+  top: 104px;
+  width: 520px;
+  padding: 24px;
+  background-color: #070a0b;
+  border: 2px #d2cfbd;
+}
+
+#pause-panel {
+  position: absolute;
+  left: 430px;
+  top: 150px;
+  width: 380px;
+  height: 300px;
+  padding: 24px;
+  background-color: #070a0b;
+  border: 2px #d2cfbd;
+}
+
+.pause-title {
+  position: absolute;
+  left: 28px;
+  top: 26px;
+  width: 250px;
+  height: 32px;
+  color: #eeeadb;
+  font-size: 30px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.pause-subtitle {
+  position: absolute;
+  left: 28px;
+  top: 66px;
+  width: 300px;
+  height: 18px;
+  color: #92988f;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+#pause-menu-list {
+  position: absolute;
+  left: 28px;
+  top: 110px;
+  width: 324px;
+  height: 130px;
+}
+
+.pause-menu-row {
+  position: absolute;
+  left: 0;
+  width: 324px;
+  height: 44px;
+  padding-top: 12px;
+  background-color: #111819;
+  border: 1px #5b625e;
+  color: #c8cec4;
+  text-align: center;
+  font-size: 16px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.pause-menu-row.selected {
+  border: 2px #d9dacb;
+  background-color: #263030;
+  color: #f1eddd;
+}
+
+.pause-footer {
+  position: absolute;
+  left: 28px;
+  bottom: 22px;
+  width: 324px;
+  height: 28px;
+  color: #9aa098;
+  font-size: 11px;
+  text-align: center;
+}
+
+.save-title {
+  position: absolute;
+  left: 24px;
+  top: 22px;
+  width: 220px;
+  height: 28px;
+  color: #eeeadb;
+  font-size: 26px;
+  letter-spacing: 2px;
+}
+
+.save-subtitle {
+  position: absolute;
+  left: 24px;
+  top: 58px;
+  width: 420px;
+  height: 18px;
+  color: #92988f;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+#save-slot-list {
+  position: absolute;
+  left: 24px;
+  top: 96px;
+  width: 472px;
+  height: 300px;
+}
+
+.save-slot-row {
+  display: block;
+  position: absolute;
+  left: 0;
+  width: 472px;
+  height: 72px;
+  background-color: #151b1d;
+  border: 1px #5b625e;
+}
+
+.save-slot-row.empty {
+  background-color: #101416;
+}
+
+.save-slot-row.selected {
+  border: 2px #d9dacb;
+  background-color: #263030;
+}
+
+.save-slot-name {
+  position: absolute;
+  left: 18px;
+  top: 10px;
+  width: 160px;
+  height: 18px;
+  color: #f1eddd;
+  font-size: 16px;
+}
+
+.save-slot-meta {
+  position: absolute;
+  left: 18px;
+  top: 34px;
+  width: 270px;
+  height: 16px;
+  color: #aeb6ae;
+  font-size: 11px;
+}
+
+.save-slot-playtime {
+  position: absolute;
+  left: 18px;
+  top: 52px;
+  width: 230px;
+  height: 14px;
+  color: #87918a;
+  font-size: 10px;
+}
+
+.save-slot-time {
+  position: absolute;
+  right: 18px;
+  top: 10px;
+  width: 150px;
+  height: 16px;
+  text-align: right;
+  color: #c4c0a7;
+  font-size: 11px;
+}
+
+.save-slot-cargo {
+  position: absolute;
+  right: 18px;
+  top: 34px;
+  width: 190px;
+  height: 16px;
+  text-align: right;
+  color: #8e978f;
+  font-size: 10px;
+}
+
+.save-footer {
+  position: absolute;
+  left: 24px;
+  bottom: 18px;
+  width: 472px;
+  height: 18px;
+  color: #9aa098;
+  font-size: 12px;
+}
+
+#save-overwrite-confirm {
+  left: 128px;
+  top: 170px;
+  width: 260px;
+  height: 132px;
+  background-color: #17110d;
+  border: 2px #d1b274;
+}
+
+#save-overwrite-confirm .menu-title {
+  color: #f1d8a0;
+}
+
+#save-overwrite-confirm .menu-copy {
+  position: absolute;
+  left: 18px;
+  top: 48px;
+  width: 224px;
+  height: 32px;
+  color: #c8c2ad;
   font-size: 12px;
 }
 

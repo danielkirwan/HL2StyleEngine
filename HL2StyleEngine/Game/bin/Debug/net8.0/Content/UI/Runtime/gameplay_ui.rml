@@ -5,6 +5,13 @@
   </head>
   <body>
     <div id="gameplay-root">
+      <div id="crosshair" style="left: 622px; top: 306px;">
+        <div class="crosshair-line horizontal left"></div>
+        <div class="crosshair-line horizontal right"></div>
+        <div class="crosshair-line vertical top"></div>
+        <div class="crosshair-line vertical bottom"></div>
+        <div class="crosshair-dot"></div>
+      </div>
     </div>
   </body>
 </rml>

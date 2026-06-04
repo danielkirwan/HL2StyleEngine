@@ -5,6 +5,9 @@ namespace Engine.UI.Rml;
 
 internal static class RmlUiDocumentBuilder
 {
+    private const int StorageBoxDataSlotOffset = 1000;
+    private const int InventoryActionDataSlotOffset = 2000;
+
     public static string Build(GameplayUiState state)
     {
         StringBuilder sb = new();
@@ -16,12 +19,25 @@ internal static class RmlUiDocumentBuilder
         sb.AppendLine("  <body>");
         sb.AppendLine("    <div id=\"gameplay-root\">");
 
+        AppendCrosshair(sb, state);
         AppendPrompt(sb, state);
 
         if (state.ItemCollectedOpen && state.CollectedItem != null)
             AppendCollectedItem(sb, state.CollectedItem);
 
-        if (state.StorageOpen)
+        if (state.SaveSlotPanelOpen)
+        {
+            AppendSaveSlotPanel(sb, state);
+        }
+        else if (state.LoadSlotPanelOpen)
+        {
+            AppendLoadSlotPanel(sb, state);
+        }
+        else if (state.PauseMenuOpen)
+        {
+            AppendPauseMenu(sb, state);
+        }
+        else if (state.StorageOpen)
         {
             AppendStoragePanel(sb, state);
         }
@@ -37,6 +53,20 @@ internal static class RmlUiDocumentBuilder
         sb.AppendLine("  </body>");
         sb.AppendLine("</rml>");
         return sb.ToString();
+    }
+
+    private static void AppendCrosshair(StringBuilder sb, GameplayUiState state)
+    {
+        if (!state.CrosshairVisible)
+            return;
+
+        sb.AppendLine($"      <div id=\"crosshair\" style=\"left: {Math.Max(0, state.CrosshairLeft)}px; top: {Math.Max(0, state.CrosshairTop)}px;\">");
+        sb.AppendLine("        <div class=\"crosshair-line horizontal left\"></div>");
+        sb.AppendLine("        <div class=\"crosshair-line horizontal right\"></div>");
+        sb.AppendLine("        <div class=\"crosshair-line vertical top\"></div>");
+        sb.AppendLine("        <div class=\"crosshair-line vertical bottom\"></div>");
+        sb.AppendLine("        <div class=\"crosshair-dot\"></div>");
+        sb.AppendLine("      </div>");
     }
 
     private static void AppendPrompt(StringBuilder sb, GameplayUiState state)
@@ -64,7 +94,7 @@ internal static class RmlUiDocumentBuilder
         AppendStorageGrid(sb, "storage-inventory-grid", "Inventory", state.InventoryItems, state.SelectedSlot, !state.StorageFocusStorage);
         AppendStorageGrid(sb, "storage-box-grid", "Storage", state.StorageItems, state.SelectedStorageSlot, state.StorageFocusStorage);
 
-        sb.AppendLine("        <div class=\"storage-footer\">Tab / LB / RB: Switch side - E / X: Transfer - I / Back: Close</div>");
+        sb.AppendLine("        <div class=\"storage-footer\">Mouse: Hover / Click - Tab / LB / RB: Switch side - E / X: Transfer - I / Back: Close</div>");
 
         if (state.StorageTransferPickerOpen)
         {
@@ -90,6 +120,7 @@ internal static class RmlUiDocumentBuilder
         Dictionary<int, GameplayUiInventoryItem> byOriginSlot = items.ToDictionary(item => item.SlotIndex);
         Dictionary<int, GameplayUiInventoryItem> byCoveredSlot = BuildCoveredSlotLookup(items);
         string focusedClass = focused ? " focused" : "";
+        bool storageSide = string.Equals(id, "storage-box-grid", StringComparison.OrdinalIgnoreCase);
 
         sb.AppendLine($"        <div id=\"{Esc(id)}\" class=\"storage-grid-panel{focusedClass}\">");
         sb.AppendLine($"          <div class=\"storage-grid-title\">{Esc(title)}</div>");
@@ -103,13 +134,14 @@ internal static class RmlUiDocumentBuilder
             bool selected = focused && slot == selectedSlot;
             string selectedClass = selected ? " selected" : "";
             string slotStyle = BuildStorageSlotStyle(slot, gridWidth);
+            int dataSlot = storageSide ? StorageBoxDataSlotOffset + slot : slot;
             bool covered = byCoveredSlot.TryGetValue(slot, out GameplayUiInventoryItem? coveredItem);
             bool origin = byOriginSlot.TryGetValue(slot, out GameplayUiInventoryItem? item);
 
             if (origin && item != null)
             {
                 string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
-                sb.AppendLine($"            <div class=\"slot filled{selectedClass}\"{slotStyle}>");
+                sb.AppendLine($"            <div class=\"slot filled{selectedClass}\" data-slot=\"{dataSlot}\"{slotStyle}>");
                 sb.AppendLine($"              <div class=\"mini-icon {Esc(ItemToneClass(item.Type))}\">");
                 AppendIconOrText(sb, item.IconPath, item.Id, item.Type, "mini");
                 sb.AppendLine("              </div>");
@@ -118,14 +150,14 @@ internal static class RmlUiDocumentBuilder
             }
             else if (covered && coveredItem != null)
             {
-                sb.AppendLine($"            <div class=\"slot filled footprint-covered{selectedClass}\"{slotStyle}>");
+                sb.AppendLine($"            <div class=\"slot filled footprint-covered{selectedClass}\" data-slot=\"{dataSlot}\"{slotStyle}>");
                 sb.AppendLine("              <div class=\"covered-stitch\"></div>");
                 sb.AppendLine($"              <p class=\"slot-name\">{Esc(ShortLabel(coveredItem.DisplayName))}</p>");
                 sb.AppendLine("            </div>");
             }
             else
             {
-                sb.AppendLine($"            <div class=\"slot empty{selectedClass}\"{slotStyle}></div>");
+                sb.AppendLine($"            <div class=\"slot empty{selectedClass}\" data-slot=\"{dataSlot}\"{slotStyle}></div>");
             }
         }
 
@@ -155,6 +187,122 @@ internal static class RmlUiDocumentBuilder
         sb.AppendLine("            <div class=\"collected-confirm\">E / X: Confirm</div>");
         sb.AppendLine("          </div>");
         sb.AppendLine("        </div>");
+        sb.AppendLine("      </section>");
+    }
+
+    private static void AppendPauseMenu(StringBuilder sb, GameplayUiState state)
+    {
+        string resumeClass = state.SelectedPauseMenuIndex == 0 ? " selected" : "";
+        string loadClass = state.SelectedPauseMenuIndex == 1 ? " selected" : "";
+
+        sb.AppendLine("      <section id=\"pause-panel\" class=\"modal-card\">");
+        sb.AppendLine("        <div class=\"pause-title\">Paused</div>");
+        sb.AppendLine("        <div class=\"pause-subtitle\">Interaction test</div>");
+        sb.AppendLine("        <div id=\"pause-menu-list\">");
+        sb.AppendLine($"          <div class=\"pause-menu-row{resumeClass}\" data-slot=\"0\" style=\"top: 0px;\">Resume</div>");
+        sb.AppendLine($"          <div class=\"pause-menu-row{loadClass}\" data-slot=\"1\" style=\"top: 54px;\">Load Save</div>");
+        sb.AppendLine("        </div>");
+        sb.AppendLine("        <div class=\"pause-footer\">Mouse: Hover / Click - W/S or D-pad: Select - E / X: Confirm - Esc / I / Back: Resume</div>");
+        sb.AppendLine("      </section>");
+    }
+
+    private static void AppendLoadSlotPanel(StringBuilder sb, GameplayUiState state)
+    {
+        int count = Math.Max(1, state.SaveSlots.Count);
+        int panelHeight = 170 + count * 82;
+        sb.AppendLine($"      <section id=\"load-slot-panel\" class=\"modal-card\" style=\"height: {panelHeight}px;\">");
+        sb.AppendLine("        <div class=\"save-title\">Load Game</div>");
+        sb.AppendLine("        <div class=\"save-subtitle\">Choose saved progress</div>");
+        sb.AppendLine("        <div id=\"save-slot-list\">");
+
+        if (state.SaveSlots.Count == 0)
+        {
+            sb.AppendLine("          <div class=\"save-slot-row selected empty\" data-slot=\"0\" style=\"top: 0px;\">");
+            sb.AppendLine("            <div class=\"save-slot-name\">Slot 1</div>");
+            sb.AppendLine("            <div class=\"save-slot-meta\">Empty slot</div>");
+            sb.AppendLine("          </div>");
+        }
+        else
+        {
+            for (int i = 0; i < state.SaveSlots.Count; i++)
+            {
+                GameplayUiSaveSlot slot = state.SaveSlots[i];
+                string selectedClass = slot.SlotIndex == state.SelectedLoadSlotIndex ? " selected" : "";
+                string emptyClass = slot.IsEmpty ? " empty" : " filled";
+                sb.AppendLine($"          <div class=\"save-slot-row{selectedClass}{emptyClass}\" data-slot=\"{slot.SlotIndex}\" style=\"top: {i * 82}px;\">");
+                sb.AppendLine($"            <div class=\"save-slot-name\">{Esc(slot.Label)}</div>");
+                if (slot.IsEmpty)
+                {
+                    sb.AppendLine("            <div class=\"save-slot-meta\">Empty slot</div>");
+                }
+                else
+                {
+                    sb.AppendLine($"            <div class=\"save-slot-meta\">{Esc(slot.AreaName)} - Saves {slot.SaveCount}</div>");
+                    sb.AppendLine($"            <div class=\"save-slot-playtime\">Play time {Esc(slot.PlayTime)}</div>");
+                    sb.AppendLine($"            <div class=\"save-slot-time\">{Esc(slot.SavedAt)}</div>");
+                    sb.AppendLine($"            <div class=\"save-slot-cargo\">{Esc(slot.SavePointName)} - Inventory {slot.InventoryCount} / Storage {slot.StorageCount}</div>");
+                }
+                sb.AppendLine("          </div>");
+            }
+        }
+
+        sb.AppendLine("        </div>");
+        sb.AppendLine("        <div class=\"save-footer\">Mouse: Hover / Click - W/S or D-pad: Select - E / X: Load - Esc / I / Back: Back</div>");
+        sb.AppendLine("      </section>");
+    }
+
+    private static void AppendSaveSlotPanel(StringBuilder sb, GameplayUiState state)
+    {
+        int count = Math.Max(1, state.SaveSlots.Count);
+        int panelHeight = 170 + count * 82;
+        sb.AppendLine($"      <section id=\"save-slot-panel\" class=\"modal-card\" style=\"height: {panelHeight}px;\">");
+        sb.AppendLine("        <div class=\"save-title\">Save Game</div>");
+        sb.AppendLine("        <div class=\"save-subtitle\">Choose a typewriter slot</div>");
+        sb.AppendLine("        <div id=\"save-slot-list\">");
+
+        if (state.SaveSlots.Count == 0)
+        {
+            sb.AppendLine("          <div class=\"save-slot-row selected\" data-slot=\"0\" style=\"top: 0px;\">");
+            sb.AppendLine("            <div class=\"save-slot-name\">Slot 1</div>");
+            sb.AppendLine("            <div class=\"save-slot-meta\">Empty</div>");
+            sb.AppendLine("          </div>");
+        }
+        else
+        {
+            for (int i = 0; i < state.SaveSlots.Count; i++)
+            {
+                GameplayUiSaveSlot slot = state.SaveSlots[i];
+                string selectedClass = slot.SlotIndex == state.SelectedSaveSlotIndex ? " selected" : "";
+                string emptyClass = slot.IsEmpty ? " empty" : " filled";
+                sb.AppendLine($"          <div class=\"save-slot-row{selectedClass}{emptyClass}\" data-slot=\"{slot.SlotIndex}\" style=\"top: {i * 82}px;\">");
+                sb.AppendLine($"            <div class=\"save-slot-name\">{Esc(slot.Label)}</div>");
+                if (slot.IsEmpty)
+                {
+                    sb.AppendLine("            <div class=\"save-slot-meta\">Empty slot</div>");
+                }
+                else
+                {
+                    sb.AppendLine($"            <div class=\"save-slot-meta\">{Esc(slot.AreaName)} - Saves {slot.SaveCount}</div>");
+                    sb.AppendLine($"            <div class=\"save-slot-playtime\">Play time {Esc(slot.PlayTime)}</div>");
+                    sb.AppendLine($"            <div class=\"save-slot-time\">{Esc(slot.SavedAt)}</div>");
+                    sb.AppendLine($"            <div class=\"save-slot-cargo\">{Esc(slot.SavePointName)} - Inventory {slot.InventoryCount} / Storage {slot.StorageCount}</div>");
+                }
+                sb.AppendLine("          </div>");
+            }
+        }
+
+        sb.AppendLine("        </div>");
+        if (state.SaveOverwriteConfirmOpen)
+        {
+            GameplayUiSaveSlot? selected = state.SaveSlots.FirstOrDefault(slot => slot.SlotIndex == state.SelectedSaveSlotIndex);
+            string slotName = selected?.Label ?? $"Slot {state.SelectedSaveSlotIndex + 1}";
+            sb.AppendLine("        <section id=\"save-overwrite-confirm\" class=\"floating-menu warning-menu\">");
+            sb.AppendLine("          <div class=\"menu-title\">Overwrite Save?</div>");
+            sb.AppendLine($"          <div class=\"menu-copy\">{Esc(slotName)} already contains saved progress.</div>");
+            sb.AppendLine("          <div class=\"menu-footer\">E / X: Overwrite - I / Back: Cancel</div>");
+            sb.AppendLine("        </section>");
+        }
+        sb.AppendLine("        <div class=\"save-footer\">Mouse: Hover / Click - W/S or D-pad: Select - E / X: Save - I / Back: Cancel</div>");
         sb.AppendLine("      </section>");
     }
 
@@ -311,7 +459,7 @@ internal static class RmlUiDocumentBuilder
         }
         else
         {
-            sb.AppendLine("          <p class=\"footer-hint\">E / X: Actions | R / Y: Rotate | Q / LB: Split | I / Back: Close</p>");
+            sb.AppendLine("          <p class=\"footer-hint\">Mouse: Drag / Click | E / X: Actions | R / Y: Rotate | Q / LB: Split | I / Back: Close</p>");
         }
         sb.AppendLine("        </aside>");
         sb.AppendLine("        </div>");
@@ -349,9 +497,9 @@ internal static class RmlUiDocumentBuilder
             for (int i = 0; i < labels.Count; i++)
             {
                 string selectedClass = i == state.SelectedInventoryActionIndex ? " selected" : "";
-                sb.AppendLine($"          <div class=\"action-row{selectedClass}\" style=\"top: {36 + i * 34}px;\">{Esc(labels[i])}</div>");
+                sb.AppendLine($"          <div class=\"action-row{selectedClass}\" data-slot=\"{InventoryActionDataSlotOffset + i}\" style=\"top: {36 + i * 34}px;\">{Esc(labels[i])}</div>");
             }
-            sb.AppendLine("          <div class=\"menu-footer\">W/S or D-pad: Select - E / X: Confirm - I / Back: Cancel</div>");
+            sb.AppendLine("          <div class=\"menu-footer\">Mouse: Hover / Click - W/S or D-pad: Select - E / X: Confirm - I / Back: Cancel</div>");
             sb.AppendLine("        </section>");
         }
 

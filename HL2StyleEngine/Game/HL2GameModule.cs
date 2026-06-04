@@ -67,7 +67,16 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
     private sealed class PrototypeSaveData
     {
+        public int SaveSlot { get; set; }
+        public string SavedAtUtc { get; set; } = "";
         public string LevelName { get; set; } = "";
+        public string LevelDisplayName { get; set; } = "";
+        public string AreaName { get; set; } = "";
+        public string SavePointName { get; set; } = "";
+        public string SavePointDisplayName { get; set; } = "";
+        public string Difficulty { get; set; } = "Prototype";
+        public string ProfileId { get; set; } = "Default";
+        public float PlayTimeSeconds { get; set; }
         public List<string> Inventory { get; set; } = new();
         public List<InventoryItemSaveData> InventoryItems { get; set; } = new();
         public List<InventoryItemSaveData> StorageItems { get; set; } = new();
@@ -125,6 +134,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private string _pendingUseRequiredItem = "";
     private string _pendingUseKind = "";
     private int _pendingUseCandidateIndex;
+    private bool _saveSlotPanelOpen;
+    private bool _saveOverwriteConfirmOpen;
+    private int _selectedSaveSlotIndex;
+    private string _pendingSavePointName = "";
+    private bool _pauseMenuOpen;
+    private bool _loadSlotPanelOpen;
+    private int _selectedPauseMenuIndex;
+    private int _selectedLoadSlotIndex;
     private bool _itemCollectedOpen;
     private bool _itemCollectedAwaitingConfirmRelease;
     private float _itemCollectedConfirmDelay;
@@ -136,6 +153,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private string _gameMessage = "";
     private float _gameMessageTimer;
     private int _savePointUseCount;
+    private float _playTimeSeconds;
     private bool _spawnCommandOpen;
     private string _spawnCommandText = "";
     private int _spawnedItemSequence;
@@ -184,11 +202,20 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private float _physicsMaxStep = 1f / 120f;
     private const float PuzzleDoorLiftHeight = 3.0f;
     private const float PuzzleDoorLiftSpeed = 0.85f;
+    private const string InteractionLockedDoor = "LockedDoor";
+    private const string InteractionLockedChest = "LockedChest";
+    private const string InteractionPuzzleSlot = "PuzzleSlot";
+    private const string InteractionPuzzleDoor = "PuzzleDoor";
 
     public InputState InputState => _inputState;
-    private bool GameplayModalOpen => !_editorEnabled && (_inventoryOpen || _storageOpen || _itemCollectedOpen || _spawnCommandOpen);
+    private bool GameplayModalOpen => !_editorEnabled && (_inventoryOpen || _storageOpen || _itemCollectedOpen || _spawnCommandOpen || _saveSlotPanelOpen || _pauseMenuOpen || _loadSlotPanelOpen);
 
-    private string PrototypeSavePath => Path.Combine(AppContext.BaseDirectory, "Saves", "prototype_save.json");
+    private const int SaveSlotCount = 4;
+    private const int PauseMenuOptionCount = 2;
+    private const int NativeStorageSlotOffset = 1000;
+    private const int NativeInventoryActionSlotOffset = 2000;
+    private string SaveDirectory => Path.Combine(AppContext.BaseDirectory, "Saves");
+    private string PrototypeSavePath => Path.Combine(SaveDirectory, "prototype_save.json");
 
     public void Initialize(EngineContext context)
     {
@@ -276,6 +303,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             {
                 _inventoryOpen = false;
                 _storageOpen = false;
+                _saveSlotPanelOpen = false;
+                _saveOverwriteConfirmOpen = false;
+                _pendingSavePointName = "";
+                _pauseMenuOpen = false;
+                _loadSlotPanelOpen = false;
                 CancelInventoryMove();
                 ClearPendingUseSelection();
                 _itemCollectedOpen = false;
@@ -292,11 +324,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             }
         }
 
-        if (!_editorEnabled && !_inventoryOpen && !_storageOpen && !_itemCollectedOpen && _inputState.WasPressed(Key.T))
+        if (!_editorEnabled && !_inventoryOpen && !_storageOpen && !_itemCollectedOpen && !_saveSlotPanelOpen && !_pauseMenuOpen && !_loadSlotPanelOpen && _inputState.WasPressed(Key.T))
             SetSpawnCommandOpen(!_spawnCommandOpen);
 
         if (!_editorEnabled && _spawnCommandOpen && _inputState.WasPressed(Key.Escape))
             SetSpawnCommandOpen(false);
+
+        if (!_editorEnabled && !GameplayModalOpen && _inputState.WasPressed(Key.Escape))
+        {
+            SetPauseMenuOpen(true);
+            UpdateGameplayUi(dt);
+            return;
+        }
 
         if (!_editorEnabled && _itemCollectedOpen)
         {
@@ -318,13 +357,22 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
         }
 
+        if (!_editorEnabled && _loadSlotPanelOpen)
+            UpdateLoadSlotNavigation();
+
+        if (!_editorEnabled && _pauseMenuOpen)
+            UpdatePauseMenuNavigation();
+
+        if (!_editorEnabled && _saveSlotPanelOpen)
+            UpdateSaveSlotNavigation();
+
         if (!_editorEnabled && _inventoryOpen)
             UpdateInventoryNavigation();
 
         if (!_editorEnabled && _storageOpen)
             UpdateStorageNavigation();
 
-        if (!_editorEnabled && !_itemCollectedOpen && !_inventoryOpen && !_storageOpen && !_spawnCommandOpen)
+        if (!_editorEnabled && !_itemCollectedOpen && !_inventoryOpen && !_storageOpen && !_spawnCommandOpen && !_saveSlotPanelOpen && !_pauseMenuOpen && !_loadSlotPanelOpen)
         {
             TryPickupDropThrow();
             if (_itemCollectedOpen)
@@ -353,7 +401,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 ApplySpawnFromEditor(forceResetVelocity: true);
         }
 
-        if (!_editorEnabled && !_spawnCommandOpen && !_inventoryToggleConsumedThisFrame && ToggleInventoryPressedThisFrame())
+        if (!_editorEnabled && !_spawnCommandOpen && !_saveSlotPanelOpen && !_pauseMenuOpen && !_loadSlotPanelOpen && !_inventoryToggleConsumedThisFrame && ToggleInventoryPressedThisFrame())
         {
             if (_storageOpen)
                 SetStorageOpen(false);
@@ -370,8 +418,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 _gameMessage = "";
         }
 
+        if (!_editorEnabled && !GameplayModalOpen)
+            _playTimeSeconds += dt;
+
         if (_toggleUi.Pressed && !_inventoryOpen && !_storageOpen) _ui.ToggleUI();
-        if (_forceGame.Pressed && !_inventoryOpen && !_storageOpen) _ui.CloseUI();
+        if (_forceGame.Pressed && !_inventoryOpen && !_storageOpen && !_saveSlotPanelOpen && !_pauseMenuOpen && !_loadSlotPanelOpen) _ui.CloseUI();
 
         if (_editorEnabled)
         {
@@ -386,7 +437,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
         }
 
-        if (_inventoryOpen || _storageOpen || _itemCollectedOpen || _spawnCommandOpen)
+        if (_inventoryOpen || _storageOpen || _itemCollectedOpen || _spawnCommandOpen || _saveSlotPanelOpen || _pauseMenuOpen || _loadSlotPanelOpen)
         {
             _wishDir = Vector3.Zero;
             _wishSpeed = 0f;
@@ -499,11 +550,20 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             movingHeight = _inventory.GetSlotHeight(movingDefinition, _movingInventoryRotated);
         }
 
+        int crosshairLeft = Math.Max(0, _ctx.Window.Window.Width / 2 - 18);
+        int crosshairTop = Math.Max(0, _ctx.Window.Window.Height / 2 - 18);
+
         return new GameplayUiState
         {
             InventoryOpen = !_editorEnabled && _inventoryOpen,
             StorageOpen = !_editorEnabled && _storageOpen,
             ItemCollectedOpen = !_editorEnabled && _itemCollectedOpen,
+            SaveSlotPanelOpen = !_editorEnabled && _saveSlotPanelOpen,
+            PauseMenuOpen = !_editorEnabled && _pauseMenuOpen,
+            LoadSlotPanelOpen = !_editorEnabled && _loadSlotPanelOpen,
+            CrosshairVisible = !_editorEnabled && !GameplayModalOpen,
+            CrosshairLeft = crosshairLeft,
+            CrosshairTop = crosshairTop,
             InteractionPrompt = !_editorEnabled ? _interactionPrompt : "",
             GameMessage = !_editorEnabled ? _gameMessage : "",
             GridWidth = _inventory.GridWidth,
@@ -539,6 +599,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             UsingInventoryItem = IsPendingUseSelectionActive,
             UseTargetPrompt = GetPendingUsePrompt(),
             SaveCount = _savePointUseCount,
+            SelectedSaveSlotIndex = _selectedSaveSlotIndex,
+            SelectedLoadSlotIndex = _selectedLoadSlotIndex,
+            SelectedPauseMenuIndex = _selectedPauseMenuIndex,
+            SaveOverwriteConfirmOpen = _saveOverwriteConfirmOpen,
+            SaveSlots = BuildSaveSlotUiItems(),
             InventoryItems = items,
             StorageItems = storageItems,
             CollectedItem = BuildCollectedItemUiState()
@@ -681,6 +746,32 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         };
     }
 
+    private List<GameplayUiSaveSlot> BuildSaveSlotUiItems()
+    {
+        List<GameplayUiSaveSlot> slots = new(SaveSlotCount);
+        for (int i = 0; i < SaveSlotCount; i++)
+        {
+            string path = GetSaveSlotPath(i);
+            if (!TryReadSaveSlotSummary(path, out GameplayUiSaveSlot? summary))
+            {
+                slots.Add(new GameplayUiSaveSlot
+                {
+                    SlotIndex = i,
+                    Label = $"Slot {i + 1}",
+                    IsEmpty = true,
+                    LevelName = GetCurrentLevelDisplayName(),
+                    AreaName = "Empty"
+                });
+                continue;
+            }
+
+            if (summary != null)
+                slots.Add(summary);
+        }
+
+        return slots;
+    }
+
     private static void EnsureInteractionTestLevelTemplate(string path)
     {
         if (!string.Equals(Path.GetFileName(path), "interaction_test.json", StringComparison.OrdinalIgnoreCase))
@@ -705,9 +796,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 !HasNamedEntity(level, "StorageBox_SaveOffice") ||
                 !HasNamedEntity(level, "PuzzleSlot_CrankHandle__UtilityLift") ||
                 !HasNamedEntity(level, "PuzzleDoor_CrankHandle__UtilityLift") ||
+                !HasInteractionData(level, "PuzzleSlot_CrankHandle__UtilityLift") ||
+                !HasInteractionData(level, "PuzzleDoor_CrankHandle__UtilityLift") ||
                 !HasNamedEntity(level, "Item_Fuse__CrankAlcove") ||
                 !HasNamedEntity(level, "PuzzleSlot_Fuse__PowerGate") ||
                 !HasNamedEntity(level, "PuzzleDoor_Fuse__PowerGate") ||
+                !HasInteractionData(level, "PuzzleSlot_Fuse__PowerGate") ||
+                !HasInteractionData(level, "PuzzleDoor_Fuse__PowerGate") ||
+                !HasInteractionData(level, "LockedDoor_RustedKey") ||
+                !HasInteractionData(level, "LockedDoor_ArchiveKey") ||
+                !HasInteractionData(level, "LockedDoor_ServiceKey__SaveOffice") ||
+                !HasInteractionData(level, "LockedChest_ServiceKey__SupplyA") ||
+                !HasInteractionData(level, "LockedChest_ServiceKey__SupplyB") ||
                 !HasEntityPosition(level, "PuzzleSlot_Fuse__PowerGate", static position => MathF.Abs(position.Z - -4.25f) <= 0.01f) ||
                 !HasDoorBlockerSize(level, "PuzzleDoor_CrankHandle__UtilityLift", static size => size.X >= 2.05f) ||
                 !HasDoorBlockerSize(level, "LockedDoor_RustedKey", static size => size.X >= 3.0f) ||
@@ -727,6 +827,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private static bool HasNamedEntity(LevelFile level, string name)
         => level.Entities.Any(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
 
+    private static bool HasInteractionData(LevelFile level, string name)
+    {
+        LevelEntityDef? entity = level.Entities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+        return entity?.Interaction != null && !string.IsNullOrWhiteSpace(entity.Interaction.Kind);
+    }
+
     private static bool HasDoorBlockerSize(LevelFile level, string name, Func<Vector3, bool> sizePredicate)
     {
         LevelEntityDef? entity = level.Entities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -739,16 +845,156 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         return entity != null && positionPredicate((Vector3)entity.LocalPosition);
     }
 
-    private bool TryLoadPrototypeSave()
+    private string GetSaveSlotPath(int slotIndex)
+        => Path.Combine(SaveDirectory, $"slot_{Math.Clamp(slotIndex, 0, SaveSlotCount - 1) + 1}.json");
+
+    private string? GetLatestSavePath()
     {
-        if (!File.Exists(PrototypeSavePath))
+        if (Directory.Exists(SaveDirectory))
+        {
+            string? latestSlot = Directory
+                .EnumerateFiles(SaveDirectory, "slot_*.json", SearchOption.TopDirectoryOnly)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(latestSlot))
+                return latestSlot;
+        }
+
+        return File.Exists(PrototypeSavePath)
+            ? PrototypeSavePath
+            : null;
+    }
+
+    private static bool TryReadSaveData(string path, out PrototypeSaveData? data)
+    {
+        data = null;
+        if (!File.Exists(path))
             return false;
+
+        string json = File.ReadAllText(path);
+        data = JsonSerializer.Deserialize<PrototypeSaveData>(json, PrototypeSaveJsonOptions);
+        return data != null;
+    }
+
+    private bool TryReadSaveSlotSummary(string path, out GameplayUiSaveSlot? summary)
+    {
+        summary = null;
 
         try
         {
-            string json = File.ReadAllText(PrototypeSavePath);
-            PrototypeSaveData? data = JsonSerializer.Deserialize<PrototypeSaveData>(json, PrototypeSaveJsonOptions);
-            if (data == null)
+            if (!TryReadSaveData(path, out PrototypeSaveData? data) || data == null)
+                return false;
+
+            int slotIndex = data.SaveSlot > 0 ? data.SaveSlot - 1 : GetSaveSlotIndexFromPath(path);
+            summary = new GameplayUiSaveSlot
+            {
+                SlotIndex = Math.Clamp(slotIndex, 0, SaveSlotCount - 1),
+                Label = $"Slot {Math.Clamp(slotIndex, 0, SaveSlotCount - 1) + 1}",
+                IsEmpty = false,
+                AreaName = GetSaveAreaName(data),
+                LevelName = GetSaveLevelName(data),
+                SavePointName = GetSavePointDisplayName(data),
+                PlayTime = FormatPlayTime(data.PlayTimeSeconds),
+                Difficulty = string.IsNullOrWhiteSpace(data.Difficulty) ? "Prototype" : data.Difficulty,
+                SavedAt = FormatSaveTimestamp(data.SavedAtUtc, File.GetLastWriteTimeUtc(path)),
+                SaveCount = Math.Max(0, data.SavePointUseCount),
+                InventoryCount = data.InventoryItems.Count > 0 ? data.InventoryItems.Sum(static item => Math.Max(1, item.Count)) : data.Inventory.Count,
+                StorageCount = data.StorageItems.Sum(static item => Math.Max(1, item.Count))
+            };
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static int GetSaveSlotIndexFromPath(string path)
+    {
+        string name = Path.GetFileNameWithoutExtension(path);
+        string[] parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length >= 2 && int.TryParse(parts[^1], out int slotNumber))
+            return Math.Clamp(slotNumber - 1, 0, SaveSlotCount - 1);
+
+        return 0;
+    }
+
+    private static string FormatSaveTimestamp(string savedAtUtc, DateTime fallbackUtc)
+    {
+        DateTime timestamp = fallbackUtc;
+        if (DateTime.TryParse(savedAtUtc, null, System.Globalization.DateTimeStyles.AssumeUniversal, out DateTime parsed))
+            timestamp = parsed.ToUniversalTime();
+
+        return timestamp.ToLocalTime().ToString("dd MMM HH:mm");
+    }
+
+    private static string FormatPlayTime(float seconds)
+    {
+        int totalSeconds = Math.Max(0, (int)MathF.Round(seconds));
+        int hours = totalSeconds / 3600;
+        int minutes = totalSeconds / 60 % 60;
+        int secs = totalSeconds % 60;
+
+        return hours > 0
+            ? $"{hours:00}:{minutes:00}:{secs:00}"
+            : $"{minutes:00}:{secs:00}";
+    }
+
+    private static string GetSaveAreaName(PrototypeSaveData data)
+    {
+        if (!string.IsNullOrWhiteSpace(data.AreaName))
+            return data.AreaName;
+
+        string levelName = Path.GetFileNameWithoutExtension(data.LevelName);
+        return string.IsNullOrWhiteSpace(levelName)
+            ? "Unknown Area"
+            : PrettifyToken(levelName);
+    }
+
+    private static string GetSaveLevelName(PrototypeSaveData data)
+    {
+        if (!string.IsNullOrWhiteSpace(data.LevelDisplayName))
+            return data.LevelDisplayName;
+
+        string levelName = Path.GetFileNameWithoutExtension(data.LevelName);
+        return string.IsNullOrWhiteSpace(levelName)
+            ? "Unknown Level"
+            : PrettifyToken(levelName);
+    }
+
+    private static string GetSavePointDisplayName(PrototypeSaveData data)
+    {
+        if (!string.IsNullOrWhiteSpace(data.SavePointDisplayName))
+            return data.SavePointDisplayName;
+
+        return string.IsNullOrWhiteSpace(data.SavePointName)
+            ? "Typewriter"
+            : PrettifyToken(GetNameToken(data.SavePointName, "SavePoint_"));
+    }
+
+    private string GetCurrentLevelDisplayName()
+    {
+        string levelName = Path.GetFileNameWithoutExtension(_editor.LevelPath);
+        return string.IsNullOrWhiteSpace(levelName)
+            ? "Unknown Level"
+            : PrettifyToken(levelName);
+    }
+
+    private bool TryLoadPrototypeSave()
+    {
+        string? path = GetLatestSavePath();
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        return TryLoadPrototypeSave(path);
+    }
+
+    private bool TryLoadPrototypeSave(string path)
+    {
+        try
+        {
+            if (!TryReadSaveData(path, out PrototypeSaveData? data) || data == null)
                 return false;
 
             _inventory.Clear();
@@ -781,6 +1027,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 _solvedPuzzles.Add(item);
 
             _savePointUseCount = Math.Max(0, data.SavePointUseCount);
+            _playTimeSeconds = MathF.Max(0f, data.PlayTimeSeconds);
 
             RemoveExpiredInventoryItems(showMessage: false);
             ApplyPersistentInteractionStateToRuntime();
@@ -790,7 +1037,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             _camera.Yaw = data.CameraYaw;
             _camera.Pitch = data.CameraPitch;
             _camera.Position = _motor.Position + new Vector3(0f, _movement.EyeHeight, 0f);
-            ShowGameMessage("Loaded saved progress.", 2.0f);
+            string loadedSlot = Path.GetFileNameWithoutExtension(path).StartsWith("slot_", StringComparison.OrdinalIgnoreCase)
+                ? $"Loaded {PrettifyToken(Path.GetFileNameWithoutExtension(path))}."
+                : "Loaded saved progress.";
+            ShowGameMessage(loadedSlot, 2.0f);
             return true;
         }
         catch (Exception ex)
@@ -800,13 +1050,25 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         }
     }
 
-    private bool SavePrototypeGame(Entity savePoint)
+    private bool SavePrototypeGame(string savePointName, int slotIndex)
     {
         try
         {
+            int safeSlot = Math.Clamp(slotIndex, 0, SaveSlotCount - 1);
+            string levelDisplayName = GetCurrentLevelDisplayName();
+            string savePointDisplayName = PrettifyToken(GetNameToken(savePointName, "SavePoint_"));
             var data = new PrototypeSaveData
             {
+                SaveSlot = safeSlot + 1,
+                SavedAtUtc = DateTime.UtcNow.ToString("O"),
                 LevelName = Path.GetFileName(_editor.LevelPath),
+                LevelDisplayName = levelDisplayName,
+                AreaName = levelDisplayName,
+                SavePointName = savePointName,
+                SavePointDisplayName = savePointDisplayName,
+                Difficulty = "Prototype",
+                ProfileId = "Default",
+                PlayTimeSeconds = MathF.Max(0f, _playTimeSeconds),
                 Inventory = _inventory.ItemIds()
                     .Where(static item => !string.Equals(item, ItemCatalog.InkRibbon, StringComparison.OrdinalIgnoreCase))
                     .OrderBy(static x => x)
@@ -825,12 +1087,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 CameraPitch = _camera.Pitch
             };
 
-            string? directory = Path.GetDirectoryName(PrototypeSavePath);
-            if (!string.IsNullOrWhiteSpace(directory))
-                Directory.CreateDirectory(directory);
+            Directory.CreateDirectory(SaveDirectory);
 
-            File.WriteAllText(PrototypeSavePath, JsonSerializer.Serialize(data, PrototypeSaveJsonOptions));
-            ShowGameMessage($"Saved at {PrettifyToken(GetNameToken(savePoint, "SavePoint_"))}. Ink ribbons left: {_inventory.GetCount(ItemCatalog.InkRibbon)}.");
+            File.WriteAllText(GetSaveSlotPath(safeSlot), JsonSerializer.Serialize(data, PrototypeSaveJsonOptions));
+            ShowGameMessage($"Saved to Slot {safeSlot + 1} at {savePointDisplayName}. Ink ribbons left: {_inventory.GetCount(ItemCatalog.InkRibbon)}.");
             return true;
         }
         catch (Exception ex)
@@ -845,8 +1105,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         if (_held != null)
             DropHeld();
 
-        if (File.Exists(PrototypeSavePath))
-            File.Delete(PrototypeSavePath);
+        DeletePrototypeSaveFiles();
 
         ClearPrototypeInteractionState();
 
@@ -859,6 +1118,25 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         ShowGameMessage("Level reset to the start.", 2.5f);
     }
 
+    private void DeletePrototypeSaveFiles()
+    {
+        try
+        {
+            if (File.Exists(PrototypeSavePath))
+                File.Delete(PrototypeSavePath);
+
+            if (!Directory.Exists(SaveDirectory))
+                return;
+
+            foreach (string path in Directory.EnumerateFiles(SaveDirectory, "slot_*.json", SearchOption.TopDirectoryOnly))
+                File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            ShowGameMessage($"Could not clear save files: {ex.Message}", 4.0f);
+        }
+    }
+
     private void ClearPrototypeInteractionState()
     {
         _inventory.Clear();
@@ -867,6 +1145,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         _openedDoors.Clear();
         _solvedPuzzles.Clear();
         _savePointUseCount = 0;
+        _playTimeSeconds = 0f;
+        CloseSaveSlotPanel(showMessage: false);
         SetInventoryOpen(false);
         SetStorageOpen(false);
         ClearPendingUseSelection();
@@ -881,6 +1161,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         _itemCollectedTitle = "Item Collected";
         _itemCollectedItemId = "";
         _itemCollectedCount = 0;
+        SetPauseMenuOpen(false);
         SetSpawnCommandOpen(false);
     }
 
@@ -896,12 +1177,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         if (_inventoryOpen)
         {
             SetStorageOpen(false);
+            CloseSaveSlotPanel(showMessage: false);
             if (!_inventory.IsEmpty && _selectedInventoryStackIndex < 0)
                 _selectedInventoryStackIndex = _inventory.Stacks[0].SlotIndex;
 
             _ui.OpenUI();
         }
-        else if (!_editorEnabled && !_itemCollectedOpen)
+        else if (!_editorEnabled && !_itemCollectedOpen && !_saveSlotPanelOpen && !_pauseMenuOpen && !_loadSlotPanelOpen)
         {
             CancelInventoryMove();
             CloseInventoryActionUi();
@@ -924,6 +1206,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         if (_storageOpen)
         {
             SetInventoryOpen(false);
+            CloseSaveSlotPanel(showMessage: false);
             CancelInventoryMove();
             CloseInventoryActionUi();
             ClearPendingUseSelection();
@@ -933,10 +1216,375 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
                 _selectedStorageSlot = _storage.Stacks[0].SlotIndex;
             _ui.OpenUI();
         }
-        else if (!_editorEnabled && !_inventoryOpen && !_itemCollectedOpen && !_spawnCommandOpen)
+        else if (!_editorEnabled && !_inventoryOpen && !_itemCollectedOpen && !_spawnCommandOpen && !_saveSlotPanelOpen && !_pauseMenuOpen && !_loadSlotPanelOpen)
         {
             _ui.CloseUI();
         }
+    }
+
+    private void SetPauseMenuOpen(bool open)
+    {
+        if (_pauseMenuOpen == open && !_loadSlotPanelOpen)
+            return;
+
+        _pauseMenuOpen = open;
+        _loadSlotPanelOpen = false;
+        _selectedPauseMenuIndex = Math.Clamp(_selectedPauseMenuIndex, 0, PauseMenuOptionCount - 1);
+        _selectedLoadSlotIndex = Math.Clamp(_selectedLoadSlotIndex, 0, SaveSlotCount - 1);
+        _inventoryNavYHeld = false;
+
+        if (_pauseMenuOpen)
+        {
+            SetInventoryOpen(false);
+            SetStorageOpen(false);
+            CloseSaveSlotPanel(showMessage: false);
+            CloseInventoryActionUi();
+            ClearPendingUseSelection();
+            CancelInventoryMove();
+            _interactionPrompt = "";
+            _ui.OpenUI();
+        }
+        else if (!_editorEnabled && !_inventoryOpen && !_storageOpen && !_itemCollectedOpen && !_spawnCommandOpen && !_saveSlotPanelOpen && !_loadSlotPanelOpen)
+        {
+            _ui.CloseUI();
+        }
+    }
+
+    private void OpenLoadSlotPanel()
+    {
+        _pauseMenuOpen = false;
+        _loadSlotPanelOpen = true;
+        _selectedLoadSlotIndex = Math.Clamp(_selectedLoadSlotIndex, 0, SaveSlotCount - 1);
+        _inventoryNavYHeld = false;
+        _interactionPrompt = "";
+        _ui.OpenUI();
+    }
+
+    private void CloseLoadSlotPanel(bool returnToPause)
+    {
+        if (!_loadSlotPanelOpen)
+            return;
+
+        _loadSlotPanelOpen = false;
+        _inventoryNavYHeld = false;
+
+        if (returnToPause)
+        {
+            _pauseMenuOpen = true;
+            _ui.OpenUI();
+            return;
+        }
+
+        if (!_editorEnabled && !_inventoryOpen && !_storageOpen && !_itemCollectedOpen && !_spawnCommandOpen && !_saveSlotPanelOpen && !_pauseMenuOpen)
+            _ui.CloseUI();
+    }
+
+    private void UpdatePauseMenuNavigation()
+    {
+        if (TryUpdatePauseMenuMouseSelection())
+            return;
+
+        if (_inputState.WasPressed(Key.Escape) || ToggleInventoryPressedThisFrame())
+        {
+            _inventoryToggleConsumedThisFrame = true;
+            SetPauseMenuOpen(false);
+            return;
+        }
+
+        if (TryGetUseListNavigationDelta(out int dy) && dy != 0)
+            _selectedPauseMenuIndex = WrapIndex(_selectedPauseMenuIndex + dy, PauseMenuOptionCount);
+
+        if (!InteractPressedThisFrame())
+            return;
+
+        if (_selectedPauseMenuIndex == 0)
+            SetPauseMenuOpen(false);
+        else
+            OpenLoadSlotPanel();
+    }
+
+    private void UpdateLoadSlotNavigation()
+    {
+        if (TryUpdateLoadSlotMouseSelection())
+            return;
+
+        if (_inputState.WasPressed(Key.Escape) || ToggleInventoryPressedThisFrame())
+        {
+            _inventoryToggleConsumedThisFrame = true;
+            CloseLoadSlotPanel(returnToPause: true);
+            return;
+        }
+
+        if (TryGetUseListNavigationDelta(out int dy) && dy != 0)
+            _selectedLoadSlotIndex = WrapIndex(_selectedLoadSlotIndex + dy, SaveSlotCount);
+
+        if (InteractPressedThisFrame())
+            TryLoadSelectedSaveSlot();
+    }
+
+    private void TryLoadSelectedSaveSlot()
+    {
+        string path = GetSaveSlotPath(_selectedLoadSlotIndex);
+        if (!File.Exists(path))
+        {
+            ShowGameMessage("That save slot is empty.", 1.75f);
+            return;
+        }
+
+        if (!TryLoadPrototypeSave(path))
+            return;
+
+        _pauseMenuOpen = false;
+        _loadSlotPanelOpen = false;
+        _interactionPrompt = "";
+        _ui.CloseUI();
+    }
+
+    private void OpenSaveSlotPanel(Entity savePoint)
+    {
+        _pendingSavePointName = savePoint.Name;
+        _selectedSaveSlotIndex = Math.Clamp(_selectedSaveSlotIndex, 0, SaveSlotCount - 1);
+        _saveSlotPanelOpen = true;
+        _saveOverwriteConfirmOpen = false;
+        _pauseMenuOpen = false;
+        _loadSlotPanelOpen = false;
+        SetInventoryOpen(false);
+        SetStorageOpen(false);
+        CloseInventoryActionUi();
+        ClearPendingUseSelection();
+        CancelInventoryMove();
+        _ui.OpenUI();
+        ShowGameMessage("Choose a save slot.", 1.5f);
+    }
+
+    private void CloseSaveSlotPanel(bool showMessage)
+    {
+        if (!_saveSlotPanelOpen && string.IsNullOrWhiteSpace(_pendingSavePointName))
+            return;
+
+        _saveSlotPanelOpen = false;
+        _saveOverwriteConfirmOpen = false;
+        _pendingSavePointName = "";
+        _inventoryNavYHeld = false;
+
+        if (showMessage)
+            ShowGameMessage("Save cancelled.", 1.25f);
+
+        if (!_editorEnabled && !_inventoryOpen && !_storageOpen && !_itemCollectedOpen && !_spawnCommandOpen && !_pauseMenuOpen && !_loadSlotPanelOpen)
+            _ui.CloseUI();
+    }
+
+    private void UpdateSaveSlotNavigation()
+    {
+        if (TryUpdateSaveSlotMouseSelection())
+            return;
+
+        if (ToggleInventoryPressedThisFrame() || _inputState.WasPressed(Key.Escape))
+        {
+            _inventoryToggleConsumedThisFrame = true;
+            if (_saveOverwriteConfirmOpen)
+            {
+                _saveOverwriteConfirmOpen = false;
+                ShowGameMessage("Overwrite cancelled.", 1.25f);
+                return;
+            }
+
+            CloseSaveSlotPanel(showMessage: true);
+            return;
+        }
+
+        if (_saveOverwriteConfirmOpen)
+        {
+            if (InteractPressedThisFrame())
+                ConfirmSaveSlot();
+
+            return;
+        }
+
+        if (TryGetUseListNavigationDelta(out int dy) && dy != 0)
+            _selectedSaveSlotIndex = WrapIndex(_selectedSaveSlotIndex + dy, SaveSlotCount);
+
+        if (InteractPressedThisFrame())
+            TryConfirmSelectedSaveSlot();
+    }
+
+    private bool TryUpdatePauseMenuMouseSelection()
+    {
+        if (!TryGetPauseMenuOptionFromUi(out int optionIndex))
+            return false;
+
+        _selectedPauseMenuIndex = optionIndex;
+        if (!_inputState.LeftMousePressedThisFrame)
+            return false;
+
+        if (_selectedPauseMenuIndex == 0)
+            SetPauseMenuOpen(false);
+        else
+            OpenLoadSlotPanel();
+
+        return true;
+    }
+
+    private bool TryUpdateLoadSlotMouseSelection()
+    {
+        if (!TryGetSaveSlotIndexFromUi(out int slotIndex))
+            return false;
+
+        _selectedLoadSlotIndex = slotIndex;
+        if (!_inputState.LeftMousePressedThisFrame)
+            return false;
+
+        TryLoadSelectedSaveSlot();
+        return true;
+    }
+
+    private bool TryUpdateSaveSlotMouseSelection()
+    {
+        if (_saveOverwriteConfirmOpen)
+        {
+            if (TryGetSaveSlotIndexFromUi(out int confirmSlotIndex) &&
+                confirmSlotIndex == _selectedSaveSlotIndex &&
+                _inputState.LeftMousePressedThisFrame)
+            {
+                ConfirmSaveSlot();
+                return true;
+            }
+
+            return false;
+        }
+
+        if (!TryGetSaveSlotIndexFromUi(out int slotIndex))
+            return false;
+
+        _selectedSaveSlotIndex = slotIndex;
+        if (!_inputState.LeftMousePressedThisFrame)
+            return false;
+
+        TryConfirmSelectedSaveSlot();
+        return true;
+    }
+
+    private bool TryGetPauseMenuOptionFromUi(out int optionIndex)
+    {
+        optionIndex = -1;
+        if (_gameplayUi.TryGetNativeHoveredSlot(out int hoveredSlot) &&
+            hoveredSlot >= 0 &&
+            hoveredSlot < PauseMenuOptionCount)
+        {
+            optionIndex = hoveredSlot;
+            return true;
+        }
+
+        return !_gameplayUi.UsesNativePresentation && TryGetPauseMenuOptionAtMouse(out optionIndex);
+    }
+
+    private bool TryGetSaveSlotIndexFromUi(out int slotIndex)
+    {
+        slotIndex = -1;
+        if (_gameplayUi.TryGetNativeHoveredSlot(out int hoveredSlot) &&
+            hoveredSlot >= 0 &&
+            hoveredSlot < SaveSlotCount)
+        {
+            slotIndex = hoveredSlot;
+            return true;
+        }
+
+        return !_gameplayUi.UsesNativePresentation && TryGetSaveSlotIndexAtMouse(out slotIndex);
+    }
+
+    private bool TryGetPauseMenuOptionAtMouse(out int optionIndex)
+    {
+        optionIndex = -1;
+        Vector2 mouse = _inputState.MousePosition;
+        const float rowLeft = 430f + 28f;
+        const float rowTop = 150f + 110f;
+        const float rowWidth = 324f;
+        const float rowHeight = 44f;
+        const float rowPitch = 54f;
+
+        for (int i = 0; i < PauseMenuOptionCount; i++)
+        {
+            if (MouseInRect(mouse, rowLeft, rowTop + i * rowPitch, rowWidth, rowHeight))
+            {
+                optionIndex = i;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryGetSaveSlotIndexAtMouse(out int slotIndex)
+    {
+        slotIndex = -1;
+        Vector2 mouse = _inputState.MousePosition;
+        const float rowLeft = 360f + 24f;
+        const float rowTop = 104f + 96f;
+        const float rowWidth = 472f;
+        const float rowHeight = 72f;
+        const float rowPitch = 82f;
+
+        for (int i = 0; i < SaveSlotCount; i++)
+        {
+            if (MouseInRect(mouse, rowLeft, rowTop + i * rowPitch, rowWidth, rowHeight))
+            {
+                slotIndex = i;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool MouseInRect(Vector2 mouse, float left, float top, float width, float height)
+        => mouse.X >= left &&
+           mouse.X <= left + width &&
+           mouse.Y >= top &&
+           mouse.Y <= top + height;
+
+    private void TryConfirmSelectedSaveSlot()
+    {
+        if (_inventory.GetCount(ItemCatalog.InkRibbon) <= 0)
+        {
+            CloseSaveSlotPanel(showMessage: false);
+            ShowGameMessage("No Ink Ribbons left.", 1.75f);
+            return;
+        }
+
+        if (File.Exists(GetSaveSlotPath(_selectedSaveSlotIndex)))
+        {
+            _saveOverwriteConfirmOpen = true;
+            ShowGameMessage($"Overwrite Slot {_selectedSaveSlotIndex + 1}? Press E / X again to confirm.", 2.0f);
+            return;
+        }
+
+        ConfirmSaveSlot();
+    }
+
+    private void ConfirmSaveSlot()
+    {
+        if (_inventory.GetCount(ItemCatalog.InkRibbon) <= 0)
+        {
+            CloseSaveSlotPanel(showMessage: false);
+            ShowGameMessage("No Ink Ribbons left.", 1.75f);
+            return;
+        }
+
+        string savePointName = string.IsNullOrWhiteSpace(_pendingSavePointName)
+            ? "SavePoint_Typewriter"
+            : _pendingSavePointName;
+
+        _inventory.RemoveCount(ItemCatalog.InkRibbon);
+        _savePointUseCount++;
+        if (!SavePrototypeGame(savePointName, _selectedSaveSlotIndex))
+        {
+            _inventory.Add(ItemCatalog.InkRibbon);
+            _savePointUseCount--;
+            return;
+        }
+
+        _saveOverwriteConfirmOpen = false;
+        CloseSaveSlotPanel(showMessage: false);
     }
 
     private void UpdateInventoryNavigation()
@@ -1129,6 +1777,9 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
         }
 
+        if (TryUpdateStorageMouseSelection())
+            return;
+
         if (ToggleInventoryPressedThisFrame() || _inputState.WasPressed(Key.Escape))
         {
             _inventoryToggleConsumedThisFrame = true;
@@ -1156,6 +1807,36 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             _selectedStorageSlot = SelectSlotInContainer(MoveGridSlot(_selectedStorageSlot, dx, dy, _storage), _storage);
         else
             _selectedInventoryStackIndex = SelectSlotInContainer(MoveGridSlot(_selectedInventoryStackIndex, dx, dy, _inventory), _inventory);
+    }
+
+    private bool TryUpdateStorageMouseSelection()
+    {
+        if (!_gameplayUi.TryGetNativeHoveredSlot(out int hoveredSlot))
+            return false;
+
+        if (hoveredSlot >= NativeStorageSlotOffset)
+        {
+            int storageSlot = hoveredSlot - NativeStorageSlotOffset;
+            if (storageSlot < 0 || storageSlot >= _storage.SlotCapacity)
+                return false;
+
+            _storageFocusStorage = true;
+            _selectedStorageSlot = SelectSlotInContainer(storageSlot, _storage);
+        }
+        else
+        {
+            if (hoveredSlot < 0 || hoveredSlot >= _inventory.SlotCapacity)
+                return false;
+
+            _storageFocusStorage = false;
+            _selectedInventoryStackIndex = SelectSlotInContainer(hoveredSlot, _inventory);
+        }
+
+        if (!_inputState.LeftMousePressedThisFrame)
+            return false;
+
+        OpenOrTransferSelectedStorageStack();
+        return true;
     }
 
     private bool TryGetGridNavigationDelta(out int dx, out int dy)
@@ -1632,6 +2313,18 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
         }
 
+        if (_gameplayUi.TryGetNativeHoveredSlot(out int hoveredActionSlot) &&
+            hoveredActionSlot >= NativeInventoryActionSlotOffset &&
+            hoveredActionSlot < NativeInventoryActionSlotOffset + InventoryActionLabels.Length)
+        {
+            int hoveredActionIndex = hoveredActionSlot - NativeInventoryActionSlotOffset;
+            _inventoryActionIndex = hoveredActionIndex;
+            if (_inputState.LeftMousePressedThisFrame)
+                ExecuteSelectedInventoryAction();
+
+            return;
+        }
+
         if (_inputState.WasPressed(Key.W) || _inputState.GetGamepadPressed(GamepadButton.DpadUp))
             _inventoryActionIndex--;
         else if (_inputState.WasPressed(Key.S) || _inputState.GetGamepadPressed(GamepadButton.DpadDown))
@@ -1900,30 +2593,35 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             Entity e = _runtimeEntities[i];
-            if (_collectedInteractables.Contains(e.Name) || _openedDoors.Contains(e.Name))
+            if (_collectedInteractables.Contains(e.Name) || IsInteractionStateComplete(_openedDoors, e))
                 HideRuntimeEntity(e);
         }
 
-        foreach (string puzzleSlotName in _solvedPuzzles)
+        for (int i = 0; i < _runtimeEntities.Count; i++)
         {
-            string doorName = GetPuzzleDoorNameForSlot(puzzleSlotName);
-            Entity? door = FindRuntimeEntity(doorName);
-            if (door != null)
-                MovePuzzleDoorToOpenPosition(door);
+            Entity e = _runtimeEntities[i];
+            if (IsPuzzleSlot(e) && IsInteractionStateComplete(_solvedPuzzles, e))
+                OpenPuzzleTargets(e, instant: true);
         }
     }
 
     private void UpdatePuzzleDoorAnimations(float dt)
     {
-        foreach (string puzzleSlotName in _solvedPuzzles)
+        for (int i = 0; i < _runtimeEntities.Count; i++)
         {
-            string doorName = GetPuzzleDoorNameForSlot(puzzleSlotName);
-            Entity? door = FindRuntimeEntity(doorName);
-            if (door == null || !_puzzleDoorClosedPositions.TryGetValue(door.Name, out Vector3 closedPosition))
+            Entity slot = _runtimeEntities[i];
+            if (!IsPuzzleSlot(slot) || !IsInteractionStateComplete(_solvedPuzzles, slot))
                 continue;
 
-            Vector3 target = closedPosition + Vector3.UnitY * PuzzleDoorLiftHeight;
-            door.Transform.Position = MoveTowards(door.Transform.Position, target, PuzzleDoorLiftSpeed * dt);
+            foreach (string doorName in GetPuzzleTargetNames(slot))
+            {
+                Entity? door = FindRuntimeEntity(doorName);
+                if (door == null || !_puzzleDoorClosedPositions.TryGetValue(door.Name, out Vector3 closedPosition))
+                    continue;
+
+                Vector3 target = closedPosition + Vector3.UnitY * PuzzleDoorLiftHeight;
+                door.Transform.Position = MoveTowards(door.Transform.Position, target, PuzzleDoorLiftSpeed * dt);
+            }
         }
     }
 
@@ -1935,6 +2633,79 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
     private Entity? FindRuntimeEntity(string name)
         => _runtimeEntities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    private LevelEntityDef? FindLevelEntityDef(Entity entity)
+        => _editor.LevelFile.Entities.FirstOrDefault(def =>
+            string.Equals(def.Id, entity.Id, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(def.Name, entity.Name, StringComparison.OrdinalIgnoreCase));
+
+    private LevelInteractionDef? GetInteraction(Entity entity)
+        => FindLevelEntityDef(entity)?.Interaction;
+
+    private static bool IsInteractionKind(LevelEntityDef def, string kind)
+        => string.Equals(def.Interaction?.Kind, kind, StringComparison.OrdinalIgnoreCase);
+
+    private bool IsInteractionKind(Entity entity, string kind)
+        => string.Equals(GetInteraction(entity)?.Kind, kind, StringComparison.OrdinalIgnoreCase);
+
+    private string GetInteractionStateId(Entity entity)
+    {
+        string? stateId = GetInteraction(entity)?.StateId;
+        return !string.IsNullOrWhiteSpace(stateId)
+            ? stateId
+            : entity.Name;
+    }
+
+    private static string GetInteractionStateId(LevelEntityDef def)
+    {
+        string? stateId = def.Interaction?.StateId;
+        return !string.IsNullOrWhiteSpace(stateId)
+            ? stateId
+            : def.Name ?? "";
+    }
+
+    private bool IsInteractionStateComplete(HashSet<string> completedStates, Entity entity)
+        => completedStates.Contains(entity.Name) ||
+           completedStates.Contains(GetInteractionStateId(entity));
+
+    private static bool IsInteractionStateComplete(HashSet<string> completedStates, LevelEntityDef def)
+    {
+        string name = def.Name ?? "";
+        return completedStates.Contains(name) ||
+               completedStates.Contains(GetInteractionStateId(def));
+    }
+
+    private IEnumerable<string> GetPuzzleTargetNames(Entity puzzleSlot)
+    {
+        LevelInteractionDef? interaction = GetInteraction(puzzleSlot);
+        if (interaction?.Targets is { Count: > 0 })
+        {
+            foreach (string target in interaction.Targets)
+            {
+                if (!string.IsNullOrWhiteSpace(target))
+                    yield return target;
+            }
+
+            yield break;
+        }
+
+        yield return GetPuzzleDoorNameForSlot(puzzleSlot.Name);
+    }
+
+    private void OpenPuzzleTargets(Entity puzzleSlot, bool instant)
+    {
+        foreach (string doorName in GetPuzzleTargetNames(puzzleSlot))
+        {
+            Entity? door = FindRuntimeEntity(doorName);
+            if (door == null)
+                continue;
+
+            if (instant)
+                MovePuzzleDoorToOpenPosition(door);
+            else
+                ShowRuntimePuzzleDoor(door);
+        }
+    }
 
     private static Vector3 MoveTowards(Vector3 current, Vector3 target, float maxDelta)
     {
@@ -1984,19 +2755,30 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
         foreach (LevelEntityDef def in _editor.LevelFile.Entities)
         {
-            string name = def.Name ?? "";
-            if (!TryGetLockedObjectRequiredItem(name, out string requiredItem) ||
+            if (!TryGetLockedObjectRequiredItem(def, out string requiredItem) ||
                 !string.Equals(requiredItem, itemId, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
             hasAnyMatchingLock = true;
-            if (!_openedDoors.Contains(name))
+            if (!IsInteractionStateComplete(_openedDoors, def))
                 return false;
         }
 
         return hasAnyMatchingLock;
+    }
+
+    private static bool TryGetLockedObjectRequiredItem(LevelEntityDef def, out string requiredItem)
+    {
+        if (IsInteractionKind(def, InteractionLockedDoor) ||
+            IsInteractionKind(def, InteractionLockedChest))
+        {
+            requiredItem = def.Interaction?.RequiredItem ?? "";
+            return !string.IsNullOrWhiteSpace(requiredItem);
+        }
+
+        return TryGetLockedObjectRequiredItem(def.Name ?? "", out requiredItem);
     }
 
     private static bool TryGetLockedObjectRequiredItem(string entityName, out string requiredItem)
@@ -2051,11 +2833,35 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         _itemCollectedOpen = false;
         _itemCollectedAwaitingConfirmRelease = false;
         _itemCollectedConfirmDelay = 0f;
-        if (!_inventoryOpen && !_storageOpen && !_spawnCommandOpen)
+        if (!_inventoryOpen && !_storageOpen && !_spawnCommandOpen && !_saveSlotPanelOpen && !_pauseMenuOpen && !_loadSlotPanelOpen)
             _ui.CloseUI();
     }
 
-    private static bool TryGetLockedChestReward(Entity chest, out string itemId, out int count)
+    private IEnumerable<LevelInteractionRewardDef> GetInteractionRewards(Entity entity)
+    {
+        LevelInteractionDef? interaction = GetInteraction(entity);
+        if (interaction?.Rewards is { Count: > 0 })
+        {
+            foreach (LevelInteractionRewardDef reward in interaction.Rewards)
+            {
+                if (!string.IsNullOrWhiteSpace(reward.ItemId))
+                    yield return reward;
+            }
+
+            yield break;
+        }
+
+        if (IsLockedChest(entity) && TryGetLegacyLockedChestReward(entity, out string itemId, out int count))
+        {
+            yield return new LevelInteractionRewardDef
+            {
+                ItemId = itemId,
+                Count = count
+            };
+        }
+    }
+
+    private static bool TryGetLegacyLockedChestReward(Entity chest, out string itemId, out int count)
     {
         if (chest.Name.Contains("__SupplyA", StringComparison.OrdinalIgnoreCase))
         {
@@ -4693,6 +5499,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             return;
         }
 
+        if (!_inventoryOpen ||
+            _storageOpen ||
+            (_inventoryOpen && !IsPendingUseSelectionActive && (_inventoryActionMenuOpen || _inventorySplitPickerOpen || _inventoryDiscardConfirmOpen)))
+        {
+            if (_gameplayUi.UsesNativePresentation)
+                return;
+        }
+
         if (_gameplayUi.TryGetNativeHoveredSlot(out int nativeHoveredSlot))
         {
             SelectInventorySlot(nativeHoveredSlot);
@@ -5101,9 +5915,30 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     public void RenderOverlay(Renderer renderer)
     {
         _gameplayUi.RenderOverlay(renderer);
+        DrawGameplayCrosshairOverlay();
         if (!_gameplayUi.NativeFrameVisible)
             DrawStorageOverlay();
         DrawSpawnCommandOverlay();
+    }
+
+    private void DrawGameplayCrosshairOverlay()
+    {
+        if (_editorEnabled || GameplayModalOpen)
+            return;
+
+        ImGuiViewportPtr viewport = ImGui.GetMainViewport();
+        Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);
+        ImDrawListPtr drawList = ImGui.GetForegroundDrawList();
+        uint color = ImGui.ColorConvertFloat4ToU32(new Vector4(0.90f, 0.94f, 0.88f, 0.88f));
+        const float gap = 5f;
+        const float length = 13f;
+        const float thickness = 1.5f;
+
+        drawList.AddLine(center - new Vector2(gap + length, 0f), center - new Vector2(gap, 0f), color, thickness);
+        drawList.AddLine(center + new Vector2(gap, 0f), center + new Vector2(gap + length, 0f), color, thickness);
+        drawList.AddLine(center - new Vector2(0f, gap + length), center - new Vector2(0f, gap), color, thickness);
+        drawList.AddLine(center + new Vector2(0f, gap), center + new Vector2(0f, gap + length), color, thickness);
+        drawList.AddCircleFilled(center, 1.8f, color);
     }
 
     private void DrawStorageOverlay()
@@ -5853,7 +6688,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         return best;
     }
 
-    private static bool IsGameplayInteractable(Entity e)
+    private bool IsGameplayInteractable(Entity e)
         => IsWorldItem(e) || IsLockedObject(e) || IsSavePoint(e) || IsStorageBox(e) || IsPuzzleSlot(e);
 
     private static bool IsWorldItem(Entity e)
@@ -5865,13 +6700,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private static bool IsInkRibbon(Entity e)
         => e.Name.StartsWith("ItemInkRibbon_", StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsLockedDoor(Entity e)
-        => e.Name.StartsWith("LockedDoor_", StringComparison.OrdinalIgnoreCase);
+    private bool IsLockedDoor(Entity e)
+        => IsInteractionKind(e, InteractionLockedDoor) ||
+           e.Name.StartsWith("LockedDoor_", StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsLockedChest(Entity e)
-        => e.Name.StartsWith("LockedChest_", StringComparison.OrdinalIgnoreCase);
+    private bool IsLockedChest(Entity e)
+        => IsInteractionKind(e, InteractionLockedChest) ||
+           e.Name.StartsWith("LockedChest_", StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsLockedObject(Entity e)
+    private bool IsLockedObject(Entity e)
         => IsLockedDoor(e) || IsLockedChest(e);
 
     private static bool IsSavePoint(Entity e)
@@ -5880,11 +6717,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private static bool IsStorageBox(Entity e)
         => e.Name.StartsWith("StorageBox_", StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsPuzzleSlot(Entity e)
-        => e.Name.StartsWith("PuzzleSlot_", StringComparison.OrdinalIgnoreCase);
+    private bool IsPuzzleSlot(Entity e)
+        => IsInteractionKind(e, InteractionPuzzleSlot) ||
+           e.Name.StartsWith("PuzzleSlot_", StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsPuzzleDoor(Entity e)
-        => e.Name.StartsWith("PuzzleDoor_", StringComparison.OrdinalIgnoreCase);
+    private bool IsPuzzleDoor(Entity e)
+        => IsInteractionKind(e, InteractionPuzzleDoor) ||
+           e.Name.StartsWith("PuzzleDoor_", StringComparison.OrdinalIgnoreCase);
 
     private static bool TryGetWorldItem(Entity e, out string itemId, out int count)
     {
@@ -5929,13 +6768,24 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         return 1;
     }
 
-    private static string GetLockRequiredItem(Entity e)
-        => IsLockedChest(e)
+    private string GetLockRequiredItem(Entity e)
+    {
+        string? requiredItem = GetInteraction(e)?.RequiredItem;
+        if (!string.IsNullOrWhiteSpace(requiredItem))
+            return requiredItem;
+
+        return IsLockedChest(e)
             ? GetNameToken(e, "LockedChest_")
             : GetNameToken(e, "LockedDoor_");
+    }
 
-    private static string GetPuzzleSlotRequiredItem(Entity e)
-        => GetNameToken(e, "PuzzleSlot_");
+    private string GetPuzzleSlotRequiredItem(Entity e)
+    {
+        string? requiredItem = GetInteraction(e)?.RequiredItem;
+        return !string.IsNullOrWhiteSpace(requiredItem)
+            ? requiredItem
+            : GetNameToken(e, "PuzzleSlot_");
+    }
 
     private static string GetPuzzleDoorNameForSlot(string puzzleSlotName)
     {
@@ -6090,12 +6940,17 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private void UseSelectedItemOnLock(Entity target, string itemId)
     {
         string requiredItem = GetLockRequiredItem(target);
-        _openedDoors.Add(target.Name);
+        _openedDoors.Add(GetInteractionStateId(target));
         HideRuntimeEntity(target);
 
-        string message = $"Unlocked with {ItemCatalog.GetDisplayName(itemId)}.";
-        if (IsLockedChest(target) && TryGetLockedChestReward(target, out string rewardItemId, out int rewardCount))
+        string? message = GetInteraction(target)?.SuccessMessage;
+        if (string.IsNullOrWhiteSpace(message))
+            message = $"Unlocked with {ItemCatalog.GetDisplayName(itemId)}.";
+
+        foreach (LevelInteractionRewardDef reward in GetInteractionRewards(target))
         {
+            string rewardItemId = reward.ItemId;
+            int rewardCount = Math.Clamp(reward.Count, 1, 999);
             AddInventoryItem(rewardItemId, rewardCount, showCollectedScreen: true);
             string countSuffix = rewardCount > 1 ? $" x{rewardCount}" : "";
             message += $" Found {ItemCatalog.GetDisplayName(rewardItemId)}{countSuffix}.";
@@ -6114,31 +6969,27 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
     private void UseSelectedInkRibbonAtSavePoint(Entity target)
     {
-        _inventory.RemoveCount(ItemCatalog.InkRibbon);
-        _savePointUseCount++;
-        if (!SavePrototypeGame(target))
-        {
-            _inventory.Add(ItemCatalog.InkRibbon);
-            _savePointUseCount--;
-            return;
-        }
-
-        ClearPendingUseSelection();
-        SetInventoryOpen(false);
+        OpenSaveSlotPanel(target);
     }
 
     private void UseSelectedItemOnPuzzleSlot(Entity target, string itemId)
     {
-        _solvedPuzzles.Add(target.Name);
+        LevelInteractionDef? interaction = GetInteraction(target);
+        _solvedPuzzles.Add(GetInteractionStateId(target));
 
-        string doorName = GetPuzzleDoorNameForSlot(target.Name);
-        Entity? door = FindRuntimeEntity(doorName);
-        if (door != null)
-            ShowRuntimePuzzleDoor(door);
+        if (interaction?.ConsumesItem == true)
+            _inventory.RemoveCount(itemId);
+
+        OpenPuzzleTargets(target, instant: false);
 
         ClearPendingUseSelection();
         SetInventoryOpen(false);
-        ShowGameMessage($"{ItemCatalog.GetDisplayName(itemId)} turns the mechanism. The door is lifting.", 3.0f);
+        string? message = interaction?.SuccessMessage;
+        ShowGameMessage(
+            !string.IsNullOrWhiteSpace(message)
+                ? message
+                : $"{ItemCatalog.GetDisplayName(itemId)} turns the mechanism. The door is lifting.",
+            3.0f);
     }
 
     private static string GetNameToken(Entity e, string prefix)
@@ -6189,6 +7040,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             string requiredItem = GetLockRequiredItem(e);
             string itemName = ItemCatalog.GetDisplayName(GetHeldUnlockItemForLock(requiredItem) ?? requiredItem);
             string lockName = IsLockedChest(e) ? "chest" : "door";
+            LevelInteractionDef? interaction = GetInteraction(e);
+            if (HasUnlockItem(requiredItem) && !string.IsNullOrWhiteSpace(interaction?.Prompt))
+                return interaction.Prompt;
+            if (!HasUnlockItem(requiredItem) && !string.IsNullOrWhiteSpace(interaction?.LockedPrompt))
+                return interaction.LockedPrompt;
+
             return HasUnlockItem(requiredItem)
                 ? $"Unlock {lockName} with {itemName}"
                 : $"Locked - needs {itemName}";
@@ -6204,13 +7061,19 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
         if (IsPuzzleSlot(e))
         {
-            if (_solvedPuzzles.Contains(e.Name))
+            if (IsInteractionStateComplete(_solvedPuzzles, e))
                 return "Mechanism already turned";
 
             string requiredItem = GetPuzzleSlotRequiredItem(e);
+            LevelInteractionDef? interaction = GetInteraction(e);
+            if (_inventory.Contains(requiredItem) && !string.IsNullOrWhiteSpace(interaction?.Prompt))
+                return interaction.Prompt;
+            if (!_inventory.Contains(requiredItem) && !string.IsNullOrWhiteSpace(interaction?.LockedPrompt))
+                return interaction.LockedPrompt;
+
             return _inventory.Contains(requiredItem)
                 ? $"Use {ItemCatalog.GetDisplayName(requiredItem)}"
-                : $"A crank slot - needs {ItemCatalog.GetDisplayName(requiredItem)}";
+                : $"Mechanism needs {ItemCatalog.GetDisplayName(requiredItem)}";
         }
 
         return "Interact";
@@ -6299,7 +7162,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
         if (IsPuzzleSlot(hit))
         {
-            if (_solvedPuzzles.Contains(hit.Name))
+            if (IsInteractionStateComplete(_solvedPuzzles, hit))
             {
                 ShowGameMessage("The mechanism has already been turned.", 1.75f);
                 return true;
@@ -6308,7 +7171,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             string requiredItem = GetPuzzleSlotRequiredItem(hit);
             if (!_inventory.Contains(requiredItem))
             {
-                ShowGameMessage($"There is a square slot here. It needs {ItemCatalog.GetDisplayName(requiredItem)}.", 2.5f);
+                LevelInteractionDef? interaction = GetInteraction(hit);
+                ShowGameMessage(
+                    !string.IsNullOrWhiteSpace(interaction?.LockedPrompt)
+                        ? interaction.LockedPrompt
+                        : $"There is a mechanism here. It needs {ItemCatalog.GetDisplayName(requiredItem)}.",
+                    2.5f);
                 return true;
             }
 
@@ -6337,7 +7205,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             _interactionPrompt = "";
             _ui.OpenUI();
         }
-        else if (!_editorEnabled && !_inventoryOpen && !_itemCollectedOpen)
+        else if (!_editorEnabled && !_inventoryOpen && !_storageOpen && !_itemCollectedOpen && !_saveSlotPanelOpen && !_pauseMenuOpen && !_loadSlotPanelOpen)
         {
             _ui.CloseUI();
         }

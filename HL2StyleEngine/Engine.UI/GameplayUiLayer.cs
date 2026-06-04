@@ -45,6 +45,9 @@ public sealed class GameplayUiLayer : IDisposable
     public bool DrawPreview(out int selectedSlot)
     {
         selectedSlot = -1;
+        if (UsesNativePresentation && !ShouldForcePreviewForState(_latestState))
+            return false;
+
         if (NativeFrameVisible && !ShouldForcePreviewForState(_latestState))
             return false;
 
@@ -108,4 +111,5 @@ public sealed class GameplayUiLayer : IDisposable
 
     private bool ShouldForcePreviewForState(GameplayUiState state)
         => _forcePreviewModals && state.ItemCollectedOpen;
+
 }

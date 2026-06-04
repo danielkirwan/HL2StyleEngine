@@ -31,12 +31,32 @@ public sealed class ScriptDef
     public string Json { get; set; } = "{}"; 
 }
 
+public sealed class LevelInteractionRewardDef
+{
+    public string ItemId { get; set; } = "";
+    public int Count { get; set; } = 1;
+}
+
+public sealed class LevelInteractionDef
+{
+    public string Kind { get; set; } = "";
+    public string StateId { get; set; } = "";
+    public string RequiredItem { get; set; } = "";
+    public bool ConsumesItem { get; set; }
+    public string Prompt { get; set; } = "";
+    public string LockedPrompt { get; set; } = "";
+    public string SuccessMessage { get; set; } = "";
+    public List<string> Targets { get; set; } = new();
+    public List<LevelInteractionRewardDef> Rewards { get; set; } = new();
+}
+
 public sealed class LevelEntityDef
 {
     public string Id { get; set; } = "";
     public string Type { get; set; } = "";
     public string? Name { get; set; }
     public List<ScriptDef> Scripts { get; set; } = new();
+    public LevelInteractionDef? Interaction { get; set; }
 
     [JsonPropertyName("Parent")]
     public string? ParentId { get; set; }

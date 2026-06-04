@@ -5,6 +5,12 @@ public sealed class GameplayUiState
     public bool InventoryOpen { get; init; }
     public bool StorageOpen { get; init; }
     public bool ItemCollectedOpen { get; init; }
+    public bool SaveSlotPanelOpen { get; init; }
+    public bool PauseMenuOpen { get; init; }
+    public bool LoadSlotPanelOpen { get; init; }
+    public bool CrosshairVisible { get; init; }
+    public int CrosshairLeft { get; init; }
+    public int CrosshairTop { get; init; }
     public string InteractionPrompt { get; init; } = "";
     public string GameMessage { get; init; } = "";
     public int GridWidth { get; init; } = 8;
@@ -40,9 +46,30 @@ public sealed class GameplayUiState
     public bool UsingInventoryItem { get; init; }
     public string UseTargetPrompt { get; init; } = "";
     public int SaveCount { get; init; }
+    public int SelectedSaveSlotIndex { get; init; }
+    public int SelectedLoadSlotIndex { get; init; }
+    public int SelectedPauseMenuIndex { get; init; }
+    public bool SaveOverwriteConfirmOpen { get; init; }
+    public IReadOnlyList<GameplayUiSaveSlot> SaveSlots { get; init; } = Array.Empty<GameplayUiSaveSlot>();
     public IReadOnlyList<GameplayUiInventoryItem> InventoryItems { get; init; } = Array.Empty<GameplayUiInventoryItem>();
     public IReadOnlyList<GameplayUiInventoryItem> StorageItems { get; init; } = Array.Empty<GameplayUiInventoryItem>();
     public GameplayUiCollectedItem? CollectedItem { get; init; }
+}
+
+public sealed class GameplayUiSaveSlot
+{
+    public int SlotIndex { get; init; }
+    public string Label { get; init; } = "";
+    public bool IsEmpty { get; init; } = true;
+    public string AreaName { get; init; } = "";
+    public string LevelName { get; init; } = "";
+    public string SavePointName { get; init; } = "";
+    public string PlayTime { get; init; } = "";
+    public string Difficulty { get; init; } = "";
+    public string SavedAt { get; init; } = "";
+    public int SaveCount { get; init; }
+    public int InventoryCount { get; init; }
+    public int StorageCount { get; init; }
 }
 
 public sealed class GameplayUiInventoryItem

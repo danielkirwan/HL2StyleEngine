@@ -10,7 +10,11 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         selectedSlot = -1;
 
         if (!state.InventoryOpen &&
+            !state.StorageOpen &&
             !state.ItemCollectedOpen &&
+            !state.SaveSlotPanelOpen &&
+            !state.PauseMenuOpen &&
+            !state.LoadSlotPanelOpen &&
             string.IsNullOrWhiteSpace(state.InteractionPrompt) &&
             string.IsNullOrWhiteSpace(state.GameMessage))
         {
@@ -22,12 +26,191 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         DrawPromptPanel(state, viewport);
         DrawCollectedItemPanel(state, viewport);
 
+        if (state.SaveSlotPanelOpen)
+            DrawSaveSlotPanel(state, viewport);
+        if (state.LoadSlotPanelOpen)
+            DrawLoadSlotPanel(state, viewport);
+        if (state.PauseMenuOpen)
+            DrawPauseMenu(state, viewport);
+
         if (state.InventoryOpen)
             selectedSlot = state.UsingInventoryItem
                 ? DrawUseItemPanel(state, viewport)
                 : DrawInventoryPanel(state, viewport);
 
         return true;
+    }
+
+    private static void DrawSaveSlotPanel(GameplayUiState state, ImGuiViewportPtr viewport)
+    {
+        Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);
+        ImGui.SetNextWindowPos(center, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(560f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.96f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings;
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.018f, 0.022f, 0.026f, 0.97f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.66f, 0.68f, 0.61f, 0.48f));
+        ImGui.Begin("RmlUiPreviewSaveSlots", flags);
+        ImGui.TextColored(new Vector4(0.92f, 0.91f, 0.84f, 1f), "Save Game");
+        ImGui.TextDisabled("Choose a typewriter slot");
+        ImGui.Separator();
+
+        IReadOnlyList<GameplayUiSaveSlot> slots = state.SaveSlots.Count > 0
+            ? state.SaveSlots
+            : new[] { new GameplayUiSaveSlot { SlotIndex = 0, Label = "Slot 1", IsEmpty = true } };
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            GameplayUiSaveSlot slot = slots[i];
+            bool selected = slot.SlotIndex == state.SelectedSaveSlotIndex;
+            Vector4 fill = selected
+                ? new Vector4(0.24f, 0.30f, 0.30f, 1f)
+                : new Vector4(0.10f, 0.12f, 0.13f, 0.95f);
+
+            ImGui.PushStyleColor(ImGuiCol.Button, fill);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.25f, 0.31f, 0.31f, 1f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.34f, 0.38f, 0.36f, 1f));
+            ImGui.Button($"##saveSlot{i}", new Vector2(520f, 76f));
+
+            Vector2 min = ImGui.GetItemRectMin();
+            Vector2 max = ImGui.GetItemRectMax();
+            ImDrawListPtr drawList = ImGui.GetWindowDrawList();
+            uint titleColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.94f, 0.93f, 0.86f, 1f));
+            uint mutedColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.62f, 0.65f, 0.61f, 1f));
+            uint accentColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.78f, 0.75f, 0.58f, 1f));
+            drawList.AddText(min + new Vector2(16f, 10f), titleColor, slot.Label);
+            if (slot.IsEmpty)
+            {
+                drawList.AddText(min + new Vector2(16f, 34f), mutedColor, "Empty slot");
+            }
+            else
+            {
+                drawList.AddText(min + new Vector2(16f, 34f), mutedColor, $"{slot.AreaName} | Saves {slot.SaveCount}");
+                drawList.AddText(min + new Vector2(16f, 54f), mutedColor, $"Play time {slot.PlayTime} | {slot.SavePointName}");
+                Vector2 timeSize = ImGui.CalcTextSize(slot.SavedAt);
+                drawList.AddText(new Vector2(max.X - timeSize.X - 16f, min.Y + 10f), accentColor, slot.SavedAt);
+                string cargo = $"Inventory {slot.InventoryCount} / Storage {slot.StorageCount}";
+                Vector2 cargoSize = ImGui.CalcTextSize(cargo);
+                drawList.AddText(new Vector2(max.X - cargoSize.X - 16f, min.Y + 54f), mutedColor, cargo);
+            }
+
+            ImGui.PopStyleColor(3);
+        }
+
+        ImGui.Separator();
+        if (state.SaveOverwriteConfirmOpen)
+            ImGui.TextColored(new Vector4(0.92f, 0.78f, 0.54f, 1f), "Overwrite this slot? Press E / X again to confirm, or I / Back to cancel.");
+        else
+            ImGui.TextDisabled("W/S or D-pad: Select | E / X: Save | I / Back: Cancel");
+        ImGui.End();
+        ImGui.PopStyleColor(2);
+    }
+
+    private static void DrawPauseMenu(GameplayUiState state, ImGuiViewportPtr viewport)
+    {
+        Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);
+        ImGui.SetNextWindowPos(center, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(360f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.96f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings;
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.018f, 0.022f, 0.026f, 0.97f));
+        ImGui.Begin("RmlUiPreviewPauseMenu", flags);
+        ImGui.TextColored(new Vector4(0.92f, 0.91f, 0.84f, 1f), "Paused");
+        ImGui.TextDisabled("Interaction test");
+        ImGui.Separator();
+        DrawPauseOption("Resume", state.SelectedPauseMenuIndex == 0);
+        DrawPauseOption("Load Save", state.SelectedPauseMenuIndex == 1);
+        ImGui.Separator();
+        ImGui.TextDisabled("W/S or D-pad: Select | E / X: Confirm | Esc / I / Back: Resume");
+        ImGui.End();
+        ImGui.PopStyleColor();
+    }
+
+    private static void DrawPauseOption(string label, bool selected)
+    {
+        Vector4 fill = selected
+            ? new Vector4(0.24f, 0.30f, 0.30f, 1f)
+            : new Vector4(0.10f, 0.12f, 0.13f, 0.95f);
+        ImGui.PushStyleColor(ImGuiCol.Button, fill);
+        ImGui.Button(label, new Vector2(320f, 44f));
+        ImGui.PopStyleColor();
+    }
+
+    private static void DrawLoadSlotPanel(GameplayUiState state, ImGuiViewportPtr viewport)
+    {
+        Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);
+        ImGui.SetNextWindowPos(center, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(560f, 0f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.96f);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings;
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.018f, 0.022f, 0.026f, 0.97f));
+        ImGui.Begin("RmlUiPreviewLoadSlots", flags);
+        ImGui.TextColored(new Vector4(0.92f, 0.91f, 0.84f, 1f), "Load Game");
+        ImGui.TextDisabled("Choose saved progress");
+        ImGui.Separator();
+
+        IReadOnlyList<GameplayUiSaveSlot> slots = state.SaveSlots.Count > 0
+            ? state.SaveSlots
+            : new[] { new GameplayUiSaveSlot { SlotIndex = 0, Label = "Slot 1", IsEmpty = true } };
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            GameplayUiSaveSlot slot = slots[i];
+            bool selected = slot.SlotIndex == state.SelectedLoadSlotIndex;
+            Vector4 fill = selected
+                ? new Vector4(0.24f, 0.30f, 0.30f, 1f)
+                : new Vector4(0.10f, 0.12f, 0.13f, 0.95f);
+
+            ImGui.PushStyleColor(ImGuiCol.Button, fill);
+            ImGui.Button($"##loadSlot{i}", new Vector2(520f, 76f));
+
+            Vector2 min = ImGui.GetItemRectMin();
+            Vector2 max = ImGui.GetItemRectMax();
+            ImDrawListPtr drawList = ImGui.GetWindowDrawList();
+            uint titleColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.94f, 0.93f, 0.86f, 1f));
+            uint mutedColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.62f, 0.65f, 0.61f, 1f));
+            uint accentColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.78f, 0.75f, 0.58f, 1f));
+            drawList.AddText(min + new Vector2(16f, 10f), titleColor, slot.Label);
+            if (slot.IsEmpty)
+            {
+                drawList.AddText(min + new Vector2(16f, 34f), mutedColor, "Empty slot");
+            }
+            else
+            {
+                drawList.AddText(min + new Vector2(16f, 34f), mutedColor, $"{slot.AreaName} | Saves {slot.SaveCount}");
+                drawList.AddText(min + new Vector2(16f, 54f), mutedColor, $"Play time {slot.PlayTime} | {slot.SavePointName}");
+                Vector2 timeSize = ImGui.CalcTextSize(slot.SavedAt);
+                drawList.AddText(new Vector2(max.X - timeSize.X - 16f, min.Y + 10f), accentColor, slot.SavedAt);
+                string cargo = $"Inventory {slot.InventoryCount} / Storage {slot.StorageCount}";
+                Vector2 cargoSize = ImGui.CalcTextSize(cargo);
+                drawList.AddText(new Vector2(max.X - cargoSize.X - 16f, min.Y + 54f), mutedColor, cargo);
+            }
+
+            ImGui.PopStyleColor();
+        }
+
+        ImGui.Separator();
+        ImGui.TextDisabled("W/S or D-pad: Select | E / X: Load | Esc / I / Back: Back");
+        ImGui.End();
+        ImGui.PopStyleColor();
     }
 
     private static void DrawPromptPanel(GameplayUiState state, ImGuiViewportPtr viewport)
