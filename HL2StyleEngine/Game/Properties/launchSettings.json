@@ -6,6 +6,13 @@
         "HS2_RMLUI_NATIVE_PRESENTATION": "1",
         "HS2_RMLUI_FORCE_PREVIEW_MODALS": "0"
       }
+    },
+    "Game - Font Preview": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "HS2_RMLUI_NATIVE_PRESENTATION": "0",
+        "HS2_RMLUI_FORCE_PREVIEW_MODALS": "0"
+      }
     }
   }
 }

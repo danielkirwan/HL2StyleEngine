@@ -7,6 +7,8 @@ public static class ItemCatalog
     public const string Scrap = "Scrap";
     public const string Gunpowder = "Gunpowder";
     public const string Bullets = "Bullets";
+    public const string TestPistol = "TestPistol";
+    public const string GravityGun = "GravityGun";
     public const string CrankHandle = "CrankHandle";
     public const string Fuse = "Fuse";
 
@@ -82,10 +84,28 @@ public static class ItemCatalog
             Bullets,
             "Bullets",
             "Prototype ammunition made by combining scrap with gunpowder.",
-            InventoryItemType.Consumable,
+            InventoryItemType.Ammo,
             slotWidth: 1,
             slotHeight: 1,
             maxStack: 60),
+
+        [TestPistol] = new(
+            TestPistol,
+            "Test Pistol",
+            "A simple prototype sidearm. Uses bullets from your inventory.",
+            InventoryItemType.Weapon,
+            slotWidth: 2,
+            slotHeight: 1,
+            maxStack: 1),
+
+        [GravityGun] = new(
+            GravityGun,
+            "Gravity Gun",
+            "A prototype physics manipulator for grabbing and launching dynamic objects.",
+            InventoryItemType.Weapon,
+            slotWidth: 3,
+            slotHeight: 2,
+            maxStack: 1),
 
         [CrankHandle] = new(
             CrankHandle,

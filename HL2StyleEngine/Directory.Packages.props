@@ -8,5 +8,8 @@
     <!-- ImGui -->
     <PackageVersion Include="ImGui.NET" Version="1.91.6.1" />
     <PackageVersion Include="opticfluorine.Veldrid.ImGui" Version="5.89.2-g2842068585" />
+
+    <!-- Windows-only runtime text rasterization for native RmlUi font preview. -->
+    <PackageVersion Include="System.Drawing.Common" Version="6.0.0" />
   </ItemGroup>
 </Project>

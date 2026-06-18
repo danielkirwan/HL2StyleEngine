@@ -1,5 +1,5 @@
 body {
-  font-family: serif;
+  font-family: "Aurel Deco";
   color: #dedbd0;
 }
 
@@ -296,6 +296,25 @@ h2 {
 
 .item-icon-image {
   display: block;
+}
+
+.ui-text-image {
+  display: block;
+}
+
+.eyebrow .ui-text-image,
+.menu-title .ui-text-image,
+.storage-subtitle .ui-text-image,
+.save-subtitle .ui-text-image,
+.pause-subtitle .ui-text-image,
+.use-panel-title .ui-text-image {
+  margin-top: 0;
+}
+
+.pause-menu-row .ui-text-image,
+.action-row .ui-text-image,
+.input-pill .ui-text-image {
+  margin: 0 auto;
 }
 
 .mini-icon-image {

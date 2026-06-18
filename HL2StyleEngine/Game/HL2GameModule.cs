@@ -12,6 +12,7 @@ using Engine.Runtime.Entities.Interfaces;
 using Engine.Runtime.Hosting;
 using Engine.UI;
 using Game.Inventory;
+using Game.Weapons;
 using Game.World;
 using Game.World.MovingPlatform;
 using ImGuiNET;
@@ -21,7 +22,7 @@ using Veldrid;
 
 namespace Game;
 
-public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRenderer, IInputConsumer
+public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRenderer, IInputConsumer, IWeaponHost
 {
     private static readonly JsonSerializerOptions PrototypeSaveJsonOptions = new()
     {
@@ -104,6 +105,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
     private InputAction _move = null!;
     private InputAction _look = null!;
     private bool _prevRightTriggerDown;
+    private readonly WeaponSystem _weaponSystem = WeaponSystem.CreatePrototypeLoadout();
     private readonly InventoryContainer _inventory = new(gridWidth: 8, gridHeight: 4);
     private readonly InventoryContainer _storage = new(gridWidth: 8, gridHeight: 6);
     private readonly HashSet<string> _collectedInteractables = new(StringComparer.OrdinalIgnoreCase);
@@ -190,6 +192,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
     private Entity? _held;
     private Quaternion _heldRotation = Quaternion.Identity;
+    private bool _heldByGravityGun;
     private float _holdDistance = 2.0f;
 
     private float _holdStiffness = 60f;
@@ -240,7 +243,10 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         _editor.LoadOrCreate(levelPath, SimpleLevel.BuildInteractionTestFile);
         RebuildRuntimeWorld();
         if (!TryLoadPrototypeSave())
+        {
             ApplySpawnFromEditor(forceResetVelocity: true);
+            EnsurePrototypeWeaponLoadout(includeStarterAmmo: true);
+        }
     }
 
     private void ApplySpawnFromEditor(bool forceResetVelocity)
@@ -291,6 +297,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         _inputSystem.Update();
         if (_interactionPromptGraceTimer > 0f)
             _interactionPromptGraceTimer = MathF.Max(0f, _interactionPromptGraceTimer - dt);
+        _weaponSystem.Update(dt);
 
         if (GameplayModalOpen)
             _ui.OpenUI();
@@ -374,6 +381,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
         if (!_editorEnabled && !_itemCollectedOpen && !_inventoryOpen && !_storageOpen && !_spawnCommandOpen && !_saveSlotPanelOpen && !_pauseMenuOpen && !_loadSlotPanelOpen)
         {
+            _weaponSystem.HandleInput(this, BuildWeaponInputSnapshot());
             TryPickupDropThrow();
             if (_itemCollectedOpen)
             {
@@ -1019,6 +1027,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             if (data.StorageItems.Count > 0)
                 _storage.LoadFromSave(data.StorageItems);
 
+            bool hadWeaponLoadout =
+                _inventory.Contains(ItemCatalog.GravityGun) ||
+                _inventory.Contains(ItemCatalog.TestPistol);
+            EnsurePrototypeWeaponLoadout(includeStarterAmmo: !hadWeaponLoadout);
+
             foreach (string item in data.CollectedInteractables)
                 _collectedInteractables.Add(item);
             foreach (string item in data.OpenedDoors)
@@ -1108,6 +1121,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         DeletePrototypeSaveFiles();
 
         ClearPrototypeInteractionState();
+        EnsurePrototypeWeaponLoadout(includeStarterAmmo: true);
 
         Func<LevelFile> factory = GetDefaultLevelFactoryForPath(_editor.LevelPath);
         LevelIO.Save(_editor.LevelPath, factory());
@@ -2350,6 +2364,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         switch (action)
         {
             case "Use":
+                if (TryUseWeaponInventoryItem(selectedStack.ItemId))
+                {
+                    _inventoryActionMenuOpen = false;
+                    SetInventoryOpen(false);
+                    break;
+                }
+
                 ShowGameMessage($"{definition.DisplayName} cannot be used here yet.", 1.75f);
                 _inventoryActionMenuOpen = false;
                 break;
@@ -5687,6 +5708,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             InventoryItemType.Puzzle => new Vector4(0.56f, 0.72f, 0.88f, 1f),
             InventoryItemType.Material => new Vector4(0.64f, 0.77f, 0.58f, 1f),
             InventoryItemType.Ammo => new Vector4(0.83f, 0.58f, 0.46f, 1f),
+            InventoryItemType.Weapon => new Vector4(0.55f, 0.78f, 0.82f, 1f),
             _ => new Vector4(0.88f, 0.88f, 0.80f, 1f)
         };
 
@@ -5718,12 +5740,15 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             ItemCatalog.Scrap => "SCR",
             ItemCatalog.Gunpowder => "GUN",
             ItemCatalog.Bullets => "AMM",
+            ItemCatalog.TestPistol => "PIS",
+            ItemCatalog.GravityGun => "GRV",
             ItemCatalog.CrankHandle => "CRK",
             ItemCatalog.Fuse => "FUS",
             _ when definition.Type == InventoryItemType.Key => "KEY",
             _ when definition.Type == InventoryItemType.Puzzle => "PZL",
             _ when definition.Type == InventoryItemType.Material => "MAT",
             _ when definition.Type == InventoryItemType.Ammo => "AMM",
+            _ when definition.Type == InventoryItemType.Weapon => "WPN",
             _ => "ITM"
         };
 
@@ -5910,6 +5935,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
             DrawPrimitive(renderer, ent.Render.Shape, pos, size, rot, col, ent.Render.Radius, ent.Render.Height);
         }
+
+        _weaponSystem.Render(this, renderer, visible: !_editorEnabled && !GameplayModalOpen);
     }
 
     public void RenderOverlay(Renderer renderer)
@@ -6625,10 +6652,11 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             out hitT);
     }
 
-    private Entity? RaycastPickable(float maxDist)
+    private Entity? RaycastPickable(float maxDist, float? maxMass = null)
     {
         Vector3 origin = _camera.Position;
         Vector3 dir = Vector3.Normalize(_camera.Forward);
+        float allowedMass = maxMass ?? _pickupMaxMass;
 
         var ray = new Engine.Physics.Collision.Ray(origin, dir);
 
@@ -6651,7 +6679,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
             if (e.IsHeld) continue;
             if (IsPhysicsBodyKinematic(e)) continue;
-            if (GetPhysicsBodyMass(e) > _pickupMaxMass) continue;
+            if (GetPhysicsBodyMass(e) > allowedMass) continue;
 
             if (RayIntersectsEntityCollider(ray, e, 0.05f, bestT, out float tHit))
             {
@@ -7291,6 +7319,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             "scrap" => ItemCatalog.Scrap,
             "gunpowder" or "powder" => ItemCatalog.Gunpowder,
             "bullet" or "bullets" or "ammo" => ItemCatalog.Bullets,
+            "pistol" or "testpistol" => ItemCatalog.TestPistol,
+            "gravitygun" or "gravgun" or "physgun" => ItemCatalog.GravityGun,
             "rustedkey" or "rustykey" => "RustedKey",
             "servicekey" => "ServiceKey",
             "archivekey" => "ArchiveKey",
@@ -7380,6 +7410,8 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             InventoryItemType.Consumable => new Vector4(0.18f, 0.20f, 0.42f, 1f),
             InventoryItemType.Material => new Vector4(0.55f, 0.55f, 0.50f, 1f),
             InventoryItemType.Puzzle => new Vector4(0.45f, 0.32f, 0.18f, 1f),
+            InventoryItemType.Ammo => new Vector4(0.83f, 0.58f, 0.46f, 1f),
+            InventoryItemType.Weapon => new Vector4(0.22f, 0.30f, 0.32f, 1f),
             _ => new Vector4(0.62f, 0.64f, 0.58f, 1f)
         };
 
@@ -7422,17 +7454,6 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
 
     private void TryPickupDropThrow()
     {
-        
-        bool throwPressed =
-            _inputState.LeftMousePressedThisFrame ||
-            RightTriggerPressedThisFrame();
-
-        if (_held != null && throwPressed)
-        {
-            ThrowHeld();
-            return;
-        }
-
         if (InteractPressedThisFrame())
         {
             if (_held != null)
@@ -7450,11 +7471,12 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             }
         }
     }
-    private void PickUp(Entity e)
+    private void PickUp(Entity e, bool grabbedByGravityGun = false)
     {
         if (!HasPhysicsBody(e)) return;
 
         _held = e;
+        _heldByGravityGun = grabbedByGravityGun;
         _heldRotation = Quaternion.Normalize(e.Physics.Rotation);
         e.IsHeld = true;
 
@@ -7519,9 +7541,13 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
         e.IsHeld = false;
         _held = null;
         _heldRotation = Quaternion.Identity;
+        _heldByGravityGun = false;
     }
 
     private void ThrowHeld()
+        => ThrowHeld(_throwSpeed);
+
+    private void ThrowHeld(float speed)
     {
         if (_held == null) return;
         var e = _held;
@@ -7534,7 +7560,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             e.Physics.BoxBody.IsKinematic = false;
             e.Physics.BoxBody.UseGravity = true;
 
-            e.Physics.BoxBody.Velocity = dir * _throwSpeed + _motor.Velocity * 0.5f;
+            e.Physics.BoxBody.Velocity = dir * speed + _motor.Velocity * 0.5f;
         }
 
         if (e.Physics.SphereBody != null)
@@ -7542,7 +7568,7 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             e.Physics.SphereBody.IsKinematic = false;
             e.Physics.SphereBody.UseGravity = true;
 
-            e.Physics.SphereBody.Velocity = dir * _throwSpeed + _motor.Velocity * 0.5f;
+            e.Physics.SphereBody.Velocity = dir * speed + _motor.Velocity * 0.5f;
         }
 
         if (e.Physics.CapsuleBody != null)
@@ -7550,25 +7576,14 @@ public sealed class HL2GameModule : IGameModule, IWorldRenderer, IOverlayRendere
             e.Physics.CapsuleBody.IsKinematic = false;
             e.Physics.CapsuleBody.UseGravity = true;
 
-            e.Physics.CapsuleBody.Velocity = dir * _throwSpeed + _motor.Velocity * 0.5f;
+            e.Physics.CapsuleBody.Velocity = dir * speed + _motor.Velocity * 0.5f;
         }
 
         e.IsHeld = false;
         _held = null;
         _heldRotation = Quaternion.Identity;
+        _heldByGravityGun = false;
     }
-
-    private bool RightTriggerPressedThisFrame()
-    {
-        float v = _inputState.GetAxis(GamepadAxis.TriggerRight);
-        bool down = v > 0.5f; 
-
-        bool pressed = down && !_prevRightTriggerDown;
-        _prevRightTriggerDown = down;
-
-        return pressed;
-    }
-
 
     private void FixedUpdateHeldObject(float dt)
     {

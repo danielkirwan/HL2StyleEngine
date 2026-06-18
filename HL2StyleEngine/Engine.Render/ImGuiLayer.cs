@@ -21,6 +21,7 @@ public sealed class ImGuiLayer : IDisposable
 
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+        TryLoadUiFont(io);
 
         if (File.Exists(_iniPath))
         {
@@ -56,5 +57,20 @@ public sealed class ImGuiLayer : IDisposable
     {
         try { ImGui.SaveIniSettingsToDisk(_iniPath); }
         catch {  }
+    }
+
+    private static void TryLoadUiFont(ImGuiIOPtr io)
+    {
+        string fontPath = Path.Combine(AppContext.BaseDirectory, "Content", "UI", "Fonts", "AurelDeco-Regular.ttf");
+        if (!File.Exists(fontPath))
+            return;
+
+        try
+        {
+            io.Fonts.AddFontFromFileTTF(fontPath, 18f);
+        }
+        catch
+        {
+        }
     }
 }

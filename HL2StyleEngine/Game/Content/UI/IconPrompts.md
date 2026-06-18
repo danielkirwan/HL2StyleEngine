@@ -20,6 +20,8 @@ Grounded Resident Evil-inspired survival-horror inventory icon, isolated object 
 - Scrap: A small pile of useful crafting scrap: bent metal plates, screws, wire offcuts, one dull brass fitting, dirty and practical, isolated on transparent background.
 - Gunpowder: A small sealed paper packet or tin of gunpowder with no readable label, dark powder residue around the cap, worn utilitarian packaging, isolated on transparent background.
 - Bullets: A compact group of brass pistol cartridges, 12 rounds arranged neatly, dull brass casings and copper tips, slight grime, isolated on transparent background.
+- Test Pistol: A compact black semi-automatic pistol prototype, worn parkerized metal slide, simple industrial grip, subtle scratches, no branding or text, isolated on transparent background. wide object composition, fills a horizontal 2x1 inventory footprint, centered with extra padding, strong silhouette when scaled down.
+- Gravity Gun: A prototype physics manipulator tool with dark worn metal body, exposed prongs, small cyan glass energy core, industrial Half-Life-inspired proportions without logos, practical hand tool scale, isolated on transparent background. large object composition, fills a 3x2 inventory footprint, centered with extra padding, strong silhouette when scaled down.
 
 ## Prompt Add-On For Multi-Slot Items
 

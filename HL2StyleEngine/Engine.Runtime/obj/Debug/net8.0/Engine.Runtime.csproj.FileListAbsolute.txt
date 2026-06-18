@@ -64,3 +64,7 @@ C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiVS.cso
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiPS.hlsl
 C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiVS.hlsl
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiPS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiVS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiPS.hlsl
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiVS.hlsl

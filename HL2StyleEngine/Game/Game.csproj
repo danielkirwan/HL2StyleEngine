@@ -19,5 +19,7 @@
     <None Include="Content\UI\**\*.rml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\UI\**\*.rcss" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\UI\**\*.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\UI\**\*.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\UI\**\*.otf" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

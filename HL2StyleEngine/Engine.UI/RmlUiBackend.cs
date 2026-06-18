@@ -17,6 +17,7 @@ public sealed class RmlUiBackend : IDisposable
     private readonly IntPtr _nativeBridgeHandle;
     private readonly RmlUiNativeApi? _nativeApi;
     private readonly RmlUiOverlayRenderer _overlayRenderer = new();
+    private readonly RmlUiTextImageCache _textImageCache;
     private GameplayUiState _state = new();
     private string _lastDocumentHash = "";
     private string _pendingDocument = "";
@@ -30,6 +31,7 @@ public sealed class RmlUiBackend : IDisposable
         ContentRoot = contentRoot;
         _nativeBridgeHandle = nativeBridgeHandle;
         _nativeApi = nativeApi;
+        _textImageCache = new RmlUiTextImageCache(contentRoot);
         Status = status;
     }
 
@@ -86,7 +88,7 @@ public sealed class RmlUiBackend : IDisposable
         _state = state;
         string document = TestDocumentEnabled
             ? BuildTestDocument(state)
-            : RmlUiDocumentBuilder.Build(state);
+            : RmlUiDocumentBuilder.Build(state, _textImageCache.TryGetTextImage);
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(document)));
         if (hash == _lastDocumentHash)
             return;
@@ -161,6 +163,7 @@ public sealed class RmlUiBackend : IDisposable
         if (_nativeBridgeHandle != IntPtr.Zero)
             NativeLibrary.Free(_nativeBridgeHandle);
 
+        _textImageCache.Dispose();
         _overlayRenderer.Dispose();
     }
 
