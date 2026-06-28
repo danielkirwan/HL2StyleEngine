@@ -974,6 +974,7 @@
         "dependencies": {
           "Engine.Core": "1.0.0",
           "ImGui.NET": "1.91.6.1",
+          "System.Drawing.Common": "6.0.0",
           "opticfluorine.Veldrid": "4.9.6",
           "opticfluorine.Veldrid.ImGui": "5.89.2-g2842068585",
           "opticfluorine.Veldrid.StartupUtilities": "4.9.6"
@@ -3261,11 +3262,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.UI\\Engine.UI.csproj",
+      "projectUniqueName": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.UI\\Engine.UI.csproj",
       "projectName": "Engine.UI",
-      "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.UI\\Engine.UI.csproj",
+      "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.UI\\Engine.UI.csproj",
       "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
-      "outputPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.UI\\obj\\",
+      "outputPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.UI\\obj\\",
       "projectStyle": "PackageReference",
       "centralPackageVersionsManagementEnabled": true,
       "fallbackFolders": [
@@ -3281,18 +3282,17 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Input\\Engine.Input.csproj": {
-              "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Input\\Engine.Input.csproj"
+            "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Input\\Engine.Input.csproj": {
+              "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Input\\Engine.Input.csproj"
             },
-            "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj": {
-              "projectPath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj"
+            "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj": {
+              "projectPath": "C:\\HS2StyleEngine\\HL2StyleEngine\\HL2StyleEngine\\Engine.Render\\Engine.Render.csproj"
             }
           }
         }
@@ -3348,7 +3348,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

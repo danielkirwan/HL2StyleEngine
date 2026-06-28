@@ -51,16 +51,28 @@ internal sealed class WeaponViewModelDefinition
     public WeaponViewModelDefinition(
         string? modelAssetPath,
         Vector3 muzzleOffset,
-        IReadOnlyList<WeaponViewModelPart> fallbackParts)
+        IReadOnlyList<WeaponViewModelPart> fallbackParts,
+        Vector3? modelLocalOffset = null,
+        Vector3? modelLocalEulerDegrees = null,
+        float modelScale = 1f,
+        Vector4? modelTint = null)
     {
         ModelAssetPath = modelAssetPath;
         MuzzleOffset = muzzleOffset;
         FallbackParts = fallbackParts;
+        ModelLocalOffset = modelLocalOffset ?? fallbackParts.FirstOrDefault()?.LocalOffset ?? Vector3.Zero;
+        ModelLocalEulerDegrees = modelLocalEulerDegrees ?? Vector3.Zero;
+        ModelScale = MathF.Max(0.001f, modelScale);
+        ModelTint = modelTint ?? Vector4.One;
     }
 
     public string? ModelAssetPath { get; }
     public Vector3 MuzzleOffset { get; }
     public IReadOnlyList<WeaponViewModelPart> FallbackParts { get; }
+    public Vector3 ModelLocalOffset { get; }
+    public Vector3 ModelLocalEulerDegrees { get; }
+    public float ModelScale { get; }
+    public Vector4 ModelTint { get; }
 }
 
 internal sealed class WeaponDefinition
@@ -78,6 +90,10 @@ internal sealed class WeaponDefinition
         float pickupRange = 0f,
         float pickupMaxMass = 0f,
         float throwSpeed = 0f,
+        float attractionRange = 0f,
+        float pullAcceleration = 0f,
+        float pullMaxSpeed = 0f,
+        float holdDistance = 0f,
         string? ammoItemId = null,
         int ammoPerPrimaryFire = 0)
     {
@@ -93,6 +109,10 @@ internal sealed class WeaponDefinition
         PickupRange = pickupRange;
         PickupMaxMass = pickupMaxMass;
         ThrowSpeed = throwSpeed;
+        AttractionRange = attractionRange > 0f ? attractionRange : pickupRange;
+        PullAcceleration = pullAcceleration;
+        PullMaxSpeed = pullMaxSpeed;
+        HoldDistance = holdDistance > 0f ? holdDistance : MathF.Min(3.0f, pickupRange);
         AmmoItemId = ammoItemId;
         AmmoPerPrimaryFire = Math.Max(0, ammoPerPrimaryFire);
     }
@@ -109,6 +129,10 @@ internal sealed class WeaponDefinition
     public float PickupRange { get; }
     public float PickupMaxMass { get; }
     public float ThrowSpeed { get; }
+    public float AttractionRange { get; }
+    public float PullAcceleration { get; }
+    public float PullMaxSpeed { get; }
+    public float HoldDistance { get; }
     public string? AmmoItemId { get; }
     public int AmmoPerPrimaryFire { get; }
     public bool UsesAmmo => !string.IsNullOrWhiteSpace(AmmoItemId) && AmmoPerPrimaryFire > 0;

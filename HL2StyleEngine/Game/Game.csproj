@@ -21,5 +21,11 @@
     <None Include="Content\UI\**\*.png" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\UI\**\*.ttf" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\UI\**\*.otf" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\Models\**\*.glb" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\Models\**\*.gltf" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\Models\**\*.bin" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\Models\**\*.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\Models\**\*.jpg" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\Models\**\*.jpeg" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

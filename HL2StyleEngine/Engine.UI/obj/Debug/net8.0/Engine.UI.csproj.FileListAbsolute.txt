@@ -60,3 +60,6 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.UI\obj\Debug\net8.0\Engine.UI.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.UI\obj\Debug\net8.0\refint\Engine.UI.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.UI\obj\Debug\net8.0\Engine.UI.pdb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.UI\obj\Debug\net8.0\ref\Engine.UI.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\bin\Debug\net8.0\Shaders\TexturedModelPS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\bin\Debug\net8.0\Shaders\TexturedModelVS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.UI\bin\Debug\net8.0\Shaders\TexturedModel.hlsl

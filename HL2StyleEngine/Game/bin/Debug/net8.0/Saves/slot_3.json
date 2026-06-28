@@ -1,0 +1,97 @@
+{
+  "SaveSlot": 3,
+  "SavedAtUtc": "2026-06-28T20:53:35.0362285Z",
+  "LevelName": "interaction_test.json",
+  "LevelDisplayName": "interaction test",
+  "AreaName": "interaction test",
+  "SavePointName": "SavePoint_Typewriter",
+  "SavePointDisplayName": "Typewriter",
+  "Difficulty": "Prototype",
+  "ProfileId": "Default",
+  "PlayTimeSeconds": 72.800545,
+  "Inventory": [
+    "ArchiveKey",
+    "Bullets",
+    "CrankHandle",
+    "Fuse",
+    "GravityGun",
+    "Scrap",
+    "TestPistol"
+  ],
+  "InventoryItems": [
+    {
+      "ItemId": "GravityGun",
+      "Count": 1,
+      "SlotIndex": 0,
+      "Rotated": false
+    },
+    {
+      "ItemId": "TestPistol",
+      "Count": 1,
+      "SlotIndex": 3,
+      "Rotated": false
+    },
+    {
+      "ItemId": "Bullets",
+      "Count": 24,
+      "SlotIndex": 5,
+      "Rotated": false
+    },
+    {
+      "ItemId": "InkRibbon",
+      "Count": 1,
+      "SlotIndex": 7,
+      "Rotated": false
+    },
+    {
+      "ItemId": "CrankHandle",
+      "Count": 1,
+      "SlotIndex": 11,
+      "Rotated": false
+    },
+    {
+      "ItemId": "Scrap",
+      "Count": 3,
+      "SlotIndex": 12,
+      "Rotated": false
+    },
+    {
+      "ItemId": "Fuse",
+      "Count": 1,
+      "SlotIndex": 13,
+      "Rotated": false
+    },
+    {
+      "ItemId": "ArchiveKey",
+      "Count": 1,
+      "SlotIndex": 6,
+      "Rotated": false
+    }
+  ],
+  "StorageItems": [],
+  "CollectedInteractables": [
+    "Item_Fuse__CrankAlcove",
+    "ItemInkRibbon_Foyer",
+    "ItemInkRibbon_SaveOffice",
+    "ItemKey_ArchiveKey",
+    "ItemKey_RustedKey",
+    "ItemKey_ServiceKey"
+  ],
+  "OpenedDoors": [
+    "Chest_Service_SupplyA",
+    "Chest_Service_SupplyB",
+    "Door_Foyer_RustedKey",
+    "Door_SaveOffice_ServiceKey"
+  ],
+  "SolvedPuzzles": [
+    "Puzzle_PowerGate",
+    "Puzzle_UtilityLift"
+  ],
+  "InkRibbons": 1,
+  "SavePointUseCount": 1,
+  "PlayerX": -6.6735587,
+  "PlayerY": 0,
+  "PlayerZ": 0.67999995,
+  "CameraYaw": 0.24569248,
+  "CameraPitch": -0.7299994
+}

@@ -1,0 +1,15 @@
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\bin\Debug\net8.0-windows\Engine.AssetImporter.exe
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\bin\Debug\net8.0-windows\Engine.AssetImporter.deps.json
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\bin\Debug\net8.0-windows\Engine.AssetImporter.runtimeconfig.json
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\bin\Debug\net8.0-windows\Engine.AssetImporter.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\bin\Debug\net8.0-windows\Engine.AssetImporter.pdb
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\obj\Debug\net8.0-windows\Engine.AssetImporter.GeneratedMSBuildEditorConfig.editorconfig
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\obj\Debug\net8.0-windows\Engine.AssetImporter.AssemblyInfoInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\obj\Debug\net8.0-windows\Engine.AssetImporter.AssemblyInfo.cs
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\obj\Debug\net8.0-windows\Engine.AssetImporter.csproj.CoreCompileInputs.cache
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\obj\Debug\net8.0-windows\Engine.AssetImporter.sourcelink.json
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\obj\Debug\net8.0-windows\Engine.AssetImporter.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\obj\Debug\net8.0-windows\refint\Engine.AssetImporter.dll
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\obj\Debug\net8.0-windows\Engine.AssetImporter.pdb
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\obj\Debug\net8.0-windows\Engine.AssetImporter.genruntimeconfig.cache
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\obj\Debug\net8.0-windows\ref\Engine.AssetImporter.dll

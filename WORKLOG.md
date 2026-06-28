@@ -1,6 +1,6 @@
 # Work Log
 
-Last updated: 2026-05-28
+Last updated: 2026-06-28
 
 This file is the running handover for active work, recent changes, and the next tasks.
 
@@ -41,6 +41,59 @@ The current gameplay issues being worked first are:
 - the current gameplay prototype now has a playable interaction test level for key-door-save flow
 - the user has confirmed the playable area is good and keys can be found and used
 - RmlUi is now the preferred direction for final gameplay UI, while ImGui remains the current prototype/editor UI layer
+- the first FBX-to-GLB asset-importer project and first lit/metallic GLB weapon viewmodel rendering path now exist, with the pistol viewmodel playtested and confirmed much improved
+
+## 2026-06-28
+
+### Summary
+
+- added `Engine.AssetImporter`, a standalone Windows tool for selecting an FBX source folder and converting it to GLB through Blender
+- added Blender discovery through an explicit path, `HS2_BLENDER_EXE`, PATH lookup, or common Program Files installs
+- added a conversion script that imports FBX, searches the source folder for common albedo/normal/emission/metallic textures, and exports binary GLB
+- added first-pass GLB mesh loading in `Engine.Render`, including mesh primitives, positions, indices, node transforms, and base-color factors
+- added render-model GPU buffers and `BasicWorldRenderer.DrawModel(...)`
+- wired weapon viewmodels to try `ModelAssetPath` GLB files before falling back to primitive debug geometry
+- added model asset copying from `Game/Content/Models` into the game output
+- tuned the first converted sci-fi handgun model to use the pistol weapon path, rotate its long axis forward, scale it down, and apply a dark placeholder tint until textured model rendering exists
+- improved the importer so selecting an `FBX` subfolder searches the parent asset folder for sibling texture folders such as `tex`
+- added first-pass textured GLB rendering: the loader now reads `TEXCOORD_0` and embedded base-color PNGs, uploads base-color textures, and draws textured model parts with a dedicated shader
+- added `TexturedModel.hlsl` plus compiled `TexturedModelVS.cso` and `TexturedModelPS.cso`
+- added a first material-lighting pass for textured GLBs: normals are now read from GLB, camera position is passed to the shader, and the model shader applies ambient/directional lighting with simple specular, metallic, and roughness response
+
+### Why
+
+- the project needs a practical content workflow for FBX assets before gun viewmodels and authored prop models can replace primitive placeholders
+- GLB gives the runtime a simpler, engine-friendly model format while still letting source assets come from common FBX packs
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\Render\Model`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\Render\BasicWorldRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Weapons`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.WeaponHost.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\HL2StyleEngine.sln`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `Engine.Render` build succeeded
+- `Engine.AssetImporter` build succeeded
+- full `Game` build succeeded and copied updated engine dependencies into the game output
+- `Engine.Render` and full `Game` builds succeeded after adding the textured model pipeline
+- isolated `Engine.Render` compile check succeeded after adding the material-lighting pass
+- isolated `Game` compile check succeeded to `.codex-build\MaterialGame`; the normal `Game/bin` copy was blocked because the running `Game` process had DLLs locked
+- user playtest confirmed the lit/metallic pistol viewmodel looks much better and is a good foundation for further material polish
+
+### Next
+
+- install or locate Blender, then run `Engine.AssetImporter` and convert the sci-fi handgun FBX folder to `Game/Content/Models/ViewModels/test_pistol.glb`
+- re-run the sci-fi handgun conversion if texture embedding needs validation; selecting the `FBX` folder should now still search the parent folder for textures
+- playtest the pistol viewmodel and tune the weapon model offset, rotation, and scale values again if it appears too large, too small, or misaligned
+- continue material polish from the validated pistol shader: normal-map perturbation, emission for the red display, better metallic/smoothness calibration, environment/reflection lighting, and proper weapon-viewmodel depth/FOV handling
+- add world-model placement/rendering for non-weapon GLB props after viewmodel scale/orientation is validated
 
 ## 2026-05-01
 
@@ -1372,6 +1425,184 @@ The current gameplay issues being worked first are:
 
 - playtest native RmlUi mouse hover/click on pause, save, load, inventory action menu, use-item list, and item-box storage
 - start the next UI polish slice: tighten survival-horror menu readability, hover states, and selected-item feedback now that input is less brittle
+
+## 2026-06-28
+
+### Summary
+
+- extended the Gravity Gun from instant close-range pickup into a two-stage pull-and-grab interaction
+- added continuous primary-fire input so holding left mouse / right trigger keeps pulling a targeted prop
+- added gravity-gun tuning for attraction range, grab distance, pull acceleration, max pull speed, and held distance
+- added a weapon-host attraction method that applies mass-scaled pull velocity to dynamic props without exposing physics body internals to the weapon system
+- documented that weapon `.glb` paths are placeholders until a model asset loader/render path is added
+
+### Why
+
+- the Gravity Gun needs to reach farther than hand pickup while still feeling physical: distant objects should be pulled toward the player, and heavier props should move more slowly before locking into held mode
+- gun models need an explicit asset-pipeline step because the current weapon rendering path only draws primitive fallback viewmodels
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Weapons\WeaponInputSnapshot.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Weapons\WeaponDefinition.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Weapons\WeaponDefinitions.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Weapons\WeaponSystem.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Weapons\IWeaponHost.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.WeaponHost.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\README.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj' --no-restore --no-dependencies -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+
+### Next
+
+- playtest Gravity Gun with light and heavy props at near, medium, and far attraction distances
+- tune attraction range, pull acceleration, and max pull speed if heavy objects feel too floaty or light objects snap too quickly
+- continue validating the GLB viewmodel path now that weapon viewmodels can load converted assets before falling back to primitive geometry
+
+## 2026-06-28
+
+### Summary
+
+- checked the converted Gravity Gun GLB and confirmed it is a valid 3-mesh model with normals, UVs, 3 materials, and 52,893 vertices
+- fixed the FBX-to-GLB importer texture matcher so material-prefixed files such as `Metal_Color.png` and `Another_Color.png` are assigned to the matching material instead of being skipped or chosen alphabetically
+- regenerated `Game/Content/Models/ViewModels/gravitygun.glb` with material-specific base-color, normal, metallic, roughness, and light emission textures embedded
+- pointed the Gravity Gun weapon definition at `Content/Models/ViewModels/gravitygun.glb` and added first-pass viewmodel offset/scale tuning
+
+### Why
+
+- the first Gravity Gun conversion was structurally valid but had no base-color textures, so the runtime could only show a flat material instead of the authored painted model
+- the importer needed better material-name matching before more FBX packs are converted, especially assets that use names like `Metal_Color.png`
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\FbxToGlbConverter.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\Models\ViewModels\gravitygun.glb`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Weapons\WeaponDefinitions.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\Models\ViewModels\README.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\README.md`
+
+### Validation
+
+- regenerated `gravitygun.glb` through `Engine.AssetImporter` and inspected the GLB metadata
+- final GLB material mapping: `Another` uses `Another_Color` / `Another_Normal` / packed `Another_Metalness-Another_Roughness`; `Metal` uses `Metal_Color` / `Metal_Normal` / packed `Metal_Metalness-Metal_Roughness`; `Light` uses `Light_Color` and `Light_EmissionColor`
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\Engine.AssetImporter.csproj' -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj' --no-restore --no-dependencies -p:NuGetAudit=false -p:OutputPath='C:\HS2StyleEngine\HL2StyleEngine\.codex-build\GravityGunCheck\'` succeeded with 0 warnings and 0 errors
+
+### Next
+
+- playtest the Gravity Gun viewmodel in-game and tune `modelLocalOffset`, rotation, and `modelScale` if it sits too close, clips the camera, or blocks too much screen space
+- add runtime emission-map rendering if the Gravity Gun light material should glow instead of only carrying the embedded emission texture
+- continue toward normal-map perturbation and fuller PBR lighting for converted GLB assets
+
+## 2026-06-28
+
+### Summary
+
+- reduced viewmodel hitching by moving GLB file parsing onto a background task; weapons draw primitive fallback geometry until the parsed model is ready to promote to GPU resources
+- added a 1024px embedded-texture cap to the Blender FBX-to-GLB importer and packed the resized images so exported GLBs are much smaller
+- regenerated `gravitygun.glb`, reducing it from about 74 MB to about 8.5 MB while keeping material-specific color, normal, metallic/roughness, and light emission assignments
+- regenerated `test_pistol.glb`, reducing it from about 9.5 MB to about 2.9 MB
+- hardened Blender export failure reporting by exporting to a temporary `.tmp.glb`, replacing the target only on success, and forcing a non-zero script exit when export fails
+- made Gravity Gun held-object launch explicit: after a prop is grabbed, primary fire must be released once, then the next clean click launches the held object
+
+### Why
+
+- loading/parsing/decoding weapon GLBs during the first render of a model caused visible stalls on startup and first weapon switch
+- the same primary input used for pull/grab could make the first launch click feel inconsistent without an explicit post-grab release/arm state
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\FbxToGlbConverter.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\Render\BasicWorldRenderer.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.WeaponHost.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Weapons\WeaponSystem.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\Models\ViewModels\gravitygun.glb`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Content\Models\ViewModels\test_pistol.glb`
+
+### Validation
+
+- regenerated `gravitygun.glb` and confirmed final size is 8,464,944 bytes
+- regenerated `test_pistol.glb` and confirmed final size is 2,927,776 bytes
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter\Engine.AssetImporter.csproj' -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\Engine.Render.csproj' -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj' --no-restore --no-dependencies -p:NuGetAudit=false -p:OutputPath='C:\HS2StyleEngine\HL2StyleEngine\.codex-build\WeaponModelHitchCheck\'` succeeded with 0 warnings and 0 errors
+
+### Next
+
+- playtest startup and first switch between Gravity Gun and pistol; the primitive fallback may appear briefly while the model finishes loading, but the frame should not freeze
+- verify Gravity Gun flow: hold primary to pull/grab, release primary, then the next click should launch the held box
+- if there is still a small hitch when the background load finishes, move PNG decode or GPU texture upload into smaller staged work
+
+## 2026-06-28
+
+### Summary
+
+- changed the prototype weapon model path from first-use lazy loading to startup preload for all weapon definitions with GLB viewmodel paths
+- kept the async loading fallback for future non-preloaded models, but the Gravity Gun and pistol should now start with their real GLB models ready instead of briefly drawing boxed fallback viewmodels
+- fixed Gravity Gun launch re-grab by suppressing new Gravity Gun pull/grab attempts until primary fire is released after launching a held object
+
+### Why
+
+- the boxed fallback appearing before the real gun model made weapon switching look unfinished; for the current prototype loadout, startup/level preload is the better feel
+- after launch, the primary button could still be held long enough for the Gravity Gun to immediately reacquire the thrown box, making it look like the box never fired
+- the longer-term recommendation is a visible loading-screen state once level and asset counts grow, but preloading the current weapon set during initialization is the right small slice now
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\HL2GameModule.WeaponHost.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Weapons\WeaponSystem.cs`
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Render\Engine.Render.csproj' -p:NuGetAudit=false` succeeded with 0 warnings and 0 errors
+- `dotnet build 'C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game\Game.csproj' --no-restore --no-dependencies -p:NuGetAudit=false -p:OutputPath='C:\HS2StyleEngine\HL2StyleEngine\.codex-build\WeaponPreloadCheck\'` succeeded with 0 warnings and 0 errors
+
+### Next
+
+- playtest startup: weapon models should already be visible as models, not boxed fallback, when the game becomes controllable
+- test Gravity Gun launch by grabbing a box, releasing primary fire, then clicking once; the box should launch and not be immediately re-held
+- if startup delay becomes noticeable as more assets are added, add a proper loading screen/progress state around level and asset preload
+
+## 2026-06-28
+
+### Summary
+
+- user playtest confirmed the weapon model preload path feels much smoother
+- user playtest confirmed Gravity Gun held-object launch now works much better after suppressing immediate re-grab
+- locked down the current weapon-model/preload slice as the baseline before adding melee weapons
+- reviewed the weapon framework for a crowbar melee weapon
+
+### Why
+
+- the project now has a stable enough weapon foundation to add the next prototype weapon without chasing first-load model hitches or Gravity Gun launch regressions
+- a crowbar should build on the existing weapon inventory, switching, cooldown, impulse, and viewmodel systems, but needs a new melee weapon behavior path
+
+### Files
+
+- `C:\HS2StyleEngine\HL2StyleEngine\PROJECT.md`
+- `C:\HS2StyleEngine\HL2StyleEngine\WORKLOG.md`
+
+### Validation
+
+- user reported startup/weapon switching is working smoother
+- user reported the Gravity Gun behavior is working much better
+
+### Next
+
+- add `WeaponKind.Melee` for short-range crowbar swings
+- add a `Crowbar` inventory item and include it in the prototype loadout
+- implement short-range melee hit detection, cooldown, swing feedback, and physics impulse against dynamic props
+- add a primitive crowbar fallback viewmodel first, then replace it with a GLB crowbar model through the existing asset pipeline
+- choose or confirm controller/keyboard mapping if melee needs any special secondary behavior beyond normal primary fire
 
 ## Notes For Future Chats
 

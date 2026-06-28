@@ -34,6 +34,10 @@ public sealed class BasicWorldRenderer : IDisposable
 
     private readonly Shader[] _shaders;
     private readonly Pipeline _pipeline;
+    private readonly Shader[] _texturedShaders;
+    private readonly Pipeline _texturedPipeline;
+    private readonly ResourceLayout _textureLayout;
+    private readonly Sampler _modelSampler;
 
     // Ring config
     private const uint MaxObjectsPerFrame = 4096;
@@ -45,6 +49,14 @@ public sealed class BasicWorldRenderer : IDisposable
     {
         public Matrix4x4 Model;
         public Vector4 Color;
+        public Vector4 Material;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CameraData
+    {
+        public Matrix4x4 ViewProj;
+        public Vector4 CameraPosition;
     }
 
     public BasicWorldRenderer(GraphicsDevice gd, OutputDescription output, string shaderDirRelativeToApp)
@@ -94,11 +106,11 @@ public sealed class BasicWorldRenderer : IDisposable
         gd.UpdateBuffer(_sphereIb, 0, sphereMesh.indices);
 
         _cameraBuffer = _factory.CreateBuffer(new BufferDescription(
-            64,
+            (uint)Marshal.SizeOf<CameraData>(),
             BufferUsage.UniformBuffer | BufferUsage.Dynamic));
 
         _cameraLayout = _factory.CreateResourceLayout(new ResourceLayoutDescription(
-            new ResourceLayoutElementDescription("Camera", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
+            new ResourceLayoutElementDescription("Camera", ResourceKind.UniformBuffer, ShaderStages.Vertex | ShaderStages.Fragment)));
 
         _cameraSet = _factory.CreateResourceSet(new ResourceSetDescription(_cameraLayout, _cameraBuffer));
 
@@ -131,6 +143,15 @@ public sealed class BasicWorldRenderer : IDisposable
             _factory.CreateShader(new ShaderDescription(ShaderStages.Fragment, psBytes, "PSMain")),
         };
 
+        byte[] texturedVsBytes = File.ReadAllBytes(Path.Combine(shaderDir, "TexturedModelVS.cso"));
+        byte[] texturedPsBytes = File.ReadAllBytes(Path.Combine(shaderDir, "TexturedModelPS.cso"));
+
+        _texturedShaders = new[]
+        {
+            _factory.CreateShader(new ShaderDescription(ShaderStages.Vertex, texturedVsBytes, "VSMain")),
+            _factory.CreateShader(new ShaderDescription(ShaderStages.Fragment, texturedPsBytes, "PSMain")),
+        };
+
         var vertexLayout = new VertexLayoutDescription(
             new VertexElementDescription("Position", VertexElementSemantic.Position, VertexElementFormat.Float3));
 
@@ -154,6 +175,50 @@ public sealed class BasicWorldRenderer : IDisposable
         };
 
         _pipeline = _factory.CreateGraphicsPipeline(pd);
+
+        _modelSampler = _factory.CreateSampler(new SamplerDescription(
+            SamplerAddressMode.Wrap,
+            SamplerAddressMode.Wrap,
+            SamplerAddressMode.Wrap,
+            SamplerFilter.MinLinear_MagLinear_MipPoint,
+            null,
+            0,
+            0,
+            0,
+            0,
+            SamplerBorderColor.TransparentBlack));
+
+        _textureLayout = _factory.CreateResourceLayout(new ResourceLayoutDescription(
+            new ResourceLayoutElementDescription("BaseColorTex", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
+            new ResourceLayoutElementDescription("BaseColorSamp", ResourceKind.Sampler, ShaderStages.Fragment),
+            new ResourceLayoutElementDescription("MetallicRoughnessTex", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
+            new ResourceLayoutElementDescription("MetallicRoughnessSamp", ResourceKind.Sampler, ShaderStages.Fragment)));
+
+        var texturedVertexLayout = new VertexLayoutDescription(
+            new VertexElementDescription("Position", VertexElementSemantic.Position, VertexElementFormat.Float3),
+            new VertexElementDescription("Normal", VertexElementSemantic.Normal, VertexElementFormat.Float3),
+            new VertexElementDescription("TexCoord", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2));
+
+        var texturedPipelineDescription = new GraphicsPipelineDescription
+        {
+            BlendState = BlendStateDescription.SingleOverrideBlend,
+            DepthStencilState = new DepthStencilStateDescription(
+                depthTestEnabled: true,
+                depthWriteEnabled: true,
+                comparisonKind: ComparisonKind.LessEqual),
+            RasterizerState = new RasterizerStateDescription(
+                FaceCullMode.None,
+                PolygonFillMode.Solid,
+                FrontFace.Clockwise,
+                depthClipEnabled: true,
+                scissorTestEnabled: false),
+            PrimitiveTopology = PrimitiveTopology.TriangleList,
+            ResourceLayouts = new[] { _cameraLayout, _objectLayout, _textureLayout },
+            ShaderSet = new ShaderSetDescription(new[] { texturedVertexLayout }, _texturedShaders),
+            Outputs = output
+        };
+
+        _texturedPipeline = _factory.CreateGraphicsPipeline(texturedPipelineDescription);
     }
 
     public void BeginFrame()
@@ -161,9 +226,14 @@ public sealed class BasicWorldRenderer : IDisposable
         _objectWriteIndex = 0;
     }
 
-    public void UpdateCamera(Matrix4x4 viewProj)
+    public void UpdateCamera(Matrix4x4 viewProj, Vector3 cameraPosition = default)
     {
-        _gd.UpdateBuffer(_cameraBuffer, 0, ref viewProj);
+        CameraData camera = new()
+        {
+            ViewProj = viewProj,
+            CameraPosition = new Vector4(cameraPosition, 1f)
+        };
+        _gd.UpdateBuffer(_cameraBuffer, 0, ref camera);
     }
 
     public void DrawBox(CommandList cl, Matrix4x4 model, Vector4 color)
@@ -175,12 +245,73 @@ public sealed class BasicWorldRenderer : IDisposable
     public void DrawSphere(CommandList cl, Matrix4x4 model, Vector4 color)
         => DrawMesh(cl, model, color, _sphereVb, _sphereIb, _sphereIndexCount);
 
-    private void DrawMesh(CommandList cl, Matrix4x4 model, Vector4 color, DeviceBuffer vertexBuffer, DeviceBuffer indexBuffer, uint indexCount)
+    public RenderModel LoadGlbModel(string path)
+        => new(_gd, GlbModelLoader.Load(path), _textureLayout, _modelSampler);
+
+    public RenderModel CreateRenderModel(LoadedModel model)
+        => new(_gd, model, _textureLayout, _modelSampler);
+
+    public void DrawModel(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 tint)
+    {
+        IReadOnlyList<RenderModelPart> parts = model.Parts;
+        for (int i = 0; i < parts.Count; i++)
+        {
+            RenderModelPart part = parts[i];
+            Vector4 color = new(
+                part.Color.X * tint.X,
+                part.Color.Y * tint.Y,
+                part.Color.Z * tint.Z,
+                part.Color.W * tint.W);
+            if (part.IsTextured && part.TexturedVertexBuffer != null && part.TextureSet != null)
+                DrawTexturedMesh(cl, transform, color, part.MaterialFactors, part.TexturedVertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat, part.TextureSet);
+            else
+                DrawMesh(cl, transform, color, part.VertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat);
+        }
+    }
+
+    private void DrawTexturedMesh(
+        CommandList cl,
+        Matrix4x4 model,
+        Vector4 color,
+        Vector4 material,
+        DeviceBuffer vertexBuffer,
+        DeviceBuffer indexBuffer,
+        uint indexCount,
+        IndexFormat indexFormat,
+        ResourceSet textureSet)
     {
         if (_objectWriteIndex >= MaxObjectsPerFrame)
             return;
 
-        ObjectData obj = new ObjectData { Model = model, Color = color };
+        ObjectData obj = new ObjectData { Model = model, Color = color, Material = material };
+
+        uint slot = _objectWriteIndex++;
+        uint offset = slot * _objectStride;
+
+        _gd.UpdateBuffer(_objectRingBuffer, offset, ref obj);
+
+        cl.SetPipeline(_texturedPipeline);
+        cl.SetGraphicsResourceSet(0, _cameraSet);
+        cl.SetGraphicsResourceSet(1, _objectSets[slot]);
+        cl.SetGraphicsResourceSet(2, textureSet);
+        cl.SetVertexBuffer(0, vertexBuffer);
+        cl.SetIndexBuffer(indexBuffer, indexFormat);
+        cl.DrawIndexed(indexCount, 1, 0, 0, 0);
+    }
+
+    private void DrawMesh(
+        CommandList cl,
+        Matrix4x4 model,
+        Vector4 color,
+        DeviceBuffer vertexBuffer,
+        DeviceBuffer indexBuffer,
+        uint indexCount,
+        IndexFormat indexFormat = IndexFormat.UInt16)
+    {
+        if (_objectWriteIndex >= MaxObjectsPerFrame)
+            return;
+
+        ObjectData obj = new ObjectData { Model = model, Color = color, Material = new Vector4(0f, 1f, 0f, 0f) };
 
         uint slot = _objectWriteIndex++;
         uint offset = slot * _objectStride;
@@ -193,14 +324,19 @@ public sealed class BasicWorldRenderer : IDisposable
         cl.SetGraphicsResourceSet(1, _objectSets[slot]);
 
         cl.SetVertexBuffer(0, vertexBuffer);
-        cl.SetIndexBuffer(indexBuffer, IndexFormat.UInt16);
+        cl.SetIndexBuffer(indexBuffer, indexFormat);
         cl.DrawIndexed(indexCount, 1, 0, 0, 0);
     }
 
     public void Dispose()
     {
+        _texturedPipeline.Dispose();
         _pipeline.Dispose();
+        foreach (var s in _texturedShaders) s.Dispose();
         foreach (var s in _shaders) s.Dispose();
+
+        _textureLayout.Dispose();
+        _modelSampler.Dispose();
 
         foreach (var rs in _objectSets) rs.Dispose();
 

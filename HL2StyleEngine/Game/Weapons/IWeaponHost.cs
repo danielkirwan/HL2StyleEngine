@@ -19,6 +19,15 @@ public interface IWeaponHost
     Entity? RaycastPickable(float maxDist, float? maxMass);
     bool TryRaycastWeaponTarget(float maxDist, out WeaponTargetHit hit);
     void ApplyWeaponImpulse(Entity entity, Vector3 impulse, Vector3 hitPoint, float spinScale);
+    bool TryApplyGravityGunAttraction(
+        Entity entity,
+        Vector3 targetPoint,
+        float dt,
+        float pullAcceleration,
+        float maxPullSpeed,
+        out Vector3 center,
+        out float mass,
+        out float distanceToTarget);
 
     bool TryGetHeldObjectCenter(out Vector3 center);
     bool TryGetEntityCenter(Entity entity, out Vector3 center);
@@ -32,4 +41,5 @@ public interface IWeaponHost
     void DrawWeaponBox(Renderer renderer, Vector3 position, Vector3 size, Quaternion rotation, Vector4 color);
     void DrawWeaponSphere(Renderer renderer, Vector3 position, float radius, Vector4 color);
     void DrawWeaponBeam(Renderer renderer, Vector3 start, Vector3 end, float thickness, Vector4 color);
+    bool TryDrawWeaponModel(Renderer renderer, string modelAssetPath, Matrix4x4 transform, Vector4 tint);
 }

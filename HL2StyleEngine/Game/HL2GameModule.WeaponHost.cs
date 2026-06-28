@@ -39,6 +39,7 @@ public sealed partial class HL2GameModule
     private WeaponInputSnapshot BuildWeaponInputSnapshot()
         => new(
             primaryPressed: WeaponPrimaryPressedThisFrame(),
+            primaryHeld: WeaponPrimaryHeld(),
             secondaryPressed: WeaponSecondaryPressedThisFrame(),
             switchPressed: WeaponSwitchPressedThisFrame());
 
@@ -49,6 +50,10 @@ public sealed partial class HL2GameModule
     private bool WeaponPrimaryPressedThisFrame()
         => _inputState.LeftMousePressedThisFrame ||
            RightTriggerPressedThisFrame();
+
+    private bool WeaponPrimaryHeld()
+        => _inputState.LeftMouseDown ||
+           _inputState.GetAxis(GamepadAxis.TriggerRight) > 0.5f;
 
     private bool WeaponSecondaryPressedThisFrame()
         => _inputState.RightMousePressedThisFrame ||
@@ -151,6 +156,63 @@ public sealed partial class HL2GameModule
         AddAngularVelocity(entity, Vector3.Normalize(torque) * (impulse.Length() / mass / radius) * spinScale);
     }
 
+    bool IWeaponHost.TryApplyGravityGunAttraction(
+        Entity entity,
+        Vector3 targetPoint,
+        float dt,
+        float pullAcceleration,
+        float maxPullSpeed,
+        out Vector3 center,
+        out float mass,
+        out float distanceToTarget)
+    {
+        center = default;
+        mass = 0f;
+        distanceToTarget = 0f;
+
+        if (dt <= 0f ||
+            !HasPhysicsBody(entity) ||
+            entity.Physics.MotionType != MotionType.Dynamic ||
+            IsPhysicsBodyKinematic(entity) ||
+            entity.IsHeld ||
+            !TryGetPhysicsBodyCenter(entity, out center))
+        {
+            return false;
+        }
+
+        mass = MathF.Max(0.1f, GetPhysicsBodyMass(entity));
+        Vector3 toTarget = targetPoint - center;
+        distanceToTarget = toTarget.Length();
+        if (distanceToTarget <= 0.001f)
+            return true;
+
+        Vector3 pullDir = toTarget / distanceToTarget;
+        Vector3 velocity = GetPhysicsBodyVelocity(entity);
+        float currentTowardSpeed = Vector3.Dot(velocity, pullDir);
+        Vector3 lateralVelocity = velocity - pullDir * currentTowardSpeed;
+
+        // Ten-ish units is the prototype "normal prop" mass. Heavier props still move, but ramp up slower.
+        float massScale = Math.Clamp(MathF.Sqrt(10f / mass), 0.28f, 1.25f);
+        float targetTowardSpeed = MathF.Min(maxPullSpeed * massScale, MathF.Max(1.5f, distanceToTarget * 3.0f));
+        float maxDelta = pullAcceleration * massScale * dt;
+        float newTowardSpeed = MoveScalarTowards(currentTowardSpeed, targetTowardSpeed, maxDelta);
+
+        float lateralDamping = Math.Clamp(1.0f - 4.0f * dt, 0.55f, 1.0f);
+        Vector3 newVelocity = lateralVelocity * lateralDamping + pullDir * newTowardSpeed;
+        SetPhysicsBodyVelocity(entity, newVelocity);
+
+        entity.Physics.AngularVelocity *= Math.Clamp(1.0f - 2.5f * dt * massScale, 0.65f, 1.0f);
+        return true;
+    }
+
+    private static float MoveScalarTowards(float current, float target, float maxDelta)
+    {
+        if (MathF.Abs(target - current) <= maxDelta)
+            return target;
+
+        return current + MathF.Sign(target - current) * maxDelta;
+    }
+
     bool IWeaponHost.TryGetHeldObjectCenter(out Vector3 center)
     {
         if (_held == null)
@@ -193,4 +255,75 @@ public sealed partial class HL2GameModule
 
     void IWeaponHost.DrawWeaponBeam(Renderer renderer, Vector3 start, Vector3 end, float thickness, Vector4 color)
         => DrawEdgeBox(renderer, start, end, thickness, color);
+
+    bool IWeaponHost.TryDrawWeaponModel(Renderer renderer, string modelAssetPath, Matrix4x4 transform, Vector4 tint)
+    {
+        if (string.IsNullOrWhiteSpace(modelAssetPath))
+            return false;
+
+        string path = ResolveModelAssetPath(modelAssetPath);
+
+        if (_weaponModelCache.TryGetValue(path, out WeaponModelCacheEntry? entry))
+        {
+            if (entry.Model != null)
+            {
+                _world.DrawModel(renderer.CommandList, entry.Model, transform, tint);
+                return true;
+            }
+
+            if (entry.Failed)
+                return false;
+
+            if (entry.LoadTask is { IsCompleted: true } task)
+            {
+                if (task.IsCompletedSuccessfully)
+                {
+                    try
+                    {
+                        entry.Model = _world.CreateRenderModel(task.Result);
+                        entry.LoadTask = null;
+                        _world.DrawModel(renderer.CommandList, entry.Model, transform, tint);
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        entry.Failed = true;
+                        entry.Error = ex.Message;
+                        entry.LoadTask = null;
+                        ShowGameMessage($"Could not prepare weapon model: {Path.GetFileName(modelAssetPath)} ({ex.Message})", 2.5f);
+                    }
+                }
+                else
+                {
+                    entry.Failed = true;
+                    entry.Error = task.Exception?.GetBaseException().Message ?? "model load failed";
+                    entry.LoadTask = null;
+                    ShowGameMessage($"Could not load weapon model: {Path.GetFileName(modelAssetPath)} ({entry.Error})", 2.5f);
+                }
+            }
+
+            return false;
+        }
+
+        if (!File.Exists(path))
+        {
+            _weaponModelCache[path] = new WeaponModelCacheEntry
+            {
+                Failed = true,
+                Error = "file not found"
+            };
+            return false;
+        }
+
+        _weaponModelCache[path] = new WeaponModelCacheEntry
+        {
+            LoadTask = Task.Run(() => GlbModelLoader.Load(path))
+        };
+        return false;
+    }
+
+    private static string ResolveModelAssetPath(string modelAssetPath)
+        => Path.IsPathRooted(modelAssetPath)
+            ? modelAssetPath
+            : Path.Combine(AppContext.BaseDirectory, modelAssetPath.Replace('/', Path.DirectorySeparatorChar));
 }

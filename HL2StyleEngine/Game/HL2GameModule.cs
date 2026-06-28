@@ -93,6 +93,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         public float CameraPitch { get; set; }
     }
 
+    private sealed class WeaponModelCacheEntry
+    {
+        public RenderModel? Model;
+        public Task<LoadedModel>? LoadTask;
+        public bool Failed;
+        public string? Error;
+    }
+
     private EngineContext _ctx = null!;
 
     private readonly InputState _inputState = new();
@@ -174,6 +182,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private BasicWorldRenderer _world = null!;
     private GameplayUiLayer _gameplayUi = null!;
+    private readonly Dictionary<string, WeaponModelCacheEntry> _weaponModelCache = new(StringComparer.OrdinalIgnoreCase);
 
     private bool _editorEnabled;
     private bool _prevLeftMouseDown;
@@ -246,6 +255,42 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         {
             ApplySpawnFromEditor(forceResetVelocity: true);
             EnsurePrototypeWeaponLoadout(includeStarterAmmo: true);
+        }
+
+        PreloadWeaponModels();
+    }
+
+    private void PreloadWeaponModels()
+    {
+        foreach (WeaponDefinition weapon in WeaponDefinitions.All)
+        {
+            string? modelAssetPath = weapon.ViewModel.ModelAssetPath;
+            if (string.IsNullOrWhiteSpace(modelAssetPath))
+                continue;
+
+            string path = ResolveModelAssetPath(modelAssetPath);
+            if (_weaponModelCache.ContainsKey(path))
+                continue;
+
+            WeaponModelCacheEntry entry = new();
+            _weaponModelCache[path] = entry;
+
+            if (!File.Exists(path))
+            {
+                entry.Failed = true;
+                entry.Error = "file not found";
+                continue;
+            }
+
+            try
+            {
+                entry.Model = _world.LoadGlbModel(path);
+            }
+            catch (Exception ex)
+            {
+                entry.Failed = true;
+                entry.Error = ex.Message;
+            }
         }
     }
 
@@ -381,7 +426,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         if (!_editorEnabled && !_itemCollectedOpen && !_inventoryOpen && !_storageOpen && !_spawnCommandOpen && !_saveSlotPanelOpen && !_pauseMenuOpen && !_loadSlotPanelOpen)
         {
-            _weaponSystem.HandleInput(this, BuildWeaponInputSnapshot());
+            _weaponSystem.HandleInput(this, BuildWeaponInputSnapshot(), dt);
             TryPickupDropThrow();
             if (_itemCollectedOpen)
             {
@@ -5806,7 +5851,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         var viewProj = view * proj;
 
         _world.BeginFrame();
-        _world.UpdateCamera(viewProj);
+        _world.UpdateCamera(viewProj, _camera.Position);
 
         // -----------------------------
         // EDITOR MODE: draw editor view
@@ -8527,6 +8572,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     public void Dispose()
     {
+        foreach (WeaponModelCacheEntry entry in _weaponModelCache.Values)
+            entry.Model?.Dispose();
+
+        _weaponModelCache.Clear();
         _gameplayUi?.Dispose();
         _world?.Dispose();
     }

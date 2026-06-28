@@ -642,6 +642,7 @@
         "dependencies": {
           "Engine.Core": "1.0.0",
           "ImGui.NET": "1.91.6.1",
+          "System.Drawing.Common": "6.0.0",
           "opticfluorine.Veldrid": "4.9.6",
           "opticfluorine.Veldrid.ImGui": "5.89.2-g2842068585",
           "opticfluorine.Veldrid.StartupUtilities": "4.9.6"

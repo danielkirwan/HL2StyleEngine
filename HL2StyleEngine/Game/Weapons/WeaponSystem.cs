@@ -1,4 +1,5 @@
 using Engine.Render;
+using Engine.Runtime.Entities;
 using System.Numerics;
 
 namespace Game.Weapons;
@@ -13,6 +14,9 @@ internal sealed class WeaponSystem
     private Vector3 _traceStart;
     private Vector3 _traceEnd;
     private Vector4 _traceColor = new(1f, 0.84f, 0.42f, 1f);
+    private Entity? _gravityPullTarget;
+    private bool _gravityHeldLaunchArmed = true;
+    private bool _gravitySuppressPullUntilPrimaryReleased;
 
     private WeaponSystem(IReadOnlyList<WeaponDefinition> definitions)
     {
@@ -52,33 +56,42 @@ internal sealed class WeaponSystem
         return true;
     }
 
-    public void HandleInput(IWeaponHost host, WeaponInputSnapshot input)
+    public void HandleInput(IWeaponHost host, WeaponInputSnapshot input, float dt)
     {
         EnsureEquippedWeaponOwned(host);
 
         if (host.HasHeldObject)
         {
+            _gravityPullTarget = null;
             HandleHeldObjectInput(host, input);
             return;
         }
 
         if (input.SwitchPressed)
+        {
+            _gravityPullTarget = null;
+            _gravityHeldLaunchArmed = true;
+            _gravitySuppressPullUntilPrimaryReleased = false;
             CycleEquippedWeapon(host);
-
-        if (!input.PrimaryPressed)
-            return;
+        }
 
         WeaponDefinition weapon = EquippedWeapon;
         if (!host.HasInventoryItem(weapon.InventoryItemId))
         {
-            host.ShowWeaponMessage($"No {weapon.DisplayName} equipped.", 1.25f);
+            if (input.PrimaryPressed)
+                host.ShowWeaponMessage($"No {weapon.DisplayName} equipped.", 1.25f);
             return;
         }
 
         if (weapon.Kind == WeaponKind.GravityGun)
-            FireGravityGun(host, weapon);
-        else
+        {
+            HandleGravityGunInput(host, weapon, input, dt);
+        }
+        else if (input.PrimaryPressed)
+        {
+            _gravityPullTarget = null;
             FireHitscan(host, weapon);
+        }
     }
 
     public void Render(IWeaponHost host, Renderer renderer, bool visible)
@@ -101,10 +114,16 @@ internal sealed class WeaponSystem
 
     private void HandleHeldObjectInput(IWeaponHost host, WeaponInputSnapshot input)
     {
+        if (host.HeldObjectGrabbedByGravityGun && !input.PrimaryHeld)
+            _gravityHeldLaunchArmed = true;
+
         if (input.PrimaryPressed)
         {
             if (host.HeldObjectGrabbedByGravityGun)
             {
+                if (!_gravityHeldLaunchArmed)
+                    return;
+
                 WeaponDefinition gravityGun = FindGravityGun();
                 Vector3 origin = host.CameraPosition;
                 Vector3 dir = Vector3.Normalize(host.CameraForward);
@@ -115,6 +134,8 @@ internal sealed class WeaponSystem
                 _flashTimer = MathF.Max(_flashTimer, gravityGun.FlashSeconds);
                 host.ThrowHeldObject(gravityGun.ThrowSpeed);
                 host.ShowWeaponMessage("Gravity gun launched object.", 0.9f);
+                _gravityHeldLaunchArmed = true;
+                _gravitySuppressPullUntilPrimaryReleased = true;
             }
             else
             {
@@ -129,6 +150,8 @@ internal sealed class WeaponSystem
         {
             host.DropHeldObject();
             host.ShowWeaponMessage("Dropped held object.", 0.9f);
+            _gravityHeldLaunchArmed = true;
+            _gravitySuppressPullUntilPrimaryReleased = false;
         }
     }
 
@@ -157,33 +180,75 @@ internal sealed class WeaponSystem
         SetTrace(origin + dir * 0.65f, end, new Vector4(1f, 0.85f, 0.38f, 0.95f), 0.055f);
     }
 
-    private void FireGravityGun(IWeaponHost host, WeaponDefinition weapon)
+    private void HandleGravityGunInput(IWeaponHost host, WeaponDefinition weapon, WeaponInputSnapshot input, float dt)
     {
-        if (_cooldownTimer > 0f)
+        if (!input.PrimaryHeld)
+        {
+            _gravityPullTarget = null;
+            _gravitySuppressPullUntilPrimaryReleased = false;
+            return;
+        }
+
+        if (_gravitySuppressPullUntilPrimaryReleased)
+            return;
+
+        Vector3 origin = host.CameraPosition;
+        Vector3 dir = Vector3.Normalize(host.CameraForward);
+        Entity? pickable = GetGravityPullTarget(host, weapon, origin);
+
+        if (pickable != null)
+        {
+            Vector3 holdPoint = origin + dir * weapon.HoldDistance;
+            if (!host.TryGetEntityCenter(pickable, out Vector3 center))
+            {
+                _gravityPullTarget = null;
+                return;
+            }
+
+            float cameraDistance = Vector3.Distance(origin, center);
+            float holdPointDistance = Vector3.Distance(center, holdPoint);
+            if (cameraDistance <= weapon.PickupRange || holdPointDistance <= 0.55f)
+            {
+                host.HoldDistance = Math.Clamp(cameraDistance, 2.0f, MathF.Max(2.0f, weapon.HoldDistance));
+                SetTrace(origin + dir * 0.55f, center, new Vector4(0.35f, 0.9f, 1f, 0.95f), 0.12f);
+                _flashTimer = MathF.Max(_flashTimer, weapon.FlashSeconds);
+                _gravityPullTarget = null;
+                _gravityHeldLaunchArmed = false;
+                host.PickUpWithWeapon(pickable, grabbedByGravityGun: true);
+                host.ShowWeaponMessage($"Gravity gun grabbed {host.GetEntityDisplayName(pickable)}.", 0.9f);
+                return;
+            }
+
+            if (host.TryApplyGravityGunAttraction(
+                    pickable,
+                    holdPoint,
+                    dt,
+                    weapon.PullAcceleration,
+                    weapon.PullMaxSpeed,
+                    out Vector3 pulledCenter,
+                    out float mass,
+                    out _))
+            {
+                _gravityPullTarget = pickable;
+                _flashTimer = MathF.Max(_flashTimer, weapon.FlashSeconds * 0.65f);
+                SetTrace(origin + dir * 0.55f, pulledCenter, new Vector4(0.25f, 0.85f, 1f, 0.82f), 0.06f);
+
+                if (input.PrimaryPressed)
+                    host.ShowWeaponMessage($"Gravity gun pulling {host.GetEntityDisplayName(pickable)} ({mass:0.#} mass).", 0.9f);
+
+                return;
+            }
+
+            _gravityPullTarget = null;
+        }
+
+        if (!input.PrimaryPressed || _cooldownTimer > 0f)
             return;
 
         _cooldownTimer = weapon.CooldownSeconds;
         _flashTimer = weapon.FlashSeconds;
 
-        Vector3 origin = host.CameraPosition;
-        Vector3 dir = Vector3.Normalize(host.CameraForward);
-
-        Engine.Runtime.Entities.Entity? pickable = host.RaycastPickable(weapon.PickupRange, weapon.PickupMaxMass);
-        if (pickable != null)
-        {
-            if (host.TryGetEntityCenter(pickable, out Vector3 center))
-            {
-                float distance = Vector3.Distance(origin, center);
-                host.HoldDistance = Math.Clamp(distance, 2.0f, 4.8f);
-                SetTrace(origin + dir * 0.55f, center, new Vector4(0.35f, 0.9f, 1f, 0.95f), 0.12f);
-            }
-
-            host.PickUpWithWeapon(pickable, grabbedByGravityGun: true);
-            host.ShowWeaponMessage($"Gravity gun grabbed {host.GetEntityDisplayName(pickable)}.", 0.9f);
-            return;
-        }
-
-        if (host.TryRaycastWeaponTarget(weapon.PickupRange, out WeaponTargetHit hit))
+        if (host.TryRaycastWeaponTarget(weapon.AttractionRange, out WeaponTargetHit hit))
         {
             host.ApplyWeaponImpulse(hit.Target, dir * weapon.Impulse, hit.HitPoint, spinScale: 1.1f);
             SetTrace(origin + dir * 0.55f, hit.HitPoint, new Vector4(0.35f, 0.9f, 1f, 0.95f), 0.08f);
@@ -191,7 +256,20 @@ internal sealed class WeaponSystem
             return;
         }
 
-        SetTrace(origin + dir * 0.55f, origin + dir * weapon.PickupRange, new Vector4(0.25f, 0.65f, 1f, 0.7f), 0.05f);
+        SetTrace(origin + dir * 0.55f, origin + dir * weapon.AttractionRange, new Vector4(0.25f, 0.65f, 1f, 0.7f), 0.05f);
+    }
+
+    private Entity? GetGravityPullTarget(IWeaponHost host, WeaponDefinition weapon, Vector3 origin)
+    {
+        if (_gravityPullTarget != null &&
+            host.TryGetEntityCenter(_gravityPullTarget, out Vector3 currentCenter) &&
+            Vector3.Distance(origin, currentCenter) <= weapon.AttractionRange + 1.0f)
+        {
+            return _gravityPullTarget;
+        }
+
+        _gravityPullTarget = null;
+        return host.RaycastPickable(weapon.AttractionRange, weapon.PickupMaxMass);
     }
 
     private bool TryConsumeAmmo(IWeaponHost host, WeaponDefinition weapon)
@@ -291,6 +369,23 @@ internal sealed class WeaponSystem
         ViewModelBasis basis = BuildViewModelBasis(host);
         float recoil = _flashTimer > 0f ? -0.07f : 0f;
 
+        if (!string.IsNullOrWhiteSpace(weapon.ViewModel.ModelAssetPath))
+        {
+            Vector3 modelOffset = weapon.ViewModel.ModelLocalOffset;
+            modelOffset.Z += recoil;
+            Matrix4x4 modelTransform =
+                Matrix4x4.CreateScale(weapon.ViewModel.ModelScale) *
+                CreateLocalRotation(weapon.ViewModel.ModelLocalEulerDegrees) *
+                Matrix4x4.CreateFromQuaternion(basis.Rotation) *
+                Matrix4x4.CreateTranslation(ToViewModelWorld(host, basis, modelOffset));
+
+            if (host.TryDrawWeaponModel(renderer, weapon.ViewModel.ModelAssetPath, modelTransform, weapon.ViewModel.ModelTint))
+            {
+                DrawGravityGunHeldBeam(host, renderer, weapon, basis);
+                return;
+            }
+        }
+
         foreach (WeaponViewModelPart part in weapon.ViewModel.FallbackParts)
         {
             if (part.OnlyDuringFlash && _flashTimer <= 0f)
@@ -311,6 +406,20 @@ internal sealed class WeaponSystem
                 host.DrawWeaponBox(renderer, position, part.Size, basis.Rotation, color);
         }
 
+        DrawGravityGunHeldBeam(host, renderer, weapon, basis);
+    }
+
+    private static Matrix4x4 CreateLocalRotation(Vector3 eulerDegrees)
+    {
+        const float DegToRad = MathF.PI / 180f;
+        return Matrix4x4.CreateFromYawPitchRoll(
+            eulerDegrees.Y * DegToRad,
+            eulerDegrees.X * DegToRad,
+            eulerDegrees.Z * DegToRad);
+    }
+
+    private void DrawGravityGunHeldBeam(IWeaponHost host, Renderer renderer, WeaponDefinition weapon, ViewModelBasis basis)
+    {
         if (weapon.Kind == WeaponKind.GravityGun &&
             host.HeldObjectGrabbedByGravityGun &&
             host.TryGetHeldObjectCenter(out Vector3 heldCenter))

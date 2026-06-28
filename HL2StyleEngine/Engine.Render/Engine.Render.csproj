@@ -10,6 +10,7 @@
     <PackageReference Include="opticfluorine.Veldrid.StartupUtilities" />
     <PackageReference Include="ImGui.NET" />
     <PackageReference Include="opticfluorine.Veldrid.ImGui" />
+    <PackageReference Include="System.Drawing.Common" />
   </ItemGroup>
 
   <ItemGroup>

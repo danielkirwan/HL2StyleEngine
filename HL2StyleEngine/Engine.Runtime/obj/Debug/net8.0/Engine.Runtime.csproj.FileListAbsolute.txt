@@ -68,3 +68,6 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\R
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiVS.cso
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiPS.hlsl
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\RmlUiVS.hlsl
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\TexturedModelPS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\TexturedModelVS.cso
+C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Runtime\bin\Debug\net8.0\Shaders\TexturedModel.hlsl

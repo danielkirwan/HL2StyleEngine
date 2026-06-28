@@ -25,7 +25,7 @@ internal static class WeaponDefinitions
             displayName: "Gravity Gun",
             kind: WeaponKind.GravityGun,
             viewModel: new WeaponViewModelDefinition(
-                modelAssetPath: "Content/Models/ViewModels/gravity_gun.glb",
+                modelAssetPath: "Content/Models/ViewModels/gravitygun.glb",
                 muzzleOffset: new Vector3(0.32f, -0.09f, 1.24f),
                 fallbackParts:
                 [
@@ -34,14 +34,22 @@ internal static class WeaponDefinitions
                     new(WeaponViewModelPartShape.Box, new Vector3(0.20f, -0.09f, 1.10f), new Vector3(0.08f, 0.08f, 0.34f), new Vector4(0.40f, 0.82f, 1f, 1f)),
                     new(WeaponViewModelPartShape.Box, new Vector3(0.44f, -0.09f, 1.10f), new Vector3(0.08f, 0.08f, 0.34f), new Vector4(0.40f, 0.82f, 1f, 1f)),
                     new(WeaponViewModelPartShape.Sphere, new Vector3(0.32f, -0.12f, 0.92f), Vector3.Zero, new Vector4(0.25f, 0.82f, 1f, 0.78f), radius: 0.13f, brightenDuringFlash: true)
-                ]),
+                ],
+                modelLocalOffset: new Vector3(0.32f, -0.30f, 0.82f),
+                modelLocalEulerDegrees: Vector3.Zero,
+                modelScale: 0.23f,
+                modelTint: Vector4.One),
             cooldownSeconds: 0.16f,
             flashSeconds: 0.12f,
-            range: 7.0f,
+            range: 14.0f,
             impulse: 85f * 1.35f,
-            pickupRange: 7.0f,
+            pickupRange: 3.25f,
             pickupMaxMass: 75f,
-            throwSpeed: 34f),
+            throwSpeed: 34f,
+            attractionRange: 14.0f,
+            pullAcceleration: 32.0f,
+            pullMaxSpeed: 12.0f,
+            holdDistance: 2.85f),
 
         new(
             id: "test_pistol",
@@ -57,7 +65,11 @@ internal static class WeaponDefinitions
                     new(WeaponViewModelPartShape.Box, new Vector3(0.31f, -0.13f, 0.58f), new Vector3(0.18f, 0.10f, 0.36f), new Vector4(0.28f, 0.30f, 0.30f, 1f)),
                     new(WeaponViewModelPartShape.Box, new Vector3(0.31f, -0.43f, 0.42f), new Vector3(0.16f, 0.36f, 0.14f), new Vector4(0.10f, 0.09f, 0.08f, 1f)),
                     new(WeaponViewModelPartShape.Sphere, new Vector3(0.31f, -0.20f, 1.03f), Vector3.Zero, new Vector4(1f, 0.76f, 0.25f, 1f), radius: 0.08f, onlyDuringFlash: true, affectedByRecoil: false)
-                ]),
+                ],
+                modelLocalOffset: new Vector3(0.31f, -0.28f, 0.78f),
+                modelLocalEulerDegrees: new Vector3(0f, 90f, 0f),
+                modelScale: 0.45f,
+                modelTint: Vector4.One),
             cooldownSeconds: 0.22f,
             flashSeconds: 0.08f,
             range: 50f,

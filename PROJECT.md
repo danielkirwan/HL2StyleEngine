@@ -1,6 +1,6 @@
 # Project Overview
 
-Last updated: 2026-05-28
+Last updated: 2026-06-28
 
 ## Purpose
 
@@ -69,6 +69,8 @@ Core engine structure is in place, the runtime and editor exist, and the current
   Collision, stepping, and simple physics bodies.
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.Editor`
   Editor systems and debug/editor-facing tooling.
+- `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Engine.AssetImporter`
+  Standalone Windows content-import tool for converting source model folders, starting with FBX-to-GLB conversion through Blender.
 - `C:\HS2StyleEngine\HL2StyleEngine\HL2StyleEngine\Game`
   Game-specific logic, gameplay state, and current prototype behavior.
 
@@ -143,6 +145,14 @@ The current implementation state is:
 - a developer reset hotkey for clean interaction-test runs
 - a small multi-room key route that is playable and starts shaping the horror vertical slice
 - controller parity for new player-facing actions
+- a first weapon framework exists with inventory-owned weapons, weapon switching, ammo use, primitive fallback viewmodels, gravity-gun prop interaction, and a test pistol
+- the Gravity Gun can now pull dynamic props from a longer attraction range, with heavier objects accelerating more slowly until they reach grab distance and become held objects
+- the current weapon framework supports hitscan and Gravity Gun behavior; melee is not implemented yet but is the next planned weapon slice, starting with a crowbar
+- a first model asset pipeline exists: `Engine.AssetImporter` can convert FBX source folders to GLB through Blender, `Game` copies `Content/Models` assets to output, and weapons try to render GLB viewmodels before falling back to primitive geometry
+- the first converted sci-fi handgun is wired to the test pistol and renders through the textured/lit GLB path
+- the converted Gravity Gun model is wired to the Gravity Gun weapon definition as `Content/Models/ViewModels/gravitygun.glb`
+- the FBX-to-GLB importer now handles material-prefixed texture names such as `Metal_Color.png`, `Metal_Normal.png`, and `Metal_Roughness.png`
+- the lit/metallic pistol viewmodel has been playtested and confirmed to look much better than the flat texture-only pass
 
 The intended inventory direction is Resident Evil Requiem-inspired:
 
@@ -227,6 +237,17 @@ That work is aimed at fixing several visible problems:
 - safe storage boxes and inventory/storage transfer are implemented as a first pass, but need final RmlUi visual polish and multi-storage-point validation
 - locked chests currently disappear after granting prototype rewards rather than playing an authored open animation/state
 - save/load now supports four local JSON save slots with overwrite confirmation, richer metadata, and a first pause-menu load screen, but there is not yet a main-menu load screen or broader player profile system
+- weapon viewmodel GLBs can now render embedded base-color textures through a first-pass textured model pipeline
+- textured GLB viewmodels now have a first material-lighting pass using imported normals plus metallic/roughness texture data for simple directional lighting and specular response
+- the Gravity Gun GLB has been regenerated with correct material-specific base-color, normal, metallic/roughness, and light emission texture assignments; its in-game offset/scale still needs playtest tuning
+- weapon GLBs for the prototype weapon loadout are now preloaded during game initialization so the real models are ready before play starts; the async fallback remains for future non-preloaded models
+- user playtest confirmed the weapon model preload path feels smoother and the Gravity Gun no longer immediately re-grabs launched objects in the tested flow
+- `Engine.AssetImporter` now caps embedded texture dimensions to 1024px and packs the resized image data; current optimized sizes are about 8.5 MB for `gravitygun.glb` and 2.9 MB for `test_pistol.glb`
+- user playtest confirmed the lit/metallic pistol viewmodel looks much better and is a good next foundation for material polish
+- `Engine.AssetImporter` depends on Blender for FBX import/export; the tool can browse to `blender.exe` or use `HS2_BLENDER_EXE`, but conversion cannot run on a machine without Blender installed
+- the importer now searches the parent asset folder when an `FBX` subfolder is selected, which helps it find sibling texture folders during Blender export
+- textured GLB rendering now samples base-color and metallic/roughness textures, but normal-map perturbation, emission, environment reflections, and full PBR behavior are still pending
+- the first material-lighting pass compiled cleanly in isolated output, but the normal playtest output must be rebuilt after closing any running `Game` process so DLLs can be copied
 - `F6` reset is currently keyboard-only as a developer hotkey until a controller debug chord is chosen
 - collision for rotated capsules versus boxes is orientation-aware, but still approximate rather than a full rigid-body contact manifold solution
 - some support, picking, and ray logic may still rely on AABB-style fallbacks or broadphase approximations
@@ -252,6 +273,11 @@ That work is aimed at fixing several visible problems:
 - validate native RmlUi prompt/message cards when looking at pickups, locked doors, typewriters, puzzle slots, storage boxes, and physics props
 - validate look-at prompts remain stable while aiming at small item pickups and do not flash the old ImGui prompt for only one frame
 - validate native RmlUi storage at `StorageBox_SaveOffice`, including switching sides and quantity transfer
+- validate weapon switching with `G` / controller right shoulder, Gravity Gun attraction/hold/throw/drop behavior, and Test Pistol ammo consumption/impulses
+- add the crowbar as the first melee weapon: `WeaponKind.Melee`, `Crowbar` inventory item/loadout entry, short-range hit detection, prop impulse, cooldown, and a simple fallback viewmodel
+- add a proper loading-screen state before the project has enough content that startup/level asset preload needs visible progress feedback
+- validate the first FBX-to-GLB import with a real weapon model, then tune viewmodel scale/orientation through the weapon definition model offset/scale values
+- continue material polish from the validated lit/metallic pistol viewmodel: normal-map perturbation, emission, better roughness/metal calibration, and viewmodel-specific render tuning
 - validate `Examine` opening the focused item details panel from inventory
 - validate inventory discard confirmation on disposable stacks and protected feedback on keys, the Crank Handle, and the Fuse
 - validate the clearer storage/action detail panels with mouse, keyboard, and controller navigation

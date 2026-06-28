@@ -18,20 +18,25 @@ The current test level is loaded from `Content/Levels/interaction_test.json` at 
 - Locked doors/chests, puzzle slots, puzzle doors, persistent opened/solved state, and item expiration when locks are complete.
 - Physics pickup/drop/throw for dynamic rigid bodies.
 - Weapon framework with inventory-owned weapons, ammo use, weapon switching, firing cooldowns, traces, and viewmodel fallback geometry.
+- First-pass GLB weapon model loading: weapon definitions try their `ModelAssetPath` before falling back to primitive viewmodels.
 
 ## Weapon System
 
 Weapon logic has been split out of `HL2GameModule` into `Game.Weapons`.
 
 - `Weapons/WeaponSystem.cs` owns equipped weapon state, switching, cooldowns, firing, ammo consumption, traces, and fallback viewmodel rendering.
-- `Weapons/WeaponDefinitions.cs` defines the prototype weapons, their tuning, inventory item ids, fallback viewmodel pieces, and future model asset paths.
+- `Weapons/WeaponDefinitions.cs` defines the prototype weapons, their tuning, inventory item ids, fallback viewmodel pieces, and model asset paths.
 - `Weapons/IWeaponHost.cs` defines the world services weapons need without making the weapon system own gameplay state.
-- `HL2GameModule.WeaponHost.cs` adapts the game module to the weapon system: input, inventory counts, raycasts, physics impulses, held objects, messages, and primitive drawing hooks.
+- `HL2GameModule.WeaponHost.cs` adapts the game module to the weapon system: input, inventory counts, raycasts, physics impulses, held objects, messages, primitive drawing hooks, and cached GLB model drawing.
 
 Current prototype weapons:
 
-- Gravity Gun: grabs dynamic objects at range, keeps the viewmodel visible while holding, and launches held objects with higher force.
-- Test Pistol: hitscan weapon that consumes `Bullets` from inventory and applies impulse to dynamic targets.
+- Gravity Gun: pulls dynamic objects from a longer attraction range, slows the pull based on prop mass, locks into held mode once the object reaches grab distance, keeps the viewmodel visible while holding, and launches held objects with higher force.
+- Test Pistol: hitscan weapon that consumes `Bullets` from inventory and applies impulse to dynamic targets. The imported sci-fi handgun GLB now renders with base texture, imported normals, and simple metallic/roughness lighting; user playtest confirmed it looks much better than the flat texture-only pass.
+
+Planned next weapon:
+
+- Crowbar: first melee weapon. The current weapon framework has inventory ownership, switching, cooldowns, traces, impulses, and viewmodels ready, but still needs a `Melee` weapon kind, short-range swing hit detection, and crowbar item/loadout data.
 
 Current controls:
 
@@ -52,7 +57,32 @@ Weapons and ammo are normal inventory items in `Inventory/ItemCatalog.cs`.
 
 ## Next Likely Work
 
-- Replace fallback primitive viewmodels with real model loading once the asset path is ready.
+- Validate imported viewmodel scale/orientation with `test_pistol.glb` and tune each weapon definition's model offset/scale.
+- Continue material polish from the validated lit/metallic pistol viewmodel with normal-map and emission support.
 - Add reload behavior, reserve/clip ammo, and weapon HUD readouts.
 - Add simple damageable targets/enemies so pistol hits have game consequences.
+- Add crowbar melee: short-range swing trace, prop impulse, cooldown, feedback, and primitive fallback viewmodel before importing a crowbar GLB.
 - Add gravity gun polish: hold beam effects, blocked pickup checks, mass-based throw tuning, and sound/VFX hooks.
+
+## Model Asset Direction
+
+The weapon definitions point at viewmodel assets:
+
+- `Content/Models/ViewModels/gravitygun.glb`
+- `Content/Models/ViewModels/test_pistol.glb`
+
+The game now tries to load those GLB files through `BasicWorldRenderer`. If a file is missing or unsupported, the weapon renders primitive fallback geometry instead.
+
+Current asset-import path:
+
+- `Engine.AssetImporter` is a standalone Windows tool in the solution.
+- The importer uses Blender to convert a selected source folder containing FBX and textures into a binary `.glb`.
+- Converted files should normally be written to `Game/Content/Models/ViewModels`.
+- `Game.csproj` copies model assets from `Content/Models` to the output folder.
+
+Current limitation:
+
+- GLB geometry, indices, node transforms, and material base-color factors are supported.
+- Embedded GLB base-color textures are supported by the first-pass textured model renderer.
+- Imported normals plus metallic/roughness texture data are used by the first material-lighting pass.
+- Normal-map perturbation, emission, environment reflections, and fuller PBR behavior are still pending.
