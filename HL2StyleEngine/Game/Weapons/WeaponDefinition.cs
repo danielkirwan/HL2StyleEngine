@@ -5,7 +5,8 @@ namespace Game.Weapons;
 internal enum WeaponKind
 {
     Hitscan,
-    GravityGun
+    GravityGun,
+    Melee
 }
 
 internal enum WeaponViewModelPartShape
@@ -62,16 +63,21 @@ internal sealed class WeaponViewModelDefinition
         FallbackParts = fallbackParts;
         ModelLocalOffset = modelLocalOffset ?? fallbackParts.FirstOrDefault()?.LocalOffset ?? Vector3.Zero;
         ModelLocalEulerDegrees = modelLocalEulerDegrees ?? Vector3.Zero;
-        ModelScale = MathF.Max(0.001f, modelScale);
+        ModelScale = modelScale;
         ModelTint = modelTint ?? Vector4.One;
     }
 
     public string? ModelAssetPath { get; }
-    public Vector3 MuzzleOffset { get; }
+    public Vector3 MuzzleOffset { get; set; }
     public IReadOnlyList<WeaponViewModelPart> FallbackParts { get; }
-    public Vector3 ModelLocalOffset { get; }
-    public Vector3 ModelLocalEulerDegrees { get; }
-    public float ModelScale { get; }
+    public Vector3 ModelLocalOffset { get; set; }
+    public Vector3 ModelLocalEulerDegrees { get; set; }
+    private float _modelScale;
+    public float ModelScale
+    {
+        get => _modelScale;
+        set => _modelScale = MathF.Max(0.001f, value);
+    }
     public Vector4 ModelTint { get; }
 }
 
@@ -87,6 +93,7 @@ internal sealed class WeaponDefinition
         float flashSeconds,
         float range,
         float impulse = 0f,
+        float damage = 0f,
         float pickupRange = 0f,
         float pickupMaxMass = 0f,
         float throwSpeed = 0f,
@@ -106,6 +113,7 @@ internal sealed class WeaponDefinition
         FlashSeconds = flashSeconds;
         Range = range;
         Impulse = impulse;
+        Damage = MathF.Max(0f, damage);
         PickupRange = pickupRange;
         PickupMaxMass = pickupMaxMass;
         ThrowSpeed = throwSpeed;
@@ -126,6 +134,7 @@ internal sealed class WeaponDefinition
     public float FlashSeconds { get; }
     public float Range { get; }
     public float Impulse { get; }
+    public float Damage { get; }
     public float PickupRange { get; }
     public float PickupMaxMass { get; }
     public float ThrowSpeed { get; }

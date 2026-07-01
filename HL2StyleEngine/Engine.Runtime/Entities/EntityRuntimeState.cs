@@ -19,6 +19,7 @@ public sealed class EntityRenderState
     public float Radius = 0.5f;
     public float Height = 1f;
     public Vector4 Color = new(0.6f, 0.6f, 0.6f, 1f);
+    public string ModelAssetPath = "";
 
     public bool Enabled => Shape != RuntimeShapeKind.None;
 }

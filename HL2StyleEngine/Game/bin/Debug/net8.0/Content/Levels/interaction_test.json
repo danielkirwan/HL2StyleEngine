@@ -2,7 +2,7 @@
   "Version": 2,
   "Entities": [
     {
-      "Id": "faed9f32bca64ac2905e8263f08a79f2",
+      "Id": "e838eb56da554f7297d05883af2f15bd",
       "Type": "PlayerSpawn",
       "Name": "PlayerSpawn",
       "Scripts": [],
@@ -47,6 +47,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -62,7 +67,7 @@
       "Height": 1
     },
     {
-      "Id": "be5c1cd5a46b47b9a364db8a53d4e813",
+      "Id": "7f5d916aea194e86af69515cb22f7c39",
       "Type": "PointLight",
       "Name": "Light_Foyer_Dim",
       "Scripts": [],
@@ -107,6 +112,11 @@
       "Range": 7.5,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -122,7 +132,7 @@
       "Height": 1
     },
     {
-      "Id": "0312601a7c5c4d63800f78048c6a6445",
+      "Id": "24cf0d91b8574f6da1b282746efdb56f",
       "Type": "PointLight",
       "Name": "Light_Central_Flicker",
       "Scripts": [],
@@ -167,6 +177,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -182,7 +197,7 @@
       "Height": 1
     },
     {
-      "Id": "e8970f4b17d045ceb6f217f10d4b17ab",
+      "Id": "ba324b1a84d6415ca93add43dd9cdb87",
       "Type": "PointLight",
       "Name": "Light_SaveRoom_Cool",
       "Scripts": [],
@@ -227,6 +242,11 @@
       "Range": 6.5,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -242,7 +262,7 @@
       "Height": 1
     },
     {
-      "Id": "9beb60dcb6bd4b2ea6f15ebbd85d3d8e",
+      "Id": "c54c70ecdbd54a82acb53da190abcea3",
       "Type": "PointLight",
       "Name": "Light_Archive_Amber",
       "Scripts": [],
@@ -287,6 +307,11 @@
       "Range": 7,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -302,7 +327,7 @@
       "Height": 1
     },
     {
-      "Id": "4d3dcc9c03be47439d85c60875abcaff",
+      "Id": "8c72d767ec104590981482690164fe40",
       "Type": "PointLight",
       "Name": "Light_CrankAlcove_Work",
       "Scripts": [],
@@ -347,6 +372,11 @@
       "Range": 4.2,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -362,7 +392,7 @@
       "Height": 1
     },
     {
-      "Id": "25b7a429a45c4fc4842003cb36c82d75",
+      "Id": "b85ad10651384910aeffe1c9936147ec",
       "Type": "Box",
       "Name": "Floor_InteractionTest",
       "Scripts": [],
@@ -407,6 +437,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -422,7 +457,7 @@
       "Height": 1
     },
     {
-      "Id": "8891e035d3b4451e9e6103eaa885e18f",
+      "Id": "eff6da4a34ac4ef490d8a06cd43fc226",
       "Type": "Box",
       "Name": "Ceiling_InteractionTest",
       "Scripts": [],
@@ -467,6 +502,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -482,7 +522,7 @@
       "Height": 1
     },
     {
-      "Id": "386b3d67ff264023bb1aa247bee2834c",
+      "Id": "e61e57a312a14cb7912274fe2805eb3e",
       "Type": "Box",
       "Name": "Carpet_Foyer",
       "Scripts": [],
@@ -527,6 +567,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -542,7 +587,7 @@
       "Height": 1
     },
     {
-      "Id": "41aa9f88f25f492c86f8c6f838e37852",
+      "Id": "336817858d0c4f11bdd9f2492c4f7400",
       "Type": "Box",
       "Name": "Carpet_Archive",
       "Scripts": [],
@@ -587,6 +632,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -602,7 +652,7 @@
       "Height": 1
     },
     {
-      "Id": "5b16b6b3cc834b03bd3fb1e35feae9f1",
+      "Id": "9d90ae48acf64ab68bbe0f614fff7dad",
       "Type": "Box",
       "Name": "Wall_North",
       "Scripts": [],
@@ -647,6 +697,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -662,7 +717,7 @@
       "Height": 1
     },
     {
-      "Id": "663e8bdbb34941908a4639fdfe24493c",
+      "Id": "7eca911eb1814ef8b8937a1e1f858dff",
       "Type": "Box",
       "Name": "Wall_South",
       "Scripts": [],
@@ -707,6 +762,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -722,7 +782,7 @@
       "Height": 1
     },
     {
-      "Id": "9163d4c90e994e76ae9573b29893b81d",
+      "Id": "058e18c4737a43c1be81bfc8b821e51d",
       "Type": "Box",
       "Name": "Wall_West",
       "Scripts": [],
@@ -767,6 +827,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -782,7 +847,7 @@
       "Height": 1
     },
     {
-      "Id": "3e15fe86fadc417d8684f202c1a199f0",
+      "Id": "f98e6a2f838142b6acf4a8126c914737",
       "Type": "Box",
       "Name": "Wall_East",
       "Scripts": [],
@@ -827,6 +892,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -842,7 +912,7 @@
       "Height": 1
     },
     {
-      "Id": "d58208bb237046afbf06b371bba83797",
+      "Id": "cafb2628d1ce4c47aaccf23d77c35d82",
       "Type": "Box",
       "Name": "Divider_Foyer_LeftOfDoor",
       "Scripts": [],
@@ -887,6 +957,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -902,7 +977,7 @@
       "Height": 1
     },
     {
-      "Id": "0f0d128400f44fccab22fdfe4f7a81f6",
+      "Id": "05e7048134c543cdad4ae3deda09c296",
       "Type": "Box",
       "Name": "Divider_Foyer_RightOfDoor",
       "Scripts": [],
@@ -947,6 +1022,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -962,7 +1042,7 @@
       "Height": 1
     },
     {
-      "Id": "8265cc98ac4a4d66a0303c7ae8773b43",
+      "Id": "befe9b88f1af4e1ca5a482d9c1e1d09f",
       "Type": "Box",
       "Name": "LockedDoor_RustedKey",
       "Scripts": [],
@@ -1017,6 +1097,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1032,7 +1117,7 @@
       "Height": 1
     },
     {
-      "Id": "3e50fa0ad5164bb9aeb74ad5a513fd6c",
+      "Id": "0334eb69879146269961126ab510c179",
       "Type": "Box",
       "Name": "Divider_Archive_LeftOfDoor",
       "Scripts": [],
@@ -1077,6 +1162,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1092,7 +1182,7 @@
       "Height": 1
     },
     {
-      "Id": "703b41418f7146f5ae5285ddf3ec18fb",
+      "Id": "f92eac4f91404b058188658c3713ed1c",
       "Type": "Box",
       "Name": "Divider_Archive_RightOfDoor",
       "Scripts": [],
@@ -1137,6 +1227,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1152,7 +1247,7 @@
       "Height": 1
     },
     {
-      "Id": "4b419656f03a41a194036d38cf1bc4cf",
+      "Id": "db2e601d02b74a3393b9952949aed304",
       "Type": "Box",
       "Name": "LockedDoor_ArchiveKey",
       "Scripts": [],
@@ -1207,6 +1302,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1222,7 +1322,7 @@
       "Height": 1
     },
     {
-      "Id": "109a759760f0470c86c8a07cd914a47c",
+      "Id": "00d0ca8c6b0548dd903baddc7ba0fa57",
       "Type": "Box",
       "Name": "Wall_SaveOffice_Back",
       "Scripts": [],
@@ -1267,6 +1367,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1282,7 +1387,7 @@
       "Height": 1
     },
     {
-      "Id": "6fcb83269082417db197989e3da325ad",
+      "Id": "486aacac189846d783bc3e5359822098",
       "Type": "Box",
       "Name": "Wall_SaveOffice_Side_South",
       "Scripts": [],
@@ -1327,6 +1432,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1342,7 +1452,7 @@
       "Height": 1
     },
     {
-      "Id": "9f7a6ebf07bd4340aa4398c958859d68",
+      "Id": "0f54f2e8be984788928b962aabf2bd9e",
       "Type": "Box",
       "Name": "Wall_SaveOffice_Side_North",
       "Scripts": [],
@@ -1387,6 +1497,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1402,7 +1517,7 @@
       "Height": 1
     },
     {
-      "Id": "9f9a6df83cbe43e6abf35ff3c31b12a1",
+      "Id": "328f8622ee364cf5993405d8eea6a486",
       "Type": "Box",
       "Name": "LockedDoor_ServiceKey__SaveOffice",
       "Scripts": [],
@@ -1457,6 +1572,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1472,7 +1592,7 @@
       "Height": 1
     },
     {
-      "Id": "b10dd17ef1d54fbd8f4e1df2bb15699e",
+      "Id": "008d3993b89a4ae1a3bf7349a98364bb",
       "Type": "Box",
       "Name": "Wall_Utility_Side_South_Front",
       "Scripts": [],
@@ -1517,6 +1637,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1532,7 +1657,7 @@
       "Height": 1
     },
     {
-      "Id": "fef4eae0258147e3976c5bcdc83fab84",
+      "Id": "6b305075e9fa4edea9ef7e22efe48ede",
       "Type": "Box",
       "Name": "Wall_Utility_Side_South_Rear",
       "Scripts": [],
@@ -1577,6 +1702,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1592,7 +1722,7 @@
       "Height": 1
     },
     {
-      "Id": "06b2861d30004690ab4bf69bceb0b5bd",
+      "Id": "90f6bfc4e9614044b912cf41118cbd0a",
       "Type": "Box",
       "Name": "PuzzleDoor_Fuse__PowerGate",
       "Scripts": [],
@@ -1647,6 +1777,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1662,7 +1797,7 @@
       "Height": 1
     },
     {
-      "Id": "b2fd8fd38d454426b4d375ddc64fe9eb",
+      "Id": "f234b93684e34b27a77d1b41963a54d5",
       "Type": "Box",
       "Name": "PuzzleSlot_Fuse__PowerGate",
       "Scripts": [],
@@ -1719,6 +1854,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1734,7 +1874,7 @@
       "Height": 1
     },
     {
-      "Id": "52591da2afa9489994a31ea76ba6943f",
+      "Id": "1c5c1c16b60148c0892cadce4ecc58ba",
       "Type": "Box",
       "Name": "Wall_Utility_Side_North",
       "Scripts": [],
@@ -1779,6 +1919,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1794,7 +1939,7 @@
       "Height": 1
     },
     {
-      "Id": "535460f94ba24fa58041305565b3ed98",
+      "Id": "b0f28048ed1749e0b282366544ebe407",
       "Type": "Box",
       "Name": "Wall_Utility_Back_Left",
       "Scripts": [],
@@ -1839,6 +1984,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1854,7 +2004,7 @@
       "Height": 1
     },
     {
-      "Id": "0c58533cdb154c33aff2b396b59e28a3",
+      "Id": "1d8e8c43bbc74a21a48e4c01e7fd1584",
       "Type": "Box",
       "Name": "Wall_Utility_Back_Right",
       "Scripts": [],
@@ -1899,6 +2049,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1914,7 +2069,7 @@
       "Height": 1
     },
     {
-      "Id": "f11023961ec34a9fa31da14eb6a332f9",
+      "Id": "1f468193a0ba4bc5884e69d0a9bdbecd",
       "Type": "Box",
       "Name": "PuzzleDoor_CrankHandle__UtilityLift",
       "Scripts": [],
@@ -1969,6 +2124,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -1984,7 +2144,7 @@
       "Height": 1
     },
     {
-      "Id": "73796e432fe742d1a5c5b0d80854e81e",
+      "Id": "7018ae151d834c44adf82de5f6909187",
       "Type": "Box",
       "Name": "PuzzleSlot_CrankHandle__UtilityLift",
       "Scripts": [],
@@ -2041,6 +2201,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2056,7 +2221,7 @@
       "Height": 1
     },
     {
-      "Id": "5464d754639d4aa982f9c08bf8ba67da",
+      "Id": "b201f6fea1fe4113aae187aabb203552",
       "Type": "Box",
       "Name": "Wall_CrankAlcove_Back",
       "Scripts": [],
@@ -2101,6 +2266,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2116,7 +2286,7 @@
       "Height": 1
     },
     {
-      "Id": "9155991799b242cc8eabf8e0599d45ed",
+      "Id": "a7e47b0bb07d4e9994de977a85ac60f3",
       "Type": "Box",
       "Name": "Shelf_CrankAlcove_Fuse",
       "Scripts": [],
@@ -2161,6 +2331,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2176,7 +2351,7 @@
       "Height": 1
     },
     {
-      "Id": "b94232a629234b22903fbfa2a1d5d800",
+      "Id": "eadb961d2a6240e498630441b0681c00",
       "Type": "Box",
       "Name": "Item_Fuse__CrankAlcove",
       "Scripts": [],
@@ -2221,6 +2396,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2236,7 +2416,7 @@
       "Height": 1
     },
     {
-      "Id": "df50e90c429a4fdc977fce6bf6ea0ba9",
+      "Id": "20ae4e077f894c359ade767baf4e1b6d",
       "Type": "Box",
       "Name": "Desk_RustedKeyTable",
       "Scripts": [],
@@ -2281,6 +2461,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2296,7 +2481,7 @@
       "Height": 1
     },
     {
-      "Id": "59f78fb526b74adeab997c9bbdd64943",
+      "Id": "cdee92bfcfa24a179acdfdd5a6184326",
       "Type": "Box",
       "Name": "ItemKey_RustedKey",
       "Scripts": [],
@@ -2341,6 +2526,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2356,7 +2546,7 @@
       "Height": 1
     },
     {
-      "Id": "9d706065561a45738300970ca367adcb",
+      "Id": "dca37510a9054aa18c4d49e3f1d49f60",
       "Type": "Box",
       "Name": "ItemInkRibbon_Foyer",
       "Scripts": [],
@@ -2401,6 +2591,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2416,7 +2611,7 @@
       "Height": 1
     },
     {
-      "Id": "e827268eca8446fdaadd5d9e62b5543a",
+      "Id": "fd4e0d79aa174b21a5f4df1f6a85ee41",
       "Type": "Box",
       "Name": "Shelf_ServiceKey",
       "Scripts": [],
@@ -2461,6 +2656,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2476,7 +2676,7 @@
       "Height": 1
     },
     {
-      "Id": "76610a6f10f04b228b35f6c09819b7f1",
+      "Id": "ca2094db9be8437ab6ac2fcacbef3127",
       "Type": "Box",
       "Name": "ItemKey_ServiceKey",
       "Scripts": [],
@@ -2521,6 +2721,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2536,7 +2741,7 @@
       "Height": 1
     },
     {
-      "Id": "d1a09dcddb1042e3b0199230562aa11d",
+      "Id": "fb83dfc9d7c4481ea4999614907c69d2",
       "Type": "Box",
       "Name": "LockedChest_ServiceKey__SupplyA",
       "Scripts": [],
@@ -2596,6 +2801,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2611,7 +2821,7 @@
       "Height": 1
     },
     {
-      "Id": "f44720512c774b9b8324f79a5b16e0b8",
+      "Id": "b0890e2a274245e0983fe25e0dbb85a5",
       "Type": "Box",
       "Name": "LockedChest_ServiceKey__SupplyB",
       "Scripts": [],
@@ -2671,6 +2881,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2686,7 +2901,7 @@
       "Height": 1
     },
     {
-      "Id": "96ceb01e80ce4940a13b8e4478ca3934",
+      "Id": "1955f69eef404c83b24647573b453e8b",
       "Type": "Box",
       "Name": "SaveDesk",
       "Scripts": [],
@@ -2731,6 +2946,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2746,7 +2966,7 @@
       "Height": 1
     },
     {
-      "Id": "09b67112cfc94f01ac7b6d7fb00676fb",
+      "Id": "5372498216464276bfdf5e0d23fd1072",
       "Type": "Box",
       "Name": "SavePoint_Typewriter",
       "Scripts": [],
@@ -2791,6 +3011,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2806,7 +3031,7 @@
       "Height": 1
     },
     {
-      "Id": "0ed5b4bee57949879f858190d199954e",
+      "Id": "944bc0f3cacb4599b001bba953f92245",
       "Type": "Box",
       "Name": "StorageBox_SaveOffice",
       "Scripts": [],
@@ -2851,6 +3076,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2866,7 +3096,7 @@
       "Height": 1
     },
     {
-      "Id": "b8c1a09f63a6447db67d574bbdf930fa",
+      "Id": "1c374cc37bac42da906057573a8af962",
       "Type": "Box",
       "Name": "ItemInkRibbon_SaveOffice",
       "Scripts": [],
@@ -2911,6 +3141,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2926,7 +3161,7 @@
       "Height": 1
     },
     {
-      "Id": "856832d388744378a25d9799ae04ad5b",
+      "Id": "4f52941b0c73452b90267080bb35bb71",
       "Type": "Box",
       "Name": "ItemKey_ArchiveKey",
       "Scripts": [],
@@ -2971,6 +3206,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -2986,7 +3226,7 @@
       "Height": 1
     },
     {
-      "Id": "2f6800109f1140049971660833fe3f1f",
+      "Id": "11bea21b92e44759a39c02171e461738",
       "Type": "Box",
       "Name": "ArchiveCabinet_A",
       "Scripts": [],
@@ -3031,6 +3271,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -3046,7 +3291,7 @@
       "Height": 1
     },
     {
-      "Id": "d4076af4d458426cb5bf9830c6fb8318",
+      "Id": "d675aad06b964455983456235fd96d28",
       "Type": "Box",
       "Name": "ArchiveCabinet_B",
       "Scripts": [],
@@ -3091,6 +3336,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -3106,7 +3356,7 @@
       "Height": 1
     },
     {
-      "Id": "786e4e77882148c49e66c57f3ea1386b",
+      "Id": "f88020ece27b4b05be9a4fc20c2cb06e",
       "Type": "RigidBody",
       "Name": "Crate_FoyerCorner",
       "Scripts": [],
@@ -3135,9 +3385,9 @@
         "Z": 1
       },
       "Color": {
-        "X": 0.45,
-        "Y": 0.32,
-        "Z": 0.18,
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
         "W": 1
       },
       "YawDeg": 0,
@@ -3149,8 +3399,21 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
       "MaterialPath": "",
+      "Damageable": true,
+      "MaxHealth": 60,
+      "BreakReplacementModelPaths": [
+        "Content/Models/ViewModels/DamagedCrate02.glb",
+        "Content/Models/ViewModels/DamagedCrate03.glb",
+        "Content/Models/ViewModels/DamagedCrate04.glb",
+        "Content/Models/ViewModels/DamagedCrate05.glb",
+        "Content/Models/ViewModels/DamagedCrate06.glb",
+        "Content/Models/ViewModels/DamagedCrate07.glb",
+        "Content/Models/ViewModels/DamagedCrate08.glb"
+      ],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -3166,7 +3429,7 @@
       "Height": 1
     },
     {
-      "Id": "d06a28c409854e4b80d04ee7a2f332ab",
+      "Id": "9336bb66508f4fe290efd5114adfc055",
       "Type": "RigidBody",
       "Name": "Crate_Utility_A",
       "Scripts": [],
@@ -3195,9 +3458,9 @@
         "Z": 1
       },
       "Color": {
-        "X": 0.45,
-        "Y": 0.32,
-        "Z": 0.18,
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
         "W": 1
       },
       "YawDeg": 0,
@@ -3209,8 +3472,21 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
       "MaterialPath": "",
+      "Damageable": true,
+      "MaxHealth": 60,
+      "BreakReplacementModelPaths": [
+        "Content/Models/ViewModels/DamagedCrate02.glb",
+        "Content/Models/ViewModels/DamagedCrate03.glb",
+        "Content/Models/ViewModels/DamagedCrate04.glb",
+        "Content/Models/ViewModels/DamagedCrate05.glb",
+        "Content/Models/ViewModels/DamagedCrate06.glb",
+        "Content/Models/ViewModels/DamagedCrate07.glb",
+        "Content/Models/ViewModels/DamagedCrate08.glb"
+      ],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -3226,7 +3502,7 @@
       "Height": 1
     },
     {
-      "Id": "700467cf0f904a81aaedf166cdb9c0d6",
+      "Id": "d9043d6a53f5494f82b550072b46f313",
       "Type": "RigidBody",
       "Name": "Crate_Utility_B",
       "Scripts": [],
@@ -3255,9 +3531,9 @@
         "Z": 1
       },
       "Color": {
-        "X": 0.45,
-        "Y": 0.32,
-        "Z": 0.18,
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
         "W": 1
       },
       "YawDeg": 0,
@@ -3269,8 +3545,21 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
       "MaterialPath": "",
+      "Damageable": true,
+      "MaxHealth": 60,
+      "BreakReplacementModelPaths": [
+        "Content/Models/ViewModels/DamagedCrate02.glb",
+        "Content/Models/ViewModels/DamagedCrate03.glb",
+        "Content/Models/ViewModels/DamagedCrate04.glb",
+        "Content/Models/ViewModels/DamagedCrate05.glb",
+        "Content/Models/ViewModels/DamagedCrate06.glb",
+        "Content/Models/ViewModels/DamagedCrate07.glb",
+        "Content/Models/ViewModels/DamagedCrate08.glb"
+      ],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -3286,7 +3575,7 @@
       "Height": 1
     },
     {
-      "Id": "e00a620c399a4b9c8c67239ec63835ca",
+      "Id": "6b6963a5068b4f44b3092cb4d8e03f04",
       "Type": "RigidBody",
       "Name": "Crate_SaveOffice",
       "Scripts": [],
@@ -3315,9 +3604,9 @@
         "Z": 1
       },
       "Color": {
-        "X": 0.45,
-        "Y": 0.32,
-        "Z": 0.18,
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
         "W": 1
       },
       "YawDeg": 0,
@@ -3329,8 +3618,21 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
       "MaterialPath": "",
+      "Damageable": true,
+      "MaxHealth": 60,
+      "BreakReplacementModelPaths": [
+        "Content/Models/ViewModels/DamagedCrate02.glb",
+        "Content/Models/ViewModels/DamagedCrate03.glb",
+        "Content/Models/ViewModels/DamagedCrate04.glb",
+        "Content/Models/ViewModels/DamagedCrate05.glb",
+        "Content/Models/ViewModels/DamagedCrate06.glb",
+        "Content/Models/ViewModels/DamagedCrate07.glb",
+        "Content/Models/ViewModels/DamagedCrate08.glb"
+      ],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -3346,7 +3648,7 @@
       "Height": 1
     },
     {
-      "Id": "8ba2bc9bf9584c3aa36ca84acaa3c28c",
+      "Id": "2185aab4ecaf43e29af4d29051370cf6",
       "Type": "RigidBody",
       "Name": "Crate_ArchiveLoose",
       "Scripts": [],
@@ -3375,9 +3677,9 @@
         "Z": 1
       },
       "Color": {
-        "X": 0.45,
-        "Y": 0.32,
-        "Z": 0.18,
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
         "W": 1
       },
       "YawDeg": 0,
@@ -3389,8 +3691,21 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
       "MaterialPath": "",
+      "Damageable": true,
+      "MaxHealth": 60,
+      "BreakReplacementModelPaths": [
+        "Content/Models/ViewModels/DamagedCrate02.glb",
+        "Content/Models/ViewModels/DamagedCrate03.glb",
+        "Content/Models/ViewModels/DamagedCrate04.glb",
+        "Content/Models/ViewModels/DamagedCrate05.glb",
+        "Content/Models/ViewModels/DamagedCrate06.glb",
+        "Content/Models/ViewModels/DamagedCrate07.glb",
+        "Content/Models/ViewModels/DamagedCrate08.glb"
+      ],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,
@@ -3406,7 +3721,7 @@
       "Height": 1
     },
     {
-      "Id": "1c37965dc7c84dbe896576112fe61f6d",
+      "Id": "0c84316a4c304f0288ff8ddced02c9f5",
       "Type": "TriggerVolume",
       "Name": "Trigger_SaveRoomEntry",
       "Scripts": [],
@@ -3451,6 +3766,11 @@
       "Range": 8,
       "MeshPath": "",
       "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
       "TriggerSize": {
         "X": 2,
         "Y": 2,

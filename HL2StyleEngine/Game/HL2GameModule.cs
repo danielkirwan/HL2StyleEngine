@@ -16,6 +16,7 @@ using Game.Weapons;
 using Game.World;
 using Game.World.MovingPlatform;
 using ImGuiNET;
+using System.Globalization;
 using System.Numerics;
 using System.Text.Json;
 using Veldrid;
@@ -84,6 +85,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         public List<string> CollectedInteractables { get; set; } = new();
         public List<string> OpenedDoors { get; set; } = new();
         public List<string> SolvedPuzzles { get; set; } = new();
+        public List<BrokenObjectSaveData> BrokenObjects { get; set; } = new();
         public int InkRibbons { get; set; }
         public int SavePointUseCount { get; set; }
         public float PlayerX { get; set; }
@@ -93,9 +95,34 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         public float CameraPitch { get; set; }
     }
 
+    private readonly struct ModelBounds
+    {
+        public readonly bool Valid;
+        public readonly Vector3 Min;
+        public readonly Vector3 Max;
+        public readonly Vector3 Size;
+        public readonly Vector3 Center;
+
+        public ModelBounds(bool valid, Vector3 min, Vector3 max)
+        {
+            Valid = valid;
+            Min = min;
+            Max = max;
+            Size = max - min;
+            Center = (min + max) * 0.5f;
+        }
+    }
+
+    private sealed class BrokenObjectSaveData
+    {
+        public string Name { get; set; } = "";
+        public string ReplacementModelPath { get; set; } = "";
+    }
+
     private sealed class WeaponModelCacheEntry
     {
         public RenderModel? Model;
+        public ModelBounds Bounds;
         public Task<LoadedModel>? LoadTask;
         public bool Failed;
         public string? Error;
@@ -119,6 +146,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private readonly HashSet<string> _collectedInteractables = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _openedDoors = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _solvedPuzzles = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _brokenObjectReplacementModels = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Vector3> _puzzleDoorClosedPositions = new(StringComparer.OrdinalIgnoreCase);
     private bool _inventoryOpen;
     private int _selectedInventoryStackIndex = -1;
@@ -212,6 +240,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private int _physicsMaxSubsteps = 12;
     private float _physicsMaxStep = 1f / 120f;
+    private const string BreakableWoodenCrateModelPath = "Content/Models/ViewModels/Breakable_Wooden_Crate.glb";
     private const float PuzzleDoorLiftHeight = 3.0f;
     private const float PuzzleDoorLiftSpeed = 0.85f;
     private const string InteractionLockedDoor = "LockedDoor";
@@ -226,6 +255,13 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private const int PauseMenuOptionCount = 2;
     private const int NativeStorageSlotOffset = 1000;
     private const int NativeInventoryActionSlotOffset = 2000;
+    private const string PlayerCharacterModelPath = "Content/Models/ViewModels/Future_Soldier_02.glb";
+    // Full character GLBs from Mixamo/Unity are usually skinned; keep the mesh off until skinning is supported.
+    private const bool DrawImportedPlayerCharacterModel = false;
+    private const bool DrawLocalPlayerCharacterInFirstPerson = false;
+    private const float PlayerCharacterYawOffsetRadians = 0f;
+    private static readonly Vector4 PlayerCharacterTint = Vector4.One;
+    private static readonly Vector4 PlayerCharacterFallbackColor = new(0.35f, 0.48f, 0.62f, 0.78f);
     private string SaveDirectory => Path.Combine(AppContext.BaseDirectory, "Saves");
     private string PrototypeSavePath => Path.Combine(SaveDirectory, "prototype_save.json");
 
@@ -258,6 +294,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
 
         PreloadWeaponModels();
+        PreloadModelAsset(PlayerCharacterModelPath);
     }
 
     private void PreloadWeaponModels()
@@ -265,32 +302,40 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         foreach (WeaponDefinition weapon in WeaponDefinitions.All)
         {
             string? modelAssetPath = weapon.ViewModel.ModelAssetPath;
-            if (string.IsNullOrWhiteSpace(modelAssetPath))
-                continue;
+            if (!string.IsNullOrWhiteSpace(modelAssetPath))
+                PreloadModelAsset(modelAssetPath);
+        }
+    }
 
-            string path = ResolveModelAssetPath(modelAssetPath);
-            if (_weaponModelCache.ContainsKey(path))
-                continue;
+    private void PreloadModelAsset(string modelAssetPath)
+    {
+        if (string.IsNullOrWhiteSpace(modelAssetPath))
+            return;
 
-            WeaponModelCacheEntry entry = new();
-            _weaponModelCache[path] = entry;
+        string path = ResolveModelAssetPath(modelAssetPath);
+        if (_weaponModelCache.ContainsKey(path))
+            return;
 
-            if (!File.Exists(path))
-            {
-                entry.Failed = true;
-                entry.Error = "file not found";
-                continue;
-            }
+        WeaponModelCacheEntry entry = new();
+        _weaponModelCache[path] = entry;
 
-            try
-            {
-                entry.Model = _world.LoadGlbModel(path);
-            }
-            catch (Exception ex)
-            {
-                entry.Failed = true;
-                entry.Error = ex.Message;
-            }
+        if (!File.Exists(path))
+        {
+            entry.Failed = true;
+            entry.Error = "file not found";
+            return;
+        }
+
+        try
+        {
+            LoadedModel loaded = GlbModelLoader.Load(path);
+            entry.Bounds = CalculateModelBounds(loaded);
+            entry.Model = _world.CreateRenderModel(loaded);
+        }
+        catch (Exception ex)
+        {
+            entry.Failed = true;
+            entry.Error = ex.Message;
         }
     }
 
@@ -847,6 +892,16 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 !HasNamedEntity(level, "LockedChest_ServiceKey__SupplyA") ||
                 !HasNamedEntity(level, "LockedChest_ServiceKey__SupplyB") ||
                 !HasNamedEntity(level, "StorageBox_SaveOffice") ||
+                !HasEntityMeshPath(level, "Crate_FoyerCorner", BreakableWoodenCrateModelPath) ||
+                !HasDamageableBreakReplacement(level, "Crate_FoyerCorner") ||
+                !HasEntityMeshPath(level, "Crate_Utility_A", BreakableWoodenCrateModelPath) ||
+                !HasDamageableBreakReplacement(level, "Crate_Utility_A") ||
+                !HasEntityMeshPath(level, "Crate_Utility_B", BreakableWoodenCrateModelPath) ||
+                !HasDamageableBreakReplacement(level, "Crate_Utility_B") ||
+                !HasEntityMeshPath(level, "Crate_SaveOffice", BreakableWoodenCrateModelPath) ||
+                !HasDamageableBreakReplacement(level, "Crate_SaveOffice") ||
+                !HasEntityMeshPath(level, "Crate_ArchiveLoose", BreakableWoodenCrateModelPath) ||
+                !HasDamageableBreakReplacement(level, "Crate_ArchiveLoose") ||
                 !HasNamedEntity(level, "PuzzleSlot_CrankHandle__UtilityLift") ||
                 !HasNamedEntity(level, "PuzzleDoor_CrankHandle__UtilityLift") ||
                 !HasInteractionData(level, "PuzzleSlot_CrankHandle__UtilityLift") ||
@@ -879,6 +934,25 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private static bool HasNamedEntity(LevelFile level, string name)
         => level.Entities.Any(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    private static bool HasEntityMeshPath(LevelFile level, string name, string meshPath)
+    {
+        LevelEntityDef? entity = level.Entities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+        return entity != null && string.Equals(entity.MeshPath, meshPath, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool HasDamageableBreakReplacement(LevelFile level, string name)
+    {
+        LevelEntityDef? entity = level.Entities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+        return entity != null &&
+            entity.Damageable &&
+            entity.MaxHealth >= 1f &&
+            entity.BreakReplacementKeepsPhysics &&
+            entity.BreakReplacementModelPaths != null &&
+            entity.BreakReplacementModelPaths.Any(static path =>
+                !string.IsNullOrWhiteSpace(path) &&
+                path.Contains("DamagedCrate", StringComparison.OrdinalIgnoreCase));
+    }
 
     private static bool HasInteractionData(LevelFile level, string name)
     {
@@ -1055,6 +1129,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             _collectedInteractables.Clear();
             _openedDoors.Clear();
             _solvedPuzzles.Clear();
+            _brokenObjectReplacementModels.Clear();
 
             if (data.InventoryItems.Count > 0)
             {
@@ -1083,6 +1158,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 _openedDoors.Add(item);
             foreach (string item in data.SolvedPuzzles)
                 _solvedPuzzles.Add(item);
+            foreach (BrokenObjectSaveData item in data.BrokenObjects)
+            {
+                if (!string.IsNullOrWhiteSpace(item.Name))
+                    _brokenObjectReplacementModels[item.Name] = item.ReplacementModelPath ?? "";
+            }
 
             _savePointUseCount = Math.Max(0, data.SavePointUseCount);
             _playTimeSeconds = MathF.Max(0f, data.PlayTimeSeconds);
@@ -1136,6 +1216,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 CollectedInteractables = _collectedInteractables.OrderBy(static x => x).ToList(),
                 OpenedDoors = _openedDoors.OrderBy(static x => x).ToList(),
                 SolvedPuzzles = _solvedPuzzles.OrderBy(static x => x).ToList(),
+                BrokenObjects = _brokenObjectReplacementModels
+                    .OrderBy(static pair => pair.Key)
+                    .Select(static pair => new BrokenObjectSaveData { Name = pair.Key, ReplacementModelPath = pair.Value })
+                    .ToList(),
                 InkRibbons = _inventory.GetCount(ItemCatalog.InkRibbon),
                 SavePointUseCount = _savePointUseCount,
                 PlayerX = _motor.Position.X,
@@ -1203,6 +1287,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _collectedInteractables.Clear();
         _openedDoors.Clear();
         _solvedPuzzles.Clear();
+        _brokenObjectReplacementModels.Clear();
         _savePointUseCount = 0;
         _playTimeSeconds = 0f;
         CloseSaveSlotPanel(showMessage: false);
@@ -2669,6 +2754,83 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             if (IsPuzzleSlot(e) && IsInteractionStateComplete(_solvedPuzzles, e))
                 OpenPuzzleTargets(e, instant: true);
         }
+
+        ApplyPersistentObjectDamageStateToRuntime();
+    }
+
+    private void ApplyPersistentObjectDamageStateToRuntime()
+    {
+        for (int i = 0; i < _runtimeEntities.Count; i++)
+        {
+            Entity e = _runtimeEntities[i];
+            if (_brokenObjectReplacementModels.TryGetValue(e.Name, out string? replacementModelPath))
+                BreakDamageableEntity(e, replacementModelPath, persist: false, showMessage: false);
+        }
+    }
+
+    private void ApplyEntityDamage(Entity entity, float amount, string damageKind)
+    {
+        if (amount <= 0f || !entity.Damageable || entity.IsBroken || entity.Render.Shape == RuntimeShapeKind.None)
+            return;
+
+        entity.Health = MathF.Max(0f, entity.Health - amount);
+        if (entity.Health > 0f)
+            return;
+
+        string replacementModelPath = ChooseBreakReplacementModel(entity);
+        BreakDamageableEntity(entity, replacementModelPath, persist: true, showMessage: true);
+    }
+
+    private static string ChooseBreakReplacementModel(Entity entity)
+    {
+        List<string> candidates = entity.BreakReplacementModelPaths
+            .Where(IsGlbModelPath)
+            .ToList();
+
+        if (candidates.Count == 0)
+            return "";
+
+        return candidates.Count == 1
+            ? candidates[0]
+            : candidates[Random.Shared.Next(candidates.Count)];
+    }
+
+    private void BreakDamageableEntity(Entity entity, string replacementModelPath, bool persist, bool showMessage)
+    {
+        if (entity.IsBroken && string.Equals(entity.BrokenReplacementModelPath, replacementModelPath, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (ReferenceEquals(_held, entity))
+            DropHeld();
+
+        entity.IsBroken = true;
+        entity.Damageable = false;
+        entity.Health = 0f;
+        entity.BrokenReplacementModelPath = replacementModelPath ?? "";
+
+        if (IsGlbModelPath(replacementModelPath))
+        {
+            entity.Render.ModelAssetPath = entity.BrokenReplacementModelPath;
+            entity.Render.Color = Vector4.One;
+            if (!entity.BreakReplacementKeepsPhysics)
+            {
+                entity.CanPickUp = false;
+                entity.Physics.MotionType = MotionType.Static;
+                entity.Physics.BoxBody = null;
+                entity.Physics.SphereBody = null;
+                entity.Physics.CapsuleBody = null;
+            }
+        }
+        else
+        {
+            HideRuntimeEntity(entity);
+        }
+
+        if (persist && !string.IsNullOrWhiteSpace(entity.Name))
+            _brokenObjectReplacementModels[entity.Name] = entity.BrokenReplacementModelPath;
+
+        if (showMessage)
+            ShowGameMessage($"{PrettifyToken(entity.Name)} broke.", 1.1f);
     }
 
     private void UpdatePuzzleDoorAnimations(float dt)
@@ -4841,8 +5003,19 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             e.Render.Radius = GetScaledSphereRadius(def, clampScale: false);
             e.Render.Height = GetScaledCapsuleHeight(def, clampScale: false);
             e.Render.Color = (Vector4)def.Color;
+            e.Render.ModelAssetPath = IsGlbModelPath(def.MeshPath) ? def.MeshPath : "";
 
             e.CanPickUp = def.CanPickUp;
+            e.Damageable = def.Damageable;
+            e.MaxHealth = MathF.Max(1f, def.MaxHealth);
+            e.Health = e.MaxHealth;
+            e.IsBroken = false;
+            e.BreakReplacementKeepsPhysics = def.BreakReplacementKeepsPhysics;
+            e.BreakReplacementModelPaths.Clear();
+            e.BreakReplacementModelPaths.AddRange((def.BreakReplacementModelPaths ?? new List<string>()).Where(static path => !string.IsNullOrWhiteSpace(path)));
+            e.BreakDebrisModelPaths.Clear();
+            e.BreakDebrisModelPaths.AddRange((def.BreakDebrisModelPaths ?? new List<string>()).Where(static path => !string.IsNullOrWhiteSpace(path)));
+            e.BrokenReplacementModelPath = "";
             e.Physics.MotionType = def.MotionType;
             e.Physics.BoxBody = null;
             e.Physics.SphereBody = null;
@@ -5517,6 +5690,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         ImGui.Text($"Gameplay UI: {_gameplayUi.BackendName} ({(_gameplayUi.IsReady ? "ready" : "pending")})");
         ImGui.TextWrapped(_gameplayUi.Status);
         ImGui.TextWrapped(_gameplayUi.RenderStatus);
+        DrawWeaponViewModelTuning();
 
         if (_runtimeEntities.Count > 0)
         {
@@ -5525,6 +5699,49 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
         ImGui.End();
     }
+
+    private void DrawWeaponViewModelTuning()
+    {
+        if (!ImGui.CollapsingHeader("Weapon Viewmodel Tuning", ImGuiTreeNodeFlags.DefaultOpen))
+            return;
+
+        WeaponDefinition weapon = _weaponSystem.EquippedWeapon;
+        WeaponViewModelDefinition viewModel = weapon.ViewModel;
+
+        ImGui.Text($"Equipped: {weapon.DisplayName} ({weapon.Id})");
+        ImGui.TextDisabled("Live only: copy values into WeaponDefinitions.cs to lock them in.");
+
+        Vector3 offset = viewModel.ModelLocalOffset;
+        if (ImGui.DragFloat3("Model Offset", ref offset, 0.01f))
+            viewModel.ModelLocalOffset = offset;
+
+        Vector3 euler = viewModel.ModelLocalEulerDegrees;
+        if (ImGui.DragFloat3("Model Euler", ref euler, 1f))
+            viewModel.ModelLocalEulerDegrees = euler;
+
+        float scale = viewModel.ModelScale;
+        if (ImGui.DragFloat("Model Scale", ref scale, 0.01f, 0.001f, 10f))
+            viewModel.ModelScale = scale;
+
+        Vector3 muzzle = viewModel.MuzzleOffset;
+        if (ImGui.DragFloat3("Muzzle Offset", ref muzzle, 0.01f))
+            viewModel.MuzzleOffset = muzzle;
+
+        if (ImGui.Button("Copy C# Values"))
+            ImGui.SetClipboardText(BuildViewModelTuningSnippet(viewModel));
+    }
+
+    private static string BuildViewModelTuningSnippet(WeaponViewModelDefinition viewModel)
+        => $"muzzleOffset: {FormatVector3(viewModel.MuzzleOffset)},\n" +
+           $"modelLocalOffset: {FormatVector3(viewModel.ModelLocalOffset)},\n" +
+           $"modelLocalEulerDegrees: {FormatVector3(viewModel.ModelLocalEulerDegrees)},\n" +
+           $"modelScale: {FormatFloat(viewModel.ModelScale)}";
+
+    private static string FormatVector3(Vector3 value)
+        => $"new Vector3({FormatFloat(value.X)}, {FormatFloat(value.Y)}, {FormatFloat(value.Z)})";
+
+    private static string FormatFloat(float value)
+        => value.ToString("0.###", CultureInfo.InvariantCulture) + "f";
 
     private void DrawGameplayHud()
     {
@@ -5834,6 +6051,27 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         ImGui.End();
     }
 
+    private void DrawPlayerCharacter(Renderer renderer, bool visible)
+    {
+        if (!visible)
+            return;
+
+        Vector3 playerCenter = _motor.Position + new Vector3(0f, _motor.HalfHeight, 0f);
+        float radius = MathF.Max(0.01f, _motor.Radius);
+        float height = MathF.Max(radius * 2f, _motor.HalfHeight * 2f);
+        Vector3 playerSize = new(radius * 2.2f, height, radius * 2.2f);
+        Quaternion rotation = Quaternion.CreateFromYawPitchRoll(_camera.Yaw + PlayerCharacterYawOffsetRadians, 0f, 0f);
+
+        if (DrawImportedPlayerCharacterModel && TryGetReadyModel(PlayerCharacterModelPath, "player character", out WeaponModelCacheEntry? entry) && entry?.Model != null)
+        {
+            Matrix4x4 transform = CreateBoundsFitTransform(entry.Bounds, playerCenter, playerSize, rotation);
+            _world.DrawModel(renderer.CommandList, entry.Model, transform, PlayerCharacterTint);
+            return;
+        }
+
+        DrawPrimitive(renderer, RuntimeShapeKind.Capsule, playerCenter, playerSize, rotation, PlayerCharacterFallbackColor, radius, height);
+    }
+
     public void RenderWorld(Renderer renderer)
     {
         float aspect = _ctx.Window.Window.Height > 0
@@ -5957,6 +6195,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 }
             }
 
+            DrawPlayerCharacter(renderer, visible: true);
             return;
         }
 
@@ -5978,9 +6217,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             Vector3 size = ent.Render.Size;
             Vector4 col = ent.Render.Color;
 
-            DrawPrimitive(renderer, ent.Render.Shape, pos, size, rot, col, ent.Render.Radius, ent.Render.Height);
+            if (!TryDrawWorldModel(renderer, ent, pos, size, rot, col))
+                DrawPrimitive(renderer, ent.Render.Shape, pos, size, rot, col, ent.Render.Radius, ent.Render.Height);
         }
 
+        DrawPlayerCharacter(renderer, visible: DrawLocalPlayerCharacterInFirstPerson);
         _weaponSystem.Render(this, renderer, visible: !_editorEnabled && !GameplayModalOpen);
     }
 
@@ -7366,6 +7607,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             "bullet" or "bullets" or "ammo" => ItemCatalog.Bullets,
             "pistol" or "testpistol" => ItemCatalog.TestPistol,
             "gravitygun" or "gravgun" or "physgun" => ItemCatalog.GravityGun,
+            "crowbar" or "prybar" => ItemCatalog.Crowbar,
             "rustedkey" or "rustykey" => "RustedKey",
             "servicekey" => "ServiceKey",
             "archivekey" => "ArchiveKey",

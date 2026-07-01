@@ -6,14 +6,26 @@ namespace Game.Weapons;
 
 internal sealed class WeaponSystem
 {
+    private const float GravityBlastRange = 5.5f;
+    private const float GravityBlastImpulseScale = 2.25f;
+    private const float GravityBlastCooldownSeconds = 0.30f;
+    private const float GravityStaticBurstSeconds = 0.14f;
+    private const float MeleeSwingSeconds = 0.28f;
+
     private readonly IReadOnlyList<WeaponDefinition> _definitions;
     private int _equippedIndex;
     private float _cooldownTimer;
     private float _flashTimer;
     private float _traceTimer;
+    private float _meleeSwingTimer;
+    private int _meleeSwingVariant;
     private Vector3 _traceStart;
     private Vector3 _traceEnd;
     private Vector4 _traceColor = new(1f, 0.84f, 0.42f, 1f);
+    private float _gravityStaticBurstTimer;
+    private Vector3 _gravityStaticBurstStart;
+    private Vector3 _gravityStaticBurstEnd;
+    private int _gravityStaticBurstIndex;
     private Entity? _gravityPullTarget;
     private bool _gravityHeldLaunchArmed = true;
     private bool _gravitySuppressPullUntilPrimaryReleased;
@@ -37,6 +49,10 @@ internal sealed class WeaponSystem
             _flashTimer = MathF.Max(0f, _flashTimer - dt);
         if (_traceTimer > 0f)
             _traceTimer = MathF.Max(0f, _traceTimer - dt);
+        if (_meleeSwingTimer > 0f)
+            _meleeSwingTimer = MathF.Max(0f, _meleeSwingTimer - dt);
+        if (_gravityStaticBurstTimer > 0f)
+            _gravityStaticBurstTimer = MathF.Max(0f, _gravityStaticBurstTimer - dt);
     }
 
     public bool TryEquipInventoryItem(IWeaponHost host, string itemId, bool showMessage)
@@ -87,6 +103,14 @@ internal sealed class WeaponSystem
         {
             HandleGravityGunInput(host, weapon, input, dt);
         }
+        else if (weapon.Kind == WeaponKind.Melee)
+        {
+            if (input.PrimaryPressed)
+            {
+                _gravityPullTarget = null;
+                FireMelee(host, weapon);
+            }
+        }
         else if (input.PrimaryPressed)
         {
             _gravityPullTarget = null;
@@ -101,6 +125,8 @@ internal sealed class WeaponSystem
 
         if (_traceTimer > 0f)
             host.DrawWeaponBeam(renderer, _traceStart, _traceEnd, 0.025f, _traceColor);
+        if (_gravityStaticBurstTimer > 0f)
+            DrawGravityStaticBurst(host, renderer);
 
         if (host.HasHeldObject && !host.HeldObjectGrabbedByGravityGun)
             return;
@@ -141,6 +167,9 @@ internal sealed class WeaponSystem
             {
                 host.ThrowHeldObject(speed: 12f);
                 host.ShowWeaponMessage("Threw held object.", 0.9f);
+                _gravityPullTarget = null;
+                _gravityHeldLaunchArmed = true;
+                _gravitySuppressPullUntilPrimaryReleased = true;
             }
 
             return;
@@ -174,14 +203,50 @@ internal sealed class WeaponSystem
         {
             end = hit.HitPoint;
             host.ApplyWeaponImpulse(hit.Target, dir * weapon.Impulse, hit.HitPoint, spinScale: 0.8f);
+            host.ApplyWeaponDamage(hit.Target, weapon.Damage, "Bullet");
             host.ShowWeaponMessage($"{weapon.DisplayName} hit {host.GetEntityDisplayName(hit.Target)}.", 0.75f);
         }
 
         SetTrace(origin + dir * 0.65f, end, new Vector4(1f, 0.85f, 0.38f, 0.95f), 0.055f);
     }
 
+    private void FireMelee(IWeaponHost host, WeaponDefinition weapon)
+    {
+        if (_cooldownTimer > 0f)
+            return;
+
+        _cooldownTimer = weapon.CooldownSeconds;
+        _flashTimer = weapon.FlashSeconds;
+        _meleeSwingTimer = MeleeSwingSeconds;
+        _meleeSwingVariant = (_meleeSwingVariant + 1) % 3;
+
+        Vector3 origin = host.CameraPosition;
+        Vector3 dir = Vector3.Normalize(host.CameraForward);
+        Vector3 end = origin + dir * weapon.Range;
+
+        if (host.TryRaycastWeaponTarget(weapon.Range, out WeaponTargetHit hit))
+        {
+            end = hit.HitPoint;
+            bool pushed = host.ApplyWeaponImpulse(hit.Target, dir * weapon.Impulse, hit.HitPoint, spinScale: 0.7f);
+            host.ApplyWeaponDamage(hit.Target, weapon.Damage, "Melee");
+            host.ShowWeaponMessage(
+                pushed
+                    ? $"{weapon.DisplayName} struck {host.GetEntityDisplayName(hit.Target)}."
+                    : $"{weapon.DisplayName} hit {host.GetEntityDisplayName(hit.Target)}.",
+                0.75f);
+        }
+
+        SetTrace(origin + dir * 0.45f, end, new Vector4(0.95f, 0.92f, 0.78f, 0.9f), 0.05f);
+    }
+
     private void HandleGravityGunInput(IWeaponHost host, WeaponDefinition weapon, WeaponInputSnapshot input, float dt)
     {
+        if (input.SecondaryPressed)
+        {
+            FireGravityBlast(host, weapon);
+            return;
+        }
+
         if (!input.PrimaryHeld)
         {
             _gravityPullTarget = null;
@@ -251,12 +316,103 @@ internal sealed class WeaponSystem
         if (host.TryRaycastWeaponTarget(weapon.AttractionRange, out WeaponTargetHit hit))
         {
             host.ApplyWeaponImpulse(hit.Target, dir * weapon.Impulse, hit.HitPoint, spinScale: 1.1f);
+            host.ApplyWeaponDamage(hit.Target, weapon.Damage, "GravityPulse");
             SetTrace(origin + dir * 0.55f, hit.HitPoint, new Vector4(0.35f, 0.9f, 1f, 0.95f), 0.08f);
             host.ShowWeaponMessage($"Gravity pulse hit {host.GetEntityDisplayName(hit.Target)}.", 0.75f);
             return;
         }
 
         SetTrace(origin + dir * 0.55f, origin + dir * weapon.AttractionRange, new Vector4(0.25f, 0.65f, 1f, 0.7f), 0.05f);
+    }
+
+    private void FireGravityBlast(IWeaponHost host, WeaponDefinition weapon)
+    {
+        if (_cooldownTimer > 0f)
+            return;
+
+        Vector3 origin = host.CameraPosition;
+        Vector3 dir = Vector3.Normalize(host.CameraForward);
+        Vector3 burstStart = origin + dir * 0.55f;
+        Vector3 burstEnd = origin + dir * GravityBlastRange;
+
+        _cooldownTimer = MathF.Max(weapon.CooldownSeconds, GravityBlastCooldownSeconds);
+        _flashTimer = MathF.Max(_flashTimer, weapon.FlashSeconds * 1.3f);
+        _gravityPullTarget = null;
+        _gravityHeldLaunchArmed = true;
+        _gravitySuppressPullUntilPrimaryReleased = false;
+
+        if (host.TryRaycastWeaponTarget(GravityBlastRange, out WeaponTargetHit hit))
+        {
+            burstEnd = hit.HitPoint;
+            bool pushed = host.ApplyWeaponImpulse(
+                hit.Target,
+                dir * weapon.Impulse * GravityBlastImpulseScale,
+                hit.HitPoint,
+                spinScale: 1.75f);
+            host.ApplyWeaponDamage(hit.Target, weapon.Damage * 1.4f, "GravityBlast");
+
+            SetGravityStaticBurst(burstStart, burstEnd);
+            host.ShowWeaponMessage(
+                pushed
+                    ? $"Gravity blast punted {host.GetEntityDisplayName(hit.Target)}."
+                    : "Gravity blast discharged.",
+                0.75f);
+            return;
+        }
+
+        SetGravityStaticBurst(burstStart, burstEnd);
+        host.ShowWeaponMessage("Gravity blast discharged.", 0.65f);
+    }
+
+    private void SetGravityStaticBurst(Vector3 start, Vector3 end)
+    {
+        _gravityStaticBurstStart = start;
+        _gravityStaticBurstEnd = end;
+        _gravityStaticBurstTimer = GravityStaticBurstSeconds;
+        _gravityStaticBurstIndex++;
+        SetTrace(start, end, new Vector4(0.48f, 0.95f, 1f, 0.96f), GravityStaticBurstSeconds * 0.75f);
+    }
+
+    private void DrawGravityStaticBurst(IWeaponHost host, Renderer renderer)
+    {
+        Vector3 start = _gravityStaticBurstStart;
+        Vector3 end = _gravityStaticBurstEnd;
+        Vector3 dir = end - start;
+        float length = dir.Length();
+        if (length <= 0.001f)
+            return;
+
+        dir /= length;
+        Vector3 right = Vector3.Cross(Vector3.UnitY, dir);
+        if (right.LengthSquared() < 0.0001f)
+            right = Vector3.UnitX;
+        else
+            right = Vector3.Normalize(right);
+
+        Vector3 up = Vector3.Normalize(Vector3.Cross(dir, right));
+        float normalizedLife = Math.Clamp(_gravityStaticBurstTimer / GravityStaticBurstSeconds, 0f, 1f);
+        float amplitude = MathF.Min(0.16f, length * 0.035f) * normalizedLife;
+        float phase = _gravityStaticBurstIndex * 1.618f + _gravityStaticBurstTimer * 80f;
+
+        host.DrawWeaponBeam(renderer, start, end, 0.032f, new Vector4(0.72f, 0.98f, 1f, 0.95f));
+
+        for (int arc = 0; arc < 3; arc++)
+        {
+            float arcPhase = phase + arc * 2.41f;
+            Vector3 offsetA = (right * MathF.Sin(arcPhase) + up * MathF.Cos(arcPhase * 0.73f)) * amplitude;
+            Vector3 offsetB = (right * MathF.Sin(arcPhase * 1.37f + 1.1f) + up * MathF.Cos(arcPhase + 0.6f)) * amplitude;
+            Vector3 p0 = start;
+            Vector3 p1 = Vector3.Lerp(start, end, 0.34f) + offsetA;
+            Vector3 p2 = Vector3.Lerp(start, end, 0.68f) + offsetB;
+            Vector3 p3 = end;
+            Vector4 color = arc == 0
+                ? new Vector4(0.42f, 0.90f, 1f, 0.80f)
+                : new Vector4(0.78f, 0.98f, 1f, 0.58f);
+
+            host.DrawWeaponBeam(renderer, p0, p1, 0.014f, color);
+            host.DrawWeaponBeam(renderer, p1, p2, 0.014f, color);
+            host.DrawWeaponBeam(renderer, p2, p3, 0.014f, color);
+        }
     }
 
     private Entity? GetGravityPullTarget(IWeaponHost host, WeaponDefinition weapon, Vector3 origin)
@@ -315,6 +471,7 @@ internal sealed class WeaponSystem
         if (host.HasHeldObject)
             host.DropHeldObject();
 
+        _meleeSwingTimer = 0f;
         _equippedIndex = index;
         if (showMessage)
             host.ShowWeaponMessage($"Equipped {EquippedWeapon.DisplayName}.", 1.25f);
@@ -368,14 +525,17 @@ internal sealed class WeaponSystem
     {
         ViewModelBasis basis = BuildViewModelBasis(host);
         float recoil = _flashTimer > 0f ? -0.07f : 0f;
+        Vector3 animationOffset = GetViewModelAnimationOffset(weapon);
+        Vector3 animationEuler = GetViewModelAnimationEulerDegrees(weapon);
+        Quaternion animatedRotation = CreateViewModelRotation(basis, animationEuler);
 
         if (!string.IsNullOrWhiteSpace(weapon.ViewModel.ModelAssetPath))
         {
-            Vector3 modelOffset = weapon.ViewModel.ModelLocalOffset;
+            Vector3 modelOffset = weapon.ViewModel.ModelLocalOffset + animationOffset;
             modelOffset.Z += recoil;
             Matrix4x4 modelTransform =
                 Matrix4x4.CreateScale(weapon.ViewModel.ModelScale) *
-                CreateLocalRotation(weapon.ViewModel.ModelLocalEulerDegrees) *
+                CreateLocalRotation(weapon.ViewModel.ModelLocalEulerDegrees + animationEuler) *
                 Matrix4x4.CreateFromQuaternion(basis.Rotation) *
                 Matrix4x4.CreateTranslation(ToViewModelWorld(host, basis, modelOffset));
 
@@ -391,7 +551,7 @@ internal sealed class WeaponSystem
             if (part.OnlyDuringFlash && _flashTimer <= 0f)
                 continue;
 
-            Vector3 localOffset = part.LocalOffset;
+            Vector3 localOffset = part.LocalOffset + animationOffset;
             if (part.AffectedByRecoil)
                 localOffset.Z += recoil;
 
@@ -403,7 +563,7 @@ internal sealed class WeaponSystem
             if (part.Shape == WeaponViewModelPartShape.Sphere)
                 host.DrawWeaponSphere(renderer, position, part.Radius, color);
             else
-                host.DrawWeaponBox(renderer, position, part.Size, basis.Rotation, color);
+                host.DrawWeaponBox(renderer, position, part.Size, animatedRotation, color);
         }
 
         DrawGravityGunHeldBeam(host, renderer, weapon, basis);
@@ -416,6 +576,65 @@ internal sealed class WeaponSystem
             eulerDegrees.Y * DegToRad,
             eulerDegrees.X * DegToRad,
             eulerDegrees.Z * DegToRad);
+    }
+
+    private Vector3 GetViewModelAnimationOffset(WeaponDefinition weapon)
+    {
+        if (weapon.Kind != WeaponKind.Melee || _meleeSwingTimer <= 0f)
+            return Vector3.Zero;
+
+        float progress = GetMeleeSwingProgress();
+        float swing = GetMeleeSwingAmount(progress);
+        float followThrough = MathF.Sin(progress * MathF.PI * 2f);
+
+        return _meleeSwingVariant switch
+        {
+            1 => new Vector3(-0.18f * swing, 0.03f * swing, 0.18f * swing - 0.04f * followThrough),
+            2 => new Vector3(-0.22f * swing, -0.10f * swing, 0.20f * swing - 0.05f * followThrough),
+            _ => new Vector3(-0.26f * swing, -0.05f * swing, 0.22f * swing - 0.06f * followThrough)
+        };
+    }
+
+    private Vector3 GetViewModelAnimationEulerDegrees(WeaponDefinition weapon)
+    {
+        if (weapon.Kind != WeaponKind.Melee || _meleeSwingTimer <= 0f)
+            return Vector3.Zero;
+
+        float progress = GetMeleeSwingProgress();
+        float swing = GetMeleeSwingAmount(progress);
+        float followThrough = MathF.Sin(progress * MathF.PI * 2f);
+
+        return _meleeSwingVariant switch
+        {
+            1 => new Vector3(34f * swing, 24f * swing, -42f * swing + 8f * followThrough),
+            2 => new Vector3(56f * swing, 18f * swing, -32f * swing + 6f * followThrough),
+            _ => new Vector3(48f * swing, 32f * swing, -54f * swing + 10f * followThrough)
+        };
+    }
+
+    private float GetMeleeSwingProgress()
+        => 1f - Math.Clamp(_meleeSwingTimer / MeleeSwingSeconds, 0f, 1f);
+
+    private static float GetMeleeSwingAmount(float progress)
+    {
+        float snap = MathF.Sin(Math.Clamp(progress / 0.45f, 0f, 1f) * MathF.PI * 0.5f);
+        float recovery = SmoothStep(0.48f, 1f, progress);
+        return snap * (1f - recovery);
+    }
+
+    private static float SmoothStep(float edge0, float edge1, float value)
+    {
+        float t = Math.Clamp((value - edge0) / MathF.Max(0.0001f, edge1 - edge0), 0f, 1f);
+        return t * t * (3f - 2f * t);
+    }
+
+    private static Quaternion CreateViewModelRotation(ViewModelBasis basis, Vector3 localEulerDegrees)
+    {
+        if (localEulerDegrees == Vector3.Zero)
+            return basis.Rotation;
+
+        Matrix4x4 rotation = CreateLocalRotation(localEulerDegrees) * Matrix4x4.CreateFromQuaternion(basis.Rotation);
+        return Quaternion.Normalize(Quaternion.CreateFromRotationMatrix(rotation));
     }
 
     private void DrawGravityGunHeldBeam(IWeaponHost host, Renderer renderer, WeaponDefinition weapon, ViewModelBasis basis)
@@ -448,21 +667,23 @@ internal sealed class WeaponSystem
     private static ViewModelBasis BuildViewModelBasis(IWeaponHost host)
     {
         Vector3 forward = Vector3.Normalize(host.CameraForward);
-        Vector3 right = Vector3.Cross(Vector3.UnitY, forward);
-        if (right.LengthSquared() < 0.0001f)
-            right = Vector3.UnitX;
+        Vector3 rotationRight = Vector3.Cross(Vector3.UnitY, forward);
+        if (rotationRight.LengthSquared() < 0.0001f)
+            rotationRight = -Vector3.UnitX;
         else
-            right = Vector3.Normalize(right);
+            rotationRight = Vector3.Normalize(rotationRight);
 
-        Vector3 up = Vector3.Normalize(Vector3.Cross(forward, right));
+        Vector3 up = Vector3.Normalize(Vector3.Cross(forward, rotationRight));
+        // Keep rotation as a proper camera basis; only flip placement so local +X stays screen-right.
+        Vector3 placementRight = -rotationRight;
         Matrix4x4 rotationMatrix = new(
-            right.X, right.Y, right.Z, 0f,
+            rotationRight.X, rotationRight.Y, rotationRight.Z, 0f,
             up.X, up.Y, up.Z, 0f,
             forward.X, forward.Y, forward.Z, 0f,
             0f, 0f, 0f, 1f);
 
         Quaternion rotation = Quaternion.Normalize(Quaternion.CreateFromRotationMatrix(rotationMatrix));
-        return new ViewModelBasis(right, up, forward, rotation);
+        return new ViewModelBasis(placementRight, up, forward, rotation);
     }
 
     private static Vector3 ToViewModelWorld(IWeaponHost host, ViewModelBasis basis, Vector3 localOffset)

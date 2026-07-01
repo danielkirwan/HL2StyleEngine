@@ -20,24 +20,44 @@ internal static class Program
         Dictionary<string, string> values = ParseArgs(args);
         if (!values.TryGetValue("source", out string? source) ||
             !values.TryGetValue("destination", out string? destination) ||
-            !values.TryGetValue("name", out string? name))
+            (!values.TryGetValue("name", out string? name) && !values.ContainsKey("all")))
         {
-            Console.Error.WriteLine("Usage: Engine.AssetImporter --source <folder> --destination <folder> --name <outputName> [--blender <blender.exe>]");
+            Console.Error.WriteLine("Usage: Engine.AssetImporter --source <folder> --destination <folder> --name <outputName> [--blender <blender.exe>] [--all] [--mode model|animation] [--animations]");
             Environment.ExitCode = 2;
             return;
         }
 
         values.TryGetValue("blender", out string? blender);
+        bool convertAll = values.ContainsKey("all");
+        FbxImportMode importMode = ResolveImportMode(values);
+
         FbxConversionResult result = await FbxToGlbConverter.ConvertAsync(new FbxImportRequest
         {
             SourceFolder = source,
             DestinationFolder = destination,
-            OutputName = name,
-            BlenderExePath = blender
+            OutputName = name ?? "",
+            BlenderExePath = blender,
+            ConvertAllFbx = convertAll,
+            ImportMode = importMode
         });
 
         Console.WriteLine(result.Log);
         Environment.ExitCode = result.Success ? 0 : 1;
+    }
+
+    private static FbxImportMode ResolveImportMode(Dictionary<string, string> values)
+    {
+        if (values.ContainsKey("animations") || values.ContainsKey("animation"))
+            return FbxImportMode.Animation;
+
+        if (!values.TryGetValue("mode", out string? mode))
+            return FbxImportMode.Model;
+
+        return mode.Equals("animation", StringComparison.OrdinalIgnoreCase) ||
+               mode.Equals("animations", StringComparison.OrdinalIgnoreCase) ||
+               mode.Equals("anim", StringComparison.OrdinalIgnoreCase)
+            ? FbxImportMode.Animation
+            : FbxImportMode.Model;
     }
 
     private static Dictionary<string, string> ParseArgs(string[] args)
@@ -49,10 +69,14 @@ internal static class Program
             if (!key.StartsWith("--", StringComparison.Ordinal))
                 continue;
 
-            if (i + 1 >= args.Length)
-                break;
+            string normalizedKey = key[2..];
+            if (i + 1 >= args.Length || args[i + 1].StartsWith("--", StringComparison.Ordinal))
+            {
+                values[normalizedKey] = "true";
+                continue;
+            }
 
-            values[key[2..]] = args[++i];
+            values[normalizedKey] = args[++i];
         }
 
         return values;

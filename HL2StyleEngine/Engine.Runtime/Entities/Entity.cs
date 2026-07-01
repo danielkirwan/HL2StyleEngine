@@ -21,6 +21,15 @@ namespace Engine.Runtime.Entities
 
         public bool CanPickUp = false;
 
+        public bool Damageable = false;
+        public float MaxHealth = 100f;
+        public float Health = 100f;
+        public bool IsBroken = false;
+        public bool BreakReplacementKeepsPhysics = true;
+        public readonly List<string> BreakReplacementModelPaths = new();
+        public readonly List<string> BreakDebrisModelPaths = new();
+        public string BrokenReplacementModelPath = "";
+
         public bool IsHeld = false;
 
         public Entity(string id, string type, string name)

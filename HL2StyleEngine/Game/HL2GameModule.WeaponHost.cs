@@ -97,6 +97,18 @@ public sealed partial class HL2GameModule
     {
         Vector3 origin = _camera.Position;
         Vector3 dir = Vector3.Normalize(_camera.Forward);
+        return TryRaycastWeaponTarget(origin, dir, maxDist, minDist: 0.1f, out hit);
+    }
+
+    private bool TryRaycastWeaponTarget(Vector3 origin, Vector3 direction, float maxDist, float minDist, out WeaponTargetHit hit)
+    {
+        if (direction.LengthSquared() < 0.0001f)
+        {
+            hit = default;
+            return false;
+        }
+
+        Vector3 dir = Vector3.Normalize(direction);
         var ray = new Ray(origin, dir);
 
         Entity? target = null;
@@ -117,7 +129,7 @@ public sealed partial class HL2GameModule
                 continue;
             }
 
-            if (RayIntersectsEntityCollider(ray, entity, 0.1f, distance, out float tHit))
+            if (RayIntersectsEntityCollider(ray, entity, minDist, distance, out float tHit))
             {
                 distance = tHit;
                 target = entity;
@@ -135,26 +147,30 @@ public sealed partial class HL2GameModule
         return true;
     }
 
-    void IWeaponHost.ApplyWeaponImpulse(Entity entity, Vector3 impulse, Vector3 hitPoint, float spinScale)
+    bool IWeaponHost.ApplyWeaponImpulse(Entity entity, Vector3 impulse, Vector3 hitPoint, float spinScale)
     {
         if (!HasPhysicsBody(entity) || entity.Physics.MotionType != MotionType.Dynamic || IsPhysicsBodyKinematic(entity))
-            return;
+            return false;
 
         float mass = MathF.Max(0.1f, GetPhysicsBodyMass(entity));
         Vector3 velocity = GetPhysicsBodyVelocity(entity);
         SetPhysicsBodyVelocity(entity, velocity + impulse / mass);
 
         if (!TryGetPhysicsBodyCenter(entity, out Vector3 center))
-            return;
+            return true;
 
         Vector3 offset = hitPoint - center;
         Vector3 torque = Vector3.Cross(offset, impulse);
         if (torque.LengthSquared() <= 1e-6f)
-            return;
+            return true;
 
         float radius = MathF.Max(0.1f, GetBodyRotationRadius(entity));
         AddAngularVelocity(entity, Vector3.Normalize(torque) * (impulse.Length() / mass / radius) * spinScale);
+        return true;
     }
+
+    void IWeaponHost.ApplyWeaponDamage(Entity entity, float amount, string damageKind)
+        => ApplyEntityDamage(entity, amount, damageKind);
 
     bool IWeaponHost.TryApplyGravityGunAttraction(
         Entity entity,
@@ -257,19 +273,42 @@ public sealed partial class HL2GameModule
         => DrawEdgeBox(renderer, start, end, thickness, color);
 
     bool IWeaponHost.TryDrawWeaponModel(Renderer renderer, string modelAssetPath, Matrix4x4 transform, Vector4 tint)
+        => TryDrawModel(renderer, modelAssetPath, transform, tint, "weapon model");
+
+    private bool TryDrawWorldModel(Renderer renderer, Entity entity, Vector3 position, Vector3 size, Quaternion rotation, Vector4 tint)
     {
+        if (string.IsNullOrWhiteSpace(entity.Render.ModelAssetPath))
+            return false;
+
+        if (!TryGetReadyModel(entity.Render.ModelAssetPath, "world model", out WeaponModelCacheEntry? entry) || entry?.Model == null)
+            return false;
+
+        Matrix4x4 transform = CreateBoundsFitTransform(entry.Bounds, position, size, rotation);
+        _world.DrawModel(renderer.CommandList, entry.Model, transform, tint);
+        return true;
+    }
+
+    private bool TryDrawModel(Renderer renderer, string modelAssetPath, Matrix4x4 transform, Vector4 tint, string modelKind)
+    {
+        if (!TryGetReadyModel(modelAssetPath, modelKind, out WeaponModelCacheEntry? entry) || entry?.Model == null)
+            return false;
+
+        _world.DrawModel(renderer.CommandList, entry.Model, transform, tint);
+        return true;
+    }
+
+    private bool TryGetReadyModel(string modelAssetPath, string modelKind, out WeaponModelCacheEntry? entry)
+    {
+        entry = null;
         if (string.IsNullOrWhiteSpace(modelAssetPath))
             return false;
 
         string path = ResolveModelAssetPath(modelAssetPath);
 
-        if (_weaponModelCache.TryGetValue(path, out WeaponModelCacheEntry? entry))
+        if (_weaponModelCache.TryGetValue(path, out entry))
         {
             if (entry.Model != null)
-            {
-                _world.DrawModel(renderer.CommandList, entry.Model, transform, tint);
                 return true;
-            }
 
             if (entry.Failed)
                 return false;
@@ -280,9 +319,10 @@ public sealed partial class HL2GameModule
                 {
                     try
                     {
-                        entry.Model = _world.CreateRenderModel(task.Result);
+                        LoadedModel loaded = task.Result;
+                        entry.Bounds = CalculateModelBounds(loaded);
+                        entry.Model = _world.CreateRenderModel(loaded);
                         entry.LoadTask = null;
-                        _world.DrawModel(renderer.CommandList, entry.Model, transform, tint);
                         return true;
                     }
                     catch (Exception ex)
@@ -290,7 +330,7 @@ public sealed partial class HL2GameModule
                         entry.Failed = true;
                         entry.Error = ex.Message;
                         entry.LoadTask = null;
-                        ShowGameMessage($"Could not prepare weapon model: {Path.GetFileName(modelAssetPath)} ({ex.Message})", 2.5f);
+                        ShowGameMessage($"Could not prepare {modelKind}: {Path.GetFileName(modelAssetPath)} ({ex.Message})", 2.5f);
                     }
                 }
                 else
@@ -298,7 +338,7 @@ public sealed partial class HL2GameModule
                     entry.Failed = true;
                     entry.Error = task.Exception?.GetBaseException().Message ?? "model load failed";
                     entry.LoadTask = null;
-                    ShowGameMessage($"Could not load weapon model: {Path.GetFileName(modelAssetPath)} ({entry.Error})", 2.5f);
+                    ShowGameMessage($"Could not load {modelKind}: {Path.GetFileName(modelAssetPath)} ({entry.Error})", 2.5f);
                 }
             }
 
@@ -307,20 +347,71 @@ public sealed partial class HL2GameModule
 
         if (!File.Exists(path))
         {
-            _weaponModelCache[path] = new WeaponModelCacheEntry
+            entry = new WeaponModelCacheEntry
             {
                 Failed = true,
                 Error = "file not found"
             };
+            _weaponModelCache[path] = entry;
             return false;
         }
 
-        _weaponModelCache[path] = new WeaponModelCacheEntry
+        entry = new WeaponModelCacheEntry
         {
             LoadTask = Task.Run(() => GlbModelLoader.Load(path))
         };
+        _weaponModelCache[path] = entry;
         return false;
     }
+
+    private static Matrix4x4 CreateBoundsFitTransform(ModelBounds bounds, Vector3 position, Vector3 size, Quaternion rotation)
+    {
+        if (!bounds.Valid)
+        {
+            return Matrix4x4.CreateScale(size) *
+                   Matrix4x4.CreateFromQuaternion(rotation) *
+                   Matrix4x4.CreateTranslation(position);
+        }
+
+        Vector3 boundsSize = new(
+            MathF.Max(0.0001f, bounds.Size.X),
+            MathF.Max(0.0001f, bounds.Size.Y),
+            MathF.Max(0.0001f, bounds.Size.Z));
+        Vector3 scale = new(
+            MathF.Abs(size.X) / boundsSize.X,
+            MathF.Abs(size.Y) / boundsSize.Y,
+            MathF.Abs(size.Z) / boundsSize.Z);
+
+        return Matrix4x4.CreateTranslation(-bounds.Center) *
+               Matrix4x4.CreateScale(scale) *
+               Matrix4x4.CreateFromQuaternion(rotation) *
+               Matrix4x4.CreateTranslation(position);
+    }
+
+    private static ModelBounds CalculateModelBounds(LoadedModel model)
+    {
+        Vector3 min = new(float.PositiveInfinity);
+        Vector3 max = new(float.NegativeInfinity);
+        bool hasVertex = false;
+
+        foreach (LoadedModelPart part in model.Parts)
+        {
+            foreach (Vector3 position in part.Positions)
+            {
+                min = Vector3.Min(min, position);
+                max = Vector3.Max(max, position);
+                hasVertex = true;
+            }
+        }
+
+        return hasVertex
+            ? new ModelBounds(true, min, max)
+            : new ModelBounds(false, Vector3.Zero, Vector3.Zero);
+    }
+
+    private static bool IsGlbModelPath(string? modelAssetPath)
+        => !string.IsNullOrWhiteSpace(modelAssetPath) &&
+           string.Equals(Path.GetExtension(modelAssetPath), ".glb", StringComparison.OrdinalIgnoreCase);
 
     private static string ResolveModelAssetPath(string modelAssetPath)
         => Path.IsPathRooted(modelAssetPath)

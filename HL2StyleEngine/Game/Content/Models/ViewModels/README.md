@@ -1,10 +1,23 @@
-# View Model Assets
+# Imported Model Assets
 
-Converted weapon viewmodel `.glb` files go here.
+Converted `.glb` files currently live here and are copied into the game output by `Game.csproj`.
 
-Current weapon definitions look for:
+Weapon viewmodels used by current or fallback weapon definitions:
 
 - `gravitygun.glb`
 - `Scifi_Handgun_01.glb`
+- `test_pistol.glb`
+- `Crowbar.glb` - used by the first melee weapon and right-hand camera-mounted swing viewmodel pass. It is not a level hierarchy object; placement is tuned in the Debug window and locked into `WeaponDefinitions.cs`.
 
-If a model is missing or unsupported, the game falls back to the prototype primitive viewmodel.
+Player character test asset:
+
+- `Future_Soldier_02.glb` - imported as the intended local player body source, but not drawn by default because it is a skinned character and the runtime currently supports static GLB meshes only. The editor/free-camera player marker uses the capsule placeholder until glTF skin/joint/animation support is implemented.
+
+World prop test assets:
+
+- `Breakable_Wooden_Crate.glb` - assigned to the current `Crate_*` rigid-body pickup props as the intact crate model.
+- `DamagedCrate02.glb` through `DamagedCrate08.glb` - active broken replacement variants used by the object-health system when crates reach zero health.
+
+The world renderer fits imported GLB bounds to the entity physics box when a rigid body uses `MeshPath`. If a model is missing or unsupported, the game falls back to the primitive box/sphere/capsule render.
+
+The current breakable-crate pass keeps the replacement object physical and pickup-capable. Future debris assets can be stored on level entities through `BreakDebrisModelPaths`, then spawned when the debris spawning path is implemented.

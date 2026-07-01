@@ -88,6 +88,12 @@ public sealed class LevelEntityDef
     public string MeshPath { get; set; } = "";
     public string MaterialPath { get; set; } = "";
 
+    public bool Damageable { get; set; } = false;
+    public float MaxHealth { get; set; } = 100f;
+    public List<string> BreakReplacementModelPaths { get; set; } = new();
+    public bool BreakReplacementKeepsPhysics { get; set; } = true;
+    public List<string> BreakDebrisModelPaths { get; set; } = new();
+
     public SerVec3 TriggerSize { get; set; } = new(2, 2, 2);
     public string TriggerEvent { get; set; } = "OnEnter";
 

@@ -18,7 +18,8 @@ public interface IWeaponHost
 
     Entity? RaycastPickable(float maxDist, float? maxMass);
     bool TryRaycastWeaponTarget(float maxDist, out WeaponTargetHit hit);
-    void ApplyWeaponImpulse(Entity entity, Vector3 impulse, Vector3 hitPoint, float spinScale);
+    bool ApplyWeaponImpulse(Entity entity, Vector3 impulse, Vector3 hitPoint, float spinScale);
+    void ApplyWeaponDamage(Entity entity, float amount, string damageKind);
     bool TryApplyGravityGunAttraction(
         Entity entity,
         Vector3 targetPoint,

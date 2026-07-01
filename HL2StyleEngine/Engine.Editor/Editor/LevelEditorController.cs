@@ -1,4 +1,4 @@
-﻿using Editor.Editor;
+using Editor.Editor;
 using Engine.Editor.Level;
 using Engine.Physics.Collision;
 using Engine.Physics.Dynamics;
@@ -64,6 +64,8 @@ public sealed class LevelEditorController
     private string _hierarchyFilter = "";
     private bool _hierarchyWindowFocused;
     private int _addScriptSelectedIndex = 0;
+    private int _damageModelPickerIndex = 0;
+    private int _debrisModelPickerIndex = 0;
 
     private enum TransformSpace { Local, World }
     private TransformSpace _inspectorSpace = TransformSpace.Local;
@@ -813,6 +815,8 @@ public sealed class LevelEditorController
         ImGui.Separator();
         DrawTypeSpecificInspector(ent);
 
+        DrawDamageableInspector(ent);
+
         ImGui.Separator();
         DrawScriptsInspector(ent);
 
@@ -822,6 +826,175 @@ public sealed class LevelEditorController
         ImGui.End();
     }
 
+
+    private void DrawDamageableInspector(LevelEntityDef ent)
+    {
+        if (!SupportsDamageableSettings(ent))
+            return;
+
+        ent.BreakReplacementModelPaths ??= new List<string>();
+        ent.BreakDebrisModelPaths ??= new List<string>();
+
+        ImGui.Separator();
+        ImGui.Text("Damage");
+
+        bool damageable = ent.Damageable;
+        if (ImGui.Checkbox("Damageable", ref damageable))
+        {
+            BeginEdit();
+            ent.Damageable = damageable;
+            Dirty = true;
+            RebuildRuntimeFromLevel();
+            EndEditIfAny();
+        }
+
+        if (!ent.Damageable)
+            return;
+
+        float maxHealth = MathF.Max(1f, ent.MaxHealth);
+        if (ImGui.DragFloat("Max Health", ref maxHealth, 1f, 1f, 100000f))
+        {
+            BeginEdit();
+            ent.MaxHealth = MathF.Max(1f, maxHealth);
+            Dirty = true;
+            RebuildRuntimeFromLevel();
+            EndEditIfAny();
+        }
+
+        bool keepsPhysics = ent.BreakReplacementKeepsPhysics;
+        if (ImGui.Checkbox("Replacement Keeps Physics", ref keepsPhysics))
+        {
+            BeginEdit();
+            ent.BreakReplacementKeepsPhysics = keepsPhysics;
+            Dirty = true;
+            RebuildRuntimeFromLevel();
+            EndEditIfAny();
+        }
+
+        string[] modelPaths = GetAvailableGlbModelAssetPaths();
+        if (modelPaths.Length == 0)
+        {
+            ImGui.TextDisabled("No .glb models found under Content/Models.");
+        }
+        else
+        {
+            _damageModelPickerIndex = Math.Clamp(_damageModelPickerIndex, 0, modelPaths.Length - 1);
+            ImGui.SetNextItemWidth(260f);
+            ImGui.Combo("Replacement Model", ref _damageModelPickerIndex, modelPaths, modelPaths.Length);
+            ImGui.SameLine();
+            if (ImGui.Button("Add Replacement"))
+            {
+                string selected = modelPaths[_damageModelPickerIndex];
+                if (!ent.BreakReplacementModelPaths.Contains(selected, StringComparer.OrdinalIgnoreCase))
+                {
+                    BeginEdit();
+                    ent.BreakReplacementModelPaths.Add(selected);
+                    Dirty = true;
+                    RebuildRuntimeFromLevel();
+                    EndEditIfAny();
+                }
+            }
+        }
+
+        DrawModelPathList("Replacement", ent.BreakReplacementModelPaths);
+
+        if (ImGui.TreeNode("Debris Models (future)"))
+        {
+            if (modelPaths.Length > 0)
+            {
+                _debrisModelPickerIndex = Math.Clamp(_debrisModelPickerIndex, 0, modelPaths.Length - 1);
+                ImGui.SetNextItemWidth(260f);
+                ImGui.Combo("Debris Model", ref _debrisModelPickerIndex, modelPaths, modelPaths.Length);
+                ImGui.SameLine();
+                if (ImGui.Button("Add Debris"))
+                {
+                    string selected = modelPaths[_debrisModelPickerIndex];
+                    if (!ent.BreakDebrisModelPaths.Contains(selected, StringComparer.OrdinalIgnoreCase))
+                    {
+                        BeginEdit();
+                        ent.BreakDebrisModelPaths.Add(selected);
+                        Dirty = true;
+                        EndEditIfAny();
+                    }
+                }
+            }
+
+            DrawModelPathList("Debris", ent.BreakDebrisModelPaths);
+            ImGui.TreePop();
+        }
+    }
+
+    private void DrawModelPathList(string label, List<string> paths)
+    {
+        if (paths.Count == 0)
+        {
+            ImGui.TextDisabled($"No {label.ToLowerInvariant()} models selected.");
+            return;
+        }
+
+        for (int i = 0; i < paths.Count; i++)
+        {
+            string path = paths[i] ?? "";
+            ImGui.SetNextItemWidth(320f);
+            if (ImGui.InputText($"{label} {i + 1}##{label}{i}", ref path, 256))
+            {
+                BeginEdit();
+                paths[i] = path;
+                Dirty = true;
+                RebuildRuntimeFromLevel();
+                EndEditIfAny();
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button($"Remove##{label}{i}"))
+            {
+                BeginEdit();
+                paths.RemoveAt(i);
+                Dirty = true;
+                RebuildRuntimeFromLevel();
+                EndEditIfAny();
+                break;
+            }
+        }
+    }
+
+    private static bool SupportsDamageableSettings(LevelEntityDef ent)
+        => ent.Type == EntityTypes.Box || ent.Type == EntityTypes.RigidBody || ent.Type == EntityTypes.Prop;
+
+    private string[] GetAvailableGlbModelAssetPaths()
+    {
+        string contentRoot = ResolveEditorContentRoot();
+        string modelRoot = Path.Combine(contentRoot, "Models");
+        if (!Directory.Exists(modelRoot))
+            return [];
+
+        return Directory.EnumerateFiles(modelRoot, "*.glb", SearchOption.AllDirectories)
+            .Select(path => "Content/" + Path.GetRelativePath(contentRoot, path).Replace('\\', '/'))
+            .OrderBy(static path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private string ResolveEditorContentRoot()
+    {
+        string? start = !string.IsNullOrWhiteSpace(LevelPath)
+            ? Path.GetDirectoryName(LevelPath)
+            : AppContext.BaseDirectory;
+
+        DirectoryInfo? dir = string.IsNullOrWhiteSpace(start) ? null : new DirectoryInfo(start);
+        while (dir != null)
+        {
+            if (string.Equals(dir.Name, "Content", StringComparison.OrdinalIgnoreCase))
+                return dir.FullName;
+
+            string candidate = Path.Combine(dir.FullName, "Content");
+            if (Directory.Exists(candidate))
+                return candidate;
+
+            dir = dir.Parent;
+        }
+
+        return Path.Combine(AppContext.BaseDirectory, "Content");
+    }
 
     private void DrawScriptsInspector(LevelEntityDef ent)
     {
@@ -1166,6 +1339,16 @@ public sealed class LevelEditorController
                 BeginEdit();
                 ent.IsKinematic = kin;
                 Dirty = true;
+                EndEditIfAny();
+            }
+
+            string mesh = ent.MeshPath ?? "";
+            if (ImGui.InputText("MeshPath", ref mesh, 256))
+            {
+                BeginEdit();
+                ent.MeshPath = mesh;
+                Dirty = true;
+                RebuildRuntimeFromLevel();
                 EndEditIfAny();
             }
 

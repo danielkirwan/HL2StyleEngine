@@ -9,6 +9,7 @@ public static class ItemCatalog
     public const string Bullets = "Bullets";
     public const string TestPistol = "TestPistol";
     public const string GravityGun = "GravityGun";
+    public const string Crowbar = "Crowbar";
     public const string CrankHandle = "CrankHandle";
     public const string Fuse = "Fuse";
 
@@ -105,6 +106,15 @@ public static class ItemCatalog
             InventoryItemType.Weapon,
             slotWidth: 3,
             slotHeight: 2,
+            maxStack: 1),
+
+        [Crowbar] = new(
+            Crowbar,
+            "Crowbar",
+            "A heavy iron pry bar for close-range melee hits and crate smashing.",
+            InventoryItemType.Weapon,
+            slotWidth: 1,
+            slotHeight: 3,
             maxStack: 1),
 
         [CrankHandle] = new(

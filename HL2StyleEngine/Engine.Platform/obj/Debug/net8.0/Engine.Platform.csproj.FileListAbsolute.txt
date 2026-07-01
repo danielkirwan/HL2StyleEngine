@@ -30,3 +30,6 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Platform\obj\Debug\net8.0\Engine.P
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Platform\obj\Debug\net8.0\refint\Engine.Platform.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Platform\obj\Debug\net8.0\Engine.Platform.pdb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Platform\obj\Debug\net8.0\ref\Engine.Platform.dll
+C:\tmp\hl2_game_build\Engine.Platform.deps.json
+C:\tmp\hl2_game_build\Engine.Platform.dll
+C:\tmp\hl2_game_build\Engine.Platform.pdb

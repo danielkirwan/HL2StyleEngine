@@ -349,3 +349,96 @@ C:\HS2StyleEngine\HL2StyleEngine\.codex-build\WeaponPreloadCheck\Game.deps.json
 C:\HS2StyleEngine\HL2StyleEngine\.codex-build\WeaponPreloadCheck\Game.runtimeconfig.json
 C:\HS2StyleEngine\HL2StyleEngine\.codex-build\WeaponPreloadCheck\Game.dll
 C:\HS2StyleEngine\HL2StyleEngine\.codex-build\WeaponPreloadCheck\Game.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Shaders\TexturedModelPS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Shaders\TexturedModelVS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Shaders\TexturedModel.hlsl
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\gravitygun.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\Scifi_Handgun_01.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\test_pistol.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\Breakable_Wooden_Crate.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\Crowbar.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate03.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate04.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate05.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate06.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate07.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate08.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\Future_Soldier_02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\firing rifle.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\hit reaction.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\reloading.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\rifle aiming idle.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\rifle jump.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\rifle run.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\run backwards.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\strafe (2).glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\strafe left.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\strafe right.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\strafe.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\toss grenade.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\turn left.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\turning right 45 degrees.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\walking backwards.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Animations\walking.glb
+C:\tmp\hl2_game_build\Shaders\BasicPS.cso
+C:\tmp\hl2_game_build\Shaders\BasicVS.cso
+C:\tmp\hl2_game_build\Shaders\PresentPS.cso
+C:\tmp\hl2_game_build\Shaders\PresentVS.cso
+C:\tmp\hl2_game_build\Shaders\RmlUiPS.cso
+C:\tmp\hl2_game_build\Shaders\RmlUiVS.cso
+C:\tmp\hl2_game_build\Shaders\TexturedModelPS.cso
+C:\tmp\hl2_game_build\Shaders\TexturedModelVS.cso
+C:\tmp\hl2_game_build\Shaders\Basic.hlsl
+C:\tmp\hl2_game_build\Shaders\PresentPS.hlsl
+C:\tmp\hl2_game_build\Shaders\PresentVS.hlsl
+C:\tmp\hl2_game_build\Shaders\RmlUiPS.hlsl
+C:\tmp\hl2_game_build\Shaders\RmlUiVS.hlsl
+C:\tmp\hl2_game_build\Shaders\TexturedModel.hlsl
+C:\tmp\hl2_game_build\Content\UI\Inventory\inventory.rml
+C:\tmp\hl2_game_build\Content\UI\Inventory\inventory.rcss
+C:\tmp\hl2_game_build\Content\UI\Icons\ArchiveKey.png
+C:\tmp\hl2_game_build\Content\UI\Icons\Bullets.png
+C:\tmp\hl2_game_build\Content\UI\Icons\Crank.png
+C:\tmp\hl2_game_build\Content\UI\Icons\Fuse.png
+C:\tmp\hl2_game_build\Content\UI\Icons\GunPowder.png
+C:\tmp\hl2_game_build\Content\UI\Icons\InkRibbon.png
+C:\tmp\hl2_game_build\Content\UI\Icons\MasterKey.png
+C:\tmp\hl2_game_build\Content\UI\Icons\RustedKey.png
+C:\tmp\hl2_game_build\Content\UI\Icons\Scrap.png
+C:\tmp\hl2_game_build\Content\UI\Icons\ServiceKey.png
+C:\tmp\hl2_game_build\Content\UI\Fonts\AurelDeco-Regular.ttf
+C:\tmp\hl2_game_build\Content\Animations\firing rifle.glb
+C:\tmp\hl2_game_build\Content\Animations\hit reaction.glb
+C:\tmp\hl2_game_build\Content\Animations\reloading.glb
+C:\tmp\hl2_game_build\Content\Animations\rifle aiming idle.glb
+C:\tmp\hl2_game_build\Content\Animations\rifle jump.glb
+C:\tmp\hl2_game_build\Content\Animations\rifle run.glb
+C:\tmp\hl2_game_build\Content\Animations\run backwards.glb
+C:\tmp\hl2_game_build\Content\Animations\strafe (2).glb
+C:\tmp\hl2_game_build\Content\Animations\strafe left.glb
+C:\tmp\hl2_game_build\Content\Animations\strafe right.glb
+C:\tmp\hl2_game_build\Content\Animations\strafe.glb
+C:\tmp\hl2_game_build\Content\Animations\toss grenade.glb
+C:\tmp\hl2_game_build\Content\Animations\turn left.glb
+C:\tmp\hl2_game_build\Content\Animations\turning right 45 degrees.glb
+C:\tmp\hl2_game_build\Content\Animations\walking backwards.glb
+C:\tmp\hl2_game_build\Content\Animations\walking.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\Breakable_Wooden_Crate.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\Crowbar.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\DamagedCrate02.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\DamagedCrate03.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\DamagedCrate04.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\DamagedCrate05.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\DamagedCrate06.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\DamagedCrate07.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\DamagedCrate08.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\Future_Soldier_02.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\gravitygun.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\Scifi_Handgun_01.glb
+C:\tmp\hl2_game_build\Content\Models\ViewModels\test_pistol.glb
+C:\tmp\hl2_game_build\Game.exe
+C:\tmp\hl2_game_build\Game.deps.json
+C:\tmp\hl2_game_build\Game.runtimeconfig.json
+C:\tmp\hl2_game_build\Game.dll
+C:\tmp\hl2_game_build\Game.pdb

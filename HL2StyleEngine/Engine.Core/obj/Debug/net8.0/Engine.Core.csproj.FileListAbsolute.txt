@@ -24,3 +24,6 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Core\obj\Debug\net8.0\Engine.Core.
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Core\obj\Debug\net8.0\refint\Engine.Core.dll
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Core\obj\Debug\net8.0\Engine.Core.pdb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Engine.Core\obj\Debug\net8.0\ref\Engine.Core.dll
+C:\tmp\hl2_game_build\Engine.Core.deps.json
+C:\tmp\hl2_game_build\Engine.Core.dll
+C:\tmp\hl2_game_build\Engine.Core.pdb
