@@ -18,21 +18,21 @@ public sealed partial class HL2GameModule
 {
     private void EnsurePrototypeWeaponLoadout(bool includeStarterAmmo)
     {
-        foreach (WeaponLoadoutItem item in WeaponDefinitions.DefaultPrototypeLoadout)
-        {
-            InventoryItemDefinition definition = ItemCatalog.Get(item.ItemId);
-            if (definition.Type == InventoryItemType.Weapon)
-            {
-                if (!_inventory.Contains(item.ItemId))
-                    _inventory.Add(item.ItemId, item.Count);
-                continue;
-            }
-
-            if (includeStarterAmmo && _inventory.GetCount(item.ItemId) <= 0)
-                _inventory.Add(item.ItemId, item.Count);
-        }
+        _weaponSystem.EnsureDefaultPrototypeLoadout(includeStarterAmmo);
+        MoveWeaponSystemItemsOutOfContainer(_inventory, fillMagazineFromAmmo: false);
+        MoveWeaponSystemItemsOutOfContainer(_storage, fillMagazineFromAmmo: false);
     }
 
+    private void MoveWeaponSystemItemsOutOfContainer(InventoryContainer container, bool fillMagazineFromAmmo)
+    {
+        foreach (InventoryItemStack stack in container.Stacks.ToList())
+        {
+            if (!_weaponSystem.TryGrantInventoryItem(stack.ItemId, stack.Count, fillMagazineFromAmmo))
+                continue;
+
+            container.RemoveStack(stack.ItemId);
+        }
+    }
     private bool TryUseWeaponInventoryItem(string itemId)
         => _weaponSystem.TryEquipInventoryItem(this, itemId, showMessage: true);
 
@@ -41,12 +41,21 @@ public sealed partial class HL2GameModule
             primaryPressed: WeaponPrimaryPressedThisFrame(),
             primaryHeld: WeaponPrimaryHeld(),
             secondaryPressed: WeaponSecondaryPressedThisFrame(),
-            switchPressed: WeaponSwitchPressedThisFrame());
+            categorySlotPressed: WeaponCategorySlotPressedThisFrame());
 
-    private bool WeaponSwitchPressedThisFrame()
-        => _inputState.WasPressed(Key.G) ||
-           _inputState.GetGamepadPressed(GamepadButton.RightShoulder);
+    private int WeaponCategorySlotPressedThisFrame()
+    {
+        if (_inputState.WasPressed(Key.Number1) || _inputState.WasPressed(Key.Keypad1) || _inputState.GetGamepadPressed(GamepadButton.DpadUp))
+            return 1;
+        if (_inputState.WasPressed(Key.Number2) || _inputState.WasPressed(Key.Keypad2) || _inputState.GetGamepadPressed(GamepadButton.DpadRight))
+            return 2;
+        if (_inputState.WasPressed(Key.Number3) || _inputState.WasPressed(Key.Keypad3) || _inputState.GetGamepadPressed(GamepadButton.DpadDown))
+            return 3;
+        if (_inputState.WasPressed(Key.Number4) || _inputState.WasPressed(Key.Keypad4) || _inputState.GetGamepadPressed(GamepadButton.DpadLeft))
+            return 4;
 
+        return 0;
+    }
     private bool WeaponPrimaryPressedThisFrame()
         => _inputState.LeftMousePressedThisFrame ||
            RightTriggerPressedThisFrame();

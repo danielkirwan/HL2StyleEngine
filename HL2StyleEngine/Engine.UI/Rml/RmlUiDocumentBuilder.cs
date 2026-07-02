@@ -24,6 +24,8 @@ internal static class RmlUiDocumentBuilder
         sb.AppendLine("    <div id=\"gameplay-root\">");
 
         AppendCrosshair(sb, state);
+        AppendGameplayHud(sb, state, textImageResolver);
+        AppendWeaponSelector(sb, state, textImageResolver);
         AppendPrompt(sb, state, textImageResolver);
 
         if (state.ItemCollectedOpen && state.CollectedItem != null)
@@ -53,12 +55,92 @@ internal static class RmlUiDocumentBuilder
                 AppendInventory(sb, state, textImageResolver);
         }
 
+        if (state.LoadingOverlayVisible)
+            AppendLoadingOverlay(sb, state, textImageResolver);
+
         sb.AppendLine("    </div>");
         sb.AppendLine("  </body>");
         sb.AppendLine("</rml>");
         return sb.ToString();
     }
 
+
+    private static void AppendGameplayHud(StringBuilder sb, GameplayUiState state, RmlUiTextImageResolver? textImageResolver)
+    {
+        if (!state.HudVisible)
+            return;
+
+        sb.AppendLine("      <section id='status-hud-left' class='hl2-hud'>");
+        sb.AppendLine("        <div class='hud-readout health-readout'>");
+        sb.AppendLine($"          <div class='hud-label'>{TextOrImage("Health", "hud-label", 13, textImageResolver)}</div>");
+        sb.AppendLine($"          <div class='hud-number'>{TextOrImage(Math.Clamp(state.Health, 0, 999).ToString(), "hud-number", 42, textImageResolver)}</div>");
+        sb.AppendLine("        </div>");
+        sb.AppendLine("        <div class='hud-readout suit-readout'>");
+        sb.AppendLine($"          <div class='hud-label'>{TextOrImage("Suit", "hud-label", 13, textImageResolver)}</div>");
+        sb.AppendLine($"          <div class='hud-number'>{TextOrImage(Math.Clamp(state.Suit, 0, 999).ToString(), "hud-number", 42, textImageResolver)}</div>");
+        sb.AppendLine("        </div>");
+        sb.AppendLine("      </section>");
+
+        if (!state.AmmoHudVisible)
+            return;
+
+        sb.AppendLine("      <section id='ammo-hud-right' class='hl2-hud'>");
+        sb.AppendLine($"        <div class='ammo-label'>{TextOrImage("Ammo", "hud-label", 13, textImageResolver)}</div>");
+        sb.AppendLine($"        <div class='ammo-current'>{TextOrImage(Math.Clamp(state.CurrentMagazineAmmo, 0, 999).ToString(), "hud-number", 42, textImageResolver)}</div>");
+        sb.AppendLine("        <div class='ammo-divider'></div>");
+        sb.AppendLine($"        <div class='ammo-reserve'>{TextOrImage(Math.Clamp(state.ReserveAmmo, 0, 999).ToString(), "hud-number", 32, textImageResolver)}</div>");
+        sb.AppendLine("      </section>");
+    }
+
+    private static void AppendWeaponSelector(StringBuilder sb, GameplayUiState state, RmlUiTextImageResolver? textImageResolver)
+    {
+        if (!state.WeaponSelectorVisible || state.WeaponCategories.Count == 0)
+            return;
+
+        int selectorLeft = Math.Max(0, state.CrosshairLeft - 278);
+        int selectorTop = Math.Max(0, state.CrosshairTop - 182);
+        sb.AppendLine($"      <section id=\"weapon-selector\" style=\"left: {selectorLeft}px; top: {selectorTop}px;\">");
+        foreach (GameplayUiWeaponCategory category in state.WeaponCategories)
+        {
+            if (category.Weapons.Count == 0)
+                continue;
+
+            string selectedClass = category.Selected ? " selected" : "";
+            sb.AppendLine($"        <div class=\"weapon-category slot-{category.Slot}{selectedClass}\">");
+            foreach (GameplayUiWeaponItem weapon in category.Weapons)
+            {
+                string weaponClass = weapon.Selected ? " selected" : "";
+                if (weapon.UsesAmmo && !weapon.HasAmmo)
+                    weaponClass += " empty-ammo";
+
+                sb.AppendLine($"          <div class=\"weapon-choice{weaponClass}\">");
+                sb.AppendLine($"            <div class=\"weapon-name\">{TextOrImage(weapon.DisplayName.ToUpperInvariant(), weapon.HasAmmo ? "weapon" : "warning", 13, textImageResolver)}</div>");
+                sb.AppendLine("          </div>");
+            }
+            sb.AppendLine("        </div>");
+        }
+        sb.AppendLine("      </section>");
+    }
+
+    private static void AppendLoadingOverlay(StringBuilder sb, GameplayUiState state, RmlUiTextImageResolver? textImageResolver)
+    {
+        const int SegmentCount = 28;
+        int filledSegments = Math.Clamp((int)MathF.Ceiling(Math.Clamp(state.LoadingProgress, 0f, 1f) * SegmentCount), 1, SegmentCount);
+
+        sb.AppendLine("      <section id='loading-overlay'>");
+        sb.AppendLine("        <div id='loading-panel'>");
+        sb.AppendLine($"          <div id='loading-title'>{TextOrImage("Loading...", "loading", 13, textImageResolver)}</div>");
+        sb.AppendLine("          <div id='loading-close'>x</div>");
+        sb.AppendLine("          <div id='loading-bar'>");
+        for (int i = 0; i < SegmentCount; i++)
+        {
+            string filledClass = i < filledSegments ? " filled" : "";
+            sb.AppendLine($"            <div class='loading-segment{filledClass}'></div>");
+        }
+        sb.AppendLine("          </div>");
+        sb.AppendLine("        </div>");
+        sb.AppendLine("      </section>");
+    }
     private static void AppendCrosshair(StringBuilder sb, GameplayUiState state)
     {
         if (!state.CrosshairVisible)

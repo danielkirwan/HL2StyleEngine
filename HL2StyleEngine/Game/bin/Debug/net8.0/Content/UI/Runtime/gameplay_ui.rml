@@ -12,6 +12,22 @@
         <div class="crosshair-line vertical bottom"></div>
         <div class="crosshair-dot"></div>
       </div>
+      <section id='status-hud-left' class='hl2-hud'>
+        <div class='hud-readout health-readout'>
+          <div class='hud-label'><img class="ui-text-image ui-text-hud-label" src="Text/7d357669691595d4.png" width="53" height="19" /></div>
+          <div class='hud-number'><img class="ui-text-image ui-text-hud-number" src="Text/d5ae9258e4b8c62f.png" width="87" height="59" /></div>
+        </div>
+        <div class='hud-readout suit-readout'>
+          <div class='hud-label'><img class="ui-text-image ui-text-hud-label" src="Text/872c961f0f07e5d0.png" width="39" height="19" /></div>
+          <div class='hud-number'><img class="ui-text-image ui-text-hud-number" src="Text/796273b11c9fa812.png" width="64" height="59" /></div>
+        </div>
+      </section>
+      <section id='ammo-hud-right' class='hl2-hud'>
+        <div class='ammo-label'><img class="ui-text-image ui-text-hud-label" src="Text/3aef3ebfee231005.png" width="40" height="19" /></div>
+        <div class='ammo-current'><img class="ui-text-image ui-text-hud-number" src="Text/6239329120a3dc15.png" width="40" height="59" /></div>
+        <div class='ammo-divider'></div>
+        <div class='ammo-reserve'><img class="ui-text-image ui-text-hud-number" src="Text/14a1c2edf98ece64.png" width="30" height="45" /></div>
+      </section>
     </div>
   </body>
 </rml>

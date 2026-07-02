@@ -2,7 +2,7 @@
   "Version": 2,
   "Entities": [
     {
-      "Id": "e838eb56da554f7297d05883af2f15bd",
+      "Id": "0c8aab41ab0b4b7d9c7f203082017646",
       "Type": "PlayerSpawn",
       "Name": "PlayerSpawn",
       "Scripts": [],
@@ -67,7 +67,7 @@
       "Height": 1
     },
     {
-      "Id": "7f5d916aea194e86af69515cb22f7c39",
+      "Id": "5fe57c5036d546d78302e0552fdcaf92",
       "Type": "PointLight",
       "Name": "Light_Foyer_Dim",
       "Scripts": [],
@@ -132,7 +132,7 @@
       "Height": 1
     },
     {
-      "Id": "24cf0d91b8574f6da1b282746efdb56f",
+      "Id": "dbc73430183641d6877106dfdd7137e4",
       "Type": "PointLight",
       "Name": "Light_Central_Flicker",
       "Scripts": [],
@@ -197,7 +197,7 @@
       "Height": 1
     },
     {
-      "Id": "ba324b1a84d6415ca93add43dd9cdb87",
+      "Id": "8999a7bdd4cf4b199d4eccf72ec9a730",
       "Type": "PointLight",
       "Name": "Light_SaveRoom_Cool",
       "Scripts": [],
@@ -262,7 +262,7 @@
       "Height": 1
     },
     {
-      "Id": "c54c70ecdbd54a82acb53da190abcea3",
+      "Id": "9738ebb5b7fa4292a3907add8928e026",
       "Type": "PointLight",
       "Name": "Light_Archive_Amber",
       "Scripts": [],
@@ -327,7 +327,7 @@
       "Height": 1
     },
     {
-      "Id": "8c72d767ec104590981482690164fe40",
+      "Id": "13ad2ec04f914d629eb6f7c09a1637b6",
       "Type": "PointLight",
       "Name": "Light_CrankAlcove_Work",
       "Scripts": [],
@@ -392,7 +392,7 @@
       "Height": 1
     },
     {
-      "Id": "b85ad10651384910aeffe1c9936147ec",
+      "Id": "5e22c723e45e4fc9bb0ed7f152bc299b",
       "Type": "Box",
       "Name": "Floor_InteractionTest",
       "Scripts": [],
@@ -457,7 +457,7 @@
       "Height": 1
     },
     {
-      "Id": "eff6da4a34ac4ef490d8a06cd43fc226",
+      "Id": "7f560148b74f4722bde5431a428dff1b",
       "Type": "Box",
       "Name": "Ceiling_InteractionTest",
       "Scripts": [],
@@ -522,7 +522,7 @@
       "Height": 1
     },
     {
-      "Id": "e61e57a312a14cb7912274fe2805eb3e",
+      "Id": "f75314b9750043708ce30eca454ed726",
       "Type": "Box",
       "Name": "Carpet_Foyer",
       "Scripts": [],
@@ -587,7 +587,7 @@
       "Height": 1
     },
     {
-      "Id": "336817858d0c4f11bdd9f2492c4f7400",
+      "Id": "2cd912c5618746a4b41c3f46ade2dcc3",
       "Type": "Box",
       "Name": "Carpet_Archive",
       "Scripts": [],
@@ -652,7 +652,7 @@
       "Height": 1
     },
     {
-      "Id": "9d90ae48acf64ab68bbe0f614fff7dad",
+      "Id": "87aae2ab0fce41e5ba328c658b0b971a",
       "Type": "Box",
       "Name": "Wall_North",
       "Scripts": [],
@@ -717,7 +717,7 @@
       "Height": 1
     },
     {
-      "Id": "7eca911eb1814ef8b8937a1e1f858dff",
+      "Id": "5d11c874ec35449e9eb814d3ec29bd27",
       "Type": "Box",
       "Name": "Wall_South",
       "Scripts": [],
@@ -782,7 +782,7 @@
       "Height": 1
     },
     {
-      "Id": "058e18c4737a43c1be81bfc8b821e51d",
+      "Id": "754dda956fdc45649c71d277462a8faa",
       "Type": "Box",
       "Name": "Wall_West",
       "Scripts": [],
@@ -847,7 +847,7 @@
       "Height": 1
     },
     {
-      "Id": "f98e6a2f838142b6acf4a8126c914737",
+      "Id": "076cf5fbd6f54fa1bed1010f970494e1",
       "Type": "Box",
       "Name": "Wall_East",
       "Scripts": [],
@@ -912,7 +912,7 @@
       "Height": 1
     },
     {
-      "Id": "cafb2628d1ce4c47aaccf23d77c35d82",
+      "Id": "6019efb956b84bc3b73602a43529066e",
       "Type": "Box",
       "Name": "Divider_Foyer_LeftOfDoor",
       "Scripts": [],
@@ -977,7 +977,7 @@
       "Height": 1
     },
     {
-      "Id": "05e7048134c543cdad4ae3deda09c296",
+      "Id": "826124a41b5d472db2dae677b055de60",
       "Type": "Box",
       "Name": "Divider_Foyer_RightOfDoor",
       "Scripts": [],
@@ -1042,7 +1042,7 @@
       "Height": 1
     },
     {
-      "Id": "befe9b88f1af4e1ca5a482d9c1e1d09f",
+      "Id": "98af7cf46cfd4b54accb7024b264dbee",
       "Type": "Box",
       "Name": "LockedDoor_RustedKey",
       "Scripts": [],
@@ -1117,7 +1117,7 @@
       "Height": 1
     },
     {
-      "Id": "0334eb69879146269961126ab510c179",
+      "Id": "279a1f080c6245868116e773ec92f415",
       "Type": "Box",
       "Name": "Divider_Archive_LeftOfDoor",
       "Scripts": [],
@@ -1182,7 +1182,7 @@
       "Height": 1
     },
     {
-      "Id": "f92eac4f91404b058188658c3713ed1c",
+      "Id": "c29b5285bbf34a37959f225ed0c9df84",
       "Type": "Box",
       "Name": "Divider_Archive_RightOfDoor",
       "Scripts": [],
@@ -1247,7 +1247,7 @@
       "Height": 1
     },
     {
-      "Id": "db2e601d02b74a3393b9952949aed304",
+      "Id": "4897aff8495049eab4a72cc155314efe",
       "Type": "Box",
       "Name": "LockedDoor_ArchiveKey",
       "Scripts": [],
@@ -1322,7 +1322,7 @@
       "Height": 1
     },
     {
-      "Id": "00d0ca8c6b0548dd903baddc7ba0fa57",
+      "Id": "14fb117577bb429a8178160502c7196b",
       "Type": "Box",
       "Name": "Wall_SaveOffice_Back",
       "Scripts": [],
@@ -1387,7 +1387,7 @@
       "Height": 1
     },
     {
-      "Id": "486aacac189846d783bc3e5359822098",
+      "Id": "ea758c1d46a84476ad790336d11317a6",
       "Type": "Box",
       "Name": "Wall_SaveOffice_Side_South",
       "Scripts": [],
@@ -1452,7 +1452,7 @@
       "Height": 1
     },
     {
-      "Id": "0f54f2e8be984788928b962aabf2bd9e",
+      "Id": "56b37b91f3ce40a0a6ddfc76f0de1e30",
       "Type": "Box",
       "Name": "Wall_SaveOffice_Side_North",
       "Scripts": [],
@@ -1517,7 +1517,7 @@
       "Height": 1
     },
     {
-      "Id": "328f8622ee364cf5993405d8eea6a486",
+      "Id": "05f8204b49054cef84bea9f289e95849",
       "Type": "Box",
       "Name": "LockedDoor_ServiceKey__SaveOffice",
       "Scripts": [],
@@ -1592,7 +1592,7 @@
       "Height": 1
     },
     {
-      "Id": "008d3993b89a4ae1a3bf7349a98364bb",
+      "Id": "0fc8746da5494e508d01348c63205176",
       "Type": "Box",
       "Name": "Wall_Utility_Side_South_Front",
       "Scripts": [],
@@ -1657,7 +1657,7 @@
       "Height": 1
     },
     {
-      "Id": "6b305075e9fa4edea9ef7e22efe48ede",
+      "Id": "2cc028b1adc54670b4ce5e193c037123",
       "Type": "Box",
       "Name": "Wall_Utility_Side_South_Rear",
       "Scripts": [],
@@ -1722,7 +1722,7 @@
       "Height": 1
     },
     {
-      "Id": "90f6bfc4e9614044b912cf41118cbd0a",
+      "Id": "ed1d0574a86a41c38d9a56363ed88101",
       "Type": "Box",
       "Name": "PuzzleDoor_Fuse__PowerGate",
       "Scripts": [],
@@ -1797,7 +1797,7 @@
       "Height": 1
     },
     {
-      "Id": "f234b93684e34b27a77d1b41963a54d5",
+      "Id": "58375cd21b1643598238ccc12e6bea04",
       "Type": "Box",
       "Name": "PuzzleSlot_Fuse__PowerGate",
       "Scripts": [],
@@ -1874,7 +1874,7 @@
       "Height": 1
     },
     {
-      "Id": "1c5c1c16b60148c0892cadce4ecc58ba",
+      "Id": "10ca51b0316743f9b0a47b4296f74db3",
       "Type": "Box",
       "Name": "Wall_Utility_Side_North",
       "Scripts": [],
@@ -1939,7 +1939,7 @@
       "Height": 1
     },
     {
-      "Id": "b0f28048ed1749e0b282366544ebe407",
+      "Id": "4b5c54d54e9d46e190f7f7c0a6633d0f",
       "Type": "Box",
       "Name": "Wall_Utility_Back_Left",
       "Scripts": [],
@@ -2004,7 +2004,7 @@
       "Height": 1
     },
     {
-      "Id": "1d8e8c43bbc74a21a48e4c01e7fd1584",
+      "Id": "1210b685187d4924a9687fe3ccceeaf0",
       "Type": "Box",
       "Name": "Wall_Utility_Back_Right",
       "Scripts": [],
@@ -2069,7 +2069,7 @@
       "Height": 1
     },
     {
-      "Id": "1f468193a0ba4bc5884e69d0a9bdbecd",
+      "Id": "9f6474694b5f4ccabe384f097a63e975",
       "Type": "Box",
       "Name": "PuzzleDoor_CrankHandle__UtilityLift",
       "Scripts": [],
@@ -2144,7 +2144,7 @@
       "Height": 1
     },
     {
-      "Id": "7018ae151d834c44adf82de5f6909187",
+      "Id": "e7cb837eafc14fa483ba5beb0e050832",
       "Type": "Box",
       "Name": "PuzzleSlot_CrankHandle__UtilityLift",
       "Scripts": [],
@@ -2221,7 +2221,7 @@
       "Height": 1
     },
     {
-      "Id": "b201f6fea1fe4113aae187aabb203552",
+      "Id": "82aa0c34308645f292b7e23b159ab64f",
       "Type": "Box",
       "Name": "Wall_CrankAlcove_Back",
       "Scripts": [],
@@ -2286,7 +2286,7 @@
       "Height": 1
     },
     {
-      "Id": "a7e47b0bb07d4e9994de977a85ac60f3",
+      "Id": "e19e6410672848899555db68e51d1f7c",
       "Type": "Box",
       "Name": "Shelf_CrankAlcove_Fuse",
       "Scripts": [],
@@ -2351,7 +2351,7 @@
       "Height": 1
     },
     {
-      "Id": "eadb961d2a6240e498630441b0681c00",
+      "Id": "953e22e5078d498b930b1125e3483f22",
       "Type": "Box",
       "Name": "Item_Fuse__CrankAlcove",
       "Scripts": [],
@@ -2416,7 +2416,7 @@
       "Height": 1
     },
     {
-      "Id": "20ae4e077f894c359ade767baf4e1b6d",
+      "Id": "a7948547116545dd9088aa0ef9df1f9d",
       "Type": "Box",
       "Name": "Desk_RustedKeyTable",
       "Scripts": [],
@@ -2481,7 +2481,7 @@
       "Height": 1
     },
     {
-      "Id": "cdee92bfcfa24a179acdfdd5a6184326",
+      "Id": "b60c290bc0784dfcb7a16d7d12193b20",
       "Type": "Box",
       "Name": "ItemKey_RustedKey",
       "Scripts": [],
@@ -2546,7 +2546,7 @@
       "Height": 1
     },
     {
-      "Id": "dca37510a9054aa18c4d49e3f1d49f60",
+      "Id": "032285d8f13e4759b53669d5836dbce3",
       "Type": "Box",
       "Name": "ItemInkRibbon_Foyer",
       "Scripts": [],
@@ -2611,7 +2611,7 @@
       "Height": 1
     },
     {
-      "Id": "fd4e0d79aa174b21a5f4df1f6a85ee41",
+      "Id": "54e9d5a7370a4eeb922bcdfebc2c69e4",
       "Type": "Box",
       "Name": "Shelf_ServiceKey",
       "Scripts": [],
@@ -2676,7 +2676,7 @@
       "Height": 1
     },
     {
-      "Id": "ca2094db9be8437ab6ac2fcacbef3127",
+      "Id": "7a813ca453684b3eac5afcd92854f89f",
       "Type": "Box",
       "Name": "ItemKey_ServiceKey",
       "Scripts": [],
@@ -2741,7 +2741,7 @@
       "Height": 1
     },
     {
-      "Id": "fb83dfc9d7c4481ea4999614907c69d2",
+      "Id": "ec3ed086e5e846d2927c8ff4397bd713",
       "Type": "Box",
       "Name": "LockedChest_ServiceKey__SupplyA",
       "Scripts": [],
@@ -2821,7 +2821,7 @@
       "Height": 1
     },
     {
-      "Id": "b0890e2a274245e0983fe25e0dbb85a5",
+      "Id": "fccc2e89e1f04c59b96813ea6be14ee6",
       "Type": "Box",
       "Name": "LockedChest_ServiceKey__SupplyB",
       "Scripts": [],
@@ -2901,7 +2901,7 @@
       "Height": 1
     },
     {
-      "Id": "1955f69eef404c83b24647573b453e8b",
+      "Id": "5d52f0293e6645118d5c1d4e7db692b0",
       "Type": "Box",
       "Name": "SaveDesk",
       "Scripts": [],
@@ -2966,7 +2966,7 @@
       "Height": 1
     },
     {
-      "Id": "5372498216464276bfdf5e0d23fd1072",
+      "Id": "a451c30654f64af893e09a65e92ad173",
       "Type": "Box",
       "Name": "SavePoint_Typewriter",
       "Scripts": [],
@@ -3031,7 +3031,7 @@
       "Height": 1
     },
     {
-      "Id": "944bc0f3cacb4599b001bba953f92245",
+      "Id": "ecd9dcc4b4db4ea9acf10dfebc0b86ca",
       "Type": "Box",
       "Name": "StorageBox_SaveOffice",
       "Scripts": [],
@@ -3096,7 +3096,7 @@
       "Height": 1
     },
     {
-      "Id": "1c374cc37bac42da906057573a8af962",
+      "Id": "c53cdb982948440c84e19c0c6606a566",
       "Type": "Box",
       "Name": "ItemInkRibbon_SaveOffice",
       "Scripts": [],
@@ -3161,7 +3161,7 @@
       "Height": 1
     },
     {
-      "Id": "4f52941b0c73452b90267080bb35bb71",
+      "Id": "773aa38942fa42a193fd4d6975f1f30a",
       "Type": "Box",
       "Name": "ItemKey_ArchiveKey",
       "Scripts": [],
@@ -3226,7 +3226,7 @@
       "Height": 1
     },
     {
-      "Id": "11bea21b92e44759a39c02171e461738",
+      "Id": "d5334a84018f4d9eaab75dd2632aa25d",
       "Type": "Box",
       "Name": "ArchiveCabinet_A",
       "Scripts": [],
@@ -3291,7 +3291,7 @@
       "Height": 1
     },
     {
-      "Id": "d675aad06b964455983456235fd96d28",
+      "Id": "d2fdc92ca17e4744b8a77517774a3859",
       "Type": "Box",
       "Name": "ArchiveCabinet_B",
       "Scripts": [],
@@ -3356,7 +3356,7 @@
       "Height": 1
     },
     {
-      "Id": "f88020ece27b4b05be9a4fc20c2cb06e",
+      "Id": "8973c11141b04f76896fe134b41eb72e",
       "Type": "RigidBody",
       "Name": "Crate_FoyerCorner",
       "Scripts": [],
@@ -3429,7 +3429,7 @@
       "Height": 1
     },
     {
-      "Id": "9336bb66508f4fe290efd5114adfc055",
+      "Id": "43bec1251aba40eca9a45cd1bd6e9461",
       "Type": "RigidBody",
       "Name": "Crate_Utility_A",
       "Scripts": [],
@@ -3502,7 +3502,7 @@
       "Height": 1
     },
     {
-      "Id": "d9043d6a53f5494f82b550072b46f313",
+      "Id": "4d78408bd8054a62a3fbe73052e10c01",
       "Type": "RigidBody",
       "Name": "Crate_Utility_B",
       "Scripts": [],
@@ -3575,7 +3575,7 @@
       "Height": 1
     },
     {
-      "Id": "6b6963a5068b4f44b3092cb4d8e03f04",
+      "Id": "5d02976076214d65ab9ce5a13445d4ac",
       "Type": "RigidBody",
       "Name": "Crate_SaveOffice",
       "Scripts": [],
@@ -3648,7 +3648,7 @@
       "Height": 1
     },
     {
-      "Id": "2185aab4ecaf43e29af4d29051370cf6",
+      "Id": "052e6752d29441c5bf5ad1409b25de0c",
       "Type": "RigidBody",
       "Name": "Crate_ArchiveLoose",
       "Scripts": [],
@@ -3721,7 +3721,7 @@
       "Height": 1
     },
     {
-      "Id": "0c84316a4c304f0288ff8ddced02c9f5",
+      "Id": "faf6d54b30fd4b90bbb3a8635f7663cc",
       "Type": "TriggerVolume",
       "Name": "Trigger_SaveRoomEntry",
       "Scripts": [],

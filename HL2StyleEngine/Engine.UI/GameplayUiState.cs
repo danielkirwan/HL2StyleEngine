@@ -8,6 +8,17 @@ public sealed class GameplayUiState
     public bool SaveSlotPanelOpen { get; init; }
     public bool PauseMenuOpen { get; init; }
     public bool LoadSlotPanelOpen { get; init; }
+    public bool HudVisible { get; init; }
+    public int Health { get; init; } = 100;
+    public int Suit { get; init; }
+    public bool AmmoHudVisible { get; init; }
+    public string AmmoWeaponName { get; init; } = "";
+    public int CurrentMagazineAmmo { get; init; }
+    public int ReserveAmmo { get; init; }
+    public bool WeaponSelectorVisible { get; init; }
+    public IReadOnlyList<GameplayUiWeaponCategory> WeaponCategories { get; init; } = Array.Empty<GameplayUiWeaponCategory>();
+    public bool LoadingOverlayVisible { get; init; }
+    public float LoadingProgress { get; init; }
     public bool CrosshairVisible { get; init; }
     public int CrosshairLeft { get; init; }
     public int CrosshairTop { get; init; }
@@ -56,6 +67,27 @@ public sealed class GameplayUiState
     public GameplayUiCollectedItem? CollectedItem { get; init; }
 }
 
+
+public sealed class GameplayUiWeaponCategory
+{
+    public int Slot { get; init; }
+    public string DirectionLabel { get; init; } = "";
+    public string DisplayName { get; init; } = "";
+    public bool Selected { get; init; }
+    public IReadOnlyList<GameplayUiWeaponItem> Weapons { get; init; } = Array.Empty<GameplayUiWeaponItem>();
+}
+
+public sealed class GameplayUiWeaponItem
+{
+    public string Id { get; init; } = "";
+    public string DisplayName { get; init; } = "";
+    public string IconLabel { get; init; } = "";
+    public bool Selected { get; init; }
+    public bool UsesAmmo { get; init; }
+    public bool HasAmmo { get; init; } = true;
+    public int CurrentMagazineAmmo { get; init; }
+    public int ReserveAmmo { get; init; }
+}
 public sealed class GameplayUiSaveSlot
 {
     public int SlotIndex { get; init; }

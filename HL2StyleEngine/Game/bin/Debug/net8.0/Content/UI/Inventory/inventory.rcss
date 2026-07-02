@@ -1144,3 +1144,233 @@ h2 {
 .tone-misc {
   background-color: rgba(70, 74, 72, 0.84);
 }
+
+/* Gameplay HUD and weapon selector */
+.hl2-hud {
+  position: absolute;
+  color: #d7cc00;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(215, 204, 0, 0.52);
+}
+
+#status-hud-left {
+  left: 44px;
+  bottom: 24px;
+  width: 500px;
+  height: 88px;
+}
+
+.hud-readout {
+  position: absolute;
+  top: 0;
+  height: 80px;
+}
+
+.health-readout {
+  left: 0;
+  width: 230px;
+}
+
+.suit-readout {
+  left: 276px;
+  width: 210px;
+}
+
+.hud-label,
+.ammo-label {
+  position: absolute;
+  left: 0;
+  bottom: 12px;
+  width: 92px;
+  height: 20px;
+  color: #e1d500;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.hud-number {
+  position: absolute;
+  left: 106px;
+  bottom: 0;
+  width: 116px;
+  height: 58px;
+  color: #d7cc00;
+  font-size: 48px;
+}
+
+#ammo-hud-right {
+  right: 48px;
+  bottom: 28px;
+  width: 300px;
+  height: 78px;
+  background-color: rgba(75, 67, 0, 0.48);
+  border: 1px rgba(215, 204, 0, 0.22);
+}
+
+#ammo-hud-right .ammo-label {
+  left: 18px;
+  bottom: 16px;
+}
+
+.ammo-current {
+  position: absolute;
+  left: 120px;
+  bottom: 2px;
+  width: 74px;
+  height: 58px;
+  color: #f2df00;
+  font-size: 48px;
+  text-align: right;
+}
+
+.ammo-divider {
+  position: absolute;
+  left: 202px;
+  bottom: 15px;
+  width: 1px;
+  height: 40px;
+  background-color: rgba(215, 204, 0, 0.32);
+}
+
+.ammo-reserve {
+  position: absolute;
+  right: 24px;
+  bottom: 9px;
+  width: 64px;
+  height: 44px;
+  color: #f2df00;
+  font-size: 34px;
+  text-align: right;
+}
+
+#weapon-selector {
+  position: absolute;
+  width: 556px;
+  height: 364px;
+  pointer-events: none;
+}
+
+.weapon-category {
+  position: absolute;
+  width: 192px;
+  padding: 7px;
+  color: rgba(215, 204, 0, 0.86);
+}
+
+.weapon-category.slot-1 {
+  left: 182px;
+  top: 30px;
+}
+
+.weapon-category.slot-2 {
+  left: 354px;
+  top: 162px;
+}
+
+.weapon-category.slot-3 {
+  left: 182px;
+  top: 270px;
+}
+
+.weapon-category.slot-4 {
+  left: 8px;
+  top: 162px;
+}
+
+.weapon-choice {
+  position: relative;
+  width: 178px;
+  height: 34px;
+  margin-top: 5px;
+  background-color: rgba(15, 13, 0, 0.54);
+  border: 1px rgba(224, 191, 0, 0.48);
+}
+
+.weapon-choice.selected {
+  background-color: rgba(110, 90, 0, 0.74);
+  border: 1px rgba(255, 224, 0, 0.90);
+  color: #ffec00;
+}
+
+.weapon-choice.empty-ammo {
+  background-color: rgba(42, 6, 4, 0.66);
+  border: 1px rgba(222, 48, 38, 0.78);
+  color: #ef3024;
+  text-shadow: 0 0 8px rgba(222, 48, 38, 0.48);
+}
+
+.weapon-name {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 162px;
+  height: 18px;
+  color: inherit;
+  font-size: 13px;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+#loading-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.62);
+}
+
+#loading-panel {
+  position: absolute;
+  left: 450px;
+  top: 210px;
+  width: 380px;
+  height: 74px;
+  background-color: #8b8b8b;
+  border: 1px #9a9a9a;
+}
+
+#loading-title {
+  position: absolute;
+  left: 18px;
+  top: 9px;
+  width: 170px;
+  height: 18px;
+  color: #ffffff;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+#loading-close {
+  position: absolute;
+  right: 12px;
+  top: 8px;
+  width: 16px;
+  height: 16px;
+  color: #dddddd;
+  font-size: 16px;
+  text-align: center;
+}
+
+#loading-bar {
+  position: absolute;
+  left: 20px;
+  top: 36px;
+  width: 338px;
+  height: 22px;
+  padding: 3px;
+  background-color: #6f6f6f;
+  border: 1px #d0d0d0;
+}
+
+.loading-segment {
+  display: inline-block;
+  width: 9px;
+  height: 16px;
+  margin-right: 3px;
+  background-color: transparent;
+}
+
+.loading-segment.filled {
+  background-color: #f5f5f5;
+}

@@ -84,7 +84,7 @@ public sealed class GameplayUiLayer : IDisposable
                 ? " Diagnostic test document is enabled."
                 : "";
             string forcedPreviewNote = ShouldForcePreviewForState(_latestState)
-                ? " Critical pickup/examine modal is using the stable preview renderer because HS2_RMLUI_FORCE_PREVIEW_MODALS is enabled."
+                ? " Gameplay overlay is using the stable ImGui preview renderer while native RmlUi presentation is still being validated."
                 : "";
             string frameNote = _rmlUiBackend.HasSubmittedOverlayFrame
                 ? $" {_rmlUiBackend.OverlayDebugStatus}"
@@ -110,6 +110,10 @@ public sealed class GameplayUiLayer : IDisposable
     }
 
     private bool ShouldForcePreviewForState(GameplayUiState state)
-        => _forcePreviewModals && state.ItemCollectedOpen;
+        => (_forcePreviewModals && state.ItemCollectedOpen) ||
+           state.HudVisible ||
+           state.AmmoHudVisible ||
+           state.WeaponSelectorVisible ||
+           state.LoadingOverlayVisible;
 
 }

@@ -9,20 +9,29 @@ internal sealed class GameplayUiImGuiPreviewRenderer
     {
         selectedSlot = -1;
 
-        if (!state.InventoryOpen &&
-            !state.StorageOpen &&
-            !state.ItemCollectedOpen &&
-            !state.SaveSlotPanelOpen &&
-            !state.PauseMenuOpen &&
-            !state.LoadSlotPanelOpen &&
-            string.IsNullOrWhiteSpace(state.InteractionPrompt) &&
-            string.IsNullOrWhiteSpace(state.GameMessage))
-        {
+        bool hasVisibleUi =
+            state.HudVisible ||
+            state.AmmoHudVisible ||
+            state.WeaponSelectorVisible ||
+            state.LoadingOverlayVisible ||
+            state.CrosshairVisible ||
+            state.InventoryOpen ||
+            state.StorageOpen ||
+            state.ItemCollectedOpen ||
+            state.SaveSlotPanelOpen ||
+            state.PauseMenuOpen ||
+            state.LoadSlotPanelOpen ||
+            !string.IsNullOrWhiteSpace(state.InteractionPrompt) ||
+            !string.IsNullOrWhiteSpace(state.GameMessage);
+
+        if (!hasVisibleUi)
             return false;
-        }
 
         ImGuiViewportPtr viewport = ImGui.GetMainViewport();
 
+        DrawCrosshair(state, viewport);
+        DrawGameplayHud(state, viewport);
+        DrawWeaponSelector(state, viewport);
         DrawPromptPanel(state, viewport);
         DrawCollectedItemPanel(state, viewport);
 
@@ -38,9 +47,191 @@ internal sealed class GameplayUiImGuiPreviewRenderer
                 ? DrawUseItemPanel(state, viewport)
                 : DrawInventoryPanel(state, viewport);
 
+        DrawLoadingOverlay(state, viewport);
         return true;
     }
 
+
+    private static void DrawCrosshair(GameplayUiState state, ImGuiViewportPtr viewport)
+    {
+        if (!state.CrosshairVisible)
+            return;
+
+        ImDrawListPtr drawList = ImGui.GetForegroundDrawList();
+        Vector2 origin = viewport.Pos + new Vector2(state.CrosshairLeft, state.CrosshairTop);
+        uint color = ImGui.ColorConvertFloat4ToU32(new Vector4(0.92f, 0.94f, 0.90f, 1f));
+
+        drawList.AddRectFilled(origin + new Vector2(0f, 17f), origin + new Vector2(10f, 19f), color);
+        drawList.AddRectFilled(origin + new Vector2(26f, 17f), origin + new Vector2(36f, 19f), color);
+        drawList.AddRectFilled(origin + new Vector2(17f, 0f), origin + new Vector2(19f, 10f), color);
+        drawList.AddRectFilled(origin + new Vector2(17f, 26f), origin + new Vector2(19f, 36f), color);
+        drawList.AddRectFilled(origin + new Vector2(16f, 16f), origin + new Vector2(20f, 20f), color);
+    }
+
+    private static void DrawGameplayHud(GameplayUiState state, ImGuiViewportPtr viewport)
+    {
+        if (!state.HudVisible)
+            return;
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings |
+            ImGuiWindowFlags.NoInputs |
+            ImGuiWindowFlags.NoBackground;
+
+        Vector4 yellow = new(0.86f, 0.80f, 0.00f, 1f);
+        Vector2 bottomLeft = new(viewport.Pos.X + 44f, viewport.Pos.Y + viewport.Size.Y - 104f);
+        ImGui.SetNextWindowPos(bottomLeft, ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(520f, 88f), ImGuiCond.Always);
+        ImGui.Begin("GameplayHudLeft", flags);
+        ImGui.TextColored(yellow, "HEALTH");
+        ImGui.SameLine(104f);
+        ImGui.SetWindowFontScale(2.2f);
+        ImGui.TextColored(yellow, Math.Clamp(state.Health, 0, 999).ToString());
+        ImGui.SetWindowFontScale(1f);
+        ImGui.SameLine(278f);
+        ImGui.TextColored(yellow, "SUIT");
+        ImGui.SameLine(378f);
+        ImGui.SetWindowFontScale(2.2f);
+        ImGui.TextColored(yellow, Math.Clamp(state.Suit, 0, 999).ToString());
+        ImGui.SetWindowFontScale(1f);
+        ImGui.End();
+
+        if (!state.AmmoHudVisible)
+            return;
+
+        Vector2 bottomRight = new(viewport.Pos.X + viewport.Size.X - 350f, viewport.Pos.Y + viewport.Size.Y - 104f);
+        ImGui.SetNextWindowPos(bottomRight, ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(306f, 78f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.40f);
+        ImGui.Begin("GameplayHudAmmo", flags & ~ImGuiWindowFlags.NoBackground);
+        ImGui.TextColored(yellow, "AMMO");
+        ImGui.SameLine(118f);
+        ImGui.SetWindowFontScale(2.2f);
+        ImGui.TextColored(yellow, Math.Clamp(state.CurrentMagazineAmmo, 0, 999).ToString());
+        ImGui.SetWindowFontScale(1.5f);
+        ImGui.SameLine(224f);
+        ImGui.TextColored(yellow, Math.Clamp(state.ReserveAmmo, 0, 999).ToString());
+        ImGui.SetWindowFontScale(1f);
+        ImGui.End();
+    }
+
+    private static void DrawWeaponSelector(GameplayUiState state, ImGuiViewportPtr viewport)
+    {
+        if (!state.WeaponSelectorVisible || state.WeaponCategories.Count == 0)
+            return;
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings |
+            ImGuiWindowFlags.NoInputs |
+            ImGuiWindowFlags.NoScrollbar |
+            ImGuiWindowFlags.NoScrollWithMouse |
+            ImGuiWindowFlags.NoBackground;
+
+        Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);
+        float panelWidth = Math.Clamp(viewport.Size.X * 0.45f, 172f, 224f);
+        float itemWidth = panelWidth - 16f;
+        float verticalDistance = Math.Clamp(viewport.Size.Y * 0.18f, 92f, 136f);
+        float horizontalDistance = Math.Clamp(viewport.Size.X * 0.26f, 112f, 250f);
+
+        foreach (GameplayUiWeaponCategory category in state.WeaponCategories)
+        {
+            int weaponCount = Math.Max(1, category.Weapons.Count);
+            float windowHeight = 14f + weaponCount * 39f;
+            Vector2 pos = category.Slot switch
+            {
+                1 => new Vector2(center.X - panelWidth * 0.5f, center.Y - verticalDistance - windowHeight * 0.5f),
+                2 => new Vector2(center.X + horizontalDistance, center.Y - windowHeight * 0.5f),
+                3 => new Vector2(center.X - panelWidth * 0.5f, center.Y + verticalDistance - windowHeight * 0.5f),
+                4 => new Vector2(center.X - horizontalDistance - panelWidth, center.Y - windowHeight * 0.5f),
+                _ => new Vector2(center.X - panelWidth * 0.5f, center.Y - windowHeight * 0.5f)
+            };
+
+            pos.X = Math.Clamp(pos.X, viewport.Pos.X + 10f, viewport.Pos.X + viewport.Size.X - panelWidth - 10f);
+            pos.Y = Math.Clamp(pos.Y, viewport.Pos.Y + 10f, viewport.Pos.Y + viewport.Size.Y - windowHeight - 10f);
+
+            ImGui.SetNextWindowPos(pos, ImGuiCond.Always);
+            ImGui.SetNextWindowSize(new Vector2(panelWidth, windowHeight), ImGuiCond.Always);
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0f);
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(8f, 7f));
+            ImGui.Begin($"WeaponSelector{category.Slot}", flags);
+
+            ImDrawListPtr drawList = ImGui.GetWindowDrawList();
+            foreach (GameplayUiWeaponItem weapon in category.Weapons)
+            {
+                Vector2 itemMin = ImGui.GetCursorScreenPos();
+                Vector2 itemSize = new(itemWidth, 34f);
+                Vector2 itemMax = itemMin + itemSize;
+                bool empty = weapon.UsesAmmo && !weapon.HasAmmo;
+                Vector4 fill = weapon.Selected
+                    ? new Vector4(0.43f, 0.35f, 0.00f, 0.74f)
+                    : new Vector4(0.06f, 0.05f, 0.00f, 0.54f);
+                Vector4 itemBorder = weapon.Selected
+                    ? new Vector4(1.00f, 0.86f, 0.00f, 0.90f)
+                    : new Vector4(0.88f, 0.75f, 0.00f, 0.48f);
+                Vector4 textColor = empty
+                    ? new Vector4(0.94f, 0.18f, 0.12f, 1f)
+                    : weapon.Selected
+                        ? new Vector4(1.0f, 0.94f, 0.0f, 1f)
+                        : new Vector4(0.78f, 0.72f, 0.0f, 0.86f);
+
+                if (empty)
+                {
+                    fill = new Vector4(0.18f, 0.03f, 0.02f, 0.66f);
+                    itemBorder = new Vector4(0.90f, 0.14f, 0.10f, 0.78f);
+                }
+
+                string label = weapon.DisplayName.ToUpperInvariant();
+                Vector2 textSize = ImGui.CalcTextSize(label);
+                float textX = itemMin.X + MathF.Max(8f, (itemSize.X - textSize.X) * 0.5f);
+                float textY = itemMin.Y + MathF.Max(3f, (itemSize.Y - textSize.Y) * 0.5f);
+
+                drawList.AddRectFilled(itemMin, itemMax, ImGui.ColorConvertFloat4ToU32(fill));
+                drawList.AddRect(itemMin, itemMax, ImGui.ColorConvertFloat4ToU32(itemBorder));
+                drawList.AddText(new Vector2(textX, textY), ImGui.ColorConvertFloat4ToU32(textColor), label);
+                ImGui.Dummy(itemSize + new Vector2(0f, 5f));
+            }
+
+            ImGui.End();
+            ImGui.PopStyleVar(3);
+        }
+    }
+
+    private static void DrawLoadingOverlay(GameplayUiState state, ImGuiViewportPtr viewport)
+    {
+        if (!state.LoadingOverlayVisible)
+            return;
+
+        ImGuiWindowFlags overlayFlags =
+            ImGuiWindowFlags.NoTitleBar |
+            ImGuiWindowFlags.NoResize |
+            ImGuiWindowFlags.NoMove |
+            ImGuiWindowFlags.NoSavedSettings |
+            ImGuiWindowFlags.NoInputs;
+
+        ImGui.SetNextWindowPos(viewport.Pos, ImGuiCond.Always);
+        ImGui.SetNextWindowSize(viewport.Size, ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.58f);
+        ImGui.Begin("LoadingOverlayDim", overlayFlags);
+        ImGui.End();
+
+        Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.42f);
+        ImGui.SetNextWindowPos(center, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(380f, 74f), ImGuiCond.Always);
+        ImGui.SetNextWindowBgAlpha(0.94f);
+        ImGui.Begin("LoadingOverlayPanel", overlayFlags);
+        ImGui.TextColored(new Vector4(1f, 1f, 1f, 1f), "LOADING...");
+        ImGui.SameLine(350f);
+        ImGui.TextColored(new Vector4(0.86f, 0.86f, 0.86f, 1f), "x");
+        ImGui.ProgressBar(Math.Clamp(state.LoadingProgress, 0f, 1f), new Vector2(338f, 18f), "");
+        ImGui.End();
+    }
     private static void DrawSaveSlotPanel(GameplayUiState state, ImGuiViewportPtr viewport)
     {
         Vector2 center = new(viewport.Pos.X + viewport.Size.X * 0.5f, viewport.Pos.Y + viewport.Size.Y * 0.5f);

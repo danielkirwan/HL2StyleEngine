@@ -19,3 +19,9 @@ The bridge should wrap the C++ RmlUi library and export the functions declared i
 - provide a small temporary pixel-font fallback while the project decides on FreeType or a proper bitmap-font asset path
 
 The managed Veldrid renderer consumes CPU-owned command buffers containing vertices, indices, texture ids, scissor rectangles, and per-command translation. Texture ownership stays on the managed renderer side for now, with the bridge only exporting RGBA image data and stable RmlUi texture ids.
+
+## Current Gameplay Overlay Limitation
+
+The native bridge is not currently trusted for the combat HUD. `GameplayUiLayer` forces health/suit, ammo, fallback crosshair, weapon selector, and loading overlay through the ImGui preview renderer while native RmlUi text/layout rendering is being validated.
+
+Before switching those overlays back to native RmlUi, verify that RCSS positioning, borders/backgrounds, generated text images or font textures, and per-frame document refresh render identically to the ImGui gameplay overlay.

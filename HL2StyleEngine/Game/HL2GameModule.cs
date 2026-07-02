@@ -1,4 +1,4 @@
-﻿using Editor.Editor;
+using Editor.Editor;
 using Engine.Editor.Editor;
 using Engine.Editor.Level;
 using Engine.Input;
@@ -86,6 +86,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         public List<string> OpenedDoors { get; set; } = new();
         public List<string> SolvedPuzzles { get; set; } = new();
         public List<BrokenObjectSaveData> BrokenObjects { get; set; } = new();
+        public List<WeaponSaveData> WeaponStates { get; set; } = new();
+        public int PlayerHealth { get; set; } = 100;
+        public int PlayerSuit { get; set; } = 75;
         public int InkRibbons { get; set; }
         public int SavePointUseCount { get; set; }
         public float PlayerX { get; set; }
@@ -141,6 +144,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private InputAction _look = null!;
     private bool _prevRightTriggerDown;
     private readonly WeaponSystem _weaponSystem = WeaponSystem.CreatePrototypeLoadout();
+    private int _playerHealth = 100;
+    private int _playerSuit = 75;
+    private float _loadingOverlayTimer;
     private readonly InventoryContainer _inventory = new(gridWidth: 8, gridHeight: 4);
     private readonly InventoryContainer _storage = new(gridWidth: 8, gridHeight: 6);
     private readonly HashSet<string> _collectedInteractables = new(StringComparer.OrdinalIgnoreCase);
@@ -255,6 +261,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private const int PauseMenuOptionCount = 2;
     private const int NativeStorageSlotOffset = 1000;
     private const int NativeInventoryActionSlotOffset = 2000;
+    private const float LoadingOverlaySeconds = 0.85f;
     private const string PlayerCharacterModelPath = "Content/Models/ViewModels/Future_Soldier_02.glb";
     // Full character GLBs from Mixamo/Unity are usually skinned; keep the mesh off until skinning is supported.
     private const bool DrawImportedPlayerCharacterModel = false;
@@ -295,6 +302,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         PreloadWeaponModels();
         PreloadModelAsset(PlayerCharacterModelPath);
+        ShowLoadingOverlay();
     }
 
     private void PreloadWeaponModels()
@@ -387,6 +395,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _inputSystem.Update();
         if (_interactionPromptGraceTimer > 0f)
             _interactionPromptGraceTimer = MathF.Max(0f, _interactionPromptGraceTimer - dt);
+        if (_loadingOverlayTimer > 0f)
+            _loadingOverlayTimer = MathF.Max(0f, _loadingOverlayTimer - dt);
         _weaponSystem.Update(dt);
 
         if (GameplayModalOpen)
@@ -610,6 +620,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             : SimpleLevel.BuildRoom01File;
     }
 
+    private void ShowLoadingOverlay()
+        => _loadingOverlayTimer = LoadingOverlaySeconds;
+
     private void UpdateGameplayUi(float dt)
     {
         _gameplayUi.SubmitState(BuildGameplayUiState());
@@ -650,6 +663,12 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         int crosshairLeft = Math.Max(0, _ctx.Window.Window.Width / 2 - 18);
         int crosshairTop = Math.Max(0, _ctx.Window.Window.Height / 2 - 18);
+        bool gameplayHudVisible = !_editorEnabled && !GameplayModalOpen;
+        WeaponDefinition equippedWeapon = _weaponSystem.EquippedWeapon;
+        WeaponAmmoSnapshot equippedAmmo = _weaponSystem.GetAmmoSnapshot(equippedWeapon);
+        float loadingProgress = LoadingOverlaySeconds <= 0f
+            ? 1f
+            : 1f - Math.Clamp(_loadingOverlayTimer / LoadingOverlaySeconds, 0f, 1f);
 
         return new GameplayUiState
         {
@@ -659,6 +678,17 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             SaveSlotPanelOpen = !_editorEnabled && _saveSlotPanelOpen,
             PauseMenuOpen = !_editorEnabled && _pauseMenuOpen,
             LoadSlotPanelOpen = !_editorEnabled && _loadSlotPanelOpen,
+            HudVisible = gameplayHudVisible,
+            Health = _playerHealth,
+            Suit = _playerSuit,
+            AmmoHudVisible = gameplayHudVisible && equippedWeapon.UsesAmmo,
+            AmmoWeaponName = equippedWeapon.DisplayName,
+            CurrentMagazineAmmo = equippedAmmo.CurrentMagazine,
+            ReserveAmmo = equippedAmmo.ReserveAmmo,
+            WeaponSelectorVisible = gameplayHudVisible && _weaponSystem.WeaponSelectorVisible,
+            WeaponCategories = BuildWeaponCategoryUiItems(),
+            LoadingOverlayVisible = !_editorEnabled && _loadingOverlayTimer > 0f,
+            LoadingProgress = loadingProgress,
             CrosshairVisible = !_editorEnabled && !GameplayModalOpen,
             CrosshairLeft = crosshairLeft,
             CrosshairTop = crosshairTop,
@@ -708,6 +738,48 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         };
     }
 
+
+    private List<GameplayUiWeaponCategory> BuildWeaponCategoryUiItems()
+    {
+        List<GameplayUiWeaponCategory> categories = new();
+        foreach (WeaponCategoryDefinition category in WeaponDefinitions.Categories)
+        {
+            List<GameplayUiWeaponItem> weapons = _weaponSystem.Definitions
+                .Where(weapon => weapon.Category == category.Category && _weaponSystem.IsWeaponOwned(weapon))
+                .OrderBy(weapon => weapon.CategoryOrder)
+                .ThenBy(weapon => weapon.DisplayName)
+                .Select(weapon =>
+                {
+                    WeaponAmmoSnapshot ammo = _weaponSystem.GetAmmoSnapshot(weapon);
+                    return new GameplayUiWeaponItem
+                    {
+                        Id = weapon.Id,
+                        DisplayName = weapon.DisplayName,
+                        IconLabel = weapon.IconLabel,
+                        Selected = _weaponSystem.IsWeaponEquipped(weapon),
+                        UsesAmmo = weapon.UsesAmmo,
+                        HasAmmo = ammo.HasAmmo,
+                        CurrentMagazineAmmo = ammo.CurrentMagazine,
+                        ReserveAmmo = ammo.ReserveAmmo
+                    };
+                })
+                .ToList();
+
+            if (weapons.Count == 0)
+                continue;
+
+            categories.Add(new GameplayUiWeaponCategory
+            {
+                Slot = category.Slot,
+                DirectionLabel = category.DirectionLabel,
+                DisplayName = category.DisplayName,
+                Selected = weapons.Any(static weapon => weapon.Selected),
+                Weapons = weapons
+            });
+        }
+
+        return categories;
+    }
     private List<GameplayUiInventoryItem> BuildInventoryUiItems()
     {
         List<GameplayUiInventoryItem> items = new(_inventory.StackCount);
@@ -717,6 +789,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         foreach (InventoryItemStack stack in _inventory.Stacks)
         {
+            if (_weaponSystem.IsWeaponSystemInventoryItem(stack.ItemId))
+                continue;
+
             InventoryItemDefinition definition = ItemCatalog.Get(stack.ItemId);
             bool combineSourceItem = combineSource != null && ReferenceEquals(stack, combineSource);
             bool validCombineTarget = combineSource != null &&
@@ -746,6 +821,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         List<GameplayUiInventoryItem> items = new(container.StackCount);
         foreach (InventoryItemStack stack in container.Stacks)
         {
+            if (_weaponSystem.IsWeaponSystemInventoryItem(stack.ItemId))
+                continue;
+
             InventoryItemDefinition definition = ItemCatalog.Get(stack.ItemId);
             items.Add(BuildUiItem(stack, definition, container));
         }
@@ -1147,10 +1225,15 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             if (data.StorageItems.Count > 0)
                 _storage.LoadFromSave(data.StorageItems);
 
-            bool hadWeaponLoadout =
-                _inventory.Contains(ItemCatalog.GravityGun) ||
-                _inventory.Contains(ItemCatalog.TestPistol);
-            EnsurePrototypeWeaponLoadout(includeStarterAmmo: !hadWeaponLoadout);
+            bool hasWeaponSaveState = data.WeaponStates.Count > 0;
+            bool legacyHadWeaponSystemItems = _inventory.Stacks.Any(stack => _weaponSystem.IsWeaponSystemInventoryItem(stack.ItemId)) ||
+                _storage.Stacks.Any(stack => _weaponSystem.IsWeaponSystemInventoryItem(stack.ItemId));
+            if (hasWeaponSaveState)
+                _weaponSystem.LoadFromSave(data.WeaponStates);
+            else
+                _weaponSystem.ResetToDefaultPrototypeLoadout(includeStarterAmmo: !legacyHadWeaponSystemItems);
+            MoveWeaponSystemItemsOutOfContainer(_inventory, fillMagazineFromAmmo: false);
+            MoveWeaponSystemItemsOutOfContainer(_storage, fillMagazineFromAmmo: false);
 
             foreach (string item in data.CollectedInteractables)
                 _collectedInteractables.Add(item);
@@ -1166,6 +1249,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
             _savePointUseCount = Math.Max(0, data.SavePointUseCount);
             _playTimeSeconds = MathF.Max(0f, data.PlayTimeSeconds);
+            _playerHealth = Math.Clamp(data.PlayerHealth <= 0 ? 100 : data.PlayerHealth, 0, 100);
+            _playerSuit = Math.Clamp(data.PlayerSuit, 0, 100);
 
             RemoveExpiredInventoryItems(showMessage: false);
             ApplyPersistentInteractionStateToRuntime();
@@ -1179,6 +1264,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 ? $"Loaded {PrettifyToken(Path.GetFileNameWithoutExtension(path))}."
                 : "Loaded saved progress.";
             ShowGameMessage(loadedSlot, 2.0f);
+            ShowLoadingOverlay();
             return true;
         }
         catch (Exception ex)
@@ -1192,6 +1278,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     {
         try
         {
+            MoveWeaponSystemItemsOutOfContainer(_inventory, fillMagazineFromAmmo: false);
+            MoveWeaponSystemItemsOutOfContainer(_storage, fillMagazineFromAmmo: false);
+
             int safeSlot = Math.Clamp(slotIndex, 0, SaveSlotCount - 1);
             string levelDisplayName = GetCurrentLevelDisplayName();
             string savePointDisplayName = PrettifyToken(GetNameToken(savePointName, "SavePoint_"));
@@ -1216,6 +1305,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 CollectedInteractables = _collectedInteractables.OrderBy(static x => x).ToList(),
                 OpenedDoors = _openedDoors.OrderBy(static x => x).ToList(),
                 SolvedPuzzles = _solvedPuzzles.OrderBy(static x => x).ToList(),
+                WeaponStates = _weaponSystem.ToSaveData().ToList(),
+                PlayerHealth = _playerHealth,
+                PlayerSuit = _playerSuit,
                 BrokenObjects = _brokenObjectReplacementModels
                     .OrderBy(static pair => pair.Key)
                     .Select(static pair => new BrokenObjectSaveData { Name = pair.Key, ReplacementModelPath = pair.Value })
@@ -1259,6 +1351,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         RebuildRuntimeWorld();
         ApplySpawnFromEditor(forceResetVelocity: true);
         ShowGameMessage("Level reset to the start.", 2.5f);
+        ShowLoadingOverlay();
     }
 
     private void DeletePrototypeSaveFiles()
@@ -2714,6 +2807,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             return;
         }
 
+        InventoryItemDefinition result = ItemCatalog.Get(recipe.ResultItemId);
+        if (_weaponSystem.TryGrantInventoryItem(recipe.ResultItemId, recipe.ResultCount, fillMagazineFromAmmo: false))
+        {
+            _combineSourceSlot = -1;
+            ShowGameMessage($"Combined {sourceName} with {targetName}. Created {result.DisplayName} x{recipe.ResultCount}.", 2.5f);
+            return;
+        }
+
         if (!_inventory.Add(recipe.ResultItemId, recipe.ResultCount))
         {
             _inventory.Add(source.ItemId, sourceConsumedCount);
@@ -2724,7 +2825,6 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
 
         _combineSourceSlot = -1;
-        InventoryItemDefinition result = ItemCatalog.Get(recipe.ResultItemId);
         ShowGameMessage($"Combined {sourceName} with {targetName}. Created {result.DisplayName} x{recipe.ResultCount}.", 2.5f);
     }
 
@@ -3029,6 +3129,15 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private bool AddInventoryItem(string itemId, int count, bool showCollectedScreen)
     {
+        InventoryItemDefinition definition = ItemCatalog.Get(itemId);
+        if (_weaponSystem.TryGrantInventoryItem(itemId, count, fillMagazineFromAmmo: false))
+        {
+            string countSuffix = count > 1 ? $" x{count}" : "";
+            string verb = definition.Type == InventoryItemType.Ammo ? "Added ammo" : "Added weapon";
+            ShowGameMessage($"{verb}: {definition.DisplayName}{countSuffix}.", 2.0f);
+            return true;
+        }
+
         if (!_inventory.Add(itemId, count))
         {
             ShowGameMessage("Inventory is full.");

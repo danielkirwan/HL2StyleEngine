@@ -24,6 +24,8 @@ internal static class WeaponDefinitions
             inventoryItemId: ItemCatalog.GravityGun,
             displayName: "Gravity Gun",
             kind: WeaponKind.GravityGun,
+            category: WeaponCategory.UtilityAndMelee,
+            categoryOrder: 1,
             viewModel: new WeaponViewModelDefinition(
                 modelAssetPath: "Content/Models/ViewModels/gravitygun.glb",
                 muzzleOffset: new Vector3(0.58f, -0.09f, 1.24f),
@@ -50,13 +52,16 @@ internal static class WeaponDefinitions
             attractionRange: 14.0f,
             pullAcceleration: 32.0f,
             pullMaxSpeed: 12.0f,
-            holdDistance: 2.85f),
+            holdDistance: 2.85f,
+            iconLabel: "GRAVITY"),
 
         new(
             id: "test_pistol",
             inventoryItemId: ItemCatalog.TestPistol,
             displayName: "Test Pistol",
             kind: WeaponKind.Hitscan,
+            category: WeaponCategory.SmallWeapons,
+            categoryOrder: 0,
             viewModel: new WeaponViewModelDefinition(
                 modelAssetPath: "Content/Models/ViewModels/test_pistol.glb",
                 muzzleOffset: new Vector3(0.56f, -0.20f, 1.03f),
@@ -77,13 +82,17 @@ internal static class WeaponDefinitions
             impulse: 85f,
             damage: 25f,
             ammoItemId: ItemCatalog.Bullets,
-            ammoPerPrimaryFire: 1),
+            ammoPerPrimaryFire: 1,
+            magazineSize: 18,
+            iconLabel: "PISTOL"),
 
         new(
             id: "crowbar",
             inventoryItemId: ItemCatalog.Crowbar,
             displayName: "Crowbar",
             kind: WeaponKind.Melee,
+            category: WeaponCategory.UtilityAndMelee,
+            categoryOrder: 0,
             viewModel: new WeaponViewModelDefinition(
                 modelAssetPath: "Content/Models/ViewModels/Crowbar.glb",
                 muzzleOffset: new Vector3(0.62f, -0.20f, 1.02f),
@@ -101,9 +110,18 @@ internal static class WeaponDefinitions
             flashSeconds: 0.16f,
             range: 2.15f,
             impulse: 70f,
-            damage: 35f)
+            damage: 35f,
+            iconLabel: "CROWBAR")
     ];
 
+
+    public static readonly IReadOnlyList<WeaponCategoryDefinition> Categories =
+    [
+        new(1, WeaponCategory.SmallWeapons, "Small Weapons", "Up"),
+        new(2, WeaponCategory.MediumWeapons, "Medium Weapons", "Right"),
+        new(3, WeaponCategory.UtilityAndMelee, "Crowbar / Gravity Gun", "Down"),
+        new(4, WeaponCategory.ThrowablesAndHeavy, "Throwables / Heavy", "Left")
+    ];
     public static readonly IReadOnlyList<WeaponLoadoutItem> DefaultPrototypeLoadout =
     [
         new(ItemCatalog.GravityGun, 1),

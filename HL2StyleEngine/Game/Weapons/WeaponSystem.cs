@@ -1,5 +1,6 @@
 using Engine.Render;
 using Engine.Runtime.Entities;
+using Game.Inventory;
 using System.Numerics;
 
 namespace Game.Weapons;
@@ -11,8 +12,18 @@ internal sealed class WeaponSystem
     private const float GravityBlastCooldownSeconds = 0.30f;
     private const float GravityStaticBurstSeconds = 0.14f;
     private const float MeleeSwingSeconds = 0.28f;
+    private const float WeaponSelectorVisibleSeconds = 1.55f;
+
+    private sealed class RuntimeWeaponState
+    {
+        public bool Owned;
+        public int CurrentMagazine;
+        public int ReserveAmmo;
+    }
 
     private readonly IReadOnlyList<WeaponDefinition> _definitions;
+    private readonly Dictionary<string, RuntimeWeaponState> _runtimeStates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _ownedWeaponIds = new(StringComparer.OrdinalIgnoreCase);
     private int _equippedIndex;
     private float _cooldownTimer;
     private float _flashTimer;
@@ -29,17 +40,23 @@ internal sealed class WeaponSystem
     private Entity? _gravityPullTarget;
     private bool _gravityHeldLaunchArmed = true;
     private bool _gravitySuppressPullUntilPrimaryReleased;
+    private float _weaponSelectorTimer;
 
     private WeaponSystem(IReadOnlyList<WeaponDefinition> definitions)
     {
         _definitions = definitions;
-        _equippedIndex = Math.Max(0, IndexOfInventoryItem(Game.Inventory.ItemCatalog.GravityGun));
+        foreach (WeaponDefinition weapon in _definitions)
+            _runtimeStates[weapon.Id] = new RuntimeWeaponState();
+
+        _equippedIndex = Math.Max(0, IndexOfInventoryItem(ItemCatalog.GravityGun));
     }
 
     public static WeaponSystem CreatePrototypeLoadout()
         => new(WeaponDefinitions.All);
 
+    public IReadOnlyList<WeaponDefinition> Definitions => _definitions;
     public WeaponDefinition EquippedWeapon => _definitions[_equippedIndex];
+    public bool WeaponSelectorVisible => _weaponSelectorTimer > 0f;
 
     public void Update(float dt)
     {
@@ -53,6 +70,110 @@ internal sealed class WeaponSystem
             _meleeSwingTimer = MathF.Max(0f, _meleeSwingTimer - dt);
         if (_gravityStaticBurstTimer > 0f)
             _gravityStaticBurstTimer = MathF.Max(0f, _gravityStaticBurstTimer - dt);
+        if (_weaponSelectorTimer > 0f)
+            _weaponSelectorTimer = MathF.Max(0f, _weaponSelectorTimer - dt);
+    }
+
+    public bool IsWeaponOwned(WeaponDefinition weapon)
+        => _ownedWeaponIds.Contains(weapon.Id);
+
+    public bool IsWeaponEquipped(WeaponDefinition weapon)
+        => string.Equals(EquippedWeapon.Id, weapon.Id, StringComparison.OrdinalIgnoreCase);
+
+    public WeaponAmmoSnapshot GetAmmoSnapshot(WeaponDefinition weapon)
+    {
+        RuntimeWeaponState state = GetState(weapon);
+        return new WeaponAmmoSnapshot(state.CurrentMagazine, state.ReserveAmmo, weapon.UsesAmmo);
+    }
+
+    public bool IsWeaponSystemInventoryItem(string itemId)
+        => IndexOfInventoryItem(itemId) >= 0 || IsAmmoItem(itemId);
+
+    public bool TryGrantInventoryItem(string itemId, int count, bool fillMagazineFromAmmo)
+    {
+        int weaponIndex = IndexOfInventoryItem(itemId);
+        if (weaponIndex >= 0)
+        {
+            GrantWeapon(_definitions[weaponIndex]);
+            EnsureEquippedWeaponOwned(null);
+            return true;
+        }
+
+        return TryGrantAmmo(itemId, count, fillMagazineFromAmmo);
+    }
+
+    public void ResetToDefaultPrototypeLoadout(bool includeStarterAmmo)
+    {
+        _ownedWeaponIds.Clear();
+        foreach (RuntimeWeaponState state in _runtimeStates.Values)
+        {
+            state.Owned = false;
+            state.CurrentMagazine = 0;
+            state.ReserveAmmo = 0;
+        }
+
+        EnsureDefaultPrototypeLoadout(includeStarterAmmo);
+    }
+
+    public void EnsureDefaultPrototypeLoadout(bool includeStarterAmmo)
+    {
+        foreach (WeaponLoadoutItem item in WeaponDefinitions.DefaultPrototypeLoadout)
+        {
+            int weaponIndex = IndexOfInventoryItem(item.ItemId);
+            if (weaponIndex >= 0)
+            {
+                GrantWeapon(_definitions[weaponIndex]);
+                continue;
+            }
+
+            if (includeStarterAmmo)
+                TryGrantAmmo(item.ItemId, item.Count, fillMagazineFromAmmo: true);
+        }
+
+        EnsureEquippedWeaponOwned(null);
+    }
+
+    public IReadOnlyList<WeaponSaveData> ToSaveData()
+        => _definitions
+            .Select(weapon =>
+            {
+                RuntimeWeaponState state = GetState(weapon);
+                return new WeaponSaveData
+                {
+                    WeaponId = weapon.Id,
+                    Owned = state.Owned,
+                    CurrentMagazine = state.CurrentMagazine,
+                    ReserveAmmo = state.ReserveAmmo
+                };
+            })
+            .ToList();
+
+    public void LoadFromSave(IReadOnlyList<WeaponSaveData> savedWeapons)
+    {
+        _ownedWeaponIds.Clear();
+        foreach (RuntimeWeaponState state in _runtimeStates.Values)
+        {
+            state.Owned = false;
+            state.CurrentMagazine = 0;
+            state.ReserveAmmo = 0;
+        }
+
+        foreach (WeaponSaveData saved in savedWeapons)
+        {
+            int index = IndexOfWeaponId(saved.WeaponId);
+            if (index < 0)
+                continue;
+
+            WeaponDefinition weapon = _definitions[index];
+            RuntimeWeaponState state = GetState(weapon);
+            state.Owned = saved.Owned;
+            state.CurrentMagazine = Math.Max(0, saved.CurrentMagazine);
+            state.ReserveAmmo = Math.Max(0, saved.ReserveAmmo);
+            if (state.Owned)
+                _ownedWeaponIds.Add(weapon.Id);
+        }
+
+        EnsureEquippedWeaponOwned(null);
     }
 
     public bool TryEquipInventoryItem(IWeaponHost host, string itemId, bool showMessage)
@@ -61,20 +182,23 @@ internal sealed class WeaponSystem
         if (index < 0)
             return false;
 
-        if (!host.HasInventoryItem(_definitions[index].InventoryItemId))
+        if (!IsWeaponOwned(_definitions[index]))
         {
             if (showMessage)
-                host.ShowWeaponMessage($"{_definitions[index].DisplayName} is not in your inventory.", 1.25f);
+                host.ShowWeaponMessage($"{_definitions[index].DisplayName} is not available.", 1.25f);
             return true;
         }
 
-        SetEquippedWeapon(host, index, showMessage);
+        SetEquippedWeapon(host, index, showMessage, showAlreadyMessage: false);
         return true;
     }
 
     public void HandleInput(IWeaponHost host, WeaponInputSnapshot input, float dt)
     {
         EnsureEquippedWeaponOwned(host);
+
+        if (input.CategorySlotPressed > 0)
+            TrySelectCategorySlot(host, input.CategorySlotPressed);
 
         if (host.HasHeldObject)
         {
@@ -83,16 +207,8 @@ internal sealed class WeaponSystem
             return;
         }
 
-        if (input.SwitchPressed)
-        {
-            _gravityPullTarget = null;
-            _gravityHeldLaunchArmed = true;
-            _gravitySuppressPullUntilPrimaryReleased = false;
-            CycleEquippedWeapon(host);
-        }
-
         WeaponDefinition weapon = EquippedWeapon;
-        if (!host.HasInventoryItem(weapon.InventoryItemId))
+        if (!IsWeaponOwned(weapon))
         {
             if (input.PrimaryPressed)
                 host.ShowWeaponMessage($"No {weapon.DisplayName} equipped.", 1.25f);
@@ -132,12 +248,11 @@ internal sealed class WeaponSystem
             return;
 
         WeaponDefinition weapon = EquippedWeapon;
-        if (!host.HasInventoryItem(weapon.InventoryItemId))
+        if (!IsWeaponOwned(weapon))
             return;
 
         DrawViewModel(host, renderer, weapon);
     }
-
     private void HandleHeldObjectInput(IWeaponHost host, WeaponInputSnapshot input)
     {
         if (host.HeldObjectGrabbedByGravityGun && !input.PrimaryHeld)
@@ -433,71 +548,161 @@ internal sealed class WeaponSystem
         if (!weapon.UsesAmmo || weapon.AmmoItemId == null)
             return true;
 
-        int ammoCount = host.GetInventoryItemCount(weapon.AmmoItemId);
-        if (ammoCount < weapon.AmmoPerPrimaryFire)
+        RuntimeWeaponState state = GetState(weapon);
+        if (state.CurrentMagazine < weapon.AmmoPerPrimaryFire && TryReloadFromReserve(weapon, state))
+            host.ShowWeaponMessage($"Reloaded {weapon.DisplayName}.", 0.75f);
+
+        if (state.CurrentMagazine < weapon.AmmoPerPrimaryFire)
         {
             _cooldownTimer = MathF.Max(_cooldownTimer, 0.20f);
-            host.ShowWeaponMessage($"{weapon.DisplayName} is empty. Need {Game.Inventory.ItemCatalog.GetDisplayName(weapon.AmmoItemId)}.", 1.1f);
+            host.ShowWeaponMessage($"{weapon.DisplayName} is empty.", 1.1f);
             return false;
         }
 
-        return host.TryConsumeInventoryItem(weapon.AmmoItemId, weapon.AmmoPerPrimaryFire);
+        state.CurrentMagazine -= weapon.AmmoPerPrimaryFire;
+        return true;
     }
 
-    private void CycleEquippedWeapon(IWeaponHost host)
+    private bool TrySelectCategorySlot(IWeaponHost host, int categorySlot)
     {
-        int next = FindNextOwnedWeapon(host);
-        if (next < 0)
-        {
-            host.ShowWeaponMessage("No weapons in inventory.", 1.25f);
-            return;
-        }
+        WeaponCategoryDefinition category = WeaponDefinitions.Categories
+            .FirstOrDefault(definition => definition.Slot == categorySlot);
+        if (category.Slot == 0)
+            return false;
 
-        SetEquippedWeapon(host, next, showMessage: true);
+        List<int> indexes = _definitions
+            .Select((weapon, index) => (weapon, index))
+            .Where(pair => pair.weapon.Category == category.Category && IsWeaponOwned(pair.weapon))
+            .OrderBy(pair => pair.weapon.CategoryOrder)
+            .ThenBy(pair => pair.index)
+            .Select(pair => pair.index)
+            .ToList();
+
+        if (indexes.Count == 0)
+            return false;
+
+        int selectedIndex = indexes[0];
+        int currentPosition = indexes.IndexOf(_equippedIndex);
+        if (currentPosition >= 0 && indexes.Count > 1)
+            selectedIndex = indexes[(currentPosition + 1) % indexes.Count];
+
+        _weaponSelectorTimer = WeaponSelectorVisibleSeconds;
+        SetEquippedWeapon(host, selectedIndex, showMessage: true, showAlreadyMessage: false);
+        return true;
     }
 
-    private void SetEquippedWeapon(IWeaponHost host, int index, bool showMessage)
+    private void SetEquippedWeapon(IWeaponHost? host, int index, bool showMessage, bool showAlreadyMessage = true)
     {
         if (index < 0 || index >= _definitions.Count)
             return;
 
         if (_equippedIndex == index)
         {
-            if (showMessage)
-                host.ShowWeaponMessage($"{EquippedWeapon.DisplayName} already equipped.", 0.9f);
+            if (showMessage && showAlreadyMessage)
+                host?.ShowWeaponMessage($"{EquippedWeapon.DisplayName} already equipped.", 0.9f);
             return;
         }
 
-        if (host.HasHeldObject)
+        if (host?.HasHeldObject == true)
             host.DropHeldObject();
 
+        _gravityPullTarget = null;
+        _gravityHeldLaunchArmed = true;
+        _gravitySuppressPullUntilPrimaryReleased = false;
         _meleeSwingTimer = 0f;
         _equippedIndex = index;
         if (showMessage)
-            host.ShowWeaponMessage($"Equipped {EquippedWeapon.DisplayName}.", 1.25f);
+            host?.ShowWeaponMessage($"Equipped {EquippedWeapon.DisplayName}.", 1.25f);
     }
 
-    private void EnsureEquippedWeaponOwned(IWeaponHost host)
+    private void EnsureEquippedWeaponOwned(IWeaponHost? host)
     {
-        if (host.HasInventoryItem(EquippedWeapon.InventoryItemId))
+        if (IsWeaponOwned(EquippedWeapon))
             return;
 
-        int next = FindNextOwnedWeapon(host);
+        int next = FindNextOwnedWeapon();
         if (next >= 0)
+        {
             _equippedIndex = next;
+            return;
+        }
+
+        host?.ShowWeaponMessage("No weapons available.", 1.25f);
     }
 
-    private int FindNextOwnedWeapon(IWeaponHost host)
+    private int FindNextOwnedWeapon()
     {
         for (int offset = 1; offset <= _definitions.Count; offset++)
         {
             int index = (_equippedIndex + offset) % _definitions.Count;
-            if (host.HasInventoryItem(_definitions[index].InventoryItemId))
+            if (IsWeaponOwned(_definitions[index]))
                 return index;
         }
 
         return -1;
     }
+
+    private void GrantWeapon(WeaponDefinition weapon)
+    {
+        RuntimeWeaponState state = GetState(weapon);
+        state.Owned = true;
+        _ownedWeaponIds.Add(weapon.Id);
+    }
+
+    private bool TryGrantAmmo(string ammoItemId, int count, bool fillMagazineFromAmmo)
+    {
+        if (string.IsNullOrWhiteSpace(ammoItemId) || count <= 0)
+            return false;
+
+        WeaponDefinition? weapon = _definitions.FirstOrDefault(candidate =>
+            candidate.UsesAmmo &&
+            string.Equals(candidate.AmmoItemId, ammoItemId, StringComparison.OrdinalIgnoreCase));
+        if (weapon == null)
+            return false;
+
+        RuntimeWeaponState state = GetState(weapon);
+        int remaining = count;
+        if (fillMagazineFromAmmo && weapon.MagazineSize > 0)
+        {
+            int room = Math.Max(0, weapon.MagazineSize - state.CurrentMagazine);
+            int loaded = Math.Min(room, remaining);
+            state.CurrentMagazine += loaded;
+            remaining -= loaded;
+        }
+
+        state.ReserveAmmo += remaining;
+        return true;
+    }
+
+    private bool TryReloadFromReserve(WeaponDefinition weapon, RuntimeWeaponState state)
+    {
+        if (!weapon.UsesAmmo || weapon.MagazineSize <= 0 || state.ReserveAmmo <= 0)
+            return false;
+
+        int room = Math.Max(0, weapon.MagazineSize - state.CurrentMagazine);
+        if (room <= 0)
+            return false;
+
+        int moved = Math.Min(room, state.ReserveAmmo);
+        state.CurrentMagazine += moved;
+        state.ReserveAmmo -= moved;
+        return moved > 0;
+    }
+
+    private RuntimeWeaponState GetState(WeaponDefinition weapon)
+    {
+        if (_runtimeStates.TryGetValue(weapon.Id, out RuntimeWeaponState? state))
+            return state;
+
+        state = new RuntimeWeaponState();
+        _runtimeStates[weapon.Id] = state;
+        return state;
+    }
+
+    private bool IsAmmoItem(string itemId)
+        => _definitions.Any(weapon =>
+            weapon.UsesAmmo &&
+            string.Equals(weapon.AmmoItemId, itemId, StringComparison.OrdinalIgnoreCase));
 
     private WeaponDefinition FindGravityGun()
         => _definitions.First(static weapon => weapon.Kind == WeaponKind.GravityGun);
@@ -513,6 +718,16 @@ internal sealed class WeaponSystem
         return -1;
     }
 
+    private int IndexOfWeaponId(string weaponId)
+    {
+        for (int i = 0; i < _definitions.Count; i++)
+        {
+            if (string.Equals(_definitions[i].Id, weaponId, StringComparison.OrdinalIgnoreCase))
+                return i;
+        }
+
+        return -1;
+    }
     private void SetTrace(Vector3 start, Vector3 end, Vector4 color, float seconds)
     {
         _traceStart = start;

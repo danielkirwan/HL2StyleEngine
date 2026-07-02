@@ -9,6 +9,46 @@ internal enum WeaponKind
     Melee
 }
 
+internal enum WeaponCategory
+{
+    SmallWeapons = 1,
+    MediumWeapons = 2,
+    UtilityAndMelee = 3,
+    ThrowablesAndHeavy = 4
+}
+
+internal readonly struct WeaponCategoryDefinition
+{
+    public WeaponCategoryDefinition(int slot, WeaponCategory category, string displayName, string directionLabel)
+    {
+        Slot = slot;
+        Category = category;
+        DisplayName = displayName;
+        DirectionLabel = directionLabel;
+    }
+
+    public int Slot { get; }
+    public WeaponCategory Category { get; }
+    public string DisplayName { get; }
+    public string DirectionLabel { get; }
+}
+
+internal readonly struct WeaponAmmoSnapshot
+{
+    public WeaponAmmoSnapshot(int currentMagazine, int reserveAmmo, bool usesAmmo)
+    {
+        CurrentMagazine = Math.Max(0, currentMagazine);
+        ReserveAmmo = Math.Max(0, reserveAmmo);
+        UsesAmmo = usesAmmo;
+    }
+
+    public int CurrentMagazine { get; }
+    public int ReserveAmmo { get; }
+    public int TotalAmmo => CurrentMagazine + ReserveAmmo;
+    public bool UsesAmmo { get; }
+    public bool HasAmmo => !UsesAmmo || TotalAmmo > 0;
+}
+
 internal enum WeaponViewModelPartShape
 {
     Box,
@@ -88,6 +128,8 @@ internal sealed class WeaponDefinition
         string inventoryItemId,
         string displayName,
         WeaponKind kind,
+        WeaponCategory category,
+        int categoryOrder,
         WeaponViewModelDefinition viewModel,
         float cooldownSeconds,
         float flashSeconds,
@@ -102,12 +144,16 @@ internal sealed class WeaponDefinition
         float pullMaxSpeed = 0f,
         float holdDistance = 0f,
         string? ammoItemId = null,
-        int ammoPerPrimaryFire = 0)
+        int ammoPerPrimaryFire = 0,
+        int magazineSize = 0,
+        string iconLabel = "")
     {
         Id = id;
         InventoryItemId = inventoryItemId;
         DisplayName = displayName;
         Kind = kind;
+        Category = category;
+        CategoryOrder = categoryOrder;
         ViewModel = viewModel;
         CooldownSeconds = cooldownSeconds;
         FlashSeconds = flashSeconds;
@@ -123,12 +169,16 @@ internal sealed class WeaponDefinition
         HoldDistance = holdDistance > 0f ? holdDistance : MathF.Min(3.0f, pickupRange);
         AmmoItemId = ammoItemId;
         AmmoPerPrimaryFire = Math.Max(0, ammoPerPrimaryFire);
+        MagazineSize = Math.Max(0, magazineSize);
+        IconLabel = string.IsNullOrWhiteSpace(iconLabel) ? displayName : iconLabel;
     }
 
     public string Id { get; }
     public string InventoryItemId { get; }
     public string DisplayName { get; }
     public WeaponKind Kind { get; }
+    public WeaponCategory Category { get; }
+    public int CategoryOrder { get; }
     public WeaponViewModelDefinition ViewModel { get; }
     public float CooldownSeconds { get; }
     public float FlashSeconds { get; }
@@ -144,5 +194,7 @@ internal sealed class WeaponDefinition
     public float HoldDistance { get; }
     public string? AmmoItemId { get; }
     public int AmmoPerPrimaryFire { get; }
+    public int MagazineSize { get; }
+    public string IconLabel { get; }
     public bool UsesAmmo => !string.IsNullOrWhiteSpace(AmmoItemId) && AmmoPerPrimaryFire > 0;
 }

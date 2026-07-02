@@ -11,12 +11,18 @@ The intended final gameplay UI backend is RmlUi. RmlUi is a C++ library, so this
 - `RmlUiBackend` probes for a native bridge named `HS2RmlUiBridge`.
 - `RmlUiFrameContext` carries input, renderer, viewport size, and frame time.
 - `RmlUiNativeApi` binds the expected `HS2RmlUiBridge` C ABI at runtime.
-- `RmlUiDocumentBuilder` generates a runtime RML document from the current inventory, pickup modal, prompt, and message state.
+- `RmlUiDocumentBuilder` generates a runtime RML document from the current gameplay HUD, ammo HUD, crosshair-centered weapon selector, loading overlay, inventory, pickup modal, prompt, and message state.
 - `RmlUiOverlayRenderer` is the managed Veldrid-side consumer for native render commands.
 - The first Veldrid consumer path creates dynamic vertex/index buffers, a fallback white texture, scissor-enabled pipeline state, vertex-color UI shaders, texture-id lookup, and indexed draw calls.
 - Game RML/RCSS assets live under `Game/Content/UI` and are copied to the output folder.
 - Runtime gameplay RML is generated into `Content/UI/Runtime/gameplay_ui.rml`.
+- The ImGui preview renderer currently owns the gameplay HUD, ammo HUD, fallback crosshair, centered weapon selector, and loading overlay whenever those overlays are visible, even if native RmlUi presentation is enabled. This keeps combat UI stable while native RmlUi rendering is still being validated.
 
+## Current Gameplay Overlay Choice
+
+Combat-facing overlays currently use the ImGui preview renderer by design: health/suit, ammo, fallback crosshair, weapon selector, and loading overlay force preview rendering through `GameplayUiLayer.ShouldForcePreviewForState`. This avoids the native RmlUi text/layout issues seen in the weapon selector while the bridge is still being validated.
+
+RmlUi should still be kept current for generated document coverage, but gameplay-combat HUD polish should be made in `GameplayUiImGuiPreviewRenderer` first until native RmlUi presentation can render the same layout reliably.
 ## Native Bridge Still Needed
 
 The bridge should eventually expose a small C ABI around RmlUi:

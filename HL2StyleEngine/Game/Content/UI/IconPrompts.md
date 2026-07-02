@@ -1,6 +1,6 @@
 # Inventory Icon Prompts
 
-Use these as square inventory icon prompts. Recommended output: transparent background, 1024x1024, object centered, no text, no UI frame, realistic survival-horror prop style, desaturated color, worn metal/plastic, subtle grime, readable silhouette.
+Use these as square inventory/item icon prompts for items that still appear in the item case. Recommended output: transparent background, 1024x1024, object centered, no text, no UI frame, realistic survival-horror prop style, desaturated color, worn metal/plastic, subtle grime, readable silhouette.
 
 Save finished PNGs under `Content/UI/Icons` using the exact item id as the filename, for example `RustedKey.png`, `ServiceKey.png`, `CrankHandle.png`, and `Fuse.png`. The UI will show the image when the file exists and fall back to the text code when it does not.
 
@@ -19,10 +19,11 @@ Grounded Resident Evil-inspired survival-horror inventory icon, isolated object 
 - Fuse: An old ceramic electrical fuse, off-white porcelain body, aged brass end caps, dark scorch mark near one cap, small red indicator line, isolated on transparent background.
 - Scrap: A small pile of useful crafting scrap: bent metal plates, screws, wire offcuts, one dull brass fitting, dirty and practical, isolated on transparent background.
 - Gunpowder: A small sealed paper packet or tin of gunpowder with no readable label, dark powder residue around the cap, worn utilitarian packaging, isolated on transparent background.
-- Bullets: A compact group of brass pistol cartridges, 12 rounds arranged neatly, dull brass casings and copper tips, slight grime, isolated on transparent background.
-- Test Pistol: A compact black semi-automatic pistol prototype, worn parkerized metal slide, simple industrial grip, subtle scratches, no branding or text, isolated on transparent background. wide object composition, fills a horizontal 2x1 inventory footprint, centered with extra padding, strong silhouette when scaled down.
-- Gravity Gun: A prototype physics manipulator tool with dark worn metal body, exposed prongs, small cyan glass energy core, industrial Half-Life-inspired proportions without logos, practical hand tool scale, isolated on transparent background. large object composition, fills a 3x2 inventory footprint, centered with extra padding, strong silhouette when scaled down.
 
 ## Prompt Add-On For Multi-Slot Items
 
 For wider/taller inventory items, add: "long object composition, fills a vertical 1x2 inventory footprint, centered with extra padding, strong silhouette when scaled down."
+
+## Weapon-System Items
+
+Weapons and ammo no longer appear in the visible item case. Do not create normal inventory icons for `GravityGun`, `TestPistol`, `Crowbar`, or `Bullets` unless a future pickup/notification presentation explicitly needs them.

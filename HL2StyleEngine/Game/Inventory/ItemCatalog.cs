@@ -84,7 +84,7 @@ public static class ItemCatalog
         [Bullets] = new(
             Bullets,
             "Bullets",
-            "Prototype ammunition made by combining scrap with gunpowder.",
+            "Prototype ammunition made by combining scrap with gunpowder. Added directly to weapon ammo reserves.",
             InventoryItemType.Ammo,
             slotWidth: 1,
             slotHeight: 1,
@@ -93,7 +93,7 @@ public static class ItemCatalog
         [TestPistol] = new(
             TestPistol,
             "Test Pistol",
-            "A simple prototype sidearm. Uses bullets from your inventory.",
+            "A simple prototype sidearm. Uses weapon-system bullet ammo and does not occupy inventory space.",
             InventoryItemType.Weapon,
             slotWidth: 2,
             slotHeight: 1,
@@ -102,7 +102,7 @@ public static class ItemCatalog
         [GravityGun] = new(
             GravityGun,
             "Gravity Gun",
-            "A prototype physics manipulator for grabbing and launching dynamic objects.",
+            "A prototype physics manipulator for grabbing and launching dynamic objects. Owned by the weapon system.",
             InventoryItemType.Weapon,
             slotWidth: 3,
             slotHeight: 2,
@@ -111,7 +111,7 @@ public static class ItemCatalog
         [Crowbar] = new(
             Crowbar,
             "Crowbar",
-            "A heavy iron pry bar for close-range melee hits and crate smashing.",
+            "A heavy iron pry bar for close-range melee hits and crate smashing. Owned by the weapon system.",
             InventoryItemType.Weapon,
             slotWidth: 1,
             slotHeight: 3,
