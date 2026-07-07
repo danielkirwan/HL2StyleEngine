@@ -1,0 +1,129 @@
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\BasicPS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\BasicVS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\PresentPS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\PresentVS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\RmlUiPS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\RmlUiVS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\TexturedModelPS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\TexturedModelVS.cso
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\Basic.hlsl
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\PresentPS.hlsl
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\PresentVS.hlsl
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\RmlUiPS.hlsl
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\RmlUiVS.hlsl
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Shaders\TexturedModel.hlsl
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Game.deps.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Game.runtimeconfig.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Inventory\inventory.rml
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Inventory\inventory.rcss
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Icons\ArchiveKey.png
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Icons\Bullets.png
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Icons\Crank.png
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Icons\Fuse.png
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Icons\GunPowder.png
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Icons\InkRibbon.png
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Icons\MasterKey.png
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Icons\RustedKey.png
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Icons\Scrap.png
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Icons\ServiceKey.png
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\UI\Fonts\AurelDeco-Regular.ttf
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\firing rifle.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\hit reaction.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\reloading.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\rifle aiming idle.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\rifle jump.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\rifle run.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\run backwards.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\strafe (2).glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\strafe left.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\strafe right.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\strafe.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\toss grenade.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\turn left.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\turning right 45 degrees.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\walking backwards.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Animations\walking.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Breakable_Wooden_Crate.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Crowbar.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate03.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate04.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate05.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate06.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate07.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\DamagedCrate08.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Future_Soldier_02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\gravitygun.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Scifi_Handgun_01.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\test_pistol.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Game.exe
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\HS2Editor.exe
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\HS2Editor.deps.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\HS2Editor.runtimeconfig.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\HS2Editor.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\HS2Editor.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\ImGui.NET.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Microsoft.DotNet.PlatformAbstractions.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Microsoft.Extensions.DependencyModel.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Microsoft.Win32.SystemEvents.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\NativeLibraryLoader.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Newtonsoft.Json.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\opticfluorine.Veldrid.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\opticfluorine.Veldrid.ImGui.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\opticfluorine.Veldrid.MetalBindings.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\opticfluorine.Veldrid.OpenGLBindings.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\opticfluorine.Veldrid.SDL2.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\opticfluorine.Veldrid.StartupUtilities.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\SharpGen.Runtime.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\SharpGen.Runtime.COM.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\System.Drawing.Common.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\vk.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Vortice.D3DCompiler.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Vortice.Direct3D11.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Vortice.DirectX.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Vortice.DXGI.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Vortice.Mathematics.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\linux-x64\native\libcimgui.so
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\osx\native\libcimgui.dylib
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\win-arm64\native\cimgui.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\win-x64\native\cimgui.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\win-x86\native\cimgui.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\win\lib\net6.0\Microsoft.Win32.SystemEvents.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\osx-x64\native\libsdl2.dylib
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\win-x64\native\SDL2.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\win-x86\native\SDL2.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\unix\lib\net6.0\System.Drawing.Common.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\runtimes\win\lib\net6.0\System.Drawing.Common.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Core.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Editor.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Input.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Physics.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Platform.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Render.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Runtime.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.UI.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Game.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Runtime.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Editor.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Game.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Core.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Input.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Physics.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Platform.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.Render.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Engine.UI.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\HS2Editor.csproj.AssemblyReference.cache
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\HS2Editor.GeneratedMSBuildEditorConfig.editorconfig
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\HS2Editor.AssemblyInfoInputs.cache
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\HS2Editor.AssemblyInfo.cs
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\HS2Editor.csproj.CoreCompileInputs.cache
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\HS2Editor.sourcelink.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\HS2Editor.csproj.Up2Date
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\HS2Editor.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\refint\HS2Editor.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\HS2Editor.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\HS2Editor.genruntimeconfig.cache
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\obj\Debug\net8.0\ref\HS2Editor.dll
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Levels\interaction_test.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Levels\interaction_test_blockout.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Levels\room01.json

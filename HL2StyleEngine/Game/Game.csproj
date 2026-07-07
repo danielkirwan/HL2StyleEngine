@@ -24,6 +24,8 @@
     <None Include="Content\Animations\**\*.glb" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\Animations\**\*.gltf" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\Animations\**\*.bin" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\Levels\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Content\Prefabs\**\*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\Models\**\*.glb" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\Models\**\*.gltf" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\Models\**\*.bin" CopyToOutputDirectory="PreserveNewest" />

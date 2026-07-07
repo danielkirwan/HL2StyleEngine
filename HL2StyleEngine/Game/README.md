@@ -101,7 +101,7 @@ Object health is now data-driven enough for the first crate-damage pass.
 
 - `LevelEntityDef` stores `Damageable`, `MaxHealth`, `BreakReplacementModelPaths`, `BreakReplacementKeepsPhysics`, and `BreakDebrisModelPaths`.
 - Runtime `Entity` mirrors health and broken state. Save data records broken objects by entity name and the replacement model chosen, so broken crates stay broken after load.
-- The level editor inspector exposes damage settings for box, rigid-body, and prop entities. The model picker currently shows all `.glb` files under `Content/Models`; this should move toward folders/search as the model library grows.
+- The level editor inspector exposes damage settings for box, rigid-body, and prop entities. The model picker currently shows all `.glb` files under `Content/Models`; the standalone editor content browser can preview selected GLBs and drag them into replacement/debris model lists. This should move toward folders/search as the model library grows.
 - Current crate behavior is full health -> broken crate. Bullet hits from any weapon using the weapon damage path, Gravity Gun pulse/blast damage, and crowbar melee hits reduce health. The current `Crate_*` props have 60 health and choose a random `DamagedCrate02` through `DamagedCrate08` replacement while keeping physics/pickup enabled.
 - Debris model lists are stored now for future use. Once debris assets and spawning are in, the broken object should replace the original and optionally spawn selected debris models.
 - Previous visual bug: when crates broke and swapped to a damaged replacement model, the current/intact model could flash white before the new model appeared.
@@ -110,16 +110,19 @@ Object health is now data-driven enough for the first crate-damage pass.
 - Longer-term crate destruction should still move toward actual debris-piece spawning once debris assets exist, with dust/splinter particles added for impact cover and feel.
 - Planned damage sources should call the same object-health entry point: explosions and future enemy/environment impacts. Crowbar melee currently damages objects; hit sounds are still pending.
 
-## HS2Editor Plan
+## HS2Editor First Pass
 
-A standalone editor app is planned under the name `HS2Editor`. The full target is documented in `Engine.Editor/README.md` before implementation starts.
+The standalone editor app now exists under `HS2Editor`. The full target and roadmap are documented in `Engine.Editor/README.md`.
 
-Confirmed direction: separate executable, existing renderer plus ImGui, project/content browser, level manager, 3D viewport, hierarchy, inspector, model assignment, prefab JSONs, registered script attachment with editable JSON parameters, basic UI file management and preview, asset importer launch, and game launch from the selected level.
+Implemented direction: separate executable, existing renderer plus ImGui, project/content browser, level manager, 3D viewport, hierarchy, inspector, model assignment, prefab JSONs, registered script attachment through the existing inspector path, basic UI file management, asset importer launch, and game launch from the selected level.
 
-The first pass can use path-based asset references because the current level format already does. GUID/meta asset identity should be added later when content browser rename/move support and prefab references need stable asset ids.
+The root `HS2Project.json` stores the project name, content root, startup level, recent levels, Blender path placeholder, asset importer project path, game project path, and preferences. Root launchers are available for `LaunchEditor.bat`, `LaunchAssetImporter.bat`, and `LaunchGame.bat`.
+
+The first pass still uses path-based asset references because the current level format already does. GUID/meta asset identity should be added later when content browser rename/move support and prefab references need stable asset ids.
+
 ## Next Likely Work
 
-- Start the standalone `HS2Editor` app described in `Engine.Editor/README.md`.
+- Grow the standalone `HS2Editor` app beyond the first pass: richer object creation palettes, visual UI preview, GUID/meta asset ids, and embedded play mode.
 - Split or retarget the player character into first-person hands/arms so weapon placement can move from camera-mounted offsets to right-hand/arm placement and animation.
 - Use the Debug window viewmodel tuning sliders to validate imported viewmodel scale/orientation with `test_pistol.glb`, `gravitygun.glb`, and `Crowbar.glb`, then copy good values back into `WeaponDefinitions.cs`.
 - Tune the selector once more weapons exist in each category and replace text-only blocks with proper weapon icon artwork.

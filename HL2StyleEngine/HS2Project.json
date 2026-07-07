@@ -1,0 +1,17 @@
+{
+  "ProjectName": "HL2StyleEngine",
+  "ContentRoot": "Game/Content",
+  "StartupLevel": "Game/Content/Levels/interaction_test.json",
+  "RecentLevels": [
+    "Game/Content/Levels/interaction_test.json",
+    "Game/Content/Levels/interaction_test_blockout.json",
+    "Game/Content/Levels/room01.json"
+  ],
+  "RecentAssets": [],
+  "BlenderExecutablePath": "",
+  "AssetImporterProject": "Engine.AssetImporter/Engine.AssetImporter.csproj",
+  "GameProject": "Game/Game.csproj",
+  "Preferences": {
+    "DockLayoutVersion": "6"
+  }
+}

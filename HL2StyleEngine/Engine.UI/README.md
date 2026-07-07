@@ -33,7 +33,7 @@ The weapon selector/HUD pass is paused again after these fixes:
 
 ## HS2Editor UI Authoring Target
 
-The standalone `HS2Editor` app should initially manage UI assets under `Content/UI`, provide source editing for `.rml` and `.rcss`, and show a visible UI preview. A later milestone can add a visual layout canvas, selectable elements, property/style inspection, font/image asset picking, and live preview against sample gameplay UI state.
+The standalone `HS2Editor` app now has a first-pass UI manager for assets under `Content/UI`. It can create, open, edit, save, and source-preview `.rml` and `.rcss` files. A later milestone should replace the source/text preview with a real RmlUi visual preview, then add a visual layout canvas, selectable elements, property/style inspection, font/image asset picking, and live preview against sample gameplay UI state.
 ## Native Bridge Still Needed
 
 The bridge should eventually expose a small C ABI around RmlUi:

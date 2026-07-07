@@ -991,3 +991,6 @@ C:\tmp\hl2_game_build_hud_borders_crate_ready\Game.deps.json
 C:\tmp\hl2_game_build_hud_borders_crate_ready\Game.runtimeconfig.json
 C:\tmp\hl2_game_build_hud_borders_crate_ready\Game.dll
 C:\tmp\hl2_game_build_hud_borders_crate_ready\Game.pdb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Levels\interaction_test.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Levels\interaction_test_blockout.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Levels\room01.json

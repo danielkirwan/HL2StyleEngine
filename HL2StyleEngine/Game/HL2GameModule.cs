@@ -131,6 +131,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         public string? Error;
     }
 
+    private readonly string? _initialLevelPath;
+
     private EngineContext _ctx = null!;
 
     private readonly InputState _inputState = new();
@@ -256,6 +258,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private const string InteractionPuzzleSlot = "PuzzleSlot";
     private const string InteractionPuzzleDoor = "PuzzleDoor";
 
+    public HL2GameModule(string? initialLevelPath = null)
+    {
+        _initialLevelPath = string.IsNullOrWhiteSpace(initialLevelPath) ? null : initialLevelPath;
+    }
     public InputState InputState => _inputState;
     private bool GameplayModalOpen => !_editorEnabled && (_inventoryOpen || _storageOpen || _itemCollectedOpen || _spawnCommandOpen || _saveSlotPanelOpen || _pauseMenuOpen || _loadSlotPanelOpen);
 
@@ -294,8 +300,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         string levelsDirectory = GetPracticeLevelsDirectory();
         EnsurePracticeLevelTemplates(levelsDirectory);
-        string levelPath = Path.Combine(levelsDirectory, MeshedPracticeLevelFileName);
-        _editor.LoadOrCreate(levelPath, SimpleLevel.BuildInteractionTestFile);
+        string levelPath = ResolveInitialLevelPath(_initialLevelPath) ?? Path.Combine(levelsDirectory, MeshedPracticeLevelFileName);
+        _editor.LoadOrCreate(levelPath, GetDefaultLevelFactoryForPath(levelPath));
         RebuildRuntimeWorld();
         if (!TryLoadPrototypeSave())
         {
@@ -1010,6 +1016,18 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         return slots;
     }
 
+    private static string? ResolveInitialLevelPath(string? requestedPath)
+    {
+        if (string.IsNullOrWhiteSpace(requestedPath))
+            return null;
+
+        string trimmed = requestedPath.Trim('"');
+        if (Path.IsPathRooted(trimmed))
+            return File.Exists(trimmed) ? Path.GetFullPath(trimmed) : null;
+
+        string outputRelative = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, trimmed.Replace('/', Path.DirectorySeparatorChar)));
+        return File.Exists(outputRelative) ? outputRelative : null;
+    }
     private static string GetPracticeLevelsDirectory()
         => Path.Combine(AppContext.BaseDirectory, "Content", "Levels");
 

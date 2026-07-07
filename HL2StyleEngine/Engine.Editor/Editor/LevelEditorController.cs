@@ -13,6 +13,8 @@ namespace Engine.Editor.Editor;
 
 public sealed class LevelEditorController
 {
+    private const string GlbAssetDragDropPayload = "HS2_GLB_ASSET_PATH";
+
     public LevelFile LevelFile { get; private set; } = null!;
     public string LevelPath { get; private set; } = "";
 
@@ -290,6 +292,46 @@ public sealed class LevelEditorController
         }
     }
 
+    public bool TryGetSelectedEntity(out LevelEntityDef entity)
+    {
+        if (SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count)
+        {
+            entity = LevelFile.Entities[SelectedEntityIndex];
+            return true;
+        }
+
+        entity = null!;
+        return false;
+    }
+
+    public bool AssignSelectedMeshPath(string meshPath)
+    {
+        if (!TryGetSelectedEntity(out LevelEntityDef entity))
+            return false;
+
+        BeginEdit();
+        entity.MeshPath = meshPath ?? "";
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+        EndEditIfAny();
+        return true;
+    }
+
+    public bool AddEntityFromTemplate(LevelEntityDef template, string? nameSuffix = null)
+    {
+        LevelEntityDef copy = CloneEntity(template);
+        if (!string.IsNullOrWhiteSpace(nameSuffix))
+            copy.Name = $"{copy.Name ?? copy.Type}_{nameSuffix}";
+
+        BeginEdit();
+        copy.LocalPosition = copy.LocalPosition + new Vector3(0.5f, 0f, 0.5f);
+        LevelFile.Entities.Add(copy);
+        SelectedEntityIndex = LevelFile.Entities.Count - 1;
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+        EndEditIfAny();
+        return true;
+    }
     public bool DuplicateSelected()
     {
         if (SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
@@ -314,42 +356,11 @@ public sealed class LevelEditorController
 
     private static LevelEntityDef CloneEntity(LevelEntityDef src)
     {
-        return new LevelEntityDef
-        {
-            Id = Guid.NewGuid().ToString("N"),
-            Type = src.Type,
-            Name = (src.Name ?? "Entity") + "_copy",
-
-            ParentId = src.ParentId,
-
-            LocalPosition = src.LocalPosition,
-            LocalRotationEulerDeg = src.LocalRotationEulerDeg,
-            LocalScale = src.LocalScale,
-
-            Size = src.Size,
-            Color = src.Color,
-
-            YawDeg = src.YawDeg,
-
-            LightColor = src.LightColor,
-            Intensity = src.Intensity,
-            Range = src.Range,
-
-            MeshPath = src.MeshPath,
-            MaterialPath = src.MaterialPath,
-
-            TriggerSize = src.TriggerSize,
-            TriggerEvent = src.TriggerEvent,
-
-            Shape = src.Shape,
-            Mass = src.Mass,
-            Friction = src.Friction,
-            Restitution = src.Restitution,
-            IsKinematic = src.IsKinematic,
-
-            Radius = src.Radius,
-            Height = src.Height
-        };
+        string json = JsonSerializer.Serialize(src);
+        LevelEntityDef copy = JsonSerializer.Deserialize<LevelEntityDef>(json) ?? new LevelEntityDef();
+        copy.Id = Guid.NewGuid().ToString("N");
+        copy.Name = (src.Name ?? "Entity") + "_copy";
+        return copy;
     }
 
     public void DrawToolbarPanel(ref bool mouseOverUi, ref bool keyboardOverUi)
@@ -926,6 +937,8 @@ public sealed class LevelEditorController
 
     private void DrawModelPathList(string label, List<string> paths)
     {
+        DrawModelPathDropTarget(label, paths);
+
         if (paths.Count == 0)
         {
             ImGui.TextDisabled($"No {label.ToLowerInvariant()} models selected.");
@@ -956,6 +969,47 @@ public sealed class LevelEditorController
                 break;
             }
         }
+    }
+
+    private void DrawModelPathDropTarget(string label, List<string> paths)
+    {
+        ImGui.PushID($"{label}DropTarget");
+        ImGui.Button($"Drop GLB here to add {label.ToLowerInvariant()} model", new Vector2(-1f, 24f));
+        if (ImGui.BeginDragDropTarget())
+        {
+            ImGuiPayloadPtr payload = ImGui.AcceptDragDropPayload(GlbAssetDragDropPayload, ImGuiDragDropFlags.None);
+            unsafe
+            {
+                if (payload.NativePtr != null && payload.Delivery && TryReadPayloadString(payload, out string modelPath))
+                {
+                    if (modelPath.EndsWith(".glb", StringComparison.OrdinalIgnoreCase) &&
+                        !paths.Contains(modelPath, StringComparer.OrdinalIgnoreCase))
+                    {
+                        BeginEdit();
+                        paths.Add(modelPath);
+                        Dirty = true;
+                        RebuildRuntimeFromLevel();
+                        EndEditIfAny();
+                    }
+                }
+            }
+            ImGui.EndDragDropTarget();
+        }
+        ImGui.PopID();
+    }
+
+    private static bool TryReadPayloadString(ImGuiPayloadPtr payload, out string value)
+    {
+        value = "";
+        int size = payload.DataSize;
+        nint data = payload.Data;
+        if (data == IntPtr.Zero || size <= 0)
+            return false;
+
+        byte[] bytes = new byte[size];
+        Marshal.Copy(data, bytes, 0, size);
+        value = Encoding.UTF8.GetString(bytes).TrimEnd('\0').Trim();
+        return !string.IsNullOrWhiteSpace(value);
     }
 
     private static bool SupportsDamageableSettings(LevelEntityDef ent)

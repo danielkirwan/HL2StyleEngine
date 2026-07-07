@@ -1,7 +1,7 @@
 # HS2 Asset Importer
 
 Standalone Windows tool for converting source art FBX files into GLB files for the engine content folders.
-Planned editor integration: the standalone `HS2Editor` app should launch this importer rather than duplicating the converter in its first pass. The editor project file should remember useful paths such as `blender.exe`, the importer executable, and preferred destination folders under `Content/Models` and `Content/Animations`.
+Editor integration: the standalone `HS2Editor` app launches this importer rather than duplicating the converter in its first pass. `HS2Project.json` stores useful paths such as `blender.exe`, the importer project, the game project, and preferred content roots under `Game/Content`.
 
 The UI now has two tabs:
 
