@@ -43,3 +43,12 @@ C:\tmp\hl2_game_build_ui_force_preview\Engine.Physics.pdb
 C:\tmp\hl2_game_build_ui_force_preview_final\Engine.Physics.deps.json
 C:\tmp\hl2_game_build_ui_force_preview_final\Engine.Physics.dll
 C:\tmp\hl2_game_build_ui_force_preview_final\Engine.Physics.pdb
+C:\tmp\hl2_game_build_ui_ammo_hud\Engine.Physics.deps.json
+C:\tmp\hl2_game_build_ui_ammo_hud\Engine.Physics.dll
+C:\tmp\hl2_game_build_ui_ammo_hud\Engine.Physics.pdb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Engine.Physics.deps.json
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Engine.Physics.dll
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Engine.Physics.pdb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Engine.Physics.deps.json
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Engine.Physics.dll
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Engine.Physics.pdb

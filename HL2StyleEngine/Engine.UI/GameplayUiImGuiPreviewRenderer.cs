@@ -79,43 +79,82 @@ internal sealed class GameplayUiImGuiPreviewRenderer
             ImGuiWindowFlags.NoMove |
             ImGuiWindowFlags.NoSavedSettings |
             ImGuiWindowFlags.NoInputs |
+            ImGuiWindowFlags.NoScrollbar |
+            ImGuiWindowFlags.NoScrollWithMouse |
             ImGuiWindowFlags.NoBackground;
 
-        Vector4 yellow = new(0.86f, 0.80f, 0.00f, 1f);
-        Vector2 bottomLeft = new(viewport.Pos.X + 44f, viewport.Pos.Y + viewport.Size.Y - 104f);
-        ImGui.SetNextWindowPos(bottomLeft, ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new Vector2(520f, 88f), ImGuiCond.Always);
+        Vector4 panelFill = new(0.06f, 0.05f, 0.00f, 0.54f);
+        Vector4 panelBorder = new(0.88f, 0.75f, 0.00f, 0.48f);
+        Vector4 yellow = new(0.96f, 0.88f, 0.00f, 1f);
+        Vector4 mutedYellow = new(0.78f, 0.72f, 0.00f, 0.86f);
+
+        Vector2 statusPos = new(viewport.Pos.X + 38f, viewport.Pos.Y + viewport.Size.Y - 78f);
+        ImGui.SetNextWindowPos(statusPos, ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(300f, 58f), ImGuiCond.Always);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
         ImGui.Begin("GameplayHudLeft", flags);
-        ImGui.TextColored(yellow, "HEALTH");
-        ImGui.SameLine(104f);
-        ImGui.SetWindowFontScale(2.2f);
-        ImGui.TextColored(yellow, Math.Clamp(state.Health, 0, 999).ToString());
-        ImGui.SetWindowFontScale(1f);
-        ImGui.SameLine(278f);
-        ImGui.TextColored(yellow, "SUIT");
-        ImGui.SameLine(378f);
-        ImGui.SetWindowFontScale(2.2f);
-        ImGui.TextColored(yellow, Math.Clamp(state.Suit, 0, 999).ToString());
-        ImGui.SetWindowFontScale(1f);
+
+        ImDrawListPtr statusDrawList = ImGui.GetWindowDrawList();
+        DrawHudValuePanel(statusDrawList, ImGui.GetWindowPos(), new Vector2(134f, 54f), "HEALTH", Math.Clamp(state.Health, 0, 999).ToString(), panelFill, panelBorder, mutedYellow, yellow);
+        DrawHudValuePanel(statusDrawList, ImGui.GetWindowPos() + new Vector2(154f, 0f), new Vector2(134f, 54f), "SUIT", Math.Clamp(state.Suit, 0, 999).ToString(), panelFill, panelBorder, mutedYellow, yellow);
         ImGui.End();
+        ImGui.PopStyleVar();
 
         if (!state.AmmoHudVisible)
             return;
 
-        Vector2 bottomRight = new(viewport.Pos.X + viewport.Size.X - 350f, viewport.Pos.Y + viewport.Size.Y - 104f);
-        ImGui.SetNextWindowPos(bottomRight, ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new Vector2(306f, 78f), ImGuiCond.Always);
-        ImGui.SetNextWindowBgAlpha(0.40f);
-        ImGui.Begin("GameplayHudAmmo", flags & ~ImGuiWindowFlags.NoBackground);
-        ImGui.TextColored(yellow, "AMMO");
-        ImGui.SameLine(118f);
-        ImGui.SetWindowFontScale(2.2f);
+        float ammoWidth = 248f;
+        float ammoX = viewport.Pos.X + viewport.Size.X - ammoWidth - 42f;
+        float ammoY = viewport.Pos.Y + viewport.Size.Y - 78f;
+        if (ammoX < statusPos.X + 324f)
+            ammoY -= 66f;
+
+        ImGui.SetNextWindowPos(new Vector2(ammoX, ammoY), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(ammoWidth, 58f), ImGuiCond.Always);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        ImGui.Begin("GameplayHudAmmo", flags);
+
+        ImDrawListPtr ammoDrawList = ImGui.GetWindowDrawList();
+        Vector2 ammoMin = ImGui.GetWindowPos();
+        Vector2 ammoSize = new(ammoWidth - 8f, 54f);
+        Vector2 ammoBorderMin = ammoMin + Vector2.One;
+        Vector2 ammoBorderMax = ammoMin + ammoSize - Vector2.One;
+        ammoDrawList.AddRectFilled(ammoBorderMin, ammoBorderMax, ImGui.ColorConvertFloat4ToU32(panelFill));
+        ammoDrawList.AddRect(ammoBorderMin, ammoBorderMax, ImGui.ColorConvertFloat4ToU32(panelBorder));
+        ammoDrawList.AddText(ammoMin + new Vector2(14f, 31f), ImGui.ColorConvertFloat4ToU32(mutedYellow), "AMMO");
+
+        ImGui.SetCursorScreenPos(ammoMin + new Vector2(96f, 4f));
+        ImGui.SetWindowFontScale(2.15f);
         ImGui.TextColored(yellow, Math.Clamp(state.CurrentMagazineAmmo, 0, 999).ToString());
-        ImGui.SetWindowFontScale(1.5f);
-        ImGui.SameLine(224f);
+        ImGui.SetWindowFontScale(1.55f);
+        ImGui.SetCursorScreenPos(ammoMin + new Vector2(188f, 12f));
         ImGui.TextColored(yellow, Math.Clamp(state.ReserveAmmo, 0, 999).ToString());
         ImGui.SetWindowFontScale(1f);
         ImGui.End();
+        ImGui.PopStyleVar();
+    }
+
+    private static void DrawHudValuePanel(
+        ImDrawListPtr drawList,
+        Vector2 min,
+        Vector2 size,
+        string label,
+        string value,
+        Vector4 fill,
+        Vector4 border,
+        Vector4 labelColor,
+        Vector4 valueColor)
+    {
+        Vector2 borderMin = min + Vector2.One;
+        Vector2 borderMax = min + size - Vector2.One;
+        drawList.AddRectFilled(borderMin, borderMax, ImGui.ColorConvertFloat4ToU32(fill));
+        drawList.AddRect(borderMin, borderMax, ImGui.ColorConvertFloat4ToU32(border));
+        drawList.AddText(min + new Vector2(11f, 31f), ImGui.ColorConvertFloat4ToU32(labelColor), label);
+
+        ImGui.SetCursorScreenPos(min + new Vector2(65f, 4f));
+        ImGui.SetWindowFontScale(2.05f);
+        ImGui.TextColored(valueColor, value);
+        ImGui.SetWindowFontScale(1f);
     }
 
     private static void DrawWeaponSelector(GameplayUiState state, ImGuiViewportPtr viewport)

@@ -598,6 +598,7 @@ internal sealed class WeaponSystem
 
         if (_equippedIndex == index)
         {
+            EnsureVisibleMagazineLoaded(EquippedWeapon);
             if (showMessage && showAlreadyMessage)
                 host?.ShowWeaponMessage($"{EquippedWeapon.DisplayName} already equipped.", 0.9f);
             return;
@@ -611,6 +612,7 @@ internal sealed class WeaponSystem
         _gravitySuppressPullUntilPrimaryReleased = false;
         _meleeSwingTimer = 0f;
         _equippedIndex = index;
+        EnsureVisibleMagazineLoaded(EquippedWeapon);
         if (showMessage)
             host?.ShowWeaponMessage($"Equipped {EquippedWeapon.DisplayName}.", 1.25f);
     }
@@ -618,16 +620,30 @@ internal sealed class WeaponSystem
     private void EnsureEquippedWeaponOwned(IWeaponHost? host)
     {
         if (IsWeaponOwned(EquippedWeapon))
+        {
+            EnsureVisibleMagazineLoaded(EquippedWeapon);
             return;
+        }
 
         int next = FindNextOwnedWeapon();
         if (next >= 0)
         {
             _equippedIndex = next;
+            EnsureVisibleMagazineLoaded(EquippedWeapon);
             return;
         }
 
         host?.ShowWeaponMessage("No weapons available.", 1.25f);
+    }
+
+    private void EnsureVisibleMagazineLoaded(WeaponDefinition weapon)
+    {
+        if (!weapon.UsesAmmo)
+            return;
+
+        RuntimeWeaponState state = GetState(weapon);
+        if (state.CurrentMagazine <= 0)
+            TryReloadFromReserve(weapon, state);
     }
 
     private int FindNextOwnedWeapon()

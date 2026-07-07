@@ -808,3 +808,186 @@ C:\tmp\hl2_game_build_ui_force_preview_final\Game.deps.json
 C:\tmp\hl2_game_build_ui_force_preview_final\Game.runtimeconfig.json
 C:\tmp\hl2_game_build_ui_force_preview_final\Game.dll
 C:\tmp\hl2_game_build_ui_force_preview_final\Game.pdb
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\BasicPS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\BasicVS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\PresentPS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\PresentVS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\RmlUiPS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\RmlUiVS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\TexturedModelPS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\TexturedModelVS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\Basic.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\PresentPS.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\PresentVS.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\RmlUiPS.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\RmlUiVS.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud\Shaders\TexturedModel.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Inventory\inventory.rml
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Inventory\inventory.rcss
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Icons\ArchiveKey.png
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Icons\Bullets.png
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Icons\Crank.png
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Icons\Fuse.png
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Icons\GunPowder.png
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Icons\InkRibbon.png
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Icons\MasterKey.png
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Icons\RustedKey.png
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Icons\Scrap.png
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Icons\ServiceKey.png
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\UI\Fonts\AurelDeco-Regular.ttf
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\firing rifle.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\hit reaction.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\reloading.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\rifle aiming idle.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\rifle jump.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\rifle run.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\run backwards.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\strafe (2).glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\strafe left.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\strafe right.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\strafe.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\toss grenade.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\turn left.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\turning right 45 degrees.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\walking backwards.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Animations\walking.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\Breakable_Wooden_Crate.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\Crowbar.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\DamagedCrate02.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\DamagedCrate03.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\DamagedCrate04.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\DamagedCrate05.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\DamagedCrate06.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\DamagedCrate07.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\DamagedCrate08.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\Future_Soldier_02.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\gravitygun.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\Scifi_Handgun_01.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Content\Models\ViewModels\test_pistol.glb
+C:\tmp\hl2_game_build_ui_ammo_hud\Game.exe
+C:\tmp\hl2_game_build_ui_ammo_hud\Game.deps.json
+C:\tmp\hl2_game_build_ui_ammo_hud\Game.runtimeconfig.json
+C:\tmp\hl2_game_build_ui_ammo_hud\Game.dll
+C:\tmp\hl2_game_build_ui_ammo_hud\Game.pdb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\BasicPS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\BasicVS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\PresentPS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\PresentVS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\RmlUiPS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\RmlUiVS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\TexturedModelPS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\TexturedModelVS.cso
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\Basic.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\PresentPS.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\PresentVS.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\RmlUiPS.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\RmlUiVS.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Shaders\TexturedModel.hlsl
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Inventory\inventory.rml
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Inventory\inventory.rcss
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Icons\ArchiveKey.png
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Icons\Bullets.png
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Icons\Crank.png
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Icons\Fuse.png
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Icons\GunPowder.png
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Icons\InkRibbon.png
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Icons\MasterKey.png
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Icons\RustedKey.png
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Icons\Scrap.png
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Icons\ServiceKey.png
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\UI\Fonts\AurelDeco-Regular.ttf
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\firing rifle.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\hit reaction.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\reloading.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\rifle aiming idle.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\rifle jump.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\rifle run.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\run backwards.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\strafe (2).glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\strafe left.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\strafe right.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\strafe.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\toss grenade.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\turn left.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\turning right 45 degrees.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\walking backwards.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Animations\walking.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\Breakable_Wooden_Crate.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\Crowbar.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\DamagedCrate02.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\DamagedCrate03.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\DamagedCrate04.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\DamagedCrate05.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\DamagedCrate06.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\DamagedCrate07.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\DamagedCrate08.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\Future_Soldier_02.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\gravitygun.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\Scifi_Handgun_01.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Content\Models\ViewModels\test_pistol.glb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Game.exe
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Game.deps.json
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Game.runtimeconfig.json
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Game.dll
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Game.pdb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\BasicPS.cso
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\BasicVS.cso
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\PresentPS.cso
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\PresentVS.cso
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\RmlUiPS.cso
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\RmlUiVS.cso
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\TexturedModelPS.cso
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\TexturedModelVS.cso
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\Basic.hlsl
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\PresentPS.hlsl
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\PresentVS.hlsl
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\RmlUiPS.hlsl
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\RmlUiVS.hlsl
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Shaders\TexturedModel.hlsl
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Inventory\inventory.rml
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Inventory\inventory.rcss
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Icons\ArchiveKey.png
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Icons\Bullets.png
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Icons\Crank.png
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Icons\Fuse.png
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Icons\GunPowder.png
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Icons\InkRibbon.png
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Icons\MasterKey.png
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Icons\RustedKey.png
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Icons\Scrap.png
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Icons\ServiceKey.png
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\UI\Fonts\AurelDeco-Regular.ttf
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\firing rifle.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\hit reaction.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\reloading.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\rifle aiming idle.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\rifle jump.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\rifle run.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\run backwards.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\strafe (2).glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\strafe left.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\strafe right.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\strafe.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\toss grenade.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\turn left.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\turning right 45 degrees.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\walking backwards.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Animations\walking.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\Breakable_Wooden_Crate.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\Crowbar.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\DamagedCrate02.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\DamagedCrate03.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\DamagedCrate04.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\DamagedCrate05.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\DamagedCrate06.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\DamagedCrate07.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\DamagedCrate08.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\Future_Soldier_02.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\gravitygun.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\Scifi_Handgun_01.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Content\Models\ViewModels\test_pistol.glb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Game.exe
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Game.deps.json
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Game.runtimeconfig.json
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Game.dll
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Game.pdb

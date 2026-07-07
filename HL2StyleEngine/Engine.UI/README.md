@@ -23,6 +23,17 @@ The intended final gameplay UI backend is RmlUi. RmlUi is a C++ library, so this
 Combat-facing overlays currently use the ImGui preview renderer by design: health/suit, ammo, fallback crosshair, weapon selector, and loading overlay force preview rendering through `GameplayUiLayer.ShouldForcePreviewForState`. This avoids the native RmlUi text/layout issues seen in the weapon selector while the bridge is still being validated.
 
 RmlUi should still be kept current for generated document coverage, but gameplay-combat HUD polish should be made in `GameplayUiImGuiPreviewRenderer` first until native RmlUi presentation can render the same layout reliably.
+
+## Applied Gameplay UI Fixes
+
+The weapon selector/HUD pass is paused again after these fixes:
+
+- Ammo HUD initialization now loads an empty clip from reserve when an ammo weapon is equipped or already active, so clip/reserve values appear in the correct slots before the first shot.
+- Health/suit and ammo HUD blocks now use the same translucent dark yellow/black background colors and yellow borders as the weapon-switching rectangles. HUD borders are inset by one pixel to avoid ImGui clipping on the top/left edges.
+
+## HS2Editor UI Authoring Target
+
+The standalone `HS2Editor` app should initially manage UI assets under `Content/UI`, provide source editing for `.rml` and `.rcss`, and show a visible UI preview. A later milestone can add a visual layout canvas, selectable elements, property/style inspection, font/image asset picking, and live preview against sample gameplay UI state.
 ## Native Bridge Still Needed
 
 The bridge should eventually expose a small C ABI around RmlUi:

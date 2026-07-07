@@ -51,3 +51,12 @@ C:\tmp\hl2_game_build_ui_force_preview\Engine.Platform.pdb
 C:\tmp\hl2_game_build_ui_force_preview_final\Engine.Platform.deps.json
 C:\tmp\hl2_game_build_ui_force_preview_final\Engine.Platform.dll
 C:\tmp\hl2_game_build_ui_force_preview_final\Engine.Platform.pdb
+C:\tmp\hl2_game_build_ui_ammo_hud\Engine.Platform.deps.json
+C:\tmp\hl2_game_build_ui_ammo_hud\Engine.Platform.dll
+C:\tmp\hl2_game_build_ui_ammo_hud\Engine.Platform.pdb
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Engine.Platform.deps.json
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Engine.Platform.dll
+C:\tmp\hl2_game_build_ui_ammo_hud_final\Engine.Platform.pdb
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Engine.Platform.deps.json
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Engine.Platform.dll
+C:\tmp\hl2_game_build_hud_borders_crate_ready\Engine.Platform.pdb

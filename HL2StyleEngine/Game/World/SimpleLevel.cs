@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Engine.Editor.Level;
@@ -382,6 +382,25 @@ public static class SimpleLevel
             TriggerSize = new Vector3(2f, 2f, 2.5f),
             TriggerEvent = "Entered_SaveRoom"
         });
+
+        return level;
+    }
+
+    public static LevelFile BuildInteractionTestBlockoutFile()
+    {
+        LevelFile level = BuildInteractionTestFile();
+        Vector4 primitiveCrateColor = new(0.60f, 0.45f, 0.25f, 1f);
+
+        foreach (LevelEntityDef entity in level.Entities)
+        {
+            entity.MeshPath = "";
+            entity.MaterialPath = "";
+            entity.BreakReplacementModelPaths.Clear();
+            entity.BreakDebrisModelPaths.Clear();
+
+            if (entity.Name?.StartsWith("Crate_", StringComparison.OrdinalIgnoreCase) == true)
+                entity.Color = primitiveCrateColor;
+        }
 
         return level;
     }

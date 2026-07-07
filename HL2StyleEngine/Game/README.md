@@ -6,7 +6,9 @@ This file tracks completed gameplay-facing systems and the current implementatio
 
 The playable prototype lives in `Game` and is driven by `HL2GameModule`.
 
-The current test level is loaded from `Content/Levels/interaction_test.json` at runtime. If the level is missing, the game regenerates it from `SimpleLevel.BuildInteractionTestFile`.
+The current default practice level is loaded from `Content/Levels/interaction_test.json` at runtime. Its display name is `Interaction Test`. If the level is missing, the game regenerates it from `SimpleLevel.BuildInteractionTestFile`.
+
+A matching primitive/blockout version is generated as `Content/Levels/interaction_test_blockout.json`. The default template comes from `SimpleLevel.BuildInteractionTestBlockoutFile`, and the Debug window's `Load Blockout Practice` button also clones the currently loaded level in memory before stripping mesh/material paths and break-replacement model paths. This keeps the same layout and gameplay entities while rendering as editor-style blocks. The Debug window has a Practice Level Switcher with buttons for `Load Meshed Practice` and `Load Blockout Practice`; switching resets transient prototype state, respawns the player, and keeps the current level path active for F5 reload and F6 reset. In blockout presentation mode, runtime weapon viewmodels stay visible but force their primitive fallback geometry instead of imported GLBs, so the showcase can compare boxed layout/weapons vs imported/meshed presentation.
 
 ## Completed Systems
 
@@ -31,6 +33,13 @@ The combat HUD path is intentionally split while native RmlUi rendering is still
 - Inventory, storage, pickup, save/load, prompt, and generated RML document paths still exist in the RmlUi workflow.
 - The Rml weapon-selector fallback is kept aligned, but the active gameplay selector should be treated as the ImGui version until native RmlUi text/layout rendering is reliable.
 - The current weapon selector is text-only: no category headers, no icons yet, just weapon names inside translucent yellow Half-Life 2-style rectangles around the crosshair.
+
+## Applied Weapon UI Fixes
+
+The weapon UI polish pass is closed again after the following fixes:
+
+- Ammo HUD initialization now loads an empty clip from reserve when an ammo weapon is equipped or already active. This fixes the observed pistol display where the clip showed `0` and reserve showed `8` until the first shot moved the values to clip `7` and reserve `0`.
+- Health/suit and ammo HUD panels now use the same translucent dark yellow/black background fill and yellow border treatment as the weapon-switching rectangles. Panel borders are drawn one pixel inside their ImGui windows so top/left edges are not clipped.
 
 ## Weapon System
 
@@ -95,10 +104,22 @@ Object health is now data-driven enough for the first crate-damage pass.
 - The level editor inspector exposes damage settings for box, rigid-body, and prop entities. The model picker currently shows all `.glb` files under `Content/Models`; this should move toward folders/search as the model library grows.
 - Current crate behavior is full health -> broken crate. Bullet hits from any weapon using the weapon damage path, Gravity Gun pulse/blast damage, and crowbar melee hits reduce health. The current `Crate_*` props have 60 health and choose a random `DamagedCrate02` through `DamagedCrate08` replacement while keeping physics/pickup enabled.
 - Debris model lists are stored now for future use. Once debris assets and spawning are in, the broken object should replace the original and optionally spawn selected debris models.
+- Previous visual bug: when crates broke and swapped to a damaged replacement model, the current/intact model could flash white before the new model appeared.
+- Replacement/warm-up rule: any future system that swaps one runtime object for another should prepare the incoming object first, then replace or hide the outgoing object only after the replacement is ready. If the replacement cannot be prepared, keep the original visible or fail gracefully instead of briefly rendering an incorrect fallback.
+- Selected crate swap behavior: break replacement GLBs are preloaded during runtime world rebuild, and the break path verifies/prepares the damaged replacement model before assigning it to the entity. This keeps the intact crate visible until the replacement model is ready, avoiding the temporary white primitive fallback.
+- Longer-term crate destruction should still move toward actual debris-piece spawning once debris assets exist, with dust/splinter particles added for impact cover and feel.
 - Planned damage sources should call the same object-health entry point: explosions and future enemy/environment impacts. Crowbar melee currently damages objects; hit sounds are still pending.
 
+## HS2Editor Plan
+
+A standalone editor app is planned under the name `HS2Editor`. The full target is documented in `Engine.Editor/README.md` before implementation starts.
+
+Confirmed direction: separate executable, existing renderer plus ImGui, project/content browser, level manager, 3D viewport, hierarchy, inspector, model assignment, prefab JSONs, registered script attachment with editable JSON parameters, basic UI file management and preview, asset importer launch, and game launch from the selected level.
+
+The first pass can use path-based asset references because the current level format already does. GUID/meta asset identity should be added later when content browser rename/move support and prefab references need stable asset ids.
 ## Next Likely Work
 
+- Start the standalone `HS2Editor` app described in `Engine.Editor/README.md`.
 - Split or retarget the player character into first-person hands/arms so weapon placement can move from camera-mounted offsets to right-hand/arm placement and animation.
 - Use the Debug window viewmodel tuning sliders to validate imported viewmodel scale/orientation with `test_pistol.glb`, `gravitygun.glb`, and `Crowbar.glb`, then copy good values back into `WeaponDefinitions.cs`.
 - Tune the selector once more weapons exist in each category and replace text-only blocks with proper weapon icon artwork.
@@ -107,6 +128,7 @@ Object health is now data-driven enough for the first crate-damage pass.
 - Add explosion damage volumes and route explosion hits through the shared object-health path.
 - Add impact damage for launched physics props, so Gravity Gun-thrown crates can damage or break when they hit walls/objects hard enough.
 - Add debris spawning from `BreakDebrisModelPaths`, plus folders/search in the model picker once the model library grows.
+- Add crate break VFX such as dust/splinters to support the readiness-gated damaged-crate swap and make impacts feel better.
 - Continue material polish from the validated lit/metallic pistol viewmodel with normal-map, emission, environment reflection, and fuller PBR support.
 - Add simple damageable targets/enemies so bullet, melee, impact, and explosion damage have more gameplay consequences.
 - Add gravity gun polish: hold beam effects, blocked pickup checks, mass-based throw tuning, and sound/VFX hooks.
@@ -121,6 +143,7 @@ Mixamo/Unity FBX animation files should be treated as source animation assets, n
 - The recommended pipeline is FBX source -> Blender validation/retargeting -> GLB with mesh, armature, and clips -> engine animation loader/player.
 - Mixamo clips should share the same skeleton as the player arms/hands model. If they do not, retarget them in Blender before export.
 - Unity `.fbx` animation clips are usable as FBX source files. Unity `.anim` files are Unity-specific and should be exported/converted to FBX or recreated as glTF animation clips before this engine can consume them.
+
 ## Model Asset Direction
 
 The weapon definitions point at viewmodel assets:

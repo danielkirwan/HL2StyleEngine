@@ -282,7 +282,7 @@ public sealed partial class HL2GameModule
         => DrawEdgeBox(renderer, start, end, thickness, color);
 
     bool IWeaponHost.TryDrawWeaponModel(Renderer renderer, string modelAssetPath, Matrix4x4 transform, Vector4 tint)
-        => TryDrawModel(renderer, modelAssetPath, transform, tint, "weapon model");
+        => !IsBlockoutPracticeLevel() && TryDrawModel(renderer, modelAssetPath, transform, tint, "weapon model");
 
     private bool TryDrawWorldModel(Renderer renderer, Entity entity, Vector3 position, Vector3 size, Quaternion rotation, Vector4 tint)
     {

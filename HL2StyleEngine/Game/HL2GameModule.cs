@@ -246,6 +246,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private int _physicsMaxSubsteps = 12;
     private float _physicsMaxStep = 1f / 120f;
+    private const string MeshedPracticeLevelFileName = "interaction_test.json";
+    private const string BlockoutPracticeLevelFileName = "interaction_test_blockout.json";
     private const string BreakableWoodenCrateModelPath = "Content/Models/ViewModels/Breakable_Wooden_Crate.glb";
     private const float PuzzleDoorLiftHeight = 3.0f;
     private const float PuzzleDoorLiftSpeed = 0.85f;
@@ -290,8 +292,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         _motor = new SourcePlayerMotor(_movement, startFeetPos: new Vector3(0, 0, -5f));
 
-        string levelPath = Path.Combine(AppContext.BaseDirectory, "Content", "Levels", "interaction_test.json");
-        EnsureInteractionTestLevelTemplate(levelPath);
+        string levelsDirectory = GetPracticeLevelsDirectory();
+        EnsurePracticeLevelTemplates(levelsDirectory);
+        string levelPath = Path.Combine(levelsDirectory, MeshedPracticeLevelFileName);
         _editor.LoadOrCreate(levelPath, SimpleLevel.BuildInteractionTestFile);
         RebuildRuntimeWorld();
         if (!TryLoadPrototypeSave())
@@ -345,6 +348,62 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             entry.Failed = true;
             entry.Error = ex.Message;
         }
+    }
+
+    private bool EnsureModelAssetReadyForSwap(string modelAssetPath, out string error)
+    {
+        error = "";
+        if (string.IsNullOrWhiteSpace(modelAssetPath))
+        {
+            error = "empty model path";
+            return false;
+        }
+
+        string path = ResolveModelAssetPath(modelAssetPath);
+        if (!_weaponModelCache.TryGetValue(path, out WeaponModelCacheEntry? entry))
+        {
+            PreloadModelAsset(modelAssetPath);
+            if (_weaponModelCache.TryGetValue(path, out entry) && entry.Model != null)
+                return true;
+        }
+
+        if (entry == null)
+        {
+            error = "model cache entry missing";
+            return false;
+        }
+
+        if (entry.Model != null)
+            return true;
+
+        if (entry.Failed)
+        {
+            error = entry.Error ?? "model load failed";
+            return false;
+        }
+
+        if (entry.LoadTask is { } task)
+        {
+            try
+            {
+                LoadedModel loaded = task.GetAwaiter().GetResult();
+                entry.Bounds = CalculateModelBounds(loaded);
+                entry.Model = _world.CreateRenderModel(loaded);
+                entry.LoadTask = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                entry.Failed = true;
+                entry.Error = ex.Message;
+                entry.LoadTask = null;
+                error = ex.Message;
+                return false;
+            }
+        }
+
+        error = "model not ready";
+        return false;
     }
 
     private void ApplySpawnFromEditor(bool forceResetVelocity)
@@ -615,9 +674,12 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private static Func<LevelFile> GetDefaultLevelFactoryForPath(string path)
     {
         string file = Path.GetFileName(path);
-        return string.Equals(file, "interaction_test.json", StringComparison.OrdinalIgnoreCase)
-            ? SimpleLevel.BuildInteractionTestFile
-            : SimpleLevel.BuildRoom01File;
+        if (string.Equals(file, MeshedPracticeLevelFileName, StringComparison.OrdinalIgnoreCase))
+            return SimpleLevel.BuildInteractionTestFile;
+        if (string.Equals(file, BlockoutPracticeLevelFileName, StringComparison.OrdinalIgnoreCase))
+            return SimpleLevel.BuildInteractionTestBlockoutFile;
+
+        return SimpleLevel.BuildRoom01File;
     }
 
     private void ShowLoadingOverlay()
@@ -948,9 +1010,18 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         return slots;
     }
 
+    private static string GetPracticeLevelsDirectory()
+        => Path.Combine(AppContext.BaseDirectory, "Content", "Levels");
+
+    private static void EnsurePracticeLevelTemplates(string levelsDirectory)
+    {
+        Directory.CreateDirectory(levelsDirectory);
+        EnsureInteractionTestLevelTemplate(Path.Combine(levelsDirectory, MeshedPracticeLevelFileName));
+        EnsureInteractionTestBlockoutLevelTemplate(Path.Combine(levelsDirectory, BlockoutPracticeLevelFileName));
+    }
     private static void EnsureInteractionTestLevelTemplate(string path)
     {
-        if (!string.Equals(Path.GetFileName(path), "interaction_test.json", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(Path.GetFileName(path), MeshedPracticeLevelFileName, StringComparison.OrdinalIgnoreCase))
             return;
 
         if (File.Exists(path) && !InteractionTestTemplateNeedsRefresh(path))
@@ -959,6 +1030,46 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         LevelIO.Save(path, SimpleLevel.BuildInteractionTestFile());
     }
 
+    private static void EnsureInteractionTestBlockoutLevelTemplate(string path)
+    {
+        if (!string.Equals(Path.GetFileName(path), BlockoutPracticeLevelFileName, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        if (File.Exists(path) && !InteractionTestBlockoutTemplateNeedsRefresh(path))
+            return;
+
+        LevelIO.Save(path, SimpleLevel.BuildInteractionTestBlockoutFile());
+    }
+
+    private static bool InteractionTestBlockoutTemplateNeedsRefresh(string path)
+    {
+        try
+        {
+            LevelFile level = LevelIO.Load(path);
+            return
+                !HasNamedEntity(level, "ItemInkRibbon_Foyer") ||
+                !HasNamedEntity(level, "LockedDoor_ArchiveKey") ||
+                !HasNamedEntity(level, "LockedChest_ServiceKey__SupplyA") ||
+                !HasNamedEntity(level, "LockedChest_ServiceKey__SupplyB") ||
+                !HasNamedEntity(level, "StorageBox_SaveOffice") ||
+                !HasNamedEntity(level, "Crate_FoyerCorner") ||
+                !HasNamedEntity(level, "Crate_Utility_A") ||
+                !HasNamedEntity(level, "Crate_Utility_B") ||
+                !HasNamedEntity(level, "Crate_SaveOffice") ||
+                !HasNamedEntity(level, "Crate_ArchiveLoose") ||
+                !HasInteractionData(level, "LockedDoor_RustedKey") ||
+                !HasInteractionData(level, "LockedDoor_ArchiveKey") ||
+                !HasInteractionData(level, "LockedDoor_ServiceKey__SaveOffice") ||
+                !HasInteractionData(level, "LockedChest_ServiceKey__SupplyA") ||
+                !HasInteractionData(level, "LockedChest_ServiceKey__SupplyB") ||
+                HasAnyMeshPath(level) ||
+                HasAnyBreakReplacementModel(level);
+        }
+        catch
+        {
+            return true;
+        }
+    }
     private static bool InteractionTestTemplateNeedsRefresh(string path)
     {
         try
@@ -1002,7 +1113,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 !HasDoorBlockerSize(level, "LockedDoor_ServiceKey__SaveOffice", static size => size.Z >= 2.4f) ||
                 !HasEntityPosition(level, "Wall_SaveOffice_Side_South", static position => MathF.Abs(position.Z - -4.75f) <= 0.01f) ||
                 !HasDoorBlockerSize(level, "Wall_SaveOffice_Side_South", static size => MathF.Abs(size.Z - 3.4f) <= 0.01f) ||
-                !HasDoorBlockerSize(level, "Wall_Utility_Side_South", static size => size.Z >= 4.0f);
+                !HasDoorBlockerSize(level, "Wall_Utility_Side_South_Front", static size => MathF.Abs(size.Z - 2.3f) <= 0.01f) ||
+                !HasDoorBlockerSize(level, "Wall_Utility_Side_South_Rear", static size => MathF.Abs(size.Z - 0.9f) <= 0.01f);
         }
         catch
         {
@@ -1032,6 +1144,13 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 path.Contains("DamagedCrate", StringComparison.OrdinalIgnoreCase));
     }
 
+    private static bool HasAnyMeshPath(LevelFile level)
+        => level.Entities.Any(static entity => !string.IsNullOrWhiteSpace(entity.MeshPath));
+
+    private static bool HasAnyBreakReplacementModel(LevelFile level)
+        => level.Entities.Any(static entity =>
+            entity.BreakReplacementModelPaths != null &&
+            entity.BreakReplacementModelPaths.Any(static path => !string.IsNullOrWhiteSpace(path)));
     private static bool HasInteractionData(LevelFile level, string name)
     {
         LevelEntityDef? entity = level.Entities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -2903,12 +3022,15 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (ReferenceEquals(_held, entity))
             DropHeld();
 
+        string swapError = "";
+        bool replacementReady = IsGlbModelPath(replacementModelPath) && EnsureModelAssetReadyForSwap(replacementModelPath, out swapError);
+
         entity.IsBroken = true;
         entity.Damageable = false;
         entity.Health = 0f;
         entity.BrokenReplacementModelPath = replacementModelPath ?? "";
 
-        if (IsGlbModelPath(replacementModelPath))
+        if (replacementReady)
         {
             entity.Render.ModelAssetPath = entity.BrokenReplacementModelPath;
             entity.Render.Color = Vector4.One;
@@ -2923,6 +3045,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
         else
         {
+            if (showMessage && IsGlbModelPath(replacementModelPath) && !string.IsNullOrWhiteSpace(swapError))
+                ShowGameMessage($"{PrettifyToken(entity.Name)} break replacement was not ready: {swapError}", 2.0f);
             HideRuntimeEntity(entity);
         }
 
@@ -5122,6 +5246,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             e.BreakReplacementKeepsPhysics = def.BreakReplacementKeepsPhysics;
             e.BreakReplacementModelPaths.Clear();
             e.BreakReplacementModelPaths.AddRange((def.BreakReplacementModelPaths ?? new List<string>()).Where(static path => !string.IsNullOrWhiteSpace(path)));
+            PreloadBreakReplacementModels(e);
             e.BreakDebrisModelPaths.Clear();
             e.BreakDebrisModelPaths.AddRange((def.BreakDebrisModelPaths ?? new List<string>()).Where(static path => !string.IsNullOrWhiteSpace(path)));
             e.BrokenReplacementModelPath = "";
@@ -5296,6 +5421,15 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
 
         ApplyPersistentInteractionStateToRuntime();
+    }
+
+    private void PreloadBreakReplacementModels(Entity entity)
+    {
+        foreach (string modelPath in entity.BreakReplacementModelPaths)
+        {
+            if (IsGlbModelPath(modelPath))
+                PreloadModelAsset(modelPath);
+        }
     }
 
     private void BuildRuntimeCollidersThisFrame(bool includeDynamicBodies, bool includeHeldBodies)
@@ -5790,6 +5924,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         ImGui.Text($"Editor: {(_editorEnabled ? "ON" : "OFF")}");
         ImGui.Text($"Dirty: {(_editor.Dirty ? "YES" : "NO")}");
         ImGui.Text($"Level: {_editor.LevelPath}");
+        DrawPracticeLevelSwitcher();
         ImGui.Text($"Selected: {_editor.SelectedEntityIndex}");
         if (!string.IsNullOrWhiteSpace(_editor.LastTriggerEvent))
             ImGui.Text($"Last Trigger: {_editor.LastTriggerEvent}");
@@ -5809,6 +5944,86 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         ImGui.End();
     }
 
+    private bool IsBlockoutPracticeLevel()
+        => string.Equals(Path.GetFileName(_editor.LevelPath), BlockoutPracticeLevelFileName, StringComparison.OrdinalIgnoreCase);
+
+    private static LevelFile CreateBlockoutLevelCopy(LevelFile source)
+    {
+        LevelFile copy;
+        try
+        {
+            string json = JsonSerializer.Serialize(source, PrototypeSaveJsonOptions);
+            copy = JsonSerializer.Deserialize<LevelFile>(json, PrototypeSaveJsonOptions) ?? SimpleLevel.BuildInteractionTestBlockoutFile();
+        }
+        catch
+        {
+            copy = SimpleLevel.BuildInteractionTestBlockoutFile();
+        }
+
+        StripBlockoutModelReferences(copy);
+        return copy;
+    }
+
+    private static void StripBlockoutModelReferences(LevelFile level)
+    {
+        Vector4 primitiveCrateColor = new(0.60f, 0.45f, 0.25f, 1f);
+        foreach (LevelEntityDef entity in level.Entities)
+        {
+            entity.MeshPath = "";
+            entity.MaterialPath = "";
+            entity.BreakReplacementModelPaths.Clear();
+            entity.BreakDebrisModelPaths.Clear();
+
+            if (entity.Name?.StartsWith("Crate_", StringComparison.OrdinalIgnoreCase) == true)
+                entity.Color = primitiveCrateColor;
+        }
+    }
+    private void DrawPracticeLevelSwitcher()
+    {
+        if (!ImGui.CollapsingHeader("Practice Level Switcher", ImGuiTreeNodeFlags.DefaultOpen))
+            return;
+
+        bool isBlockout = IsBlockoutPracticeLevel();
+        ImGui.Text($"Current: {GetCurrentLevelDisplayName()}");
+        ImGui.TextDisabled("Meshed uses imported prop/weapon models. Blockout uses primitive level shapes and hides weapon viewmodels.");
+
+        if (ImGui.Button("Load Meshed Practice", new Vector2(166f, 0f)))
+            LoadPracticeLevel(MeshedPracticeLevelFileName);
+
+        ImGui.SameLine();
+
+        if (ImGui.Button("Load Blockout Practice", new Vector2(178f, 0f)))
+            LoadPracticeLevel(BlockoutPracticeLevelFileName);
+
+        ImGui.TextDisabled(isBlockout
+            ? "Blockout presentation active: weapon viewmodels are hidden."
+            : "Meshed presentation active: imported crate and weapon viewmodels are visible.");
+    }
+
+    private void LoadPracticeLevel(string levelFileName)
+    {
+        if (_held != null)
+            DropHeld();
+
+        string levelsDirectory = GetPracticeLevelsDirectory();
+        EnsurePracticeLevelTemplates(levelsDirectory);
+        string path = Path.Combine(levelsDirectory, levelFileName);
+        Func<LevelFile> factory = GetDefaultLevelFactoryForPath(path);
+
+        if (string.Equals(levelFileName, BlockoutPracticeLevelFileName, StringComparison.OrdinalIgnoreCase))
+            LevelIO.Save(path, CreateBlockoutLevelCopy(_editor.LevelFile));
+
+        _editor.LoadOrCreate(path, factory);
+        ClearPrototypeInteractionState();
+        EnsurePrototypeWeaponLoadout(includeStarterAmmo: true);
+        _playerHealth = 100;
+        _playerSuit = 75;
+
+        RebuildRuntimeWorld();
+        ApplySpawnFromEditor(forceResetVelocity: true);
+        ShowGameMessage($"{GetCurrentLevelDisplayName()} loaded.", 2.0f);
+        ShowLoadingOverlay();
+    }
     private void DrawWeaponViewModelTuning()
     {
         if (!ImGui.CollapsingHeader("Weapon Viewmodel Tuning", ImGuiTreeNodeFlags.DefaultOpen))

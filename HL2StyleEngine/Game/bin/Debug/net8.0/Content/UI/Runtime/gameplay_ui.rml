@@ -22,12 +22,6 @@
           <div class='hud-number'><img class="ui-text-image ui-text-hud-number" src="Text/796273b11c9fa812.png" width="64" height="59" /></div>
         </div>
       </section>
-      <section id='ammo-hud-right' class='hl2-hud'>
-        <div class='ammo-label'><img class="ui-text-image ui-text-hud-label" src="Text/3aef3ebfee231005.png" width="40" height="19" /></div>
-        <div class='ammo-current'><img class="ui-text-image ui-text-hud-number" src="Text/6239329120a3dc15.png" width="40" height="59" /></div>
-        <div class='ammo-divider'></div>
-        <div class='ammo-reserve'><img class="ui-text-image ui-text-hud-number" src="Text/14a1c2edf98ece64.png" width="30" height="45" /></div>
-      </section>
     </div>
   </body>
 </rml>
