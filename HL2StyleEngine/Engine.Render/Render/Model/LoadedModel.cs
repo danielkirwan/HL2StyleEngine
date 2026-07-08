@@ -23,7 +23,12 @@ public sealed class LoadedModelPart
         byte[]? baseColorPng,
         byte[]? metallicRoughnessPng,
         float metallicFactor,
-        float roughnessFactor)
+        float roughnessFactor,
+        string nodeName = "",
+        string meshName = "",
+        int nodeIndex = -1,
+        int meshIndex = -1,
+        int primitiveIndex = -1)
     {
         Positions = positions;
         Normals = normals;
@@ -34,6 +39,16 @@ public sealed class LoadedModelPart
         MetallicRoughnessPng = metallicRoughnessPng;
         MetallicFactor = metallicFactor;
         RoughnessFactor = roughnessFactor;
+        NodeName = nodeName ?? "";
+        MeshName = meshName ?? "";
+        NodeIndex = nodeIndex;
+        MeshIndex = meshIndex;
+        PrimitiveIndex = primitiveIndex;
+        PartKey = !string.IsNullOrWhiteSpace(NodeName)
+            ? NodeName
+            : !string.IsNullOrWhiteSpace(MeshName)
+                ? $"{MeshName}#{PrimitiveIndex}"
+                : $"mesh{MeshIndex}:primitive{PrimitiveIndex}";
     }
 
     public Vector3[] Positions { get; }
@@ -45,4 +60,10 @@ public sealed class LoadedModelPart
     public byte[]? MetallicRoughnessPng { get; }
     public float MetallicFactor { get; }
     public float RoughnessFactor { get; }
+    public string NodeName { get; }
+    public string MeshName { get; }
+    public int NodeIndex { get; }
+    public int MeshIndex { get; }
+    public int PrimitiveIndex { get; }
+    public string PartKey { get; }
 }

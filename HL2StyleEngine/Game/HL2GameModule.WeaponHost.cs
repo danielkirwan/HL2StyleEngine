@@ -178,8 +178,8 @@ public sealed partial class HL2GameModule
         return true;
     }
 
-    void IWeaponHost.ApplyWeaponDamage(Entity entity, float amount, string damageKind)
-        => ApplyEntityDamage(entity, amount, damageKind);
+    void IWeaponHost.ApplyWeaponDamage(Entity entity, float amount, string damageKind, Vector3 hitPoint)
+        => ApplyEntityDamage(entity, amount, damageKind, hitPoint);
 
     bool IWeaponHost.TryApplyGravityGunAttraction(
         Entity entity,
@@ -293,7 +293,8 @@ public sealed partial class HL2GameModule
             return false;
 
         Matrix4x4 transform = CreateBoundsFitTransform(entry.Bounds, position, size, rotation);
-        _world.DrawModel(renderer.CommandList, entry.Model, transform, tint);
+        IReadOnlySet<string>? hiddenPartKeys = BuildHiddenModelPartKeys(entity, entry.LoadedModel);
+        _world.DrawModel(renderer.CommandList, entry.Model, transform, tint, hiddenPartKeys);
         return true;
     }
 
@@ -329,6 +330,7 @@ public sealed partial class HL2GameModule
                     try
                     {
                         LoadedModel loaded = task.Result;
+                        entry.LoadedModel = loaded;
                         entry.Bounds = CalculateModelBounds(loaded);
                         entry.Model = _world.CreateRenderModel(loaded);
                         entry.LoadTask = null;

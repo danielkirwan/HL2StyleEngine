@@ -30,6 +30,7 @@ internal sealed partial class HS2EditorModule
 
         if (ImGui.BeginMenu("View"))
         {
+            ImGui.MenuItem("Show Scene Meshes", "", ref _drawSceneGlbModels);
             if (ImGui.MenuItem("Reset Dock Layout"))
             {
                 TryResetImGuiLayoutFile();
@@ -243,7 +244,7 @@ internal sealed partial class HS2EditorModule
                 ImGui.PushID(file);
                 ImGui.TableNextRow();
                 ImGui.TableSetColumnIndex(0);
-                if (ImGui.Selectable(projectRelative, selected, ImGuiSelectableFlags.SpanAllColumns))
+                if (ImGui.Selectable(projectRelative, selected))
                     SelectAsset(file);
 
                 if (showAssignModel)
@@ -257,8 +258,10 @@ internal sealed partial class HS2EditorModule
                     if (ImGui.SmallButton("Assign"))
                     {
                         SelectAsset(file);
-                        _editor.AssignSelectedMeshPath(contentPath);
-                        _status = $"Assigned {contentPath}.";
+                        if (_editor.AssignSelectedMeshPath(contentPath))
+                            _status = $"Assigned {contentPath}.";
+                        else
+                            _status = "Select a scene object before assigning a model.";
                     }
                     if (!canAssign) ImGui.EndDisabled();
                 }
@@ -284,16 +287,30 @@ internal sealed partial class HS2EditorModule
         GCHandle handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
         try
         {
+            _activeGlbDragPath = contentPath;
             ImGui.SetDragDropPayload(GlbAssetDragDropPayload, handle.AddrOfPinnedObject(), (uint)bytes.Length);
+            ImGui.Text($"Model: {label}");
+            ImGui.TextDisabled(contentPath);
+            ImGui.EndDragDropSource();
         }
         finally
         {
             handle.Free();
         }
+    }
 
-        ImGui.Text($"Model: {label}");
-        ImGui.TextDisabled(contentPath);
-        ImGui.EndDragDropSource();
+    private static bool TryReadPayloadString(ImGuiPayloadPtr payload, out string value)
+    {
+        value = "";
+        int size = payload.DataSize;
+        nint data = payload.Data;
+        if (data == IntPtr.Zero || size <= 0)
+            return false;
+
+        byte[] bytes = new byte[size];
+        Marshal.Copy(data, bytes, 0, size);
+        value = Encoding.UTF8.GetString(bytes).TrimEnd('\0').Trim();
+        return !string.IsNullOrWhiteSpace(value);
     }
 
     private void DrawPrefabPanel()

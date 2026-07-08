@@ -317,6 +317,82 @@ public sealed class LevelEditorController
         return true;
     }
 
+    public bool PlaceModelInScene(string meshPath, EditorPicking.Ray ray)
+    {
+        if (string.IsNullOrWhiteSpace(meshPath) || !meshPath.EndsWith(".glb", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        Vector3 placement = GetScenePlacementPoint(ray) + new Vector3(0f, 0.5f, 0f);
+        placement = ApplySnapping(placement, GizmoAxis.None, ctrlDown: false);
+
+        string entityName = MakeUniqueEntityName(MakeEntityNameFromMeshPath(meshPath));
+
+        BeginEdit();
+        LevelFile.Entities.Add(new LevelEntityDef
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Type = EntityTypes.RigidBody,
+            Name = entityName,
+            LocalPosition = placement,
+            LocalRotationEulerDeg = Vector3.Zero,
+            LocalScale = Vector3.One,
+            Shape = "Box",
+            MotionType = MotionType.Static,
+            Size = Vector3.One,
+            Color = new Vector4(1f, 1f, 1f, 1f),
+            MeshPath = meshPath,
+            MaterialPath = "",
+            Friction = 0.8f,
+            Restitution = 0.05f,
+            Mass = 0f
+        });
+
+        SelectedEntityIndex = LevelFile.Entities.Count - 1;
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+        EndEditIfAny();
+        return true;
+    }
+
+    private Vector3 GetScenePlacementPoint(EditorPicking.Ray ray)
+    {
+        if (TryPickEntity(ray, out _, out Vector3 hitPoint))
+            return hitPoint;
+
+        if (EditorPicking.RayIntersectsPlane(ray, Vector3.UnitY, 0f, out float t))
+            return ray.GetPoint(t);
+
+        return ray.Origin + ray.Dir * 5f;
+    }
+
+    private string MakeUniqueEntityName(string baseName)
+    {
+        string name = string.IsNullOrWhiteSpace(baseName) ? "Model" : baseName;
+        if (!LevelFile.Entities.Any(entity => string.Equals(entity.Name, name, StringComparison.OrdinalIgnoreCase)))
+            return name;
+
+        for (int i = 1; i < 10000; i++)
+        {
+            string candidate = $"{name}_{i:00}";
+            if (!LevelFile.Entities.Any(entity => string.Equals(entity.Name, candidate, StringComparison.OrdinalIgnoreCase)))
+                return candidate;
+        }
+
+        return $"{name}_{Guid.NewGuid():N}";
+    }
+
+    private static string MakeEntityNameFromMeshPath(string meshPath)
+    {
+        string file = Path.GetFileNameWithoutExtension(meshPath.Replace('\\', '/'));
+        if (string.IsNullOrWhiteSpace(file))
+            file = "Model";
+
+        foreach (char invalid in Path.GetInvalidFileNameChars())
+            file = file.Replace(invalid, '_');
+
+        return file.Replace(' ', '_');
+    }
+
     public bool AddEntityFromTemplate(LevelEntityDef template, string? nameSuffix = null)
     {
         LevelEntityDef copy = CloneEntity(template);
@@ -838,6 +914,34 @@ public sealed class LevelEditorController
     }
 
 
+    private void DrawMeshPathField(LevelEntityDef ent)
+    {
+        string mesh = ent.MeshPath ?? "";
+        if (ImGui.InputText("MeshPath", ref mesh, 256))
+        {
+            BeginEdit();
+            ent.MeshPath = mesh;
+            Dirty = true;
+            RebuildRuntimeFromLevel();
+            EndEditIfAny();
+        }
+
+        if (ImGui.BeginDragDropTarget())
+        {
+            ImGuiPayloadPtr payload = ImGui.AcceptDragDropPayload(GlbAssetDragDropPayload, ImGuiDragDropFlags.None);
+            if (payload.Data != IntPtr.Zero && payload.Delivery && TryReadPayloadString(payload, out string modelPath) &&
+                modelPath.EndsWith(".glb", StringComparison.OrdinalIgnoreCase))
+            {
+                BeginEdit();
+                ent.MeshPath = modelPath;
+                Dirty = true;
+                RebuildRuntimeFromLevel();
+                EndEditIfAny();
+            }
+            ImGui.EndDragDropTarget();
+        }
+    }
+
     private void DrawDamageableInspector(LevelEntityDef ent)
     {
         if (!SupportsDamageableSettings(ent))
@@ -1228,6 +1332,9 @@ public sealed class LevelEditorController
                 RebuildRuntimeFromLevel();
                 EndEditIfAny();
             }
+
+
+            DrawMeshPathField(ent);
         }
         else if (ent.Type == EntityTypes.PlayerSpawn)
         {
@@ -1272,14 +1379,20 @@ public sealed class LevelEditorController
         }
         else if (ent.Type == EntityTypes.Prop)
         {
-            string mesh = ent.MeshPath ?? "";
-            if (ImGui.InputText("MeshPath", ref mesh, 256))
+            Vector3 size = ent.Size;
+            if (ImGui.DragFloat3("Size", ref size, 0.05f))
             {
                 BeginEdit();
-                ent.MeshPath = mesh;
+                size.X = MathF.Max(0.01f, size.X);
+                size.Y = MathF.Max(0.01f, size.Y);
+                size.Z = MathF.Max(0.01f, size.Z);
+                ent.Size = size;
                 Dirty = true;
+                RebuildRuntimeFromLevel();
                 EndEditIfAny();
             }
+
+            DrawMeshPathField(ent);
 
             string mat = ent.MaterialPath ?? "";
             if (ImGui.InputText("MaterialPath", ref mat, 256))
@@ -1396,15 +1509,7 @@ public sealed class LevelEditorController
                 EndEditIfAny();
             }
 
-            string mesh = ent.MeshPath ?? "";
-            if (ImGui.InputText("MeshPath", ref mesh, 256))
-            {
-                BeginEdit();
-                ent.MeshPath = mesh;
-                Dirty = true;
-                RebuildRuntimeFromLevel();
-                EndEditIfAny();
-            }
+            DrawMeshPathField(ent);
 
             if (IsSphereShape(ent.Shape))
             {
@@ -1742,7 +1847,11 @@ public sealed class LevelEditorController
             }
             else if (e.Type == EntityTypes.Prop)
             {
-                Vector3 size = Mul(markerMed, ws);
+                Vector3 baseSize = string.IsNullOrWhiteSpace(e.MeshPath) ? markerMed : (Vector3)e.Size;
+                if (IsZero(baseSize))
+                    baseSize = string.IsNullOrWhiteSpace(e.MeshPath) ? markerMed : Vector3.One;
+
+                Vector3 size = Mul(baseSize, ws);
                 DrawBoxes.Add(new EditorDrawBox(wt, size, new Vector4(0.8f, 0.6f, 0.2f, 1f), wr));
             }
             else if (e.Type == EntityTypes.RigidBody)

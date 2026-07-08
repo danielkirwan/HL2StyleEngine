@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HS2Editor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ef5f871fa24a4909dfbae5ed0ad6983535ae1c77")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0a87c6ab5ee687e3751febf1032c247d71cb021f")]
 [assembly: System.Reflection.AssemblyProductAttribute("HS2Editor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HS2Editor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

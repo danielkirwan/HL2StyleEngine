@@ -3402,7 +3402,7 @@
       "MeshPath": "",
       "MaterialPath": "",
       "Damageable": true,
-      "MaxHealth": 60,
+      "MaxHealth": 100,
       "BreakReplacementModelPaths": [],
       "BreakReplacementKeepsPhysics": true,
       "BreakDebrisModelPaths": [],
@@ -3467,7 +3467,7 @@
       "MeshPath": "",
       "MaterialPath": "",
       "Damageable": true,
-      "MaxHealth": 60,
+      "MaxHealth": 100,
       "BreakReplacementModelPaths": [],
       "BreakReplacementKeepsPhysics": true,
       "BreakDebrisModelPaths": [],
@@ -3532,7 +3532,7 @@
       "MeshPath": "",
       "MaterialPath": "",
       "Damageable": true,
-      "MaxHealth": 60,
+      "MaxHealth": 100,
       "BreakReplacementModelPaths": [],
       "BreakReplacementKeepsPhysics": true,
       "BreakDebrisModelPaths": [],
@@ -3597,7 +3597,7 @@
       "MeshPath": "",
       "MaterialPath": "",
       "Damageable": true,
-      "MaxHealth": 60,
+      "MaxHealth": 100,
       "BreakReplacementModelPaths": [],
       "BreakReplacementKeepsPhysics": true,
       "BreakDebrisModelPaths": [],
@@ -3662,7 +3662,202 @@
       "MeshPath": "",
       "MaterialPath": "",
       "Damageable": true,
-      "MaxHealth": 60,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.85,
+      "Restitution": 0.03,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "cbdf77b84f6f45028719be9512ef1d4d",
+      "Type": "RigidBody",
+      "Name": "Crate_MiddleCorridor_A",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "LocalPosition": {
+        "X": -1.35,
+        "Y": 0.5,
+        "Z": -3.2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 8,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.45,
+        "Z": 0.25,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": true,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.85,
+      "Restitution": 0.03,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "b34716dde0754cd89ec942cf4e468c49",
+      "Type": "RigidBody",
+      "Name": "Crate_MiddleCorridor_B",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "LocalPosition": {
+        "X": 0.15,
+        "Y": 0.5,
+        "Z": -1.2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -18,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.45,
+        "Z": 0.25,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": true,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.85,
+      "Restitution": 0.03,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "347f717121f544ef98464d2d48022b44",
+      "Type": "RigidBody",
+      "Name": "Crate_MiddleCorridor_C",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "LocalPosition": {
+        "X": 1.45,
+        "Y": 0.5,
+        "Z": 1.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 24,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.45,
+        "Z": 0.25,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": true,
+      "MaxHealth": 100,
       "BreakReplacementModelPaths": [],
       "BreakReplacementKeepsPhysics": true,
       "BreakDebrisModelPaths": [],

@@ -1,4 +1,6 @@
-﻿using Engine.Physics.Dynamics;
+using System;
+using System.Collections.Generic;
+using Engine.Physics.Dynamics;
 using Engine.Runtime.Entities.Interfaces;
 using System.Numerics;
 
@@ -29,6 +31,8 @@ namespace Engine.Runtime.Entities
         public readonly List<string> BreakReplacementModelPaths = new();
         public readonly List<string> BreakDebrisModelPaths = new();
         public string BrokenReplacementModelPath = "";
+        public bool FractureVisualActive = false;
+        public readonly HashSet<string> HiddenModelPartKeys = new(StringComparer.OrdinalIgnoreCase);
 
         public bool IsHeld = false;
 

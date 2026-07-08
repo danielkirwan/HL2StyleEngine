@@ -12,10 +12,10 @@ public sealed class RenderModel : IDisposable
 {
     private readonly List<RenderModelPart> _parts = new();
 
-    internal RenderModel(GraphicsDevice graphicsDevice, LoadedModel source, ResourceLayout textureLayout, Sampler sampler)
+    internal RenderModel(GraphicsDevice graphicsDevice, LoadedModel source, ResourceLayout textureLayout, Sampler sampler, bool loadTextures = true)
     {
         foreach (LoadedModelPart part in source.Parts)
-            _parts.Add(new RenderModelPart(graphicsDevice, part, textureLayout, sampler));
+            _parts.Add(new RenderModelPart(graphicsDevice, part, textureLayout, sampler, loadTextures));
     }
 
     internal IReadOnlyList<RenderModelPart> Parts => _parts;
@@ -31,7 +31,7 @@ public sealed class RenderModel : IDisposable
 
 internal sealed class RenderModelPart : IDisposable
 {
-    public RenderModelPart(GraphicsDevice graphicsDevice, LoadedModelPart source, ResourceLayout textureLayout, Sampler sampler)
+    public RenderModelPart(GraphicsDevice graphicsDevice, LoadedModelPart source, ResourceLayout textureLayout, Sampler sampler, bool loadTextures = true)
     {
         VertexBuffer = graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(
             (uint)(source.Positions.Length * Marshal.SizeOf<Vector3>()),
@@ -79,6 +79,9 @@ internal sealed class RenderModelPart : IDisposable
         }
 
         IndexCount = (uint)source.Indices.Length;
+        PartKey = source.PartKey;
+        NodeName = source.NodeName;
+        MeshName = source.MeshName;
         Color = source.Color;
         MaterialFactors = new Vector4(
             Math.Clamp(source.MetallicFactor, 0f, 1f),
@@ -86,7 +89,8 @@ internal sealed class RenderModelPart : IDisposable
             0f,
             0f);
 
-        if (TexturedVertexBuffer != null &&
+        if (loadTextures &&
+            TexturedVertexBuffer != null &&
             source.BaseColorPng is { Length: > 0 } pngBytes &&
             OperatingSystem.IsWindows() &&
             TryDecodePngRgba(pngBytes, out int width, out int height, out byte[] rgba))
@@ -121,6 +125,9 @@ internal sealed class RenderModelPart : IDisposable
     public DeviceBuffer IndexBuffer { get; }
     public IndexFormat IndexFormat { get; }
     public uint IndexCount { get; }
+    public string PartKey { get; }
+    public string NodeName { get; }
+    public string MeshName { get; }
     public Vector4 Color { get; }
     public Vector4 MaterialFactors { get; }
     public Texture? Texture { get; }

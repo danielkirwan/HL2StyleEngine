@@ -125,6 +125,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private sealed class WeaponModelCacheEntry
     {
         public RenderModel? Model;
+        public LoadedModel? LoadedModel;
         public ModelBounds Bounds;
         public Task<LoadedModel>? LoadTask;
         public bool Failed;
@@ -346,6 +347,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         try
         {
             LoadedModel loaded = GlbModelLoader.Load(path);
+            entry.LoadedModel = loaded;
             entry.Bounds = CalculateModelBounds(loaded);
             entry.Model = _world.CreateRenderModel(loaded);
         }
@@ -393,6 +395,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             try
             {
                 LoadedModel loaded = task.GetAwaiter().GetResult();
+                entry.LoadedModel = loaded;
                 entry.Bounds = CalculateModelBounds(loaded);
                 entry.Model = _world.CreateRenderModel(loaded);
                 entry.LoadTask = null;
@@ -463,6 +466,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (_loadingOverlayTimer > 0f)
             _loadingOverlayTimer = MathF.Max(0f, _loadingOverlayTimer - dt);
         _weaponSystem.Update(dt);
+        UpdateFractureDebris(dt);
 
         if (GameplayModalOpen)
             _ui.OpenUI();
@@ -1075,6 +1079,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 !HasNamedEntity(level, "Crate_Utility_B") ||
                 !HasNamedEntity(level, "Crate_SaveOffice") ||
                 !HasNamedEntity(level, "Crate_ArchiveLoose") ||
+                !HasNamedEntity(level, "Crate_MiddleCorridor_A") ||
+                !HasNamedEntity(level, "Crate_MiddleCorridor_B") ||
+                !HasNamedEntity(level, "Crate_MiddleCorridor_C") ||
                 !HasInteractionData(level, "LockedDoor_RustedKey") ||
                 !HasInteractionData(level, "LockedDoor_ArchiveKey") ||
                 !HasInteractionData(level, "LockedDoor_ServiceKey__SaveOffice") ||
@@ -1100,15 +1107,21 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 !HasNamedEntity(level, "LockedChest_ServiceKey__SupplyB") ||
                 !HasNamedEntity(level, "StorageBox_SaveOffice") ||
                 !HasEntityMeshPath(level, "Crate_FoyerCorner", BreakableWoodenCrateModelPath) ||
-                !HasDamageableBreakReplacement(level, "Crate_FoyerCorner") ||
+                !HasBreakableCrateHealthSettings(level, "Crate_FoyerCorner") ||
                 !HasEntityMeshPath(level, "Crate_Utility_A", BreakableWoodenCrateModelPath) ||
-                !HasDamageableBreakReplacement(level, "Crate_Utility_A") ||
+                !HasBreakableCrateHealthSettings(level, "Crate_Utility_A") ||
                 !HasEntityMeshPath(level, "Crate_Utility_B", BreakableWoodenCrateModelPath) ||
-                !HasDamageableBreakReplacement(level, "Crate_Utility_B") ||
+                !HasBreakableCrateHealthSettings(level, "Crate_Utility_B") ||
                 !HasEntityMeshPath(level, "Crate_SaveOffice", BreakableWoodenCrateModelPath) ||
-                !HasDamageableBreakReplacement(level, "Crate_SaveOffice") ||
+                !HasBreakableCrateHealthSettings(level, "Crate_SaveOffice") ||
                 !HasEntityMeshPath(level, "Crate_ArchiveLoose", BreakableWoodenCrateModelPath) ||
-                !HasDamageableBreakReplacement(level, "Crate_ArchiveLoose") ||
+                !HasBreakableCrateHealthSettings(level, "Crate_ArchiveLoose") ||
+                !HasEntityMeshPath(level, "Crate_MiddleCorridor_A", BreakableWoodenCrateModelPath) ||
+                !HasBreakableCrateHealthSettings(level, "Crate_MiddleCorridor_A") ||
+                !HasEntityMeshPath(level, "Crate_MiddleCorridor_B", BreakableWoodenCrateModelPath) ||
+                !HasBreakableCrateHealthSettings(level, "Crate_MiddleCorridor_B") ||
+                !HasEntityMeshPath(level, "Crate_MiddleCorridor_C", BreakableWoodenCrateModelPath) ||
+                !HasBreakableCrateHealthSettings(level, "Crate_MiddleCorridor_C") ||
                 !HasNamedEntity(level, "PuzzleSlot_CrankHandle__UtilityLift") ||
                 !HasNamedEntity(level, "PuzzleDoor_CrankHandle__UtilityLift") ||
                 !HasInteractionData(level, "PuzzleSlot_CrankHandle__UtilityLift") ||
@@ -1149,17 +1162,15 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         return entity != null && string.Equals(entity.MeshPath, meshPath, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool HasDamageableBreakReplacement(LevelFile level, string name)
+    private static bool HasBreakableCrateHealthSettings(LevelFile level, string name)
     {
         LevelEntityDef? entity = level.Entities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
         return entity != null &&
             entity.Damageable &&
-            entity.MaxHealth >= 1f &&
+            entity.MaxHealth >= 100f &&
             entity.BreakReplacementKeepsPhysics &&
-            entity.BreakReplacementModelPaths != null &&
-            entity.BreakReplacementModelPaths.Any(static path =>
-                !string.IsNullOrWhiteSpace(path) &&
-                path.Contains("DamagedCrate", StringComparison.OrdinalIgnoreCase));
+            (entity.BreakReplacementModelPaths == null ||
+             !entity.BreakReplacementModelPaths.Any(static path => !string.IsNullOrWhiteSpace(path)));
     }
 
     private static bool HasAnyMeshPath(LevelFile level)
@@ -3005,13 +3016,20 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
     }
 
-    private void ApplyEntityDamage(Entity entity, float amount, string damageKind)
+    private void ApplyEntityDamage(Entity entity, float amount, string damageKind, Vector3? hitPoint = null)
     {
         if (amount <= 0f || !entity.Damageable || entity.IsBroken || entity.Render.Shape == RuntimeShapeKind.None)
             return;
 
-        entity.Health = MathF.Max(0f, entity.Health - amount);
+        if (hitPoint.HasValue)
+            ApplyFractureVisualDamage(entity, hitPoint.Value);
+
+        float effectiveDamage = GetEffectiveEntityDamage(entity, amount, damageKind);
+        entity.Health = MathF.Max(0f, entity.Health - effectiveDamage);
         if (entity.Health > 0f)
+            return;
+
+        if (TryBreakFractureCrateEntity(entity, persist: true, showMessage: true))
             return;
 
         string replacementModelPath = ChooseBreakReplacementModel(entity);
@@ -3047,6 +3065,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         entity.Damageable = false;
         entity.Health = 0f;
         entity.BrokenReplacementModelPath = replacementModelPath ?? "";
+        entity.FractureVisualActive = false;
+        entity.HiddenModelPartKeys.Clear();
 
         if (replacementReady)
         {
@@ -3266,6 +3286,46 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
 
         requiredItem = "";
+        return false;
+    }
+
+    private bool TryApplyImmediateWorldPickup(string itemId, int count, out bool consumed)
+    {
+        consumed = false;
+        int safeCount = Math.Clamp(count, 1, 999);
+
+        if (string.Equals(itemId, ItemCatalog.HealthPack, StringComparison.OrdinalIgnoreCase))
+        {
+            if (_playerHealth >= 100)
+            {
+                ShowGameMessage("Health is already full.", 1.5f);
+                return true;
+            }
+
+            int amount = 25 * safeCount;
+            int before = _playerHealth;
+            _playerHealth = Math.Clamp(_playerHealth + amount, 0, 100);
+            consumed = true;
+            ShowGameMessage($"Health restored +{_playerHealth - before}.", 1.75f);
+            return true;
+        }
+
+        if (string.Equals(itemId, ItemCatalog.SuitBattery, StringComparison.OrdinalIgnoreCase))
+        {
+            if (_playerSuit >= 100)
+            {
+                ShowGameMessage("Suit charge is already full.", 1.5f);
+                return true;
+            }
+
+            int amount = 15 * safeCount;
+            int before = _playerSuit;
+            _playerSuit = Math.Clamp(_playerSuit + amount, 0, 100);
+            consumed = true;
+            ShowGameMessage($"Suit charge restored +{_playerSuit - before}.", 1.75f);
+            return true;
+        }
+
         return false;
     }
 
@@ -5237,6 +5297,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _runtimeEntities.Clear();
         _runtimeWorldColliders.Clear();
         _puzzleDoorClosedPositions.Clear();
+        _fractureDebrisPieces.Clear();
 
         foreach (var def in _editor.LevelFile.Entities)
         {
@@ -5288,9 +5349,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             RuntimeShapeKind rigidBodyShape = isRigidBody ? GetRigidBodyShape(def) : RuntimeShapeKind.Box;
             bool isSphere = isRigidBody && rigidBodyShape == RuntimeShapeKind.Sphere;
             bool isCapsule = isRigidBody && rigidBodyShape == RuntimeShapeKind.Capsule;
+            bool isSolidModelProp = def.Type == EntityTypes.Prop && IsGlbModelPath(def.MeshPath);
             bool isBoxPhysicsShape =
                 (def.Type == EntityTypes.Box) ||
-                (isRigidBody && rigidBodyShape == RuntimeShapeKind.Box);
+                (isRigidBody && rigidBodyShape == RuntimeShapeKind.Box) ||
+                isSolidModelProp;
 
             if (isSphere)
             {
@@ -6563,6 +6626,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 DrawPrimitive(renderer, ent.Render.Shape, pos, size, rot, col, ent.Render.Radius, ent.Render.Height);
         }
 
+        DrawFractureDebris(renderer);
         DrawPlayerCharacter(renderer, visible: DrawLocalPlayerCharacterInFirstPerson);
         _weaponSystem.Render(this, renderer, visible: !_editorEnabled && !GameplayModalOpen);
     }
@@ -7776,6 +7840,17 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         if (TryGetWorldItem(hit, out string itemId, out int itemCount))
         {
+            if (TryApplyImmediateWorldPickup(itemId, itemCount, out bool consumedImmediatePickup))
+            {
+                if (consumedImmediatePickup)
+                {
+                    _collectedInteractables.Add(hit.Name);
+                    HideRuntimeEntity(hit);
+                }
+
+                return true;
+            }
+
             if (!AddInventoryItem(itemId, itemCount, showCollectedScreen: true))
                 return true;
 
@@ -7944,6 +8019,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             "ink" or "inkribbon" or "ribbon" => ItemCatalog.InkRibbon,
             "crank" or "crankhandle" => ItemCatalog.CrankHandle,
             "fuse" or "ceramicfuse" => ItemCatalog.Fuse,
+            "health" or "med" or "medpack" or "healthpack" or "firstaid" or "firstaidkit" => ItemCatalog.HealthPack,
+            "suit" or "battery" or "suitbattery" or "hev" or "hevbattery" => ItemCatalog.SuitBattery,
             "scrap" => ItemCatalog.Scrap,
             "gunpowder" or "powder" => ItemCatalog.Gunpowder,
             "bullet" or "bullets" or "ammo" => ItemCatalog.Bullets,
@@ -7994,9 +8071,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private void SpawnWorldItem(string itemId, int count)
     {
-        InventoryItemDefinition definition = ItemCatalog.Get(itemId);
         Vector3 forward = Vector3.Normalize(_camera.Forward);
         Vector3 position = _camera.Position + forward * 2.0f;
+        SpawnWorldItemAt(itemId, count, position, Quaternion.Identity);
+    }
+
+    private void SpawnWorldItemAt(string itemId, int count, Vector3 position, Quaternion rotation)
+    {
+        InventoryItemDefinition definition = ItemCatalog.Get(itemId);
         Vector3 size = GetSpawnedItemSize(definition);
 
         var entity = new Entity(Guid.NewGuid().ToString("N"), EntityTypes.RigidBody, $"Item_{definition.Id}__x{Math.Clamp(count, 1, 999)}__Spawn{++_spawnedItemSequence}")
@@ -8005,15 +8087,18 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         };
 
         entity.Transform.Position = position;
-        entity.Transform.RotationEulerDeg = Vector3.Zero;
+        entity.Transform.RotationEulerDeg = QuatToEulerDeg(rotation);
         entity.Transform.Scale = Vector3.One;
         entity.Physics.MotionType = MotionType.Static;
-        entity.Physics.RestRotation = Quaternion.Identity;
-        entity.Physics.Rotation = Quaternion.Identity;
+        entity.Physics.RestRotation = rotation;
+        entity.Physics.Rotation = rotation;
 
         entity.Render.Shape = RuntimeShapeKind.Box;
         entity.Render.Size = size;
         entity.Render.Color = GetSpawnedItemColor(definition);
+        entity.Render.ModelAssetPath = GetSpawnedItemModelPath(definition.Id);
+        if (!string.IsNullOrWhiteSpace(entity.Render.ModelAssetPath))
+            PreloadModelAsset(entity.Render.ModelAssetPath);
 
         entity.Collider.Shape = RuntimeShapeKind.Box;
         entity.Collider.Size = size;
@@ -8025,17 +8110,33 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         _runtimeEntities.Add(entity);
     }
-
     private static Vector3 GetSpawnedItemSize(InventoryItemDefinition definition)
-        => new(
+    {
+        if (string.Equals(definition.Id, ItemCatalog.HealthPack, StringComparison.OrdinalIgnoreCase))
+            return new Vector3(0.54f, 0.22f, 0.36f);
+        if (string.Equals(definition.Id, ItemCatalog.SuitBattery, StringComparison.OrdinalIgnoreCase))
+            return new Vector3(0.28f, 0.42f, 0.28f);
+
+        return new Vector3(
             MathF.Max(0.28f, definition.SlotWidth * 0.26f),
             0.22f,
             MathF.Max(0.28f, definition.SlotHeight * 0.26f));
+    }
+
+    private static string GetSpawnedItemModelPath(string itemId)
+        => itemId switch
+        {
+            ItemCatalog.HealthPack => "Content/Models/ViewModels/FirstAidKit01.glb",
+            ItemCatalog.SuitBattery => "Content/Models/ViewModels/Battery07.glb",
+            _ => ""
+        };
 
     private static Vector4 GetSpawnedItemColor(InventoryItemDefinition definition)
         => definition.Type switch
         {
             InventoryItemType.Key => new Vector4(0.95f, 0.72f, 0.28f, 1f),
+            InventoryItemType.Consumable when string.Equals(definition.Id, ItemCatalog.HealthPack, StringComparison.OrdinalIgnoreCase) => new Vector4(0.55f, 0.82f, 0.58f, 1f),
+            InventoryItemType.Consumable when string.Equals(definition.Id, ItemCatalog.SuitBattery, StringComparison.OrdinalIgnoreCase) => new Vector4(0.36f, 0.66f, 0.95f, 1f),
             InventoryItemType.Consumable => new Vector4(0.18f, 0.20f, 0.42f, 1f),
             InventoryItemType.Material => new Vector4(0.55f, 0.55f, 0.50f, 1f),
             InventoryItemType.Puzzle => new Vector4(0.45f, 0.32f, 0.18f, 1f),

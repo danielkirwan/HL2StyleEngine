@@ -318,7 +318,7 @@ internal sealed class WeaponSystem
         {
             end = hit.HitPoint;
             host.ApplyWeaponImpulse(hit.Target, dir * weapon.Impulse, hit.HitPoint, spinScale: 0.8f);
-            host.ApplyWeaponDamage(hit.Target, weapon.Damage, "Bullet");
+            host.ApplyWeaponDamage(hit.Target, weapon.Damage, "Bullet", hit.HitPoint);
             host.ShowWeaponMessage($"{weapon.DisplayName} hit {host.GetEntityDisplayName(hit.Target)}.", 0.75f);
         }
 
@@ -343,7 +343,7 @@ internal sealed class WeaponSystem
         {
             end = hit.HitPoint;
             bool pushed = host.ApplyWeaponImpulse(hit.Target, dir * weapon.Impulse, hit.HitPoint, spinScale: 0.7f);
-            host.ApplyWeaponDamage(hit.Target, weapon.Damage, "Melee");
+            host.ApplyWeaponDamage(hit.Target, weapon.Damage, "Melee", hit.HitPoint);
             host.ShowWeaponMessage(
                 pushed
                     ? $"{weapon.DisplayName} struck {host.GetEntityDisplayName(hit.Target)}."
@@ -431,7 +431,7 @@ internal sealed class WeaponSystem
         if (host.TryRaycastWeaponTarget(weapon.AttractionRange, out WeaponTargetHit hit))
         {
             host.ApplyWeaponImpulse(hit.Target, dir * weapon.Impulse, hit.HitPoint, spinScale: 1.1f);
-            host.ApplyWeaponDamage(hit.Target, weapon.Damage, "GravityPulse");
+            host.ApplyWeaponDamage(hit.Target, weapon.Damage, "GravityPulse", hit.HitPoint);
             SetTrace(origin + dir * 0.55f, hit.HitPoint, new Vector4(0.35f, 0.9f, 1f, 0.95f), 0.08f);
             host.ShowWeaponMessage($"Gravity pulse hit {host.GetEntityDisplayName(hit.Target)}.", 0.75f);
             return;
@@ -464,7 +464,7 @@ internal sealed class WeaponSystem
                 dir * weapon.Impulse * GravityBlastImpulseScale,
                 hit.HitPoint,
                 spinScale: 1.75f);
-            host.ApplyWeaponDamage(hit.Target, weapon.Damage * 1.4f, "GravityBlast");
+            host.ApplyWeaponDamage(hit.Target, weapon.Damage * 1.4f, "GravityBlast", hit.HitPoint);
 
             SetGravityStaticBurst(burstStart, burstEnd);
             host.ShowWeaponMessage(

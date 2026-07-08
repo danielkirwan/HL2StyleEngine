@@ -12,6 +12,8 @@ public static class ItemCatalog
     public const string Crowbar = "Crowbar";
     public const string CrankHandle = "CrankHandle";
     public const string Fuse = "Fuse";
+    public const string HealthPack = "HealthPack";
+    public const string SuitBattery = "SuitBattery";
 
     private static readonly Dictionary<string, InventoryItemDefinition> KnownItems = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -133,6 +135,24 @@ public static class ItemCatalog
             InventoryItemType.Puzzle,
             slotWidth: 1,
             slotHeight: 1,
+            maxStack: 1),
+
+        [HealthPack] = new(
+            HealthPack,
+            "Med Pack",
+            "A compact first-aid kit that restores health immediately.",
+            InventoryItemType.Consumable,
+            slotWidth: 2,
+            slotHeight: 1,
+            maxStack: 1),
+
+        [SuitBattery] = new(
+            SuitBattery,
+            "Suit Battery",
+            "A portable battery that restores suit charge immediately.",
+            InventoryItemType.Consumable,
+            slotWidth: 1,
+            slotHeight: 2,
             maxStack: 1)
     };
 

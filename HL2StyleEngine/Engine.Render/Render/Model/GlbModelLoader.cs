@@ -86,7 +86,7 @@ public static class GlbModelLoader
         else
         {
             for (int i = 0; i < meshes.GetArrayLength(); i++)
-                AppendMeshParts(root, meshes[i], binBytes, Matrix4x4.Identity, parts);
+                AppendMeshParts(root, meshes[i], binBytes, Matrix4x4.Identity, parts, "", -1, i);
         }
 
         if (parts.Count == 0)
@@ -113,7 +113,10 @@ public static class GlbModelLoader
         Matrix4x4 nodeTransform = ReadNodeTransform(node) * parentTransform;
 
         if (node.TryGetProperty("mesh", out JsonElement meshElement))
-            AppendMeshParts(root, meshes[meshElement.GetInt32()], binBytes, nodeTransform, parts);
+        {
+            int meshIndex = meshElement.GetInt32();
+            AppendMeshParts(root, meshes[meshIndex], binBytes, nodeTransform, parts, ReadName(node, $"Node{nodeIndex}"), nodeIndex, meshIndex);
+        }
 
         if (!node.TryGetProperty("children", out JsonElement children))
             return;
@@ -127,10 +130,15 @@ public static class GlbModelLoader
         JsonElement mesh,
         ReadOnlyMemory<byte> binBytes,
         Matrix4x4 transform,
-        List<LoadedModelPart> parts)
+        List<LoadedModelPart> parts,
+        string nodeName,
+        int nodeIndex,
+        int meshIndex)
     {
         if (!mesh.TryGetProperty("primitives", out JsonElement primitives))
             return;
+
+        string meshName = ReadName(mesh, meshIndex >= 0 ? $"Mesh{meshIndex}" : "Mesh");
 
         for (int i = 0; i < primitives.GetArrayLength(); i++)
         {
@@ -179,10 +187,20 @@ public static class GlbModelLoader
                 baseColorPng,
                 metallicRoughnessPng,
                 metallicFactor,
-                roughnessFactor));
+                roughnessFactor,
+                nodeName,
+                meshName,
+                nodeIndex,
+                meshIndex,
+                i));
         }
     }
 
+
+    private static string ReadName(JsonElement element, string fallback)
+        => element.TryGetProperty("name", out JsonElement nameElement) && !string.IsNullOrWhiteSpace(nameElement.GetString())
+            ? nameElement.GetString()!
+            : fallback;
     private static Matrix4x4 ReadNodeTransform(JsonElement node)
     {
         if (node.TryGetProperty("matrix", out JsonElement matrixElement) && matrixElement.GetArrayLength() == 16)

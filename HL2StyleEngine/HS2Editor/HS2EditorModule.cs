@@ -44,13 +44,15 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
     private Vector2 _sceneViewportMin;
     private Vector2 _sceneViewportSize = new(1f, 1f);
     private bool _sceneViewportFocused;
-    private const string DockLayoutVersion = "6";
-    private const int DefaultLayoutFrameCount = 240;
+    private const string DockLayoutVersion = "8";
+    private const int DefaultLayoutFrameCount = 480;
     private const string GlbAssetDragDropPayload = "HS2_GLB_ASSET_PATH";
 
     private readonly Dictionary<string, AssetPreviewEntry> _assetPreviewCache = new(StringComparer.OrdinalIgnoreCase);
     private string _selectedAssetAbsolutePath = "";
     private string _selectedAssetProjectPath = "";
+    private string _activeGlbDragPath = "";
+    private bool _drawSceneGlbModels = true;
     private float _assetPreviewYaw;
 
     private string _newLevelName = "new_level";
@@ -133,6 +135,7 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
             UpdateCameraMove(dt);
 
         UpdateEditorPicking(sceneMouse, wantsMouse);
+        TryPlaceDraggedGlbOnMouseRelease(sceneMouse);
         _assetPreviewYaw += dt * 0.45f;
 
         _wasLeftMouseDown = _input.LeftMouseDown;
@@ -168,6 +171,7 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
 
     public void Dispose()
     {
+        DisposeEditorSceneModelCache();
         _world?.Dispose();
     }
 

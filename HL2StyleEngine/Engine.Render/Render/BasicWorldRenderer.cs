@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
@@ -248,15 +248,21 @@ public sealed class BasicWorldRenderer : IDisposable
     public RenderModel LoadGlbModel(string path)
         => new(_gd, GlbModelLoader.Load(path), _textureLayout, _modelSampler);
 
-    public RenderModel CreateRenderModel(LoadedModel model)
-        => new(_gd, model, _textureLayout, _modelSampler);
+    public RenderModel CreateRenderModel(LoadedModel model, bool loadTextures = true)
+        => new(_gd, model, _textureLayout, _modelSampler, loadTextures);
 
     public void DrawModel(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 tint)
+        => DrawModel(cl, model, transform, tint, hiddenPartKeys: null);
+
+    public void DrawModel(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 tint, IReadOnlySet<string>? hiddenPartKeys)
     {
         IReadOnlyList<RenderModelPart> parts = model.Parts;
         for (int i = 0; i < parts.Count; i++)
         {
             RenderModelPart part = parts[i];
+            if (IsModelPartHidden(part, hiddenPartKeys))
+                continue;
+
             Vector4 color = new(
                 part.Color.X * tint.X,
                 part.Color.Y * tint.Y,
@@ -269,6 +275,15 @@ public sealed class BasicWorldRenderer : IDisposable
         }
     }
 
+    private static bool IsModelPartHidden(RenderModelPart part, IReadOnlySet<string>? hiddenPartKeys)
+    {
+        if (hiddenPartKeys == null || hiddenPartKeys.Count == 0)
+            return false;
+
+        return hiddenPartKeys.Contains(part.PartKey) ||
+               (!string.IsNullOrWhiteSpace(part.NodeName) && hiddenPartKeys.Contains(part.NodeName)) ||
+               (!string.IsNullOrWhiteSpace(part.MeshName) && hiddenPartKeys.Contains(part.MeshName));
+    }
     private void DrawTexturedMesh(
         CommandList cl,
         Matrix4x4 model,

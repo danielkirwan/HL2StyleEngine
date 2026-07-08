@@ -32,13 +32,15 @@ Implemented:
 - Project folder creation for `Game/Content/Levels`, `Models`, `Materials`, `Animations`, `Scripts`, `UI`, and `Prefabs`.
 - Source-side starter levels under `Game/Content/Levels`: `interaction_test.json`, `interaction_test_blockout.json`, and `room01.json`.
 - Level manager for creating, loading, saving, duplicating, and renaming level JSON files.
+- Dock layout version `8` forces stale saved ImGui window layouts to reset.
 - Dockspace-based editor workspace with a Unity-style default placement: Scene center, hierarchy/levels/project on the left, inspector/toolbar on the right, and content/prefab/UI/status panels around the scene. The current ImGui.NET wrapper does not expose dock-builder calls, so the editor seeds default window placement and still leaves panels dockable/manually rearrangeable. Layout-version changes, missing saved layouts, and saved layouts with collapsed/tiny key panels clear stale `imgui.ini` state and hold default placement long enough to recover from old collapsed/off-screen windows.
 - Scene camera controls: RMB look plus WASD/QE fly movement while the Scene panel is hovered or focused.
 - Scene selection and dragging through the existing `LevelEditorController` picking path. Picking rays now use the Scene panel rectangle instead of the whole application window, and the Scene panel is not treated as regular UI for mouse blocking. If the Scene panel bounds are missing or saved below a usable size during startup, world rendering falls back to the full app window rather than leaving a tiny black viewport.
 - Existing hierarchy, inspector, and toolbar panels reused inside the standalone app.
-- Content browser for models, animations, and all content files. The Models tab uses a table layout with a visible asset count/path header, explicit Asset and Assign columns, and a selected-model shaded/wireframe 3D preview pane for `.glb` assets when there is enough room.
+- Content browser for models, animations, and all content files. The Models tab uses a table layout with a visible asset count/path header, explicit Asset and Assign columns, and a selected-model material-colour shaded 3D preview pane for `.glb` assets when there is enough room.
 - Assign selected model from `Content/Models` to the selected entity by writing a `Content/...` mesh path.
-- Drag/drop GLB asset payloads from the content browser into inspector model lists. Damageable object replacement and debris model lists now accept dragged `.glb` paths, which supports workflows such as dragging `DamagedCrate*.glb` onto a crate replacement list.
+- Drag a `.glb` model from the Content Browser onto the Scene panel to create a selected static `RigidBody` at the drop point. The new entity uses the existing selection, drag, and gizmo movement path, defaults to a one-unit box collider/model fit, and can be resized in the inspector. Scene placement avoids the Scene viewport ImGui payload target and instead places the tracked dragged asset on mouse release over the Scene. Assigned/dropped GLBs now render in the Scene view using a colour-only editor render model, with texture decoding disabled in the editor scene path for drag/browse stability. The same bounds-fit transform as the game renderer is used, and the collider/blockout box can be shown as an overlay so mesh orientation and collision volume can be tuned together.
+- Drag/drop GLB asset payloads from the content browser into inspector model fields and model lists. Selected boxes, props, and rigid bodies accept dropped `.glb` paths into `MeshPath`, so blockout walls, floors, ceilings, and props can be assigned imported models without typing paths. Damageable object replacement and debris model lists still accept dragged `.glb` paths for workflows such as dragging `DamagedCrate*.glb` onto a crate replacement list.
 - Prefab creation from the selected entity and prefab placement from JSON files under `Content/Prefabs`.
 - Basic UI manager for creating, opening, editing, and saving `.rml` and `.rcss` files.
 - Asset importer launch from the editor.
@@ -50,7 +52,7 @@ Current first-pass limitations:
 - UI preview is currently source/text preview, not the final native RmlUi visual preview.
 - Asset references are path-based; GUID/meta files are still future work.
 - Play mode launches a separate game process and does not embed runtime play in the editor viewport yet.
-- Content Browser model preview uses an editor-side shaded/wireframe projection first; full textured offscreen preview rendering is a later viewport/render-target milestone.
+- Content Browser model preview uses an editor-side material-colour shaded projection first; full textured offscreen thumbnail rendering is a later viewport/render-target milestone. Texture-average thumbnail sampling was removed from the preview path because native image decoding is not safe enough for drag/browse stability. The Scene view renders assigned GLBs through the engine renderer, but disables texture loading for editor scene models and keeps the collider/blockout shape available as an overlay. Runtime/game rendering still uses the normal textured GLB renderer. Full textured editor Scene drawing should return later through a safer renderer-backed preview path.
 - Rich object creation palettes, visual UI layout editing, terrain, navmesh, material tools, and animation timelines are later milestones.
 
 ## First Milestone
@@ -63,7 +65,7 @@ The first usable version should include:
 - Hierarchy panel for level entities.
 - Inspector panel for entity/component data.
 - Content browser rooted at the project content folders.
-- Drag or assign models from `Content/Models` onto entities.
+- Drag models from `Content/Models` into the Scene to create props, or assign/drop models onto selected entities.
 - Basic object creation for boxes, props, rigid bodies, lights, triggers, player spawn, doors/chests, puzzle slots, damageable objects, and scripted objects.
 - Script attachment for registered scripts only.
 - Editable script JSON parameters in the inspector.
@@ -207,7 +209,7 @@ These run the relevant project from the repository root.
 - A level can be created, loaded, edited, saved, duplicated, and renamed.
 - Objects can be selected in a 3D viewport.
 - Entity transforms, model paths, collider/physics settings, damage settings, interaction settings, and scripts can be edited through the existing inspector.
-- A GLB from the content browser can be assigned to an entity.
+- A GLB from the content browser can be assigned to an entity, dropped onto box/prop/rigid-body `MeshPath`, or dropped into the Scene to create a movable static rigid body with a box collider.
 - A prefab can be created from an object and placed back into a level.
 - UI files can be opened, edited, saved, and source-previewed.
 - The asset importer can be launched from the editor.

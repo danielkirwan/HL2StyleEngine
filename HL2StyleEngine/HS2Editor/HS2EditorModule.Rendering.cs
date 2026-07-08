@@ -1,5 +1,6 @@
 using Editor.Editor;
 using Engine.Editor.Editor;
+using Engine.Editor.Level;
 using Engine.Render;
 using System.Numerics;
 using Veldrid;
@@ -8,6 +9,25 @@ namespace HS2Editor;
 
 internal sealed partial class HS2EditorModule
 {
+    private sealed class EditorSceneModelEntry : IDisposable
+    {
+        public LoadedModel? LoadedModel;
+        public RenderModel? RenderModel;
+        public Task<LoadedModel>? LoadTask;
+        public Vector3 Min;
+        public Vector3 Max;
+        public bool Failed;
+        public string Error = "";
+
+        public void Dispose()
+        {
+            RenderModel?.Dispose();
+            RenderModel = null;
+        }
+    }
+
+    private readonly Dictionary<string, EditorSceneModelEntry> _sceneModelCache = new(StringComparer.OrdinalIgnoreCase);
+
     private Vector3 CameraForward
     {
         get
@@ -66,6 +86,9 @@ internal sealed partial class HS2EditorModule
     {
         bool ctrl = _input.IsDown(Key.ControlLeft) || _input.IsDown(Key.ControlRight);
 
+        if (!string.IsNullOrWhiteSpace(_activeGlbDragPath))
+            return;
+
         if (_input.LeftMousePressedThisFrame && sceneMouse && !wantsMouse)
         {
             _sceneMouseDragActive = true;
@@ -80,6 +103,21 @@ internal sealed partial class HS2EditorModule
             _editor.OnMouseReleased();
             _sceneMouseDragActive = false;
         }
+    }
+
+    private void TryPlaceDraggedGlbOnMouseRelease(bool sceneMouse)
+    {
+        if (string.IsNullOrWhiteSpace(_activeGlbDragPath))
+            return;
+
+        if (!_input.LeftMouseReleasedThisFrame)
+            return;
+
+        if (sceneMouse && _editor.PlaceModelInScene(_activeGlbDragPath, GetMouseRay()))
+            _status = $"Placed {_activeGlbDragPath}.";
+
+        _activeGlbDragPath = "";
+        _sceneMouseDragActive = false;
     }
 
     private bool IsMouseInsideSceneViewport(Vector2 mouse)
@@ -140,7 +178,16 @@ internal sealed partial class HS2EditorModule
         for (int i = 0; i < _editor.DrawBoxes.Count; i++)
         {
             EditorDrawBox draw = _editor.DrawBoxes[i];
-            Vector4 color = i == _editor.SelectedEntityIndex
+            bool selected = i == _editor.SelectedEntityIndex;
+            bool drewModel = TryDrawEntityModel(renderer, i, draw);
+            if (drewModel)
+            {
+                if (_editor.ShowColliders || selected)
+                    DrawColliderOverlay(renderer, draw, selected);
+                continue;
+            }
+
+            Vector4 color = selected
                 ? new Vector4(1f, 1f, 0.16f, 1f)
                 : draw.Color;
 
@@ -166,6 +213,131 @@ internal sealed partial class HS2EditorModule
         renderer.CommandList.SetScissorRect(0, 0, 0, (uint)windowWidth, (uint)windowHeight);
     }
 
+    private bool TryDrawEntityModel(Renderer renderer, int entityIndex, EditorDrawBox draw)
+    {
+        if (!_drawSceneGlbModels)
+            return false;
+
+        if (entityIndex < 0 || entityIndex >= _editor.LevelFile.Entities.Count)
+            return false;
+
+        LevelEntityDef entity = _editor.LevelFile.Entities[entityIndex];
+        if (!IsGlbAssetPath(entity.MeshPath))
+            return false;
+
+        if (!TryGetEditorSceneModel(entity.MeshPath, out EditorSceneModelEntry entry) || entry.RenderModel == null || entry.LoadedModel == null)
+            return false;
+
+        try
+        {
+            Matrix4x4 transform = CreateBoundsFitTransform(entry.Min, entry.Max, draw.Position, draw.Size, draw.Rotation);
+            _world.DrawModel(renderer.CommandList, entry.RenderModel, transform, Vector4.One);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            entry.Failed = true;
+            entry.Error = ex.Message;
+            return false;
+        }
+    }
+
+    private bool TryGetEditorSceneModel(string modelPath, out EditorSceneModelEntry entry)
+    {
+        string absolutePath = ResolveContentAssetPath(modelPath);
+        if (_sceneModelCache.TryGetValue(absolutePath, out entry!))
+        {
+            if (entry.RenderModel != null)
+                return true;
+
+            if (entry.Failed)
+                return false;
+
+            if (entry.LoadTask is { IsCompleted: true } task)
+            {
+                if (task.IsCompletedSuccessfully)
+                {
+                    try
+                    {
+                        LoadedModel loaded = task.Result;
+                        ComputeModelBounds(loaded, out Vector3 min, out Vector3 max);
+                        entry.LoadedModel = loaded;
+                        entry.RenderModel = _world.CreateRenderModel(loaded, loadTextures: false);
+                        entry.Min = min;
+                        entry.Max = max;
+                        entry.LoadTask = null;
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        entry.Failed = true;
+                        entry.Error = ex.Message;
+                        entry.LoadTask = null;
+                    }
+                }
+                else
+                {
+                    entry.Failed = true;
+                    entry.Error = task.Exception?.GetBaseException().Message ?? "model load failed";
+                    entry.LoadTask = null;
+                }
+            }
+
+            return false;
+        }
+
+        entry = new EditorSceneModelEntry();
+        if (!File.Exists(absolutePath))
+        {
+            entry.Failed = true;
+            entry.Error = "file not found";
+            _sceneModelCache[absolutePath] = entry;
+            return false;
+        }
+
+        entry.LoadTask = Task.Run(() => GlbModelLoader.Load(absolutePath));
+        _sceneModelCache[absolutePath] = entry;
+        return false;
+    }
+
+    private string ResolveContentAssetPath(string assetPath)
+    {
+        if (Path.IsPathRooted(assetPath))
+            return Path.GetFullPath(assetPath);
+
+        string normalized = assetPath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+        string contentPrefix = "Content" + Path.DirectorySeparatorChar;
+        if (normalized.StartsWith(contentPrefix, StringComparison.OrdinalIgnoreCase))
+            return Path.GetFullPath(Path.Combine(_contentRoot, normalized[contentPrefix.Length..]));
+
+        return ToAbsolutePath(assetPath);
+    }
+
+    private static bool IsGlbAssetPath(string? path)
+        => !string.IsNullOrWhiteSpace(path) && path.EndsWith(".glb", StringComparison.OrdinalIgnoreCase);
+
+    private static Matrix4x4 CreateBoundsFitTransform(Vector3 min, Vector3 max, Vector3 position, Vector3 size, Quaternion rotation)
+    {
+        Vector3 center = (min + max) * 0.5f;
+        Vector3 boundsSize = Vector3.Max(max - min, new Vector3(0.0001f));
+        Vector3 scale = new(
+            MathF.Abs(size.X) / boundsSize.X,
+            MathF.Abs(size.Y) / boundsSize.Y,
+            MathF.Abs(size.Z) / boundsSize.Z);
+
+        return Matrix4x4.CreateTranslation(-center) *
+               Matrix4x4.CreateScale(scale) *
+               Matrix4x4.CreateFromQuaternion(rotation) *
+               Matrix4x4.CreateTranslation(position);
+    }
+
+    private void DisposeEditorSceneModelCache()
+    {
+        foreach (EditorSceneModelEntry entry in _sceneModelCache.Values)
+            entry.Dispose();
+
+        _sceneModelCache.Clear();
+    }
     private void DrawGrid(Renderer renderer)
     {
         const int halfLines = 20;
@@ -180,6 +352,17 @@ internal sealed partial class HS2EditorModule
         }
     }
 
+    private void DrawColliderOverlay(Renderer renderer, EditorDrawBox draw, bool selected)
+    {
+        Vector4 color = selected
+            ? new Vector4(1f, 1f, 0.12f, 0.16f)
+            : new Vector4(0.38f, 0.74f, 1f, 0.08f);
+
+        if (draw.IsSphere)
+            DrawSphere(renderer, draw.Position, MathF.Max(0.05f, draw.Size.X * 0.5f), color);
+        else
+            DrawBox(renderer, draw.Position, draw.Size, draw.Rotation, color);
+    }
     private void DrawBox(Renderer renderer, Vector3 position, Vector3 size, Quaternion rotation, Vector4 color)
     {
         Matrix4x4 model = Matrix4x4.CreateScale(size) * Matrix4x4.CreateFromQuaternion(rotation) * Matrix4x4.CreateTranslation(position);

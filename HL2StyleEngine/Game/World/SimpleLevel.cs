@@ -9,17 +9,6 @@ namespace Game.World;
 public static class SimpleLevel
 {
     private const string BreakableWoodenCrateModelPath = "Content/Models/ViewModels/Breakable_Wooden_Crate.glb";
-    private static readonly string[] DamagedCrateModelPaths =
-    [
-        "Content/Models/ViewModels/DamagedCrate02.glb",
-        "Content/Models/ViewModels/DamagedCrate03.glb",
-        "Content/Models/ViewModels/DamagedCrate04.glb",
-        "Content/Models/ViewModels/DamagedCrate05.glb",
-        "Content/Models/ViewModels/DamagedCrate06.glb",
-        "Content/Models/ViewModels/DamagedCrate07.glb",
-        "Content/Models/ViewModels/DamagedCrate08.glb"
-    ];
-
     public static List<BoxInstance> BuildRoom01()
     {
         var boxes = new List<BoxInstance>();
@@ -367,11 +356,14 @@ public static class SimpleLevel
         level.Entities.Add(Box("ArchiveCabinet_A", new Vector3(3.1f, 0.9f, 8.6f), new Vector3(1.1f, 1.8f, 0.7f), archive));
         level.Entities.Add(Box("ArchiveCabinet_B", new Vector3(5.4f, 0.9f, 10.6f), new Vector3(1.1f, 1.8f, 0.7f), archive));
 
-        level.Entities.Add(DynamicBox("Crate_FoyerCorner", new Vector3(5.6f, 0.5f, -12.0f), new Vector3(1f, 1f, 1f), Vector4.One, modelAssetPath: BreakableWoodenCrateModelPath, damageable: true, maxHealth: 60f, breakReplacementModelPaths: DamagedCrateModelPaths));
-        level.Entities.Add(DynamicBox("Crate_Utility_A", new Vector3(6.7f, 0.5f, -2.25f), new Vector3(1f, 1f, 1f), Vector4.One, 12f, new Vector3(0f, 14f, 0f), BreakableWoodenCrateModelPath, damageable: true, maxHealth: 60f, breakReplacementModelPaths: DamagedCrateModelPaths));
-        level.Entities.Add(DynamicBox("Crate_Utility_B", new Vector3(6.1f, 1.5f, -2.25f), new Vector3(1f, 1f, 1f), Vector4.One, 12f, new Vector3(0f, -8f, 0f), BreakableWoodenCrateModelPath, damageable: true, maxHealth: 60f, breakReplacementModelPaths: DamagedCrateModelPaths));
-        level.Entities.Add(DynamicBox("Crate_SaveOffice", new Vector3(-7.15f, 0.5f, 2.45f), new Vector3(1f, 1f, 1f), Vector4.One, modelAssetPath: BreakableWoodenCrateModelPath, damageable: true, maxHealth: 60f, breakReplacementModelPaths: DamagedCrateModelPaths));
-        level.Entities.Add(DynamicBox("Crate_ArchiveLoose", new Vector3(1.4f, 0.5f, 10.9f), new Vector3(1f, 1f, 1f), Vector4.One, 10f, new Vector3(0f, 30f, 0f), BreakableWoodenCrateModelPath, damageable: true, maxHealth: 60f, breakReplacementModelPaths: DamagedCrateModelPaths));
+        level.Entities.Add(DynamicBox("Crate_FoyerCorner", new Vector3(5.6f, 0.5f, -12.0f), new Vector3(1f, 1f, 1f), Vector4.One, modelAssetPath: BreakableWoodenCrateModelPath, damageable: true, maxHealth: 100f));
+        level.Entities.Add(DynamicBox("Crate_Utility_A", new Vector3(6.7f, 0.5f, -2.25f), new Vector3(1f, 1f, 1f), Vector4.One, 12f, new Vector3(0f, 14f, 0f), BreakableWoodenCrateModelPath, damageable: true, maxHealth: 100f));
+        level.Entities.Add(DynamicBox("Crate_Utility_B", new Vector3(6.1f, 1.5f, -2.25f), new Vector3(1f, 1f, 1f), Vector4.One, 12f, new Vector3(0f, -8f, 0f), BreakableWoodenCrateModelPath, damageable: true, maxHealth: 100f));
+        level.Entities.Add(DynamicBox("Crate_SaveOffice", new Vector3(-7.15f, 0.5f, 2.45f), new Vector3(1f, 1f, 1f), Vector4.One, modelAssetPath: BreakableWoodenCrateModelPath, damageable: true, maxHealth: 100f));
+        level.Entities.Add(DynamicBox("Crate_ArchiveLoose", new Vector3(1.4f, 0.5f, 10.9f), new Vector3(1f, 1f, 1f), Vector4.One, 10f, new Vector3(0f, 30f, 0f), BreakableWoodenCrateModelPath, damageable: true, maxHealth: 100f));
+        level.Entities.Add(DynamicBox("Crate_MiddleCorridor_A", new Vector3(-1.35f, 0.5f, -3.2f), new Vector3(1f, 1f, 1f), Vector4.One, 10f, new Vector3(0f, 8f, 0f), BreakableWoodenCrateModelPath, damageable: true, maxHealth: 100f));
+        level.Entities.Add(DynamicBox("Crate_MiddleCorridor_B", new Vector3(0.15f, 0.5f, -1.2f), new Vector3(1f, 1f, 1f), Vector4.One, 10f, new Vector3(0f, -18f, 0f), BreakableWoodenCrateModelPath, damageable: true, maxHealth: 100f));
+        level.Entities.Add(DynamicBox("Crate_MiddleCorridor_C", new Vector3(1.45f, 0.5f, 1.1f), new Vector3(1f, 1f, 1f), Vector4.One, 10f, new Vector3(0f, 24f, 0f), BreakableWoodenCrateModelPath, damageable: true, maxHealth: 100f));
 
         level.Entities.Add(new LevelEntityDef
         {

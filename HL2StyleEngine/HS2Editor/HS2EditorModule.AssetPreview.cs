@@ -11,6 +11,7 @@ internal sealed partial class HS2EditorModule
         public LoadedModel? Model;
         public Vector3 Min;
         public Vector3 Max;
+        public Dictionary<LoadedModelPart, Vector4> PartPreviewColors = new();
         public string Error = "";
     }
 
@@ -52,7 +53,7 @@ internal sealed partial class HS2EditorModule
         ImDrawListPtr drawList = ImGui.GetWindowDrawList();
         Vector2 max = min + size;
         drawList.AddRectFilled(min, max, ImGui.GetColorU32(new Vector4(0.025f, 0.028f, 0.032f, 1f)));
-        drawList.AddRect(min, max, ImGui.GetColorU32(new Vector4(1f, 0.9f, 0.25f, 0.7f)));
+        drawList.AddRect(min, max, ImGui.GetColorU32(new Vector4(0.34f, 0.36f, 0.40f, 0.8f)));
 
         if (string.IsNullOrWhiteSpace(_selectedAssetAbsolutePath))
         {
@@ -79,7 +80,7 @@ internal sealed partial class HS2EditorModule
         string label = string.IsNullOrWhiteSpace(_selectedAssetProjectPath)
             ? Path.GetFileName(_selectedAssetAbsolutePath)
             : _selectedAssetProjectPath;
-        drawList.AddText(min + new Vector2(8f, 8f), ImGui.GetColorU32(new Vector4(1f, 0.95f, 0.55f, 1f)), label);
+        drawList.AddText(min + new Vector2(8f, 8f), ImGui.GetColorU32(new Vector4(0.92f, 0.94f, 0.96f, 1f)), label);
         ImGui.EndChild();
     }
 
@@ -100,6 +101,7 @@ internal sealed partial class HS2EditorModule
             entry.Model = model;
             entry.Min = min;
             entry.Max = max;
+            entry.PartPreviewColors = BuildPreviewPartColors(model);
         }
         catch (Exception ex)
         {
@@ -131,6 +133,15 @@ internal sealed partial class HS2EditorModule
         }
     }
 
+    private static Dictionary<LoadedModelPart, Vector4> BuildPreviewPartColors(LoadedModel model)
+    {
+        Dictionary<LoadedModelPart, Vector4> colors = new();
+        foreach (LoadedModelPart part in model.Parts)
+            colors[part] = part.Color;
+
+        return colors;
+    }
+
     private void DrawPreviewModel(ImDrawListPtr drawList, Vector2 min, Vector2 size, AssetPreviewEntry entry)
     {
         if (entry.Model == null)
@@ -154,7 +165,7 @@ internal sealed partial class HS2EditorModule
 
         foreach (LoadedModelPart part in entry.Model.Parts)
         {
-            Vector4 baseColor = part.Color;
+            Vector4 baseColor = entry.PartPreviewColors.TryGetValue(part, out Vector4 previewColor) ? previewColor : part.Color;
             for (int i = 0; i + 2 < part.Indices.Length && triangles.Count < maxTriangles; i += 3)
             {
                 Vector3 p0 = TransformPreviewPoint(part.Positions[part.Indices[i]], center, scale, rotation);
@@ -180,7 +191,7 @@ internal sealed partial class HS2EditorModule
                     Math.Clamp(baseColor.Y * light, 0f, 1f),
                     Math.Clamp(baseColor.Z * light, 0f, 1f),
                     0.92f);
-                Vector4 line = new(1f, 0.9f, 0.22f, 0.34f);
+                Vector4 line = new(0.92f, 0.94f, 0.96f, 0.16f);
                 float depth = (p0.Z + p1.Z + p2.Z) / 3f;
                 triangles.Add(new PreviewTriangle(
                     s0,
