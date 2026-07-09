@@ -59,6 +59,8 @@ internal sealed partial class HS2EditorModule
     private void LoadLevel(string path)
     {
         path = Path.GetFullPath(path);
+        _editingPrefabPath = "";
+        _prefabEditReturnLevelPath = "";
         _editor.LoadOrCreate(path, CreateEmptyLevel);
         _project.StartupLevel = MakeProjectRelative(path);
         _project.AddRecentLevel(_project.StartupLevel);
@@ -69,7 +71,20 @@ internal sealed partial class HS2EditorModule
         _status = $"Loaded level {MakeProjectRelative(path)}.";
     }
 
+    private bool IsEditingPrefab => !string.IsNullOrWhiteSpace(_editingPrefabPath);
+
+    private void SaveActiveDocument()
+    {
+        if (IsEditingPrefab)
+            SaveEditedPrefab();
+        else
+            SaveCurrentLevelOnly();
+    }
+
     private void SaveCurrentLevel()
+        => SaveActiveDocument();
+
+    private void SaveCurrentLevelOnly()
     {
         _editor.Save();
         _status = $"Saved {MakeProjectRelative(_editor.LevelPath)}.";
@@ -105,25 +120,193 @@ internal sealed partial class HS2EditorModule
     }
 
     private void SaveSelectedPrefab()
+        => SaveSelectedPrefab(isVariant: false);
+
+    private void SaveSelectedPrefab(bool isVariant)
     {
         if (!_editor.TryGetSelectedEntity(out LevelEntityDef entity)) { _status = "Select an entity before creating a prefab."; return; }
-        string safeName = MakeSafeFileName(_prefabName, entity.Name ?? entity.Type);
+
+        string requestedName = isVariant ? _prefabVariantName : _prefabName;
+        string safeName = MakeSafeFileName(requestedName, entity.Name ?? entity.Type);
         string path = Path.Combine(_prefabsRoot, safeName + ".json");
-        File.WriteAllText(path, JsonSerializer.Serialize(entity, EditorJson.Options));
-        _status = $"Prefab saved: {MakeProjectRelative(path)}.";
+        string basePrefabPath = "";
+
+        if (isVariant)
+        {
+            if (_editor.TryGetSelectedPrefabInstance(out _, out string selectedInstancePrefab))
+                basePrefabPath = selectedInstancePrefab;
+            else if (!string.IsNullOrWhiteSpace(_selectedPrefabPath))
+                basePrefabPath = ToContentAssetPath(_selectedPrefabPath);
+
+            if (string.IsNullOrWhiteSpace(basePrefabPath))
+            {
+                _status = "Select a prefab instance or prefab asset before creating a variant.";
+                return;
+            }
+        }
+
+        if (!_editor.TryBuildPrefabFromSelection(safeName, basePrefabPath, isVariant, out PrefabFile prefab))
+        {
+            _status = "Prefab could not be built from the current selection.";
+            return;
+        }
+
+        PrefabIO.Save(path, prefab);
+        _selectedPrefabPath = path;
+        _status = isVariant
+            ? $"Prefab variant saved: {MakeProjectRelative(path)}."
+            : $"Prefab saved: {MakeProjectRelative(path)}.";
     }
 
     private void PlacePrefab(string path)
     {
         try
         {
-            LevelEntityDef? prefab = JsonSerializer.Deserialize<LevelEntityDef>(File.ReadAllText(path), EditorJson.Options);
-            if (prefab == null) { _status = "Prefab could not be loaded."; return; }
-            _editor.AddEntityFromTemplate(prefab, "placed");
+            PrefabFile prefab = PrefabIO.Load(path);
+            string assetPath = ToContentAssetPath(path);
+            if (!_editor.AddPrefabInstance(prefab, assetPath, "placed"))
+            {
+                _status = "Prefab could not be placed.";
+                return;
+            }
+
+            _selectedPrefabPath = path;
             _status = $"Placed prefab {Path.GetFileNameWithoutExtension(path)}.";
         }
         catch (Exception ex) { _status = $"Prefab load failed: {ex.Message}"; }
     }
+
+    private void ApplySelectedPrefabInstance()
+    {
+        if (!_editor.TryBuildPrefabFromSelectedInstanceForApply("", out PrefabFile prefab, out string assetPath))
+        {
+            _status = "Select a prefab instance before applying changes.";
+            return;
+        }
+
+        string path = ResolveContentAssetPath(assetPath);
+        try
+        {
+            PrefabFile existing = File.Exists(path) ? PrefabIO.Load(path) : prefab;
+            prefab.Id = existing.Id;
+            prefab.Name = existing.Name;
+            prefab.BasePrefabPath = existing.BasePrefabPath;
+            prefab.IsVariant = existing.IsVariant;
+            PrefabIO.Save(path, prefab);
+            _selectedPrefabPath = path;
+            _status = $"Applied selected instance to {MakeProjectRelative(path)}.";
+        }
+        catch (Exception ex) { _status = $"Prefab apply failed: {ex.Message}"; }
+    }
+
+    private void RevertSelectedPrefabInstance()
+    {
+        if (!_editor.TryGetSelectedPrefabInstance(out _, out string assetPath))
+        {
+            _status = "Select a prefab instance before reverting.";
+            return;
+        }
+
+        string path = ResolveContentAssetPath(assetPath);
+        try
+        {
+            PrefabFile prefab = PrefabIO.Load(path);
+            if (_editor.RevertSelectedPrefabInstance(prefab, assetPath))
+                _status = $"Reverted selected instance from {MakeProjectRelative(path)}.";
+            else
+                _status = "Prefab instance could not be reverted.";
+        }
+        catch (Exception ex) { _status = $"Prefab revert failed: {ex.Message}"; }
+    }
+
+    private void UnpackSelectedPrefabInstance()
+    {
+        if (_editor.UnpackSelectedPrefabInstance())
+            _status = "Prefab instance unpacked into normal scene objects.";
+        else
+            _status = "Select a prefab instance before unpacking.";
+    }
+
+    private void EditPrefab(string path)
+    {
+        try
+        {
+            if (!IsEditingPrefab)
+            {
+                if (_editor.Dirty)
+                    _editor.Save();
+                _prefabEditReturnLevelPath = _editor.LevelPath;
+            }
+
+            PrefabFile prefab = PrefabIO.Load(path);
+            var level = new LevelFile
+            {
+                Version = 2,
+                Entities = CloneEntities(prefab.Entities)
+            };
+
+            _editingPrefabPath = Path.GetFullPath(path);
+            _selectedPrefabPath = _editingPrefabPath;
+            _editor.LoadFromMemory(_editingPrefabPath, level);
+            _status = $"Editing prefab {MakeProjectRelative(_editingPrefabPath)}. Use Save Prefab, then Return To Level.";
+        }
+        catch (Exception ex) { _status = $"Prefab edit failed: {ex.Message}"; }
+    }
+
+    private void SaveEditedPrefab()
+    {
+        if (!IsEditingPrefab)
+            return;
+
+        try
+        {
+            PrefabFile existing = File.Exists(_editingPrefabPath) ? PrefabIO.Load(_editingPrefabPath) : new PrefabFile();
+            List<LevelEntityDef> entities = CloneEntities(_editor.LevelFile.Entities);
+            foreach (LevelEntityDef entity in entities)
+            {
+                entity.PrefabAssetPath = "";
+                entity.PrefabInstanceId = "";
+                entity.PrefabSourceEntityId = "";
+                entity.PrefabUnpacked = false;
+            }
+
+            string rootId = entities.FirstOrDefault(entity => string.IsNullOrWhiteSpace(entity.ParentId))?.Id
+                ?? entities.FirstOrDefault()?.Id
+                ?? "";
+            var prefab = new PrefabFile
+            {
+                Id = existing.Id,
+                Name = existing.Name,
+                RootEntityId = rootId,
+                BasePrefabPath = existing.BasePrefabPath,
+                IsVariant = existing.IsVariant,
+                Entities = entities
+            };
+
+            PrefabIO.Save(_editingPrefabPath, prefab);
+            _editor.MarkClean();
+            _status = $"Saved prefab {MakeProjectRelative(_editingPrefabPath)}.";
+        }
+        catch (Exception ex) { _status = $"Prefab save failed: {ex.Message}"; }
+    }
+
+    private void ReturnFromPrefabEdit()
+    {
+        if (!IsEditingPrefab)
+            return;
+
+        string returnLevel = _prefabEditReturnLevelPath;
+        _editingPrefabPath = "";
+        _prefabEditReturnLevelPath = "";
+        if (!string.IsNullOrWhiteSpace(returnLevel) && File.Exists(returnLevel))
+            LoadLevel(returnLevel);
+    }
+
+    private static List<LevelEntityDef> CloneEntities(IEnumerable<LevelEntityDef> source)
+        => source.Select(CloneEntity).ToList();
+
+    private static LevelEntityDef CloneEntity(LevelEntityDef source)
+        => JsonSerializer.Deserialize<LevelEntityDef>(JsonSerializer.Serialize(source, EditorJson.Options), EditorJson.Options) ?? new LevelEntityDef();
 
     private void CreateUiFile(string fileName, string defaultText)
     {
@@ -175,3 +358,6 @@ internal sealed partial class HS2EditorModule
         catch (Exception ex) { _status = $"Launch failed: {ex.Message}"; }
     }
 }
+
+
+

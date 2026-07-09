@@ -20,6 +20,7 @@ public sealed class LevelEditorController
 
     public bool Dirty { get; private set; }
     public int SelectedEntityIndex { get; private set; } = -1;
+    public Action? SaveActionOverride { get; set; }
 
     public readonly List<EditorDrawBox> DrawBoxes = new();
     public readonly List<Aabb> SolidColliders = new();
@@ -52,7 +53,7 @@ public sealed class LevelEditorController
 
     private bool _layoutDockedOnce = false;
 
-    public bool ShowColliders = true;
+    public bool ShowColliders = false;
     public bool ShowColliderCorners = true;
     public bool ShowPhysicsAabbs = true;
     public float ColliderLineThickness = 0.03f;
@@ -68,6 +69,11 @@ public sealed class LevelEditorController
     private int _addScriptSelectedIndex = 0;
     private int _damageModelPickerIndex = 0;
     private int _debrisModelPickerIndex = 0;
+    private int _interactionKindPickerIndex = 0;
+    private int _interactionItemPickerIndex = 0;
+    private int _interactionTargetPickerIndex = 0;
+    private int _interactionRequiredStatePickerIndex = 0;
+    private int _interactionRewardItemPickerIndex = 0;
 
     private enum TransformSpace { Local, World }
     private TransformSpace _inspectorSpace = TransformSpace.Local;
@@ -76,6 +82,7 @@ public sealed class LevelEditorController
     private static bool IsZero(Vector3 v) => MathF.Abs(v.X) < 0.0001f && MathF.Abs(v.Y) < 0.0001f && MathF.Abs(v.Z) < 0.0001f;
     private static bool IsSphereShape(string? shape) => string.Equals(shape, "Sphere", StringComparison.OrdinalIgnoreCase);
     private static bool IsCapsuleShape(string? shape) => string.Equals(shape, "Capsule", StringComparison.OrdinalIgnoreCase);
+    private static bool IsMeshShape(string? shape) => string.Equals(shape, "Mesh", StringComparison.OrdinalIgnoreCase);
     private static float GetScaledSphereRadius(LevelEntityDef entity, Vector3 scale)
     {
         float scaleMax = MathF.Max(MathF.Abs(scale.X), MathF.Max(MathF.Abs(scale.Y), MathF.Abs(scale.Z)));
@@ -124,11 +131,28 @@ public sealed class LevelEditorController
         RebuildRuntimeFromLevel();
     }
 
+
+    public void LoadFromMemory(string path, LevelFile level)
+    {
+        LevelPath = path;
+        LevelFile = level;
+        FixupLoadedEntities();
+        RebuildRuntimeFromLevel();
+        Dirty = false;
+        SelectedEntityIndex = LevelFile.Entities.Count > 0 ? 0 : -1;
+        _dragging = false;
+        _dragAxis = GizmoAxis.None;
+        _undoStack.Clear();
+        _redoStack.Clear();
+    }
     public void Save()
     {
         LevelIO.Save(LevelPath, LevelFile);
         Dirty = false;
     }
+
+    public void MarkClean()
+        => Dirty = false;
 
     private int FindIndexById(string? id)
     {
@@ -311,6 +335,11 @@ public sealed class LevelEditorController
 
         BeginEdit();
         entity.MeshPath = meshPath ?? "";
+        if (entity.Type == EntityTypes.RigidBody && entity.MotionType == MotionType.Static && entity.MeshPath.EndsWith(".glb", StringComparison.OrdinalIgnoreCase))
+        {
+            entity.Shape = "Mesh";
+            entity.Mass = 0f;
+        }
         Dirty = true;
         RebuildRuntimeFromLevel();
         EndEditIfAny();
@@ -336,7 +365,7 @@ public sealed class LevelEditorController
             LocalPosition = placement,
             LocalRotationEulerDeg = Vector3.Zero,
             LocalScale = Vector3.One,
-            Shape = "Box",
+            Shape = "Mesh",
             MotionType = MotionType.Static,
             Size = Vector3.One,
             Color = new Vector4(1f, 1f, 1f, 1f),
@@ -408,6 +437,380 @@ public sealed class LevelEditorController
         EndEditIfAny();
         return true;
     }
+    public bool TryBuildPrefabFromSelection(string prefabName, string basePrefabPath, bool isVariant, out PrefabFile prefab)
+    {
+        prefab = null!;
+        if (SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
+            return false;
+
+        List<int> ordered = GetHierarchyIndicesDepthFirst(SelectedEntityIndex);
+        if (ordered.Count == 0)
+            return false;
+
+        HashSet<int> included = ordered.ToHashSet();
+        var entities = new List<LevelEntityDef>(ordered.Count);
+        string rootId = LevelFile.Entities[SelectedEntityIndex].Id;
+
+        foreach (int index in ordered)
+        {
+            LevelEntityDef source = LevelFile.Entities[index];
+            LevelEntityDef copy = CloneEntityExact(source);
+            ClearPrefabMetadata(copy);
+
+            if (index == SelectedEntityIndex || FindIndexById(source.ParentId) is int parentIndex && !included.Contains(parentIndex))
+            {
+                copy.ParentId = null;
+                if (index == SelectedEntityIndex)
+                    copy.LocalPosition = Vector3.Zero;
+            }
+
+            entities.Add(copy);
+        }
+
+        prefab = new PrefabFile
+        {
+            Name = string.IsNullOrWhiteSpace(prefabName) ? LevelFile.Entities[SelectedEntityIndex].Name ?? "Prefab" : prefabName,
+            RootEntityId = rootId,
+            BasePrefabPath = basePrefabPath ?? "",
+            IsVariant = isVariant,
+            Entities = entities
+        };
+        return true;
+    }
+
+    public bool TryBuildPrefabFromSelectedInstanceForApply(string prefabName, out PrefabFile prefab, out string assetPath)
+    {
+        prefab = null!;
+        assetPath = "";
+
+        if (!TryGetSelectedPrefabInstance(out string instanceId, out assetPath))
+            return false;
+
+        List<int> instanceIndices = GetPrefabInstanceIndices(instanceId);
+        if (instanceIndices.Count == 0)
+            return false;
+
+        int rootIndex = FindPrefabInstanceRootIndex(instanceIndices, "");
+        if (rootIndex < 0)
+            rootIndex = instanceIndices[0];
+
+        List<int> ordered = GetHierarchyIndicesDepthFirst(rootIndex)
+            .Where(instanceIndices.Contains)
+            .ToList();
+
+        foreach (int index in instanceIndices)
+            if (!ordered.Contains(index))
+                ordered.Add(index);
+
+        var sceneIdToPrefabId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (int index in ordered)
+        {
+            LevelEntityDef entity = LevelFile.Entities[index];
+            string prefabEntityId = !string.IsNullOrWhiteSpace(entity.PrefabSourceEntityId)
+                ? entity.PrefabSourceEntityId
+                : entity.Id;
+            sceneIdToPrefabId[entity.Id] = prefabEntityId;
+        }
+
+        var entities = new List<LevelEntityDef>(ordered.Count);
+        foreach (int index in ordered)
+        {
+            LevelEntityDef source = LevelFile.Entities[index];
+            LevelEntityDef copy = CloneEntityExact(source);
+            ClearPrefabMetadata(copy);
+
+            copy.Id = sceneIdToPrefabId[source.Id];
+            copy.ParentId = !string.IsNullOrWhiteSpace(source.ParentId) && sceneIdToPrefabId.TryGetValue(source.ParentId, out string? parentId)
+                ? parentId
+                : null;
+
+            if (index == rootIndex)
+            {
+                copy.ParentId = null;
+                copy.LocalPosition = Vector3.Zero;
+            }
+
+            entities.Add(copy);
+        }
+
+        prefab = new PrefabFile
+        {
+            Name = string.IsNullOrWhiteSpace(prefabName) ? LevelFile.Entities[rootIndex].Name ?? "Prefab" : prefabName,
+            RootEntityId = sceneIdToPrefabId[LevelFile.Entities[rootIndex].Id],
+            Entities = entities
+        };
+        return true;
+    }
+
+    public bool AddPrefabInstance(PrefabFile prefab, string assetPath, string? nameSuffix = null)
+    {
+        if (prefab.Entities == null || prefab.Entities.Count == 0)
+            return false;
+
+        List<LevelEntityDef> ordered = OrderPrefabEntities(prefab);
+        if (ordered.Count == 0)
+            return false;
+
+        string rootSourceId = !string.IsNullOrWhiteSpace(prefab.RootEntityId) ? prefab.RootEntityId : ordered[0].Id;
+        string instanceId = Guid.NewGuid().ToString("N");
+        var idMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Vector3 placementOffset = new(0.5f, 0f, 0.5f);
+
+        BeginEdit();
+
+        int firstInsertedIndex = LevelFile.Entities.Count;
+        int selectedRootIndex = firstInsertedIndex;
+        foreach (LevelEntityDef source in ordered)
+        {
+            LevelEntityDef copy = CloneEntityExact(source);
+            string newId = Guid.NewGuid().ToString("N");
+            idMap[source.Id] = newId;
+
+            copy.Id = newId;
+            copy.PrefabAssetPath = assetPath ?? "";
+            copy.PrefabInstanceId = instanceId;
+            copy.PrefabSourceEntityId = source.Id;
+            copy.PrefabUnpacked = false;
+            copy.ParentId = !string.IsNullOrWhiteSpace(source.ParentId) && idMap.TryGetValue(source.ParentId, out string? mappedParent)
+                ? mappedParent
+                : null;
+
+            if (string.Equals(source.Id, rootSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                copy.ParentId = null;
+                copy.LocalPosition = copy.LocalPosition + placementOffset;
+                selectedRootIndex = LevelFile.Entities.Count;
+            }
+
+            string baseName = copy.Name ?? copy.Type;
+            copy.Name = string.IsNullOrWhiteSpace(nameSuffix)
+                ? MakeUniqueEntityName(baseName)
+                : MakeUniqueEntityName($"{baseName}_{nameSuffix}");
+
+            MakePlacedPrefabInteractionStateUnique(copy, instanceId);
+
+            LevelFile.Entities.Add(copy);
+        }
+
+        SelectedEntityIndex = Math.Clamp(selectedRootIndex, firstInsertedIndex, LevelFile.Entities.Count - 1);
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+        EndEditIfAny();
+        return true;
+    }
+
+    private static void MakePlacedPrefabInteractionStateUnique(LevelEntityDef entity, string instanceId)
+    {
+        if (entity.Interaction == null || string.IsNullOrWhiteSpace(entity.Interaction.Kind))
+            return;
+
+        string suffix = string.IsNullOrWhiteSpace(instanceId)
+            ? Guid.NewGuid().ToString("N")[..8]
+            : instanceId[..Math.Min(8, instanceId.Length)];
+
+        string baseStateId = !string.IsNullOrWhiteSpace(entity.Interaction.StateId)
+            ? entity.Interaction.StateId
+            : $"{entity.Interaction.Kind}_{entity.Name ?? entity.Id}";
+
+        if (!baseStateId.EndsWith($"_{suffix}", StringComparison.OrdinalIgnoreCase))
+            entity.Interaction.StateId = $"{baseStateId}_{suffix}";
+    }
+    public bool TryGetSelectedPrefabInstance(out string instanceId, out string assetPath)
+    {
+        instanceId = "";
+        assetPath = "";
+
+        if (!TryGetSelectedEntity(out LevelEntityDef entity))
+            return false;
+
+        if (entity.PrefabUnpacked || string.IsNullOrWhiteSpace(entity.PrefabInstanceId) || string.IsNullOrWhiteSpace(entity.PrefabAssetPath))
+            return false;
+
+        instanceId = entity.PrefabInstanceId;
+        assetPath = entity.PrefabAssetPath;
+        return true;
+    }
+
+    public bool UnpackSelectedPrefabInstance()
+    {
+        if (!TryGetSelectedPrefabInstance(out string instanceId, out _))
+            return false;
+
+        BeginEdit();
+        foreach (LevelEntityDef entity in LevelFile.Entities)
+        {
+            if (!string.Equals(entity.PrefabInstanceId, instanceId, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            ClearPrefabMetadata(entity);
+            entity.PrefabUnpacked = true;
+        }
+
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+        EndEditIfAny();
+        return true;
+    }
+
+    public bool RevertSelectedPrefabInstance(PrefabFile prefab, string assetPath)
+    {
+        if (!TryGetSelectedPrefabInstance(out string instanceId, out _))
+            return false;
+
+        List<int> oldIndices = GetPrefabInstanceIndices(instanceId);
+        if (oldIndices.Count == 0 || prefab.Entities.Count == 0)
+            return false;
+
+        int oldRootIndex = FindPrefabInstanceRootIndex(oldIndices, prefab.RootEntityId);
+        if (oldRootIndex < 0)
+            oldRootIndex = oldIndices[0];
+
+        LevelEntityDef oldRoot = LevelFile.Entities[oldRootIndex];
+        string? preservedParentId = oldRoot.ParentId;
+        Vector3 preservedPosition = oldRoot.LocalPosition;
+        Vector3 preservedRotation = oldRoot.LocalRotationEulerDeg;
+        Vector3 preservedScale = oldRoot.LocalScale;
+        string? preservedName = oldRoot.Name;
+        int insertAt = oldIndices.Min();
+
+        List<LevelEntityDef> ordered = OrderPrefabEntities(prefab);
+        string rootSourceId = !string.IsNullOrWhiteSpace(prefab.RootEntityId) ? prefab.RootEntityId : ordered[0].Id;
+        var idMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var newEntities = new List<LevelEntityDef>(ordered.Count);
+        int newRootOffset = 0;
+
+        foreach (LevelEntityDef source in ordered)
+        {
+            LevelEntityDef copy = CloneEntityExact(source);
+            string newId = Guid.NewGuid().ToString("N");
+            idMap[source.Id] = newId;
+
+            copy.Id = newId;
+            copy.PrefabAssetPath = assetPath ?? "";
+            copy.PrefabInstanceId = instanceId;
+            copy.PrefabSourceEntityId = source.Id;
+            copy.PrefabUnpacked = false;
+            copy.ParentId = !string.IsNullOrWhiteSpace(source.ParentId) && idMap.TryGetValue(source.ParentId, out string? mappedParent)
+                ? mappedParent
+                : null;
+
+            if (string.Equals(source.Id, rootSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                copy.ParentId = preservedParentId;
+                copy.LocalPosition = preservedPosition;
+                copy.LocalRotationEulerDeg = preservedRotation;
+                copy.LocalScale = preservedScale;
+                copy.Name = preservedName;
+                newRootOffset = newEntities.Count;
+            }
+
+            newEntities.Add(copy);
+        }
+
+        BeginEdit();
+        foreach (int index in oldIndices.OrderByDescending(static index => index))
+            LevelFile.Entities.RemoveAt(index);
+
+        insertAt = Math.Clamp(insertAt, 0, LevelFile.Entities.Count);
+        LevelFile.Entities.InsertRange(insertAt, newEntities);
+        SelectedEntityIndex = insertAt + newRootOffset;
+        Dirty = true;
+        RebuildRuntimeFromLevel();
+        EndEditIfAny();
+        return true;
+    }
+
+    private List<int> GetHierarchyIndicesDepthFirst(int rootIndex)
+    {
+        var children = BuildChildrenMap();
+        var ordered = new List<int>();
+        CollectHierarchyIndices(rootIndex, children, ordered);
+        return ordered;
+    }
+
+    private void CollectHierarchyIndices(int index, Dictionary<int, List<int>> children, List<int> ordered)
+    {
+        if (index < 0 || index >= LevelFile.Entities.Count || ordered.Contains(index))
+            return;
+
+        ordered.Add(index);
+        if (!children.TryGetValue(index, out List<int>? kids))
+            return;
+
+        foreach (int child in kids)
+            CollectHierarchyIndices(child, children, ordered);
+    }
+
+    private List<int> GetPrefabInstanceIndices(string instanceId)
+    {
+        var indices = new List<int>();
+        for (int i = 0; i < LevelFile.Entities.Count; i++)
+        {
+            if (string.Equals(LevelFile.Entities[i].PrefabInstanceId, instanceId, StringComparison.OrdinalIgnoreCase))
+                indices.Add(i);
+        }
+        return indices;
+    }
+
+    private int FindPrefabInstanceRootIndex(List<int> instanceIndices, string rootSourceId)
+    {
+        HashSet<int> set = instanceIndices.ToHashSet();
+        foreach (int index in instanceIndices)
+        {
+            LevelEntityDef entity = LevelFile.Entities[index];
+            if (!string.IsNullOrWhiteSpace(rootSourceId) &&
+                string.Equals(entity.PrefabSourceEntityId, rootSourceId, StringComparison.OrdinalIgnoreCase))
+                return index;
+
+            int parentIndex = FindIndexById(entity.ParentId);
+            if (parentIndex < 0 || !set.Contains(parentIndex))
+                return index;
+        }
+
+        return -1;
+    }
+
+    private static List<LevelEntityDef> OrderPrefabEntities(PrefabFile prefab)
+    {
+        Dictionary<string, LevelEntityDef> byId = prefab.Entities
+            .Where(static entity => !string.IsNullOrWhiteSpace(entity.Id))
+            .ToDictionary(static entity => entity.Id, static entity => entity, StringComparer.OrdinalIgnoreCase);
+        var ordered = new List<LevelEntityDef>();
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void Visit(LevelEntityDef entity)
+        {
+            if (string.IsNullOrWhiteSpace(entity.Id) || !visited.Add(entity.Id))
+                return;
+
+            if (!string.IsNullOrWhiteSpace(entity.ParentId) && byId.TryGetValue(entity.ParentId, out LevelEntityDef? parent))
+                Visit(parent);
+
+            ordered.Add(entity);
+        }
+
+        if (!string.IsNullOrWhiteSpace(prefab.RootEntityId) && byId.TryGetValue(prefab.RootEntityId, out LevelEntityDef? root))
+            Visit(root);
+
+        foreach (LevelEntityDef entity in prefab.Entities)
+            Visit(entity);
+
+        return ordered;
+    }
+
+    private static LevelEntityDef CloneEntityExact(LevelEntityDef src)
+    {
+        string json = JsonSerializer.Serialize(src);
+        return JsonSerializer.Deserialize<LevelEntityDef>(json) ?? new LevelEntityDef();
+    }
+
+    private static void ClearPrefabMetadata(LevelEntityDef entity)
+    {
+        entity.PrefabAssetPath = "";
+        entity.PrefabInstanceId = "";
+        entity.PrefabSourceEntityId = "";
+        entity.PrefabUnpacked = false;
+    }
     public bool DuplicateSelected()
     {
         if (SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
@@ -436,6 +839,7 @@ public sealed class LevelEditorController
         LevelEntityDef copy = JsonSerializer.Deserialize<LevelEntityDef>(json) ?? new LevelEntityDef();
         copy.Id = Guid.NewGuid().ToString("N");
         copy.Name = (src.Name ?? "Entity") + "_copy";
+        ClearPrefabMetadata(copy);
         return copy;
     }
 
@@ -458,7 +862,11 @@ public sealed class LevelEditorController
                 _layoutDockedOnce = false;
         }
 
-        if (ImGui.Button("Save")) Save();
+        if (ImGui.Button("Save"))
+        {
+            if (SaveActionOverride != null) SaveActionOverride();
+            else Save();
+        }
         ImGui.SameLine();
         if (ImGui.Button("Reload")) Reload();
 
@@ -902,6 +1310,8 @@ public sealed class LevelEditorController
         ImGui.Separator();
         DrawTypeSpecificInspector(ent);
 
+        DrawInteractionInspector(ent);
+
         DrawDamageableInspector(ent);
 
         ImGui.Separator();
@@ -942,6 +1352,541 @@ public sealed class LevelEditorController
         }
     }
 
+    private void DrawInteractionInspector(LevelEntityDef ent)
+    {
+        ImGui.Separator();
+        if (!ImGui.CollapsingHeader("Interaction", ImGuiTreeNodeFlags.DefaultOpen))
+            return;
+
+        bool hasInteraction = ent.Interaction != null && !string.IsNullOrWhiteSpace(ent.Interaction.Kind);
+        if (!hasInteraction)
+        {
+            ImGui.TextWrapped("Add interaction data to this selected entity. The data is saved inside this entity in the level JSON.");
+            if (ImGui.Button("Add Locked Door", new Vector2(-1f, 0f)))
+                SetDefaultInteraction(ent, "LockedDoor");
+            if (ImGui.Button("Add Locked Chest", new Vector2(-1f, 0f)))
+                SetDefaultInteraction(ent, "LockedChest");
+            if (ImGui.Button("Add Puzzle Slot", new Vector2(-1f, 0f)))
+                SetDefaultInteraction(ent, "PuzzleSlot");
+            if (ImGui.Button("Add Puzzle Lever", new Vector2(-1f, 0f)))
+                SetDefaultInteraction(ent, "PuzzleLever");
+            if (ImGui.Button("Add Puzzle Door", new Vector2(-1f, 0f)))
+                SetDefaultInteraction(ent, "PuzzleDoor");
+            return;
+        }
+
+        LevelInteractionDef interaction = ent.Interaction!;
+        EnsureInteractionDefaults(ent, interaction);
+
+        string[] kinds = ["LockedDoor", "LockedChest", "PuzzleSlot", "PuzzleLever", "PuzzleDoor", "None"];
+        _interactionKindPickerIndex = Array.FindIndex(kinds, kind => string.Equals(kind, interaction.Kind, StringComparison.OrdinalIgnoreCase));
+        if (_interactionKindPickerIndex < 0)
+            _interactionKindPickerIndex = 0;
+
+        if (DrawInteractionCombo("Interaction Kind", ref _interactionKindPickerIndex, kinds))
+        {
+            BeginEdit();
+            if (string.Equals(kinds[_interactionKindPickerIndex], "None", StringComparison.OrdinalIgnoreCase))
+                ent.Interaction = null;
+            else
+            {
+                interaction.Kind = kinds[_interactionKindPickerIndex];
+                EnsureInteractionDefaults(ent, interaction);
+            }
+            CommitInteractionEdit();
+            return;
+        }
+
+        if (ImGui.Button("Remove Interaction", new Vector2(-1f, 0f)))
+        {
+            BeginEdit();
+            ent.Interaction = null;
+            CommitInteractionEdit();
+            return;
+        }
+
+        if (Dirty)
+        {
+            if (ImGui.Button("Save Active Document", new Vector2(-1f, 0f)))
+            {
+                if (SaveActionOverride != null) SaveActionOverride();
+                else Save();
+            }
+        }
+
+        ImGui.Spacing();
+
+        string stateId = interaction.StateId ?? "";
+        if (DrawInteractionInputText("State Id", ref stateId, 128))
+        {
+            BeginEdit();
+            interaction.StateId = stateId;
+            CommitInteractionEdit();
+        }
+        if (string.IsNullOrWhiteSpace(interaction.StateId))
+            ImGui.TextColored(new Vector4(1f, 0.72f, 0.18f, 1f), "State Id should be unique for save/load persistence.");
+
+        DrawInteractionRequiredItemField(interaction);
+
+        bool consumesItem = interaction.ConsumesItem;
+        if (ImGui.Checkbox("Consumes Item", ref consumesItem))
+        {
+            BeginEdit();
+            interaction.ConsumesItem = consumesItem;
+            CommitInteractionEdit();
+        }
+
+        DrawInteractionTextField("Prompt", value => interaction.Prompt = value, interaction.Prompt ?? "", 160);
+        DrawInteractionTextField("Locked Prompt", value => interaction.LockedPrompt = value, interaction.LockedPrompt ?? "", 160);
+        DrawInteractionTextField("Success Message", value => interaction.SuccessMessage = value, interaction.SuccessMessage ?? "", 220);
+
+        if (IsInteractionKind(interaction, "LockedDoor"))
+            DrawInteractionDoorHinge(interaction);
+
+        if (IsInteractionKind(interaction, "PuzzleLever"))
+            DrawInteractionRequiredStates(interaction);
+
+        if (InteractionUsesTargets(interaction))
+            DrawInteractionTargets(interaction);
+        else
+            DrawInteractionTargetsSummary(interaction);
+
+        if (InteractionUsesRewards(interaction))
+            DrawInteractionRewards(interaction);
+        else
+            DrawInteractionRewardsSummary(interaction);
+    }
+
+    private void CommitInteractionEdit()
+    {
+        Dirty = true;
+        EndEditIfAny();
+    }
+
+    private void SetDefaultInteraction(LevelEntityDef ent, string kind)
+    {
+        BeginEdit();
+        string requiredItem = GetDefaultRequiredItemForInteraction(ent, kind);
+        ent.Interaction = new LevelInteractionDef
+        {
+            Kind = kind,
+            StateId = MakeDefaultInteractionStateId(ent, kind),
+            RequiredItem = requiredItem,
+            ConsumesItem = false,
+            Prompt = "",
+            LockedPrompt = kind == "LockedDoor" || kind == "LockedChest" ? "Locked." : "",
+            SuccessMessage = MakeDefaultInteractionSuccessMessage(kind, requiredItem),
+            Targets = new List<string>(),
+            RequiredStates = new List<string>(),
+            Rewards = new List<LevelInteractionRewardDef>()
+        };
+        CommitInteractionEdit();
+    }
+
+    private void EnsureInteractionDefaults(LevelEntityDef ent, LevelInteractionDef interaction)
+    {
+        if (string.IsNullOrWhiteSpace(interaction.StateId))
+            interaction.StateId = MakeDefaultInteractionStateId(ent, interaction.Kind);
+        interaction.Targets ??= new List<string>();
+        interaction.RequiredStates ??= new List<string>();
+        interaction.Rewards ??= new List<LevelInteractionRewardDef>();
+        if (interaction.OpenAngleDeg == 0f)
+            interaction.OpenAngleDeg = 90f;
+    }
+
+    private static string MakeDefaultInteractionStateId(LevelEntityDef ent, string kind)
+    {
+        string name = ent.Name ?? ent.Id;
+        string safe = string.IsNullOrWhiteSpace(name) ? "Entity" : name.Trim();
+        foreach (char c in Path.GetInvalidFileNameChars())
+            safe = safe.Replace(c, '_');
+        safe = safe.Replace(' ', '_');
+        return $"{kind}_{safe}";
+    }
+
+    private static string GetDefaultRequiredItemForInteraction(LevelEntityDef ent, string kind)
+    {
+        string name = ent.Name ?? "";
+        if (name.Contains("RustedKey", StringComparison.OrdinalIgnoreCase) || name.Contains("Rusted", StringComparison.OrdinalIgnoreCase))
+            return "RustedKey";
+        if (name.Contains("ServiceKey", StringComparison.OrdinalIgnoreCase) || name.Contains("Service", StringComparison.OrdinalIgnoreCase))
+            return "ServiceKey";
+        if (name.Contains("ArchiveKey", StringComparison.OrdinalIgnoreCase) || name.Contains("Archive", StringComparison.OrdinalIgnoreCase))
+            return "ArchiveKey";
+        if (name.Contains("Crank", StringComparison.OrdinalIgnoreCase))
+            return "CrankHandle";
+        if (name.Contains("Fuse", StringComparison.OrdinalIgnoreCase))
+            return "Fuse";
+
+        return kind == "PuzzleDoor" ? "" : "RustedKey";
+    }
+
+    private static string MakeDefaultInteractionSuccessMessage(string kind, string requiredItem)
+    {
+        if (kind == "PuzzleDoor")
+            return "";
+        if (kind == "PuzzleSlot")
+            return string.IsNullOrWhiteSpace(requiredItem) ? "The mechanism turns." : $"The {requiredItem} clicks into place.";
+        if (kind == "PuzzleLever")
+            return "The lever clunks into position.";
+        if (kind == "LockedChest")
+            return string.IsNullOrWhiteSpace(requiredItem) ? "The chest opens." : $"The {requiredItem} opens the chest.";
+        return string.IsNullOrWhiteSpace(requiredItem) ? "The door unlocks." : $"The {requiredItem} turns in the lock.";
+    }
+
+    private static bool InteractionUsesTargets(LevelInteractionDef interaction)
+        => IsInteractionKind(interaction, "PuzzleSlot") || IsInteractionKind(interaction, "PuzzleLever");
+
+    private static bool IsInteractionKind(LevelInteractionDef interaction, string kind)
+        => string.Equals(interaction.Kind, kind, StringComparison.OrdinalIgnoreCase);
+
+    private static bool InteractionUsesRewards(LevelInteractionDef interaction)
+        => string.Equals(interaction.Kind, "LockedChest", StringComparison.OrdinalIgnoreCase) ||
+           string.Equals(interaction.Kind, "PuzzleSlot", StringComparison.OrdinalIgnoreCase);
+
+    private static bool DrawInteractionCombo(string label, ref int index, string[] values)
+    {
+        ImGui.TextUnformatted(label);
+        ImGui.SetNextItemWidth(-1f);
+        return ImGui.Combo($"##interaction_{label}", ref index, values, values.Length);
+    }
+
+    private static bool DrawInteractionInputText(string label, ref string value, uint maxLength)
+    {
+        ImGui.TextUnformatted(label);
+        ImGui.SetNextItemWidth(-1f);
+        return ImGui.InputText($"##interaction_{label}", ref value, maxLength);
+    }
+
+    private void DrawInteractionRequiredItemField(LevelInteractionDef interaction)
+    {
+        string[] items = GetKnownInteractionItemIds();
+        string[] labels = items.Select(static item => string.IsNullOrWhiteSpace(item) ? "(none)" : item).ToArray();
+        if (items.Length > 0)
+        {
+            _interactionItemPickerIndex = Array.FindIndex(items, item => string.Equals(item, interaction.RequiredItem, StringComparison.OrdinalIgnoreCase));
+            if (_interactionItemPickerIndex < 0)
+                _interactionItemPickerIndex = 0;
+
+            if (DrawInteractionCombo("Required Item", ref _interactionItemPickerIndex, labels))
+            {
+                BeginEdit();
+                interaction.RequiredItem = items[_interactionItemPickerIndex];
+                CommitInteractionEdit();
+            }
+        }
+
+        string requiredItem = interaction.RequiredItem ?? "";
+        if (DrawInteractionInputText("Required Item Id", ref requiredItem, 128))
+        {
+            BeginEdit();
+            interaction.RequiredItem = requiredItem;
+            CommitInteractionEdit();
+        }
+    }
+
+    private void DrawInteractionTextField(string label, Action<string> setter, string currentValue, uint maxLength)
+    {
+        string value = currentValue;
+        if (DrawInteractionInputText(label, ref value, maxLength))
+        {
+            BeginEdit();
+            setter(value);
+            CommitInteractionEdit();
+        }
+    }
+
+    private void DrawInteractionDoorHinge(LevelInteractionDef interaction)
+    {
+        ImGui.SeparatorText("Door Hinge");
+        ImGui.TextWrapped("Optional local hinge pivot for swing doors. Leave at 0,0,0 to infer the hinge from the door size; set X or Z to the hinge edge for a mounted door.");
+
+        Vector3 hinge = interaction.HingeLocalOffset;
+        ImGui.TextUnformatted("Hinge Local Offset");
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.DragFloat3("##interaction_hingeLocalOffset", ref hinge, 0.01f))
+        {
+            BeginEdit();
+            interaction.HingeLocalOffset = hinge;
+            CommitInteractionEdit();
+        }
+
+        float openAngle = interaction.OpenAngleDeg == 0f ? 90f : interaction.OpenAngleDeg;
+        ImGui.TextUnformatted("Open Angle Deg");
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.DragFloat("##interaction_openAngleDeg", ref openAngle, 1f, 1f, 179f))
+        {
+            BeginEdit();
+            interaction.OpenAngleDeg = Math.Clamp(openAngle, 1f, 179f);
+            CommitInteractionEdit();
+        }
+    }
+
+    private void DrawInteractionRequiredStates(LevelInteractionDef interaction)
+    {
+        interaction.RequiredStates ??= new List<string>();
+        ImGui.SeparatorText("Required States");
+        ImGui.TextWrapped("Puzzle levers only activate when all required interaction state ids have been solved.");
+
+        string[] states = LevelFile.Entities
+            .Where(entity => entity.Interaction != null && !string.IsNullOrWhiteSpace(GetInteractionStateIdForEditor(entity)))
+            .Select(GetInteractionStateIdForEditor)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static state => state, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (states.Length > 0)
+        {
+            _interactionRequiredStatePickerIndex = Math.Clamp(_interactionRequiredStatePickerIndex, 0, states.Length - 1);
+            DrawInteractionCombo("Required State", ref _interactionRequiredStatePickerIndex, states);
+            if (ImGui.Button("Add Required State", new Vector2(-1f, 0f)))
+            {
+                string state = states[_interactionRequiredStatePickerIndex];
+                if (!interaction.RequiredStates.Contains(state, StringComparer.OrdinalIgnoreCase))
+                {
+                    BeginEdit();
+                    interaction.RequiredStates.Add(state);
+                    CommitInteractionEdit();
+                }
+            }
+        }
+        else
+        {
+            ImGui.TextDisabled("No interaction state ids are available.");
+        }
+
+        if (interaction.RequiredStates.Count == 0)
+        {
+            ImGui.TextDisabled("No required states assigned.");
+            return;
+        }
+
+        if (ImGui.Button("Clear Required States", new Vector2(-1f, 0f)))
+        {
+            BeginEdit();
+            interaction.RequiredStates.Clear();
+            CommitInteractionEdit();
+            return;
+        }
+
+        for (int i = 0; i < interaction.RequiredStates.Count; i++)
+        {
+            ImGui.PushID($"requiredState{i}");
+            string state = interaction.RequiredStates[i] ?? "";
+            if (DrawInteractionInputText($"Required State {i + 1}", ref state, 160))
+            {
+                BeginEdit();
+                interaction.RequiredStates[i] = state;
+                CommitInteractionEdit();
+            }
+            if (ImGui.Button("Remove Required State", new Vector2(-1f, 0f)))
+            {
+                BeginEdit();
+                interaction.RequiredStates.RemoveAt(i);
+                CommitInteractionEdit();
+                ImGui.PopID();
+                break;
+            }
+            ImGui.PopID();
+        }
+    }
+
+    private static string GetInteractionStateIdForEditor(LevelEntityDef entity)
+        => !string.IsNullOrWhiteSpace(entity.Interaction?.StateId)
+            ? entity.Interaction.StateId
+            : entity.Name ?? entity.Id;
+
+    private void DrawInteractionTargetsSummary(LevelInteractionDef interaction)
+    {
+        interaction.Targets ??= new List<string>();
+        ImGui.SeparatorText("Targets");
+        ImGui.TextWrapped("Targets are used by puzzle slots and puzzle levers. Locked doors and chests act on the selected object itself.");
+        if (interaction.Targets.Count <= 0)
+            return;
+
+        ImGui.TextColored(new Vector4(1f, 0.72f, 0.18f, 1f), $"This interaction has {interaction.Targets.Count} unused target(s).");
+        if (ImGui.Button("Clear Unused Targets", new Vector2(-1f, 0f)))
+        {
+            BeginEdit();
+            interaction.Targets.Clear();
+            CommitInteractionEdit();
+        }
+    }
+
+    private void DrawInteractionTargets(LevelInteractionDef interaction)
+    {
+        interaction.Targets ??= new List<string>();
+        ImGui.SeparatorText("Targets");
+        ImGui.TextWrapped("Targets are other named entities affected by this interaction. Use these for puzzle slots and levers that open puzzle doors or move reveal pieces.");
+
+        string[] names = LevelFile.Entities
+            .Where(entity => !string.IsNullOrWhiteSpace(entity.Name))
+            .Select(entity => entity.Name!)
+            .OrderBy(static name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (names.Length > 0)
+        {
+            _interactionTargetPickerIndex = Math.Clamp(_interactionTargetPickerIndex, 0, names.Length - 1);
+            DrawInteractionCombo("Target Entity", ref _interactionTargetPickerIndex, names);
+            if (ImGui.Button("Add Target", new Vector2(-1f, 0f)))
+            {
+                string target = names[_interactionTargetPickerIndex];
+                if (!interaction.Targets.Contains(target, StringComparer.OrdinalIgnoreCase))
+                {
+                    BeginEdit();
+                    interaction.Targets.Add(target);
+                    CommitInteractionEdit();
+                }
+            }
+        }
+        else
+        {
+            ImGui.TextDisabled("No named entities are available.");
+        }
+
+        if (interaction.Targets.Count == 0)
+        {
+            ImGui.TextDisabled("No targets assigned.");
+            return;
+        }
+
+        if (ImGui.Button("Clear All Targets", new Vector2(-1f, 0f)))
+        {
+            BeginEdit();
+            interaction.Targets.Clear();
+            CommitInteractionEdit();
+            return;
+        }
+
+        for (int i = 0; i < interaction.Targets.Count; i++)
+        {
+            ImGui.PushID($"target{i}");
+            string target = interaction.Targets[i] ?? "";
+            if (DrawInteractionInputText($"Target {i + 1}", ref target, 128))
+            {
+                BeginEdit();
+                interaction.Targets[i] = target;
+                CommitInteractionEdit();
+            }
+            if (ImGui.Button("Remove Target", new Vector2(-1f, 0f)))
+            {
+                BeginEdit();
+                interaction.Targets.RemoveAt(i);
+                CommitInteractionEdit();
+                ImGui.PopID();
+                break;
+            }
+            ImGui.PopID();
+        }
+    }
+
+    private void DrawInteractionRewardsSummary(LevelInteractionDef interaction)
+    {
+        interaction.Rewards ??= new List<LevelInteractionRewardDef>();
+        ImGui.SeparatorText("Rewards");
+        ImGui.TextWrapped("Rewards are currently useful for chest or puzzle-slot style interactions. This interaction type does not consume reward data yet.");
+        if (interaction.Rewards.Count <= 0)
+            return;
+
+        ImGui.TextColored(new Vector4(1f, 0.72f, 0.18f, 1f), $"This interaction has {interaction.Rewards.Count} unused reward item(s).");
+        if (ImGui.Button("Clear Unused Rewards", new Vector2(-1f, 0f)))
+        {
+            BeginEdit();
+            interaction.Rewards.Clear();
+            CommitInteractionEdit();
+        }
+    }
+
+    private void DrawInteractionRewards(LevelInteractionDef interaction)
+    {
+        interaction.Rewards ??= new List<LevelInteractionRewardDef>();
+        ImGui.SeparatorText("Rewards");
+        ImGui.TextWrapped("Optional item rewards for this interaction. Runtime support is still interaction-kind specific.");
+
+        string[] items = GetKnownInteractionItemIds(includeEmpty: false);
+        if (items.Length > 0)
+        {
+            _interactionRewardItemPickerIndex = Math.Clamp(_interactionRewardItemPickerIndex, 0, items.Length - 1);
+            DrawInteractionCombo("Reward Item", ref _interactionRewardItemPickerIndex, items);
+            if (ImGui.Button("Add Reward", new Vector2(-1f, 0f)))
+            {
+                BeginEdit();
+                interaction.Rewards.Add(new LevelInteractionRewardDef { ItemId = items[_interactionRewardItemPickerIndex], Count = 1 });
+                CommitInteractionEdit();
+            }
+        }
+
+        if (interaction.Rewards.Count == 0)
+        {
+            ImGui.TextDisabled("No rewards assigned.");
+            return;
+        }
+
+        if (ImGui.Button("Clear All Rewards", new Vector2(-1f, 0f)))
+        {
+            BeginEdit();
+            interaction.Rewards.Clear();
+            CommitInteractionEdit();
+            return;
+        }
+
+        for (int i = 0; i < interaction.Rewards.Count; i++)
+        {
+            ImGui.PushID($"reward{i}");
+            LevelInteractionRewardDef reward = interaction.Rewards[i];
+            string itemId = reward.ItemId ?? "";
+            int count = Math.Clamp(reward.Count, 1, 999);
+
+            if (DrawInteractionInputText($"Reward {i + 1} Item Id", ref itemId, 128))
+            {
+                BeginEdit();
+                reward.ItemId = itemId;
+                CommitInteractionEdit();
+            }
+
+            ImGui.TextUnformatted("Reward Count");
+            ImGui.SetNextItemWidth(-1f);
+            if (ImGui.InputInt("##rewardCount", ref count))
+            {
+                BeginEdit();
+                reward.Count = Math.Clamp(count, 1, 999);
+                CommitInteractionEdit();
+            }
+
+            if (ImGui.Button("Remove Reward", new Vector2(-1f, 0f)))
+            {
+                BeginEdit();
+                interaction.Rewards.RemoveAt(i);
+                CommitInteractionEdit();
+                ImGui.PopID();
+                break;
+            }
+            ImGui.PopID();
+        }
+    }
+
+    private static string[] GetKnownInteractionItemIds(bool includeEmpty = true)
+    {
+        string[] ids =
+        [
+            "",
+            "RustedKey",
+            "ServiceKey",
+            "ArchiveKey",
+            "MasterKey",
+            "CrankHandle",
+            "Fuse",
+            "InkRibbon",
+            "HealthPack",
+            "SuitBattery",
+            "Scrap",
+            "Gunpowder",
+            "Bullets"
+        ];
+
+        return includeEmpty ? ids : ids.Where(static id => !string.IsNullOrWhiteSpace(id)).ToArray();
+    }
     private void DrawDamageableInspector(LevelEntityDef ent)
     {
         if (!SupportsDamageableSettings(ent))
@@ -1458,16 +2403,22 @@ public sealed class LevelEditorController
                 }
             }
 
-            int shapeIndex = IsCapsuleShape(ent.Shape) ? 2 : IsSphereShape(ent.Shape) ? 1 : 0;
-            if (ImGui.Combo("Shape", ref shapeIndex, "Box\0Sphere\0Capsule\0"))
+            int shapeIndex = IsMeshShape(ent.Shape) ? 3 : IsCapsuleShape(ent.Shape) ? 2 : IsSphereShape(ent.Shape) ? 1 : 0;
+            if (ImGui.Combo("Shape", ref shapeIndex, "Box\0Sphere\0Capsule\0Mesh\0"))
             {
                 BeginEdit();
                 ent.Shape = shapeIndex switch
                 {
                     1 => "Sphere",
                     2 => "Capsule",
+                    3 => "Mesh",
                     _ => "Box"
                 };
+                if (shapeIndex == 3)
+                {
+                    ent.MotionType = MotionType.Static;
+                    ent.Mass = 0f;
+                }
                 Dirty = true;
                 RebuildRuntimeFromLevel();
                 EndEditIfAny();
@@ -2236,3 +3187,11 @@ public sealed class LevelEditorController
         }
     }
 }
+
+
+
+
+
+
+
+

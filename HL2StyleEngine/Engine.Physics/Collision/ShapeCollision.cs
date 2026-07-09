@@ -37,10 +37,454 @@ public static class ShapeCollision
             (WorldColliderShape.Capsule, WorldColliderShape.Capsule) => TryResolveCapsuleCapsule(a, b, out manifold),
             (WorldColliderShape.Capsule, WorldColliderShape.Box) => TryResolveCapsuleBox(a, b, out manifold),
             (WorldColliderShape.Box, WorldColliderShape.Capsule) => TryResolveBoxCapsule(a, b, out manifold),
+            (WorldColliderShape.Box, WorldColliderShape.Mesh) => TryResolveBoxMesh(a, b, out manifold),
+            (WorldColliderShape.Mesh, WorldColliderShape.Box) => TryResolveMeshBox(a, b, out manifold),
+            (WorldColliderShape.Sphere, WorldColliderShape.Mesh) => TryResolveSphereMesh(a, b, out manifold),
+            (WorldColliderShape.Mesh, WorldColliderShape.Sphere) => TryResolveMeshSphere(a, b, out manifold),
+            (WorldColliderShape.Capsule, WorldColliderShape.Mesh) => TryResolveCapsuleMesh(a, b, out manifold),
+            (WorldColliderShape.Mesh, WorldColliderShape.Capsule) => TryResolveMeshCapsule(a, b, out manifold),
             _ => false
         };
     }
 
+    private static bool TryResolveBoxMesh(WorldCollider box, WorldCollider meshCollider, out ContactManifold manifold)
+    {
+        if (meshCollider.MeshData == null || !meshCollider.MeshData.IsValid)
+        {
+            manifold = default;
+            return false;
+        }
+
+        return TryResolvePrimitiveMesh(box, meshCollider.MeshData, TryResolveBoxTriangle, out manifold);
+    }
+
+    private static bool TryResolveMeshBox(WorldCollider meshCollider, WorldCollider box, out ContactManifold manifold)
+    {
+        if (!TryResolveBoxMesh(box, meshCollider, out ContactManifold primitiveToMesh))
+        {
+            manifold = default;
+            return false;
+        }
+
+        manifold = FlipManifold(primitiveToMesh);
+        return true;
+    }
+
+    private static bool TryResolveSphereMesh(WorldCollider sphere, WorldCollider meshCollider, out ContactManifold manifold)
+    {
+        if (meshCollider.MeshData == null || !meshCollider.MeshData.IsValid)
+        {
+            manifold = default;
+            return false;
+        }
+
+        return TryResolvePrimitiveMesh(sphere, meshCollider.MeshData, TryResolveSphereTriangle, out manifold);
+    }
+
+    private static bool TryResolveMeshSphere(WorldCollider meshCollider, WorldCollider sphere, out ContactManifold manifold)
+    {
+        if (!TryResolveSphereMesh(sphere, meshCollider, out ContactManifold primitiveToMesh))
+        {
+            manifold = default;
+            return false;
+        }
+
+        manifold = FlipManifold(primitiveToMesh);
+        return true;
+    }
+
+    private static bool TryResolveCapsuleMesh(WorldCollider capsule, WorldCollider meshCollider, out ContactManifold manifold)
+    {
+        if (meshCollider.MeshData == null || !meshCollider.MeshData.IsValid)
+        {
+            manifold = default;
+            return false;
+        }
+
+        return TryResolvePrimitiveMesh(capsule, meshCollider.MeshData, TryResolveCapsuleTriangle, out manifold);
+    }
+
+    private static bool TryResolveMeshCapsule(WorldCollider meshCollider, WorldCollider capsule, out ContactManifold manifold)
+    {
+        if (!TryResolveCapsuleMesh(capsule, meshCollider, out ContactManifold primitiveToMesh))
+        {
+            manifold = default;
+            return false;
+        }
+
+        manifold = FlipManifold(primitiveToMesh);
+        return true;
+    }
+
+    private delegate bool TriangleResolve(WorldCollider primitive, MeshCollisionTriangle triangle, float collisionSkin, out ContactManifold manifold);
+
+    private static bool TryResolvePrimitiveMesh(
+        WorldCollider primitive,
+        MeshCollisionMesh mesh,
+        TriangleResolve triangleResolve,
+        out ContactManifold manifold)
+    {
+        Aabb primitiveAabb = primitive.GetAabb();
+        ContactManifold best = default;
+        bool found = false;
+
+        for (int i = 0; i < mesh.Triangles.Count; i++)
+        {
+            MeshCollisionTriangle triangle = mesh.Triangles[i];
+            if (!primitiveAabb.Overlaps(ExpandAabb(triangle.Bounds, mesh.CollisionSkin)))
+                continue;
+
+            if (!triangleResolve(primitive, triangle, mesh.CollisionSkin, out ContactManifold candidate))
+                continue;
+
+            if (!found || ShouldReplaceMeshContact(candidate, best))
+            {
+                best = candidate;
+                found = true;
+            }
+        }
+
+        manifold = best;
+        return found;
+    }
+
+    private static bool ShouldReplaceMeshContact(ContactManifold candidate, ContactManifold current)
+    {
+        if (!current.HasContact)
+            return true;
+
+        const float penetrationTie = 0.002f;
+        if (candidate.Penetration < current.Penetration - penetrationTie)
+            return true;
+
+        if (MathF.Abs(candidate.Penetration - current.Penetration) <= penetrationTie &&
+            MathF.Abs(candidate.Normal.Y) > MathF.Abs(current.Normal.Y) + 0.05f)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static ContactManifold FlipManifold(ContactManifold manifold)
+        => new(
+            normal: -manifold.Normal,
+            penetration: manifold.Penetration,
+            contactCount: manifold.ContactCount,
+            point0: manifold.Point0,
+            point1: manifold.Point1,
+            point2: manifold.Point2,
+            point3: manifold.Point3);
+
+    private static bool TryResolveBoxTriangle(WorldCollider box, MeshCollisionTriangle triangle, float collisionSkin, out ContactManifold manifold)
+    {
+        Span<Vector3> boxAxes = stackalloc Vector3[3] { box.AxisX, box.AxisY, box.AxisZ };
+        Span<float> boxExtents = stackalloc float[3] { box.HalfExtents.X, box.HalfExtents.Y, box.HalfExtents.Z };
+        Span<Vector3> triangleEdges = stackalloc Vector3[3]
+        {
+            triangle.B - triangle.A,
+            triangle.C - triangle.B,
+            triangle.A - triangle.C
+        };
+
+        float bestOverlap = float.PositiveInfinity;
+        Vector3 bestAxis = Vector3.UnitY;
+        Vector3 centerDelta = triangle.Center - box.Center;
+
+        for (int i = 0; i < boxAxes.Length; i++)
+        {
+            if (!TestObbTriangleAxis(box, triangle, boxAxes[i], boxAxes, boxExtents, centerDelta, collisionSkin, ref bestOverlap, ref bestAxis))
+            {
+                manifold = default;
+                return false;
+            }
+        }
+
+        if (!TestObbTriangleAxis(box, triangle, triangle.Normal, boxAxes, boxExtents, centerDelta, collisionSkin, ref bestOverlap, ref bestAxis))
+        {
+            manifold = default;
+            return false;
+        }
+
+        for (int i = 0; i < boxAxes.Length; i++)
+        {
+            for (int j = 0; j < triangleEdges.Length; j++)
+            {
+                Vector3 axis = Vector3.Cross(boxAxes[i], triangleEdges[j]);
+                if (!TestObbTriangleAxis(box, triangle, axis, boxAxes, boxExtents, centerDelta, collisionSkin, ref bestOverlap, ref bestAxis))
+                {
+                    manifold = default;
+                    return false;
+                }
+            }
+        }
+
+        Vector3 point = ClosestPointOnTriangle(box.Center, triangle.A, triangle.B, triangle.C);
+        manifold = new ContactManifold(bestAxis, bestOverlap, 1, point);
+        return true;
+    }
+
+    private static bool TestObbTriangleAxis(
+        WorldCollider box,
+        MeshCollisionTriangle triangle,
+        Vector3 axis,
+        Span<Vector3> boxAxes,
+        Span<float> boxExtents,
+        Vector3 centerDelta,
+        float collisionSkin,
+        ref float bestOverlap,
+        ref Vector3 bestAxis)
+    {
+        float lenSq = axis.LengthSquared();
+        if (lenSq < 1e-8f)
+            return true;
+
+        Vector3 n = axis / MathF.Sqrt(lenSq);
+        float boxCenterProjection = Vector3.Dot(box.Center, n);
+        float boxRadius =
+            boxExtents[0] * MathF.Abs(Vector3.Dot(n, boxAxes[0])) +
+            boxExtents[1] * MathF.Abs(Vector3.Dot(n, boxAxes[1])) +
+            boxExtents[2] * MathF.Abs(Vector3.Dot(n, boxAxes[2]));
+
+        float boxMin = boxCenterProjection - boxRadius;
+        float boxMax = boxCenterProjection + boxRadius;
+
+        float p0 = Vector3.Dot(triangle.A, n);
+        float p1 = Vector3.Dot(triangle.B, n);
+        float p2 = Vector3.Dot(triangle.C, n);
+        float triMin = MathF.Min(p0, MathF.Min(p1, p2)) - collisionSkin;
+        float triMax = MathF.Max(p0, MathF.Max(p1, p2)) + collisionSkin;
+
+        float overlap = MathF.Min(boxMax, triMax) - MathF.Max(boxMin, triMin);
+        if (overlap <= 0f)
+            return false;
+
+        Vector3 oriented = Vector3.Dot(centerDelta, n) >= 0f ? n : -n;
+        const float tieBias = 0.002f;
+        if (overlap < bestOverlap - tieBias ||
+            (MathF.Abs(overlap - bestOverlap) <= tieBias && MathF.Abs(oriented.Y) > MathF.Abs(bestAxis.Y)))
+        {
+            bestOverlap = overlap;
+            bestAxis = oriented;
+        }
+
+        return true;
+    }
+
+    private static bool TryResolveSphereTriangle(WorldCollider sphere, MeshCollisionTriangle triangle, float collisionSkin, out ContactManifold manifold)
+    {
+        Vector3 closest = ClosestPointOnTriangle(sphere.Center, triangle.A, triangle.B, triangle.C);
+        Vector3 delta = closest - sphere.Center;
+        float distSq = delta.LengthSquared();
+        Vector3 normal;
+        float penetration;
+
+        if (distSq > 1e-8f)
+        {
+            float dist = MathF.Sqrt(distSq);
+            penetration = (sphere.Radius + collisionSkin) - dist;
+            if (penetration <= 0f)
+            {
+                manifold = default;
+                return false;
+            }
+
+            normal = delta / dist;
+        }
+        else
+        {
+            float planeDistance = Vector3.Dot(sphere.Center - triangle.A, triangle.Normal);
+            normal = planeDistance >= 0f ? -triangle.Normal : triangle.Normal;
+            penetration = sphere.Radius + collisionSkin + MathF.Abs(planeDistance);
+        }
+
+        manifold = new ContactManifold(normal, penetration, 1, closest);
+        return true;
+    }
+
+    private static bool TryResolveCapsuleTriangle(WorldCollider capsule, MeshCollisionTriangle triangle, float collisionSkin, out ContactManifold manifold)
+    {
+        capsule.GetCapsuleSegment(out Vector3 segA, out Vector3 segB);
+        ClosestPointsSegmentTriangle(segA, segB, triangle, out Vector3 capsulePoint, out Vector3 trianglePoint);
+
+        Vector3 delta = trianglePoint - capsulePoint;
+        float distSq = delta.LengthSquared();
+        Vector3 normal;
+        float penetration;
+
+        if (distSq > 1e-8f)
+        {
+            float dist = MathF.Sqrt(distSq);
+            penetration = (capsule.Radius + collisionSkin) - dist;
+            if (penetration <= 0f)
+            {
+                manifold = default;
+                return false;
+            }
+
+            normal = delta / dist;
+        }
+        else
+        {
+            float planeDistance = Vector3.Dot(capsule.Center - triangle.A, triangle.Normal);
+            normal = planeDistance >= 0f ? -triangle.Normal : triangle.Normal;
+            penetration = capsule.Radius + collisionSkin + MathF.Abs(planeDistance);
+        }
+
+        manifold = new ContactManifold(normal, penetration, 1, trianglePoint);
+        return true;
+    }
+
+    private static Vector3 ClosestPointOnTriangle(Vector3 point, Vector3 a, Vector3 b, Vector3 c)
+    {
+        Vector3 ab = b - a;
+        Vector3 ac = c - a;
+        Vector3 ap = point - a;
+
+        float d1 = Vector3.Dot(ab, ap);
+        float d2 = Vector3.Dot(ac, ap);
+        if (d1 <= 0f && d2 <= 0f)
+            return a;
+
+        Vector3 bp = point - b;
+        float d3 = Vector3.Dot(ab, bp);
+        float d4 = Vector3.Dot(ac, bp);
+        if (d3 >= 0f && d4 <= d3)
+            return b;
+
+        float vc = d1 * d4 - d3 * d2;
+        if (vc <= 0f && d1 >= 0f && d3 <= 0f)
+        {
+            float v = d1 / (d1 - d3);
+            return a + ab * v;
+        }
+
+        Vector3 cp = point - c;
+        float d5 = Vector3.Dot(ab, cp);
+        float d6 = Vector3.Dot(ac, cp);
+        if (d6 >= 0f && d5 <= d6)
+            return c;
+
+        float vb = d5 * d2 - d1 * d6;
+        if (vb <= 0f && d2 >= 0f && d6 <= 0f)
+        {
+            float w = d2 / (d2 - d6);
+            return a + ac * w;
+        }
+
+        float va = d3 * d6 - d5 * d4;
+        if (va <= 0f && (d4 - d3) >= 0f && (d5 - d6) >= 0f)
+        {
+            float w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+            return b + (c - b) * w;
+        }
+
+        float denom = 1f / (va + vb + vc);
+        float vInside = vb * denom;
+        float wInside = vc * denom;
+        return a + ab * vInside + ac * wInside;
+    }
+
+    private static void ClosestPointsSegmentTriangle(
+        Vector3 segA,
+        Vector3 segB,
+        MeshCollisionTriangle triangle,
+        out Vector3 segmentPoint,
+        out Vector3 trianglePoint)
+    {
+        if (SegmentIntersectsTrianglePlane(segA, segB, triangle, out Vector3 intersection))
+        {
+            segmentPoint = intersection;
+            trianglePoint = intersection;
+            return;
+        }
+
+        segmentPoint = segA;
+        trianglePoint = ClosestPointOnTriangle(segA, triangle.A, triangle.B, triangle.C);
+        float bestSq = Vector3.DistanceSquared(segmentPoint, trianglePoint);
+
+        ConsiderSegmentTrianglePair(segB, ClosestPointOnTriangle(segB, triangle.A, triangle.B, triangle.C), ref segmentPoint, ref trianglePoint, ref bestSq);
+        ConsiderSegmentEdge(segA, segB, triangle.A, triangle.B, ref segmentPoint, ref trianglePoint, ref bestSq);
+        ConsiderSegmentEdge(segA, segB, triangle.B, triangle.C, ref segmentPoint, ref trianglePoint, ref bestSq);
+        ConsiderSegmentEdge(segA, segB, triangle.C, triangle.A, ref segmentPoint, ref trianglePoint, ref bestSq);
+    }
+
+    private static bool SegmentIntersectsTrianglePlane(Vector3 segA, Vector3 segB, MeshCollisionTriangle triangle, out Vector3 point)
+    {
+        Vector3 seg = segB - segA;
+        float denom = Vector3.Dot(seg, triangle.Normal);
+        if (MathF.Abs(denom) < 1e-7f)
+        {
+            point = default;
+            return false;
+        }
+
+        float t = Vector3.Dot(triangle.A - segA, triangle.Normal) / denom;
+        if (t < 0f || t > 1f)
+        {
+            point = default;
+            return false;
+        }
+
+        point = segA + seg * t;
+        return PointInTriangle(point, triangle.A, triangle.B, triangle.C);
+    }
+
+    private static bool PointInTriangle(Vector3 point, Vector3 a, Vector3 b, Vector3 c)
+    {
+        Vector3 v0 = c - a;
+        Vector3 v1 = b - a;
+        Vector3 v2 = point - a;
+
+        float dot00 = Vector3.Dot(v0, v0);
+        float dot01 = Vector3.Dot(v0, v1);
+        float dot02 = Vector3.Dot(v0, v2);
+        float dot11 = Vector3.Dot(v1, v1);
+        float dot12 = Vector3.Dot(v1, v2);
+        float denom = dot00 * dot11 - dot01 * dot01;
+        if (MathF.Abs(denom) < 1e-8f)
+            return false;
+
+        float invDenom = 1f / denom;
+        float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+        float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+        return u >= -0.0001f && v >= -0.0001f && u + v <= 1.0001f;
+    }
+
+    private static void ConsiderSegmentEdge(
+        Vector3 segA,
+        Vector3 segB,
+        Vector3 edgeA,
+        Vector3 edgeB,
+        ref Vector3 segmentPoint,
+        ref Vector3 trianglePoint,
+        ref float bestSq)
+    {
+        ClosestPointsOnSegments(segA, segB, edgeA, edgeB, out Vector3 onSegment, out Vector3 onEdge);
+        ConsiderSegmentTrianglePair(onSegment, onEdge, ref segmentPoint, ref trianglePoint, ref bestSq);
+    }
+
+    private static void ConsiderSegmentTrianglePair(
+        Vector3 candidateSegmentPoint,
+        Vector3 candidateTrianglePoint,
+        ref Vector3 segmentPoint,
+        ref Vector3 trianglePoint,
+        ref float bestSq)
+    {
+        float dSq = Vector3.DistanceSquared(candidateSegmentPoint, candidateTrianglePoint);
+        if (dSq >= bestSq)
+            return;
+
+        bestSq = dSq;
+        segmentPoint = candidateSegmentPoint;
+        trianglePoint = candidateTrianglePoint;
+    }
+
+    private static Aabb ExpandAabb(Aabb aabb, float amount)
+    {
+        Vector3 extents = new(amount);
+        return new Aabb(aabb.Min - extents, aabb.Max + extents);
+    }
     private static bool TryResolveSphereSphere(WorldCollider a, WorldCollider b, out ContactManifold manifold)
         => TryResolveSphereSphere(a.Center, a.Radius, b.Center, b.Radius, out manifold);
 
@@ -781,3 +1225,8 @@ public static class ShapeCollision
     private static Vector3 Abs(Vector3 v)
         => new(MathF.Abs(v.X), MathF.Abs(v.Y), MathF.Abs(v.Z));
 }
+
+
+
+
+

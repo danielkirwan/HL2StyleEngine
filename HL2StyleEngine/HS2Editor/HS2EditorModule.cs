@@ -60,6 +60,10 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
     private string _renameLevelName = "";
     private string _contentFilter = "";
     private string _prefabName = "NewPrefab";
+    private string _prefabVariantName = "NewVariant";
+    private string _selectedPrefabPath = "";
+    private string _editingPrefabPath = "";
+    private string _prefabEditReturnLevelPath = "";
     private string _selectedUiPath = "";
     private string _uiSourceText = "";
     private bool _uiDirty;
@@ -105,6 +109,7 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
 
         _scripts.Register<MovingPlatformParams>("MovingPlatform", entity => new MovingPlatform(entity));
         _editor.SetScriptRegistry(_scripts);
+        _editor.SaveActionOverride = SaveActiveDocument;
 
         _world = new BasicWorldRenderer(
             _context.Renderer.GraphicsDevice,
@@ -236,3 +241,4 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
     private static bool IsMissingOrTiny(Dictionary<string, Vector2> sizes, string windowName, float minWidth, float minHeight)
         => !sizes.TryGetValue(windowName, out Vector2 size) || size.X < minWidth || size.Y < minHeight;
 }
+

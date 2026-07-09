@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 using System.Text.Json.Serialization;
 using Engine.Core.Serialization;
 using Engine.Physics.Dynamics;
@@ -15,6 +15,17 @@ public sealed class LevelFile
     
 }
 
+
+public sealed class PrefabFile
+{
+    public int Version { get; set; } = 1;
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = "";
+    public string RootEntityId { get; set; } = "";
+    public string BasePrefabPath { get; set; } = "";
+    public bool IsVariant { get; set; }
+    public List<LevelEntityDef> Entities { get; set; } = new();
+}
 public static class EntityTypes
 {
     public const string Box = "Box";
@@ -47,7 +58,11 @@ public sealed class LevelInteractionDef
     public string LockedPrompt { get; set; } = "";
     public string SuccessMessage { get; set; } = "";
     public List<string> Targets { get; set; } = new();
+    public List<string> RequiredStates { get; set; } = new();
     public List<LevelInteractionRewardDef> Rewards { get; set; } = new();
+
+    public SerVec3 HingeLocalOffset { get; set; } = Vector3.Zero;
+    public float OpenAngleDeg { get; set; } = 90f;
 }
 
 public sealed class LevelEntityDef
@@ -60,6 +75,11 @@ public sealed class LevelEntityDef
 
     [JsonPropertyName("Parent")]
     public string? ParentId { get; set; }
+
+    public string PrefabAssetPath { get; set; } = "";
+    public string PrefabInstanceId { get; set; } = "";
+    public string PrefabSourceEntityId { get; set; } = "";
+    public bool PrefabUnpacked { get; set; }
 
     [JsonPropertyName("LocalPosition")]
     public SerVec3 LocalPosition { get; set; } = Vector3.Zero;
@@ -116,3 +136,4 @@ public sealed class BoxDef
     public SerVec3 Size { get; set; } = new(1, 1, 1);
     public SerVec4 Color { get; set; } = new(0.6f, 0.6f, 0.6f, 1f);
 }
+

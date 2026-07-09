@@ -1,0 +1,183 @@
+{
+    "Version":  1,
+    "Id":  "d56f930545da4980bcb45dc8552536ed",
+    "Name":  "DoorFrame\u0026Door",
+    "RootEntityId":  "f0c6422bd05a47aaabfb46a436d1b085",
+    "BasePrefabPath":  "",
+    "IsVariant":  false,
+    "Entities":  [
+                     {
+                         "Id":  "f0c6422bd05a47aaabfb46a436d1b085",
+                         "Type":  "RigidBody",
+                         "Name":  "PracticeDoorFrameMesh",
+                         "Scripts":  [
+
+                                     ],
+                         "Interaction":  null,
+                         "Parent":  null,
+                         "PrefabAssetPath":  "",
+                         "PrefabInstanceId":  "",
+                         "PrefabSourceEntityId":  "",
+                         "PrefabUnpacked":  false,
+                         "LocalPosition":  {
+                                               "X":  0,
+                                               "Y":  0,
+                                               "Z":  0
+                                           },
+                         "LocalRotationEulerDeg":  {
+                                                       "X":  0,
+                                                       "Y":  -90,
+                                                       "Z":  0
+                                                   },
+                         "LocalScale":  {
+                                            "X":  0.2,
+                                            "Y":  3.26,
+                                            "Z":  3.11
+                                        },
+                         "CanPickUp":  false,
+                         "MotionType":  0,
+                         "Size":  {
+                                      "X":  1,
+                                      "Y":  1,
+                                      "Z":  1
+                                  },
+                         "Color":  {
+                                       "X":  1,
+                                       "Y":  1,
+                                       "Z":  1,
+                                       "W":  1
+                                   },
+                         "YawDeg":  0,
+                         "LightColor":  {
+                                            "X":  1,
+                                            "Y":  1,
+                                            "Z":  1,
+                                            "W":  1
+                                        },
+                         "Intensity":  3,
+                         "Range":  8,
+                         "MeshPath":  "Content/Models/ViewModels/Basement_Corridor_A_Wall_2m_Door.glb",
+                         "MaterialPath":  "",
+                         "Damageable":  false,
+                         "MaxHealth":  100,
+                         "BreakReplacementModelPaths":  [
+
+                                                        ],
+                         "BreakReplacementKeepsPhysics":  true,
+                         "BreakDebrisModelPaths":  [
+
+                                                   ],
+                         "TriggerSize":  {
+                                             "X":  2,
+                                             "Y":  2,
+                                             "Z":  2
+                                         },
+                         "TriggerEvent":  "OnEnter",
+                         "Shape":  "Mesh",
+                         "Mass":  0,
+                         "Friction":  0.8,
+                         "Restitution":  0.05,
+                         "IsKinematic":  false,
+                         "Radius":  0.5,
+                         "Height":  1
+                     },
+                     {
+                         "Id":  "9adf44659ee841caa38ecec402cec6be",
+                         "Type":  "RigidBody",
+                         "Name":  "RustedKeyDoorRoom1",
+                         "Scripts":  [
+
+                                     ],
+                         "Interaction":  {
+                                             "Kind":  "LockedDoor",
+                                             "StateId":  "LockedDoor_RustedKeyDoorRoom1",
+                                             "RequiredItem":  "RustedKey",
+                                             "ConsumesItem":  true,
+                                             "Prompt":  "",
+                                             "LockedPrompt":  "Locked.",
+                                             "SuccessMessage":  "The RustedKey turns in the lock.",
+                                             "Targets":  [
+
+                                                         ],
+                                             "Rewards":  [
+
+                                                         ],
+                                             "HingeLocalOffset":  {
+                                                                      "X":  0,
+                                                                      "Y":  0,
+                                                                      "Z":  -0.31
+                                                                  },
+                                             "OpenAngleDeg":  90,
+                                             "RequiredStates":  [
+
+                                                                ]
+                                         },
+                         "Parent":  "f0c6422bd05a47aaabfb46a436d1b085",
+                         "PrefabAssetPath":  "",
+                         "PrefabInstanceId":  "",
+                         "PrefabSourceEntityId":  "",
+                         "PrefabUnpacked":  false,
+                         "LocalPosition":  {
+                                               "X":  -0.135,
+                                               "Y":  -0.099999845,
+                                               "Z":  -2.2724271E-07
+                                           },
+                         "LocalRotationEulerDeg":  {
+                                                       "X":  0,
+                                                       "Y":  0,
+                                                       "Z":  0
+                                                   },
+                         "LocalScale":  {
+                                            "X":  0.2,
+                                            "Y":  0.867,
+                                            "Z":  0.57
+                                        },
+                         "CanPickUp":  false,
+                         "MotionType":  0,
+                         "Size":  {
+                                      "X":  1,
+                                      "Y":  1,
+                                      "Z":  1
+                                  },
+                         "Color":  {
+                                       "X":  1,
+                                       "Y":  1,
+                                       "Z":  1,
+                                       "W":  1
+                                   },
+                         "YawDeg":  0,
+                         "LightColor":  {
+                                            "X":  1,
+                                            "Y":  1,
+                                            "Z":  1,
+                                            "W":  1
+                                        },
+                         "Intensity":  3,
+                         "Range":  8,
+                         "MeshPath":  "Content/Models/ViewModels/door 6.glb",
+                         "MaterialPath":  "",
+                         "Damageable":  false,
+                         "MaxHealth":  100,
+                         "BreakReplacementModelPaths":  [
+
+                                                        ],
+                         "BreakReplacementKeepsPhysics":  true,
+                         "BreakDebrisModelPaths":  [
+
+                                                   ],
+                         "TriggerSize":  {
+                                             "X":  2,
+                                             "Y":  2,
+                                             "Z":  2
+                                         },
+                         "TriggerEvent":  "OnEnter",
+                         "Shape":  "Mesh",
+                         "Mass":  0,
+                         "Friction":  0.8,
+                         "Restitution":  0.05,
+                         "IsKinematic":  false,
+                         "Radius":  0.5,
+                         "Height":  1
+                     }
+                 ]
+}

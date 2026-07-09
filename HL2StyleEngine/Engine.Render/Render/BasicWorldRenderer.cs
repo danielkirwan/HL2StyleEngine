@@ -254,6 +254,22 @@ public sealed class BasicWorldRenderer : IDisposable
     public void DrawModel(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 tint)
         => DrawModel(cl, model, transform, tint, hiddenPartKeys: null);
 
+    public void DrawModelSolidColor(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 color)
+        => DrawModelSolidColor(cl, model, transform, color, hiddenPartKeys: null);
+
+    public void DrawModelSolidColor(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 color, IReadOnlySet<string>? hiddenPartKeys)
+    {
+        IReadOnlyList<RenderModelPart> parts = model.Parts;
+        for (int i = 0; i < parts.Count; i++)
+        {
+            RenderModelPart part = parts[i];
+            if (IsModelPartHidden(part, hiddenPartKeys))
+                continue;
+
+            DrawMesh(cl, transform, color, part.VertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat);
+        }
+    }
+
     public void DrawModel(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 tint, IReadOnlySet<string>? hiddenPartKeys)
     {
         IReadOnlyList<RenderModelPart> parts = model.Parts;
@@ -533,3 +549,4 @@ public sealed class BasicWorldRenderer : IDisposable
         return (vertices.ToArray(), indices.ToArray());
     }
 }
+

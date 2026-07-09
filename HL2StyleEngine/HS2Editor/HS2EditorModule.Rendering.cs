@@ -179,17 +179,20 @@ internal sealed partial class HS2EditorModule
         {
             EditorDrawBox draw = _editor.DrawBoxes[i];
             bool selected = i == _editor.SelectedEntityIndex;
-            bool drewModel = TryDrawEntityModel(renderer, i, draw);
+            bool selectedHierarchy = selected || IsChildOfSelectedEntity(i);
+            bool drewModel = TryDrawEntityModel(renderer, i, draw, selected, selectedHierarchy);
             if (drewModel)
             {
-                if (_editor.ShowColliders || selected)
-                    DrawColliderOverlay(renderer, draw, selected);
+                if (_editor.ShowColliders)
+                    DrawColliderOverlay(renderer, draw, selectedHierarchy);
                 continue;
             }
 
             Vector4 color = selected
                 ? new Vector4(1f, 1f, 0.16f, 1f)
-                : draw.Color;
+                : selectedHierarchy
+                    ? new Vector4(0.35f, 0.82f, 1f, 1f)
+                    : draw.Color;
 
             if (draw.IsSphere)
                 DrawSphere(renderer, draw.Position, MathF.Max(0.05f, draw.Size.X * 0.5f), color);
@@ -213,7 +216,7 @@ internal sealed partial class HS2EditorModule
         renderer.CommandList.SetScissorRect(0, 0, 0, (uint)windowWidth, (uint)windowHeight);
     }
 
-    private bool TryDrawEntityModel(Renderer renderer, int entityIndex, EditorDrawBox draw)
+    private bool TryDrawEntityModel(Renderer renderer, int entityIndex, EditorDrawBox draw, bool selected, bool selectedHierarchy)
     {
         if (!_drawSceneGlbModels)
             return false;
@@ -232,6 +235,10 @@ internal sealed partial class HS2EditorModule
         {
             Matrix4x4 transform = CreateBoundsFitTransform(entry.Min, entry.Max, draw.Position, draw.Size, draw.Rotation);
             _world.DrawModel(renderer.CommandList, entry.RenderModel, transform, Vector4.One);
+            if (selected)
+                _world.DrawModelSolidColor(renderer.CommandList, entry.RenderModel, transform, new Vector4(1f, 0.92f, 0.16f, 0.42f));
+            else if (selectedHierarchy)
+                _world.DrawModelSolidColor(renderer.CommandList, entry.RenderModel, transform, new Vector4(0.2f, 0.78f, 1f, 0.30f));
             return true;
         }
         catch (Exception ex)
@@ -242,6 +249,42 @@ internal sealed partial class HS2EditorModule
         }
     }
 
+    private bool IsChildOfSelectedEntity(int entityIndex)
+    {
+        int selectedIndex = _editor.SelectedEntityIndex;
+        if (selectedIndex < 0 || selectedIndex >= _editor.LevelFile.Entities.Count)
+            return false;
+        if (entityIndex < 0 || entityIndex >= _editor.LevelFile.Entities.Count)
+            return false;
+
+        string selectedId = _editor.LevelFile.Entities[selectedIndex].Id;
+        string? parentId = _editor.LevelFile.Entities[entityIndex].ParentId;
+        const int maxDepth = 128;
+        int depth = 0;
+
+        while (!string.IsNullOrWhiteSpace(parentId) && depth++ < maxDepth)
+        {
+            if (string.Equals(parentId, selectedId, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            int parentIndex = -1;
+            for (int i = 0; i < _editor.LevelFile.Entities.Count; i++)
+            {
+                if (string.Equals(_editor.LevelFile.Entities[i].Id, parentId, StringComparison.OrdinalIgnoreCase))
+                {
+                    parentIndex = i;
+                    break;
+                }
+            }
+
+            if (parentIndex < 0)
+                return false;
+
+            parentId = _editor.LevelFile.Entities[parentIndex].ParentId;
+        }
+
+        return false;
+    }
     private bool TryGetEditorSceneModel(string modelPath, out EditorSceneModelEntry entry)
     {
         string absolutePath = ResolveContentAssetPath(modelPath);
@@ -375,3 +418,6 @@ internal sealed partial class HS2EditorModule
         _world.DrawSphere(renderer.CommandList, model, color);
     }
 }
+
+
+

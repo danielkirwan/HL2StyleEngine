@@ -98,6 +98,22 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         public float CameraPitch { get; set; }
     }
 
+    private sealed class SwingDoorRuntimeState
+    {
+        public Vector3 ClosedPosition;
+        public Quaternion ClosedRotation = Quaternion.Identity;
+        public Vector3 ClosedEulerDeg;
+        public Vector3 Size = Vector3.One;
+        public Vector3 WidthAxisLocal = Vector3.UnitX;
+        public Vector3 HingeLocalOffset;
+        public bool HasExplicitHinge;
+        public float HalfWidth = 0.5f;
+        public float HingeSide = -1f;
+        public float OpenAngleDeg = DoorSwingOpenAngleDeg;
+        public float CurrentAngleDeg;
+        public float TargetAngleDeg;
+        public bool Unlocked;
+    }
     private readonly struct ModelBounds
     {
         public readonly bool Valid;
@@ -157,6 +173,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private readonly HashSet<string> _solvedPuzzles = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _brokenObjectReplacementModels = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Vector3> _puzzleDoorClosedPositions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, SwingDoorRuntimeState> _swingDoorStates = new(StringComparer.OrdinalIgnoreCase);
     private bool _inventoryOpen;
     private int _selectedInventoryStackIndex = -1;
     private int _movingInventoryFromSlot = -1;
@@ -222,6 +239,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private readonly Dictionary<string, WeaponModelCacheEntry> _weaponModelCache = new(StringComparer.OrdinalIgnoreCase);
 
     private bool _editorEnabled;
+    private bool _debugWindowOpen;
     private bool _prevLeftMouseDown;
 
     private readonly LevelEditorController _editor = new();
@@ -254,9 +272,12 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private const string BreakableWoodenCrateModelPath = "Content/Models/ViewModels/Breakable_Wooden_Crate.glb";
     private const float PuzzleDoorLiftHeight = 3.0f;
     private const float PuzzleDoorLiftSpeed = 0.85f;
+    private const float DoorSwingOpenAngleDeg = 90f;
+    private const float DoorSwingSpeedDegPerSecond = 180f;
     private const string InteractionLockedDoor = "LockedDoor";
     private const string InteractionLockedChest = "LockedChest";
     private const string InteractionPuzzleSlot = "PuzzleSlot";
+    private const string InteractionPuzzleLever = "PuzzleLever";
     private const string InteractionPuzzleDoor = "PuzzleDoor";
 
     public HL2GameModule(string? initialLevelPath = null)
@@ -471,6 +492,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (GameplayModalOpen)
             _ui.OpenUI();
 
+        if (_inputState.WasPressed(Key.F3))
+            _debugWindowOpen = !_debugWindowOpen;
+
         if (_inputState.WasPressed(Key.F2))
         {
             _editorEnabled = !_editorEnabled;
@@ -494,7 +518,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             }
             else
             {
-                // Leaving editor → entering play
+                // Leaving editor ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ entering play
                 RebuildRuntimeWorld();
                 ApplySpawnFromEditor(forceResetVelocity: true);
             }
@@ -1082,7 +1106,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 !HasNamedEntity(level, "Crate_MiddleCorridor_A") ||
                 !HasNamedEntity(level, "Crate_MiddleCorridor_B") ||
                 !HasNamedEntity(level, "Crate_MiddleCorridor_C") ||
-                !HasInteractionData(level, "LockedDoor_RustedKey") ||
+                (!HasInteractionData(level, "LockedDoor_RustedKey") && !HasInteractionData(level, "RustedKeyDoorRoom1")) ||
                 !HasInteractionData(level, "LockedDoor_ArchiveKey") ||
                 !HasInteractionData(level, "LockedDoor_ServiceKey__SaveOffice") ||
                 !HasInteractionData(level, "LockedChest_ServiceKey__SupplyA") ||
@@ -1131,14 +1155,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 !HasNamedEntity(level, "PuzzleDoor_Fuse__PowerGate") ||
                 !HasInteractionData(level, "PuzzleSlot_Fuse__PowerGate") ||
                 !HasInteractionData(level, "PuzzleDoor_Fuse__PowerGate") ||
-                !HasInteractionData(level, "LockedDoor_RustedKey") ||
+                (!HasInteractionData(level, "LockedDoor_RustedKey") && !HasInteractionData(level, "RustedKeyDoorRoom1")) ||
                 !HasInteractionData(level, "LockedDoor_ArchiveKey") ||
                 !HasInteractionData(level, "LockedDoor_ServiceKey__SaveOffice") ||
                 !HasInteractionData(level, "LockedChest_ServiceKey__SupplyA") ||
                 !HasInteractionData(level, "LockedChest_ServiceKey__SupplyB") ||
                 !HasEntityPosition(level, "PuzzleSlot_Fuse__PowerGate", static position => MathF.Abs(position.Z - -4.25f) <= 0.01f) ||
                 !HasDoorBlockerSize(level, "PuzzleDoor_CrankHandle__UtilityLift", static size => size.X >= 2.05f) ||
-                !HasDoorBlockerSize(level, "LockedDoor_RustedKey", static size => size.X >= 3.0f) ||
+                (!HasNamedEntity(level, "RustedKeyDoorRoom1") && !HasDoorBlockerSize(level, "LockedDoor_RustedKey", static size => size.X >= 3.0f)) ||
                 !HasDoorBlockerSize(level, "LockedDoor_ArchiveKey", static size => size.X >= 3.0f) ||
                 !HasNamedEntity(level, "LockedDoor_ServiceKey__SaveOffice") ||
                 !HasDoorBlockerSize(level, "LockedDoor_ServiceKey__SaveOffice", static size => size.Z >= 2.4f) ||
@@ -2992,14 +3016,25 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             Entity e = _runtimeEntities[i];
-            if (_collectedInteractables.Contains(e.Name) || IsInteractionStateComplete(_openedDoors, e))
+            if (_collectedInteractables.Contains(e.Name))
+            {
+                HideRuntimeEntity(e);
+                continue;
+            }
+
+            if (!IsInteractionStateComplete(_openedDoors, e))
+                continue;
+
+            if (IsLockedDoor(e))
+                OpenSwingDoor(e, instant: true);
+            else
                 HideRuntimeEntity(e);
         }
 
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             Entity e = _runtimeEntities[i];
-            if (IsPuzzleSlot(e) && IsInteractionStateComplete(_solvedPuzzles, e))
+            if ((IsPuzzleSlot(e) || IsPuzzleLever(e)) && IsInteractionStateComplete(_solvedPuzzles, e))
                 OpenPuzzleTargets(e, instant: true);
         }
 
@@ -3100,7 +3135,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             Entity slot = _runtimeEntities[i];
-            if (!IsPuzzleSlot(slot) || !IsInteractionStateComplete(_solvedPuzzles, slot))
+            if (!(IsPuzzleSlot(slot) || IsPuzzleLever(slot)) || !IsInteractionStateComplete(_solvedPuzzles, slot))
                 continue;
 
             foreach (string doorName in GetPuzzleTargetNames(slot))
@@ -3121,6 +3156,197 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             door.Transform.Position = closedPosition + Vector3.UnitY * PuzzleDoorLiftHeight;
     }
 
+    private void RegisterSwingDoor(Entity door)
+    {
+        if (string.IsNullOrWhiteSpace(door.Name))
+            return;
+
+        Quaternion closedRotation = GetColliderRotation(door);
+        Vector3 size = ClampMin(door.Render.Size, 0.01f);
+        bool widthUsesX = size.X >= size.Z;
+        LevelInteractionDef? interaction = GetInteraction(door);
+        Vector3 hingeLocalOffset = interaction?.HingeLocalOffset ?? Vector3.Zero;
+        float configuredAngle = interaction?.OpenAngleDeg ?? DoorSwingOpenAngleDeg;
+
+        _swingDoorStates[door.Name] = new SwingDoorRuntimeState
+        {
+            ClosedPosition = door.Transform.Position,
+            ClosedRotation = closedRotation,
+            ClosedEulerDeg = door.Transform.RotationEulerDeg,
+            Size = size,
+            WidthAxisLocal = widthUsesX ? Vector3.UnitX : Vector3.UnitZ,
+            HingeLocalOffset = hingeLocalOffset,
+            HasExplicitHinge = hingeLocalOffset.LengthSquared() > 0.0001f,
+            HalfWidth = MathF.Max(0.05f, (widthUsesX ? size.X : size.Z) * 0.5f),
+            HingeSide = -1f,
+            OpenAngleDeg = configuredAngle == 0f ? DoorSwingOpenAngleDeg : Math.Clamp(MathF.Abs(configuredAngle), 1f, 179f),
+            CurrentAngleDeg = 0f,
+            TargetAngleDeg = 0f,
+            Unlocked = false
+        };
+    }
+
+    private SwingDoorRuntimeState EnsureSwingDoorState(Entity door)
+    {
+        if (!_swingDoorStates.TryGetValue(door.Name, out SwingDoorRuntimeState? state))
+        {
+            RegisterSwingDoor(door);
+            state = _swingDoorStates.TryGetValue(door.Name, out SwingDoorRuntimeState? created)
+                ? created
+                : new SwingDoorRuntimeState
+                {
+                    ClosedPosition = door.Transform.Position,
+                    ClosedRotation = GetColliderRotation(door),
+                    ClosedEulerDeg = door.Transform.RotationEulerDeg,
+                    Size = ClampMin(door.Render.Size, 0.01f),
+                    OpenAngleDeg = DoorSwingOpenAngleDeg
+                };
+        }
+
+        return state;
+    }
+
+    private bool IsSwingDoorOpen(Entity door)
+    {
+        SwingDoorRuntimeState state = EnsureSwingDoorState(door);
+        return MathF.Abs(state.TargetAngleDeg) > 1f || MathF.Abs(state.CurrentAngleDeg) > DoorSwingOpenAngleDeg * 0.5f;
+    }
+
+    private void ToggleSwingDoor(Entity door)
+    {
+        SwingDoorRuntimeState state = EnsureSwingDoorState(door);
+        state.Unlocked = true;
+
+        if (MathF.Abs(state.TargetAngleDeg) > 1f || MathF.Abs(state.CurrentAngleDeg) > DoorSwingOpenAngleDeg * 0.5f)
+            CloseSwingDoor(door);
+        else
+            OpenSwingDoor(door, instant: false);
+    }
+
+    private void OpenSwingDoor(Entity door, bool instant)
+    {
+        SwingDoorRuntimeState state = EnsureSwingDoorState(door);
+        state.Unlocked = true;
+        ChooseSwingDoorOpenTargetFromPlayer(door, state);
+        if (instant)
+        {
+            state.CurrentAngleDeg = state.TargetAngleDeg;
+            ApplySwingDoorPose(door, state, refreshCollider: true);
+        }
+    }
+
+    private void CloseSwingDoor(Entity door)
+    {
+        SwingDoorRuntimeState state = EnsureSwingDoorState(door);
+        state.Unlocked = true;
+        state.TargetAngleDeg = 0f;
+    }
+
+    private void ChooseSwingDoorOpenTargetFromPlayer(Entity door, SwingDoorRuntimeState state)
+    {
+        Vector3 widthAxis = Vector3.Normalize(Vector3.Transform(state.WidthAxisLocal, state.ClosedRotation));
+        if (!state.HasExplicitHinge)
+        {
+            Vector3 toPlayer = _camera.Position - state.ClosedPosition;
+            float lateral = Vector3.Dot(toPlayer, widthAxis);
+            state.HingeSide = lateral > 0.05f ? -1f : 1f;
+        }
+
+        Vector3 playerForward = FlattenHorizontal(_camera.Forward);
+        if (playerForward.LengthSquared() < 1e-6f)
+            playerForward = FlattenHorizontal(state.ClosedPosition - _camera.Position);
+        if (playerForward.LengthSquared() < 1e-6f)
+            playerForward = Vector3.UnitZ;
+        playerForward = Vector3.Normalize(playerForward);
+
+        float openAngle = Math.Clamp(MathF.Abs(state.OpenAngleDeg), 1f, 179f);
+        float positiveScore = ScoreSwingDoorOpenDirection(state, openAngle, playerForward);
+        float negativeScore = ScoreSwingDoorOpenDirection(state, -openAngle, playerForward);
+        state.TargetAngleDeg = positiveScore >= negativeScore ? openAngle : -openAngle;
+    }
+
+    private static float ScoreSwingDoorOpenDirection(SwingDoorRuntimeState state, float angleDeg, Vector3 playerForward)
+    {
+        Vector3 pivot = GetSwingDoorPivot(state);
+        Quaternion delta = Quaternion.CreateFromAxisAngle(Vector3.UnitY, angleDeg * MathF.PI / 180f);
+        Vector3 candidateCenter = pivot + Vector3.Transform(state.ClosedPosition - pivot, delta);
+        return Vector3.Dot(candidateCenter - state.ClosedPosition, playerForward);
+    }
+
+    private void UpdateSwingDoorAnimations(float dt)
+    {
+        foreach (KeyValuePair<string, SwingDoorRuntimeState> pair in _swingDoorStates)
+        {
+            Entity? door = FindRuntimeEntity(pair.Key);
+            if (door == null)
+                continue;
+
+            SwingDoorRuntimeState state = pair.Value;
+            float nextAngle = MoveTowards(state.CurrentAngleDeg, state.TargetAngleDeg, DoorSwingSpeedDegPerSecond * dt);
+            if (MathF.Abs(nextAngle - state.CurrentAngleDeg) <= 0.001f)
+                continue;
+
+            state.CurrentAngleDeg = nextAngle;
+            ApplySwingDoorPose(door, state, refreshCollider: true);
+        }
+    }
+
+    private void ApplySwingDoorPose(Entity door, SwingDoorRuntimeState state, bool refreshCollider)
+    {
+        Quaternion delta = Quaternion.CreateFromAxisAngle(Vector3.UnitY, state.CurrentAngleDeg * MathF.PI / 180f);
+        Vector3 pivot = GetSwingDoorPivot(state);
+        Quaternion rotation = Quaternion.Normalize(state.ClosedRotation * delta);
+
+        door.Transform.Position = pivot + Vector3.Transform(state.ClosedPosition - pivot, delta);
+        door.Transform.RotationEulerDeg = QuatToEulerDeg(rotation);
+        door.Physics.RestRotation = rotation;
+        door.Physics.Rotation = rotation;
+        door.Physics.AngularVelocity = Vector3.Zero;
+        if (HasPhysicsBody(door))
+            SetPhysicsBodyCenter(door, door.Transform.Position);
+
+        if (refreshCollider)
+            RefreshSwingDoorCollider(door);
+    }
+
+    private static Vector3 GetSwingDoorPivot(SwingDoorRuntimeState state)
+    {
+        if (state.HasExplicitHinge)
+            return state.ClosedPosition + Vector3.Transform(state.HingeLocalOffset, state.ClosedRotation);
+
+        Vector3 widthAxis = Vector3.Normalize(Vector3.Transform(state.WidthAxisLocal, state.ClosedRotation));
+        return state.ClosedPosition + widthAxis * (state.HalfWidth * state.HingeSide);
+    }
+
+    private void RefreshSwingDoorCollider(Entity door)
+    {
+        if (door.Collider.Shape != RuntimeShapeKind.Mesh)
+            return;
+
+        LevelEntityDef? def = FindLevelEntityDef(door);
+        if (def == null || !IsGlbModelPath(def.MeshPath))
+            return;
+
+        if (TryCreateMeshCollider(def, door.Transform.Position, door.Render.Size, GetColliderRotation(door), out MeshCollisionMesh meshCollider))
+        {
+            door.Collider.Mesh = meshCollider;
+            door.Collider.Size = meshCollider.Bounds.Max - meshCollider.Bounds.Min;
+            door.Collider.Height = door.Collider.Size.Y;
+            door.Collider.PreviousPosition = door.Transform.Position;
+        }
+    }
+
+    private static Vector3 FlattenHorizontal(Vector3 v)
+        => new(v.X, 0f, v.Z);
+
+    private static float MoveTowards(float current, float target, float maxDelta)
+    {
+        float delta = target - current;
+        if (MathF.Abs(delta) <= maxDelta)
+            return target;
+
+        return current + MathF.Sign(delta) * maxDelta;
+    }
     private Entity? FindRuntimeEntity(string name)
         => _runtimeEntities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
 
@@ -3427,17 +3653,25 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private static bool IsCapsuleShape(string? shape)
         => string.Equals(shape, "Capsule", StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsMeshShape(string? shape)
+        => string.Equals(shape, "Mesh", StringComparison.OrdinalIgnoreCase);
+
     private static RuntimeShapeKind GetRigidBodyShape(LevelEntityDef def)
         => IsCapsuleShape(def.Shape)
             ? RuntimeShapeKind.Capsule
             : IsSphereShape(def.Shape)
                 ? RuntimeShapeKind.Sphere
-                : RuntimeShapeKind.Box;
+                : IsMeshShape(def.Shape)
+                    ? RuntimeShapeKind.Mesh
+                    : RuntimeShapeKind.Box;
 
     private static float GetScaledSphereRadius(LevelEntityDef def, bool clampScale)
+        => GetScaledSphereRadius(def, def.LocalScale, clampScale);
+
+    private static float GetScaledSphereRadius(LevelEntityDef def, Vector3 scale, bool clampScale)
     {
         float radius = clampScale ? MathF.Max(0.01f, def.Radius) : def.Radius;
-        Vector3 scale = Abs((Vector3)def.LocalScale);
+        scale = Abs(scale);
 
         if (clampScale)
             scale = ClampMin(scale, 0.01f);
@@ -3447,9 +3681,12 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     }
 
     private static float GetScaledCapsuleRadius(LevelEntityDef def, bool clampScale)
+        => GetScaledCapsuleRadius(def, def.LocalScale, clampScale);
+
+    private static float GetScaledCapsuleRadius(LevelEntityDef def, Vector3 scale, bool clampScale)
     {
         float radius = clampScale ? MathF.Max(0.01f, def.Radius) : def.Radius;
-        Vector3 scale = Abs((Vector3)def.LocalScale);
+        scale = Abs(scale);
 
         if (clampScale)
             scale = ClampMin(scale, 0.01f);
@@ -3459,10 +3696,13 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     }
 
     private static float GetScaledCapsuleHeight(LevelEntityDef def, bool clampScale)
+        => GetScaledCapsuleHeight(def, def.LocalScale, clampScale);
+
+    private static float GetScaledCapsuleHeight(LevelEntityDef def, Vector3 scale, bool clampScale)
     {
-        float radius = GetScaledCapsuleRadius(def, clampScale);
+        float radius = GetScaledCapsuleRadius(def, scale, clampScale);
         float height = clampScale ? MathF.Max(0.01f, def.Height) : def.Height;
-        float scaleY = MathF.Abs(((Vector3)def.LocalScale).Y);
+        float scaleY = MathF.Abs(scale.Y);
 
         if (clampScale)
             scaleY = MathF.Max(0.01f, scaleY);
@@ -3470,7 +3710,6 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         height *= scaleY;
         return MathF.Max(height, radius * 2f);
     }
-
     private static bool HasPhysicsBody(Entity entity)
         => entity.Physics.BoxBody != null || entity.Physics.SphereBody != null || entity.Physics.CapsuleBody != null;
 
@@ -3585,6 +3824,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         {
             RuntimeShapeKind.Sphere => WorldCollider.Sphere(position, collider.Radius),
             RuntimeShapeKind.Capsule => WorldCollider.Capsule(position, collider.Radius, collider.Height, rotation),
+            RuntimeShapeKind.Mesh when collider.Mesh != null => WorldCollider.Mesh(collider.Mesh),
             _ => WorldCollider.Box(position, collider.HalfExtents, rotation)
         };
     }
@@ -5255,7 +5495,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         Vector3 center = _motor.Position + new Vector3(0f, _motor.HalfHeight, 0f);
         float feetY = center.Y - extents.Y;
 
-        // If we’re going up, don’t “stick”
+        // If weÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢re going up, donÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢t ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“stickÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â
         if (_motor.Velocity.Y > 0.001f)
             return false;
 
@@ -5292,28 +5532,104 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         return bestTopY > float.NegativeInfinity;
     }
 
+    private readonly struct LevelWorldTransform
+    {
+        public LevelWorldTransform(Vector3 position, Quaternion rotation, Vector3 scale)
+        {
+            Position = position;
+            Rotation = rotation;
+            Scale = scale;
+        }
+
+        public readonly Vector3 Position;
+        public readonly Quaternion Rotation;
+        public readonly Vector3 Scale;
+    }
+
+    private static LevelWorldTransform[] BuildLevelWorldTransforms(IReadOnlyList<LevelEntityDef> entities)
+    {
+        var idToIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < entities.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(entities[i].Id))
+                idToIndex[entities[i].Id] = i;
+        }
+
+        var matrices = new Matrix4x4[entities.Count];
+        var cached = new bool[entities.Count];
+        var visiting = new bool[entities.Count];
+
+        Matrix4x4 LocalMatrix(LevelEntityDef entity)
+            => Matrix4x4.CreateScale(entity.LocalScale) *
+               Matrix4x4.CreateFromQuaternion(EulerDegToQuat(entity.LocalRotationEulerDeg)) *
+               Matrix4x4.CreateTranslation(entity.LocalPosition);
+
+        Matrix4x4 WorldMatrix(int index)
+        {
+            if (index < 0 || index >= entities.Count)
+                return Matrix4x4.Identity;
+            if (cached[index])
+                return matrices[index];
+            if (visiting[index])
+                return LocalMatrix(entities[index]);
+
+            visiting[index] = true;
+            LevelEntityDef entity = entities[index];
+            Matrix4x4 world = LocalMatrix(entity);
+            if (!string.IsNullOrWhiteSpace(entity.ParentId) && idToIndex.TryGetValue(entity.ParentId, out int parentIndex))
+                world = world * WorldMatrix(parentIndex);
+
+            visiting[index] = false;
+            cached[index] = true;
+            matrices[index] = world;
+            return world;
+        }
+
+        var result = new LevelWorldTransform[entities.Count];
+        for (int i = 0; i < entities.Count; i++)
+        {
+            Matrix4x4 world = WorldMatrix(i);
+            if (!Matrix4x4.Decompose(world, out Vector3 scale, out Quaternion rotation, out Vector3 position))
+            {
+                position = entities[i].LocalPosition;
+                rotation = EulerDegToQuat(entities[i].LocalRotationEulerDeg);
+                scale = entities[i].LocalScale;
+            }
+
+            result[i] = new LevelWorldTransform(position, rotation, scale);
+        }
+
+        return result;
+    }
     private void RebuildRuntimeWorld()
     {
         _runtimeEntities.Clear();
         _runtimeWorldColliders.Clear();
         _puzzleDoorClosedPositions.Clear();
+        _swingDoorStates.Clear();
         _fractureDebrisPieces.Clear();
 
-        foreach (var def in _editor.LevelFile.Entities)
-        {
-            var e = new Entity(def.Id, def.Type, def.Name ?? def.Type);
+        IReadOnlyList<LevelEntityDef> levelEntities = _editor.LevelFile.Entities;
+        LevelWorldTransform[] levelTransforms = BuildLevelWorldTransforms(levelEntities);
 
-            e.Transform.Position = def.LocalPosition;
-            e.Transform.RotationEulerDeg = def.LocalRotationEulerDeg;
-            e.Transform.Scale = def.LocalScale;
-            e.Physics.RestRotation = EulerDegToQuat(def.LocalRotationEulerDeg);
-            e.Physics.Rotation = EulerDegToQuat(def.LocalRotationEulerDeg);
+        for (int entityIndex = 0; entityIndex < levelEntities.Count; entityIndex++)
+        {
+            var def = levelEntities[entityIndex];
+            LevelWorldTransform worldTransform = levelTransforms[entityIndex];
+            var e = new Entity(def.Id, def.Type, def.Name ?? def.Type);
+            e.ParentId = def.ParentId;
+
+            e.Transform.Position = worldTransform.Position;
+            e.Transform.RotationEulerDeg = QuatToEulerDeg(worldTransform.Rotation);
+            e.Transform.Scale = worldTransform.Scale;
+            e.Physics.RestRotation = worldTransform.Rotation;
+            e.Physics.Rotation = worldTransform.Rotation;
             e.Physics.AngularVelocity = Vector3.Zero;
             e.Physics.AngularDamping = 2.5f;
             e.Render.Shape = RuntimeShapeKind.Box;
-            e.Render.Size = GetScaledSize(def, clampComponents: false);
-            e.Render.Radius = GetScaledSphereRadius(def, clampScale: false);
-            e.Render.Height = GetScaledCapsuleHeight(def, clampScale: false);
+            e.Render.Size = GetScaledSize(def, e.Transform.Scale, clampComponents: false);
+            e.Render.Radius = GetScaledSphereRadius(def, e.Transform.Scale, clampScale: false);
+            e.Render.Height = GetScaledCapsuleHeight(def, e.Transform.Scale, clampScale: false);
             e.Render.Color = (Vector4)def.Color;
             e.Render.ModelAssetPath = IsGlbModelPath(def.MeshPath) ? def.MeshPath : "";
 
@@ -5349,23 +5665,25 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             RuntimeShapeKind rigidBodyShape = isRigidBody ? GetRigidBodyShape(def) : RuntimeShapeKind.Box;
             bool isSphere = isRigidBody && rigidBodyShape == RuntimeShapeKind.Sphere;
             bool isCapsule = isRigidBody && rigidBodyShape == RuntimeShapeKind.Capsule;
-            bool isSolidModelProp = def.Type == EntityTypes.Prop && IsGlbModelPath(def.MeshPath);
+            bool wantsMesh = isRigidBody && rigidBodyShape == RuntimeShapeKind.Mesh;
+            bool isMesh = wantsMesh && IsGlbModelPath(def.MeshPath);
+            bool isStaticMeshCollider = isMesh && def.MotionType == MotionType.Static;
             bool isBoxPhysicsShape =
                 (def.Type == EntityTypes.Box) ||
                 (isRigidBody && rigidBodyShape == RuntimeShapeKind.Box) ||
-                isSolidModelProp;
+                (wantsMesh && !isStaticMeshCollider);
 
             if (isSphere)
             {
-                float radius = GetScaledSphereRadius(def, clampScale: true);
+                float radius = GetScaledSphereRadius(def, e.Transform.Scale, clampScale: true);
                 e.Render.Shape = RuntimeShapeKind.Sphere;
                 e.Render.Size = new Vector3(radius * 2f);
                 e.Render.Radius = radius;
             }
             else if (isCapsule)
             {
-                float radius = GetScaledCapsuleRadius(def, clampScale: true);
-                float height = GetScaledCapsuleHeight(def, clampScale: true);
+                float radius = GetScaledCapsuleRadius(def, e.Transform.Scale, clampScale: true);
+                float height = GetScaledCapsuleHeight(def, e.Transform.Scale, clampScale: true);
                 e.Render.Shape = RuntimeShapeKind.Capsule;
                 e.Render.Size = new Vector3(radius * 2f, height, radius * 2f);
                 e.Render.Radius = radius;
@@ -5374,7 +5692,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
             if (isSphere && def.MotionType == MotionType.Dynamic)
             {
-                float radius = GetScaledSphereRadius(def, clampScale: true);
+                float radius = GetScaledSphereRadius(def, e.Transform.Scale, clampScale: true);
 
                 e.Physics.SphereBody = new SphereBody(e.Transform.Position, radius)
                 {
@@ -5388,7 +5706,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             }
             else if (isSphere && def.MotionType == MotionType.Kinematic)
             {
-                float radius = GetScaledSphereRadius(def, clampScale: true);
+                float radius = GetScaledSphereRadius(def, e.Transform.Scale, clampScale: true);
 
                 e.Physics.SphereBody = new SphereBody(e.Transform.Position, radius)
                 {
@@ -5401,8 +5719,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             }
             else if (isCapsule && def.MotionType == MotionType.Dynamic)
             {
-                float radius = GetScaledCapsuleRadius(def, clampScale: true);
-                float height = GetScaledCapsuleHeight(def, clampScale: true);
+                float radius = GetScaledCapsuleRadius(def, e.Transform.Scale, clampScale: true);
+                float height = GetScaledCapsuleHeight(def, e.Transform.Scale, clampScale: true);
 
                 e.Physics.CapsuleBody = new CapsuleBody(e.Transform.Position, radius, height)
                 {
@@ -5416,8 +5734,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             }
             else if (isCapsule && def.MotionType == MotionType.Kinematic)
             {
-                float radius = GetScaledCapsuleRadius(def, clampScale: true);
-                float height = GetScaledCapsuleHeight(def, clampScale: true);
+                float radius = GetScaledCapsuleRadius(def, e.Transform.Scale, clampScale: true);
+                float height = GetScaledCapsuleHeight(def, e.Transform.Scale, clampScale: true);
 
                 e.Physics.CapsuleBody = new CapsuleBody(e.Transform.Position, radius, height)
                 {
@@ -5430,7 +5748,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             }
             else if (isBoxPhysicsShape && def.MotionType == MotionType.Dynamic)
             {
-                Vector3 worldSize = GetScaledSize(def, clampComponents: true);
+                Vector3 worldSize = GetScaledSize(def, e.Transform.Scale, clampComponents: true);
                 Vector3 half = worldSize * 0.5f;
 
                 e.Physics.BoxBody = new BoxBody(e.Transform.Position, half)
@@ -5445,7 +5763,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             }
             else if (isBoxPhysicsShape && def.MotionType == MotionType.Kinematic)
             {
-                Vector3 worldSize = GetScaledSize(def, clampComponents: true);
+                Vector3 worldSize = GetScaledSize(def, e.Transform.Scale, clampComponents: true);
                 Vector3 half = worldSize * 0.5f;
 
                 e.Physics.BoxBody = new BoxBody(e.Transform.Position, half)
@@ -5463,7 +5781,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
             if (isSphere)
             {
-                float radius = GetScaledSphereRadius(def, clampScale: true);
+                float radius = GetScaledSphereRadius(def, e.Transform.Scale, clampScale: true);
                 e.Collider.Shape = RuntimeShapeKind.Sphere;
                 e.Collider.Radius = radius;
                 e.Collider.Size = new Vector3(radius * 2f);
@@ -5474,8 +5792,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             }
             else if (isCapsule)
             {
-                float radius = GetScaledCapsuleRadius(def, clampScale: true);
-                float height = GetScaledCapsuleHeight(def, clampScale: true);
+                float radius = GetScaledCapsuleRadius(def, e.Transform.Scale, clampScale: true);
+                float height = GetScaledCapsuleHeight(def, e.Transform.Scale, clampScale: true);
                 e.Collider.Shape = RuntimeShapeKind.Capsule;
                 e.Collider.Radius = radius;
                 e.Collider.Height = height;
@@ -5484,10 +5802,21 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 e.Collider.PreviousPosition = e.Transform.Position;
                 e.Collider.Delta = Vector3.Zero;
             }
-            else if (isBoxPhysicsShape || hasMovingPlatform)
+            else if (isStaticMeshCollider && TryCreateMeshCollider(def, e.Transform.Position, GetScaledSize(def, e.Transform.Scale, clampComponents: true), GetColliderRotation(e), out MeshCollisionMesh meshCollider))
+            {
+                e.Collider.Shape = RuntimeShapeKind.Mesh;
+                e.Collider.Mesh = meshCollider;
+                e.Collider.Size = meshCollider.Bounds.Max - meshCollider.Bounds.Min;
+                e.Collider.Radius = 0f;
+                e.Collider.Height = e.Collider.Size.Y;
+                e.Collider.IsMovingPlatform = false;
+                e.Collider.PreviousPosition = e.Transform.Position;
+                e.Collider.Delta = Vector3.Zero;
+            }
+            else if (isBoxPhysicsShape || hasMovingPlatform || wantsMesh)
             {
                 e.Collider.Shape = RuntimeShapeKind.Box;
-                e.Collider.Size = GetScaledSize(def, clampComponents: true);
+                e.Collider.Size = GetScaledSize(def, e.Transform.Scale, clampComponents: true);
                 e.Collider.Radius = 0.5f;
                 e.Collider.Height = e.Collider.Size.Y;
                 e.Collider.IsMovingPlatform = hasMovingPlatform;
@@ -5499,6 +5828,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             _runtimeEntities.Add(e);
             if (IsPuzzleDoor(e))
                 _puzzleDoorClosedPositions[e.Name] = e.Transform.Position;
+            if (IsLockedDoor(e))
+                RegisterSwingDoor(e);
         }
 
         ApplyPersistentInteractionStateToRuntime();
@@ -5559,9 +5890,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     }
 
     private static Vector3 GetScaledSize(LevelEntityDef def, bool clampComponents)
+        => GetScaledSize(def, def.LocalScale, clampComponents);
+
+    private static Vector3 GetScaledSize(LevelEntityDef def, Vector3 scale, bool clampComponents)
     {
         Vector3 size = (Vector3)def.Size;
-        Vector3 scale = (Vector3)def.LocalScale;
 
         if (clampComponents)
         {
@@ -5571,7 +5904,6 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         return Mul(size, scale);
     }
-
     private static Vector3 ClampMin(Vector3 value, float min)
         => new(
             MathF.Max(min, value.X),
@@ -5732,6 +6064,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
 
         UpdatePuzzleDoorAnimations(fixedDt);
+        UpdateSwingDoorAnimations(fixedDt);
 
         // 2) If an entity is kinematic, drive its body from its transform
         for (int i = 0; i < _runtimeEntities.Count; i++)
@@ -5954,7 +6287,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _keyboardOverEditorUi = false;
 
         DrawMainDockspaceHost();
-        DrawDebugWindow();
+        if (_debugWindowOpen)
+            DrawDebugWindow();
         DrawGameplayHud();
 
         if (_editorEnabled)
@@ -6000,7 +6334,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private void DrawDebugWindow()
     {
-        ImGui.Begin("Debug");
+        if (!ImGui.Begin("Debug", ref _debugWindowOpen))
+        {
+            ImGui.End();
+            return;
+        }
         ImGui.Text($"FPS: {_fps:F1}");
         ImGui.Text($"Editor: {(_editorEnabled ? "ON" : "OFF")}");
         ImGui.Text($"Dirty: {(_editor.Dirty ? "YES" : "NO")}");
@@ -7310,6 +7648,15 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         WorldCollider collider = CreateWorldCollider(entity);
 
+        if (entity.Collider.Shape == RuntimeShapeKind.Mesh && collider.MeshData != null)
+        {
+            return Engine.Physics.Collision.Raycast.RayIntersectsMesh(
+                ray,
+                collider.MeshData,
+                tMin,
+                tMax,
+                out hitT);
+        }
         if (entity.Collider.Shape == RuntimeShapeKind.Sphere)
         {
             return Engine.Physics.Collision.Raycast.RayIntersectsSphere(
@@ -7409,7 +7756,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     }
 
     private bool IsGameplayInteractable(Entity e)
-        => IsWorldItem(e) || IsLockedObject(e) || IsSavePoint(e) || IsStorageBox(e) || IsPuzzleSlot(e);
+        => IsWorldItem(e) || IsLockedObject(e) || IsSavePoint(e) || IsStorageBox(e) || IsPuzzleSlot(e) || IsPuzzleLever(e);
 
     private static bool IsWorldItem(Entity e)
         => IsKeyItem(e) || IsInkRibbon(e) || e.Name.StartsWith("Item_", StringComparison.OrdinalIgnoreCase);
@@ -7440,6 +7787,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private bool IsPuzzleSlot(Entity e)
         => IsInteractionKind(e, InteractionPuzzleSlot) ||
            e.Name.StartsWith("PuzzleSlot_", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsPuzzleLever(Entity e)
+        => IsInteractionKind(e, InteractionPuzzleLever) ||
+           e.Name.StartsWith("PuzzleLever_", StringComparison.OrdinalIgnoreCase);
 
     private bool IsPuzzleDoor(Entity e)
         => IsInteractionKind(e, InteractionPuzzleDoor) ||
@@ -7661,7 +8012,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     {
         string requiredItem = GetLockRequiredItem(target);
         _openedDoors.Add(GetInteractionStateId(target));
-        HideRuntimeEntity(target);
+
+        if (IsLockedDoor(target))
+            OpenSwingDoor(target, instant: false);
+        else
+            HideRuntimeEntity(target);
 
         string? message = GetInteraction(target)?.SuccessMessage;
         if (string.IsNullOrWhiteSpace(message))
@@ -7676,22 +8031,54 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             message += $" Found {ItemCatalog.GetDisplayName(rewardItemId)}{countSuffix}.";
         }
 
-        if (!string.Equals(itemId, ItemCatalog.MasterKey, StringComparison.OrdinalIgnoreCase) &&
-            TryRemoveInventoryItemIfFullyUsed(requiredItem))
+        if (!string.Equals(itemId, ItemCatalog.MasterKey, StringComparison.OrdinalIgnoreCase))
         {
-            message += $" {ItemCatalog.GetDisplayName(requiredItem)} is no longer needed.";
+            LevelInteractionDef? interaction = GetInteraction(target);
+            if (interaction?.ConsumesItem == true && _inventory.RemoveCount(itemId))
+                message += $" Used {ItemCatalog.GetDisplayName(itemId)}.";
+            else if (TryRemoveInventoryItemIfFullyUsed(requiredItem))
+                message += $" {ItemCatalog.GetDisplayName(requiredItem)} is no longer needed.";
         }
 
         ClearPendingUseSelection();
         SetInventoryOpen(false);
         ShowGameMessage(message);
     }
-
     private void UseSelectedInkRibbonAtSavePoint(Entity target)
     {
         OpenSaveSlotPanel(target);
     }
 
+    private bool AreInteractionRequiredStatesComplete(Entity entity)
+    {
+        LevelInteractionDef? interaction = GetInteraction(entity);
+        if (interaction?.RequiredStates == null || interaction.RequiredStates.Count == 0)
+            return true;
+
+        foreach (string state in interaction.RequiredStates)
+        {
+            if (string.IsNullOrWhiteSpace(state))
+                continue;
+            if (!_solvedPuzzles.Contains(state) && !_openedDoors.Contains(state) && !_collectedInteractables.Contains(state))
+                return false;
+        }
+
+        return true;
+    }
+
+    private void UsePuzzleLever(Entity target)
+    {
+        LevelInteractionDef? interaction = GetInteraction(target);
+        _solvedPuzzles.Add(GetInteractionStateId(target));
+        OpenPuzzleTargets(target, instant: false);
+
+        string? message = interaction?.SuccessMessage;
+        ShowGameMessage(
+            !string.IsNullOrWhiteSpace(message)
+                ? message
+                : "The lever clunks into position.",
+            3.0f);
+    }
     private void UseSelectedItemOnPuzzleSlot(Entity target, string itemId)
     {
         LevelInteractionDef? interaction = GetInteraction(target);
@@ -7757,6 +8144,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         if (IsLockedObject(e))
         {
+            if (IsLockedDoor(e) && IsInteractionStateComplete(_openedDoors, e))
+                return IsSwingDoorOpen(e) ? "Close door" : "Open door";
+
             string requiredItem = GetLockRequiredItem(e);
             string itemName = ItemCatalog.GetDisplayName(GetHeldUnlockItemForLock(requiredItem) ?? requiredItem);
             string lockName = IsLockedChest(e) ? "chest" : "door";
@@ -7778,6 +8168,22 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         if (IsStorageBox(e))
             return $"Open {PrettifyToken(GetNameToken(e, "StorageBox_"))}";
+
+        if (IsPuzzleLever(e))
+        {
+            if (IsInteractionStateComplete(_solvedPuzzles, e))
+                return "Lever already pulled";
+
+            LevelInteractionDef? interaction = GetInteraction(e);
+            if (!AreInteractionRequiredStatesComplete(e))
+                return !string.IsNullOrWhiteSpace(interaction?.LockedPrompt)
+                    ? interaction.LockedPrompt
+                    : "Circuit incomplete";
+
+            return !string.IsNullOrWhiteSpace(interaction?.Prompt)
+                ? interaction.Prompt
+                : "Pull lever";
+        }
 
         if (IsPuzzleSlot(e))
         {
@@ -7861,6 +8267,12 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         if (IsLockedObject(hit))
         {
+            if (IsLockedDoor(hit) && IsInteractionStateComplete(_openedDoors, hit))
+            {
+                ToggleSwingDoor(hit);
+                return true;
+            }
+
             string requiredItem = GetLockRequiredItem(hit);
             string? unlockItem = GetHeldUnlockItemForLock(requiredItem);
             if (unlockItem == null)
@@ -7888,6 +8300,29 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (IsStorageBox(hit))
         {
             SetStorageOpen(true);
+            return true;
+        }
+
+        if (IsPuzzleLever(hit))
+        {
+            if (IsInteractionStateComplete(_solvedPuzzles, hit))
+            {
+                ShowGameMessage("The lever has already been pulled.", 1.75f);
+                return true;
+            }
+
+            if (!AreInteractionRequiredStatesComplete(hit))
+            {
+                LevelInteractionDef? interaction = GetInteraction(hit);
+                ShowGameMessage(
+                    !string.IsNullOrWhiteSpace(interaction?.LockedPrompt)
+                        ? interaction.LockedPrompt
+                        : "The circuit is still incomplete.",
+                    2.5f);
+                return true;
+            }
+
+            UsePuzzleLever(hit);
             return true;
         }
 
@@ -9265,3 +9700,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _world?.Dispose();
     }
 }
+
+
+
+
+
+
+

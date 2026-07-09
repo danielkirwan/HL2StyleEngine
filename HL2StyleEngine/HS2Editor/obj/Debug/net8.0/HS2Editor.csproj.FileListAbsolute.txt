@@ -412,3 +412,81 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models
 F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Psychiatric_Ward_Infirmary_Wall_Paper_3.glb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\RedTelephone.glb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Silver_Key.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\door 6.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Door17.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Rollup Door 1.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Rollup Door 10.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Rollup Door 2.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Rollup Door 3.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Rollup Door 4.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Rollup Door 5.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Rollup Door 6.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Rollup Door 7.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Rollup Door 8.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Rollup Door 9.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Steel_Door_1_A.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Steel_Door_1_B.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Steel_Door_2_A.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Steel_Door_2_B.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Steel_Door_3_A.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Steel_Door_3_B.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Steel_Door_4_A.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Steel_Door_4_B.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Steel_Door_5.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Wiremesh_Door.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Prefabs\DoorFrame&Door.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Battery03_01.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Battery03_02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Battery03_03.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Battery03_04.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Battery03_05.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_01.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_03.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_04.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_05.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_06.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_07.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_08.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_09.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_10.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_11.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_12.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_13.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Cables01_Det01.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_01.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_03.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_04.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_05.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_06.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_07.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_08.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_09.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_10.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_11.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires01_12.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires02_01.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires02_02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires02_03.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires02_04.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires02_Curve01.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires02_Curve02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires02_Support01.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires02_Support02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires02_Support03.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_01.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_02.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_03.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_04.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_05.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_06.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_07.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_08.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_09.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_10.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_11.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_12.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_13.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Models\ViewModels\Lever04.glb
+F:\Tools\HL2StyleEngine\HL2StyleEngine\HS2Editor\bin\Debug\net8.0\Content\Levels\basementLevel.json

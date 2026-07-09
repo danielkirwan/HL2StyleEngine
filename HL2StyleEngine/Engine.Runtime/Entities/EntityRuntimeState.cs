@@ -9,7 +9,8 @@ public enum RuntimeShapeKind
     None = 0,
     Box = 1,
     Sphere = 2,
-    Capsule = 3
+    Capsule = 3,
+    Mesh = 4
 }
 
 public sealed class EntityRenderState
@@ -34,6 +35,7 @@ public sealed class EntityColliderState
     public bool IsMovingPlatform;
     public Vector3 PreviousPosition;
     public Vector3 Delta;
+    public MeshCollisionMesh? Mesh;
 
     public bool Enabled => Shape != RuntimeShapeKind.None;
 
@@ -46,6 +48,7 @@ public sealed class EntityColliderState
             RuntimeShapeKind.Box => Aabb.FromCenterExtents(position, HalfExtents),
             RuntimeShapeKind.Sphere => Aabb.FromCenterExtents(position, new Vector3(Radius)),
             RuntimeShapeKind.Capsule => Aabb.FromCenterExtents(position, new Vector3(Radius, MathF.Max(Height * 0.5f, Radius), Radius)),
+            RuntimeShapeKind.Mesh when Mesh != null => Mesh.Bounds,
             _ => Aabb.FromCenterExtents(position, Vector3.Zero)
         };
     }

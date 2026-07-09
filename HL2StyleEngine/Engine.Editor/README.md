@@ -37,15 +37,42 @@ Implemented:
 - Scene camera controls: RMB look plus WASD/QE fly movement while the Scene panel is hovered or focused.
 - Scene selection and dragging through the existing `LevelEditorController` picking path. Picking rays now use the Scene panel rectangle instead of the whole application window, and the Scene panel is not treated as regular UI for mouse blocking. If the Scene panel bounds are missing or saved below a usable size during startup, world rendering falls back to the full app window rather than leaving a tiny black viewport.
 - Existing hierarchy, inspector, and toolbar panels reused inside the standalone app.
+- Inspector interaction authoring for locked doors, locked chests, puzzle slots, and puzzle doors. Interaction JSON is stored directly on the selected level entity, not as a separate attached document.
 - Content browser for models, animations, and all content files. The Models tab uses a table layout with a visible asset count/path header, explicit Asset and Assign columns, and a selected-model material-colour shaded 3D preview pane for `.glb` assets when there is enough room.
 - Assign selected model from `Content/Models` to the selected entity by writing a `Content/...` mesh path.
-- Drag a `.glb` model from the Content Browser onto the Scene panel to create a selected static `RigidBody` at the drop point. The new entity uses the existing selection, drag, and gizmo movement path, defaults to a one-unit box collider/model fit, and can be resized in the inspector. Scene placement avoids the Scene viewport ImGui payload target and instead places the tracked dragged asset on mouse release over the Scene. Assigned/dropped GLBs now render in the Scene view using a colour-only editor render model, with texture decoding disabled in the editor scene path for drag/browse stability. The same bounds-fit transform as the game renderer is used, and the collider/blockout box can be shown as an overlay so mesh orientation and collision volume can be tuned together.
+- Drag a `.glb` model from the Content Browser onto the Scene panel to create a selected static `RigidBody` at the drop point. The new entity uses the existing selection, drag, and gizmo movement path, defaults to a one-unit mesh collider/model fit for static GLB rigid bodies, and can be resized in the inspector. Scene placement avoids the Scene viewport ImGui payload target and instead places the tracked dragged asset on mouse release over the Scene. Assigned/dropped GLBs now render in the Scene view using a colour-only editor render model, with texture decoding disabled in the editor scene path for drag/browse stability. The same bounds-fit transform as the game renderer is used, and the collider/blockout box can be shown as an overlay so mesh orientation and collision volume can be tuned together.
 - Drag/drop GLB asset payloads from the content browser into inspector model fields and model lists. Selected boxes, props, and rigid bodies accept dropped `.glb` paths into `MeshPath`, so blockout walls, floors, ceilings, and props can be assigned imported models without typing paths. Damageable object replacement and debris model lists still accept dragged `.glb` paths for workflows such as dragging `DamagedCrate*.glb` onto a crate replacement list.
-- Prefab creation from the selected entity and prefab placement from JSON files under `Content/Prefabs`.
+- Prefab creation from the selected entity and prefab placement from JSON files under `Content/Prefabs`. Prefabs are now visible in the Content Browser `Prefabs` tab as well as the compact Prefabs panel.
 - Basic UI manager for creating, opening, editing, and saving `.rml` and `.rcss` files.
 - Asset importer launch from the editor.
 - Play selected level by saving the current level and launching `Game` with `--level <current level path>`.
 - Game startup now accepts `--level` so editor-launched play can load the selected scene.
+
+
+## 2026-07-09 Mesh Collider Update
+
+Locked-in editor/runtime collision direction from this pass:
+
+- Static imported `.glb` rigid bodies can now use `Shape = "Mesh"` to collide against their actual triangle mesh instead of only a primitive box, sphere, or capsule.
+- Dragging a `.glb` from the Content Browser into the Scene now creates a selected static `RigidBody` with `Shape = "Mesh"` by default. It can still be switched back to `Box`, `Sphere`, or `Capsule` in the inspector.
+- Assigning a `.glb` to a selected static rigid body through the Assign button also switches it to `Shape = "Mesh"` and zero mass, which is the expected setup for walls, floors, ceilings, doorframes, and other level architecture.
+- Mesh colliders use the same bounds-fit transform as runtime GLB rendering, so the visible model orientation/scale and collision triangles are generated from the same data. Runtime mesh colliders also use a small collision skin so thin architectural triangles, such as doorframe edges and wall surfaces, are not easy to step through at player movement speed.
+- Mesh colliders are intentionally static-only in this first pass. If a mesh-shaped rigid body is made dynamic or kinematic, runtime falls back to box physics behavior. Moving doors, pickups, crates, and other interactive physics objects should remain separate primitive collider bodies for now.
+- Doorframes should be authored as static mesh-collider rigid bodies so the player can walk through the real opening. The actual moving door should be a separate entity with its own primitive collider and movement/interaction script.
+- Editor Scene drawing still uses the stable colour-only mesh preview path; the collider overlay can remain visible for selection and size tuning, but runtime collision now follows the GLB triangles when the object shape is `Mesh`.
+
+## 2026-07-08 Editor Updates
+
+Locked-in editor updates from this pass:
+
+- Content Browser model assignment works from the explicit Assign button without the asset row swallowing the click.
+- Dragging a `.glb` from the Content Browser into the Scene uses tracked drag state and mouse release over the Scene view instead of a Scene ImGui drop target, reducing crash risk.
+- Dropped GLB models create selected static `RigidBody` entities with `Shape = "Mesh"` so they can immediately be moved, resized, and used as mesh collision in play.
+- Assigned/dropped GLB models now render in the editor Scene view again using a colour-only, no-texture render model. This shows the real mesh shape and orientation without using texture decoding in the editor scene path.
+- The collider/blockout shape remains available as a lightweight overlay, so visible mesh placement and collision volume tuning can be compared in the same view.
+- `View > Show Scene Meshes` can toggle Scene mesh drawing if a problem asset needs primitive-box fallback while editing.
+- Dock layout version `8` resets stale/broken saved layouts and keeps the Unity-style panel placement alive long enough to recover from collapsed windows.
+- Current limitation: editor Scene meshes are not fully textured yet; runtime/game rendering still uses the normal textured GLB renderer.
 
 Current first-pass limitations:
 
@@ -53,7 +80,7 @@ Current first-pass limitations:
 - Asset references are path-based; GUID/meta files are still future work.
 - Play mode launches a separate game process and does not embed runtime play in the editor viewport yet.
 - Content Browser model preview uses an editor-side material-colour shaded projection first; full textured offscreen thumbnail rendering is a later viewport/render-target milestone. Texture-average thumbnail sampling was removed from the preview path because native image decoding is not safe enough for drag/browse stability. The Scene view renders assigned GLBs through the engine renderer, but disables texture loading for editor scene models and keeps the collider/blockout shape available as an overlay. Runtime/game rendering still uses the normal textured GLB renderer. Full textured editor Scene drawing should return later through a safer renderer-backed preview path.
-- Rich object creation palettes, visual UI layout editing, terrain, navmesh, material tools, and animation timelines are later milestones.
+- Rich object creation palettes, visual UI layout editing, lighting preview/tools, terrain, navmesh, material tools, and animation timelines are later milestones.
 
 ## First Milestone
 
@@ -125,9 +152,89 @@ Supported first-pass entities/components:
 - Trigger volume.
 - Damageable object.
 - Break replacement/debris model lists.
-- Interaction data for locked doors, locked chests, puzzle doors, and puzzle slots.
+- Interaction data for locked doors, locked chests, puzzle slots, puzzle levers, and puzzle doors.
 - Player spawn.
 - Registered script attachment with editable JSON.
+
+## Interaction Authoring
+
+Interaction data lives inside the selected object's `LevelEntityDef` in the level JSON. There is no separate JSON document to attach to an object for doors, chests, or puzzle slots.
+
+In the Inspector, use the Interaction section to add one of the supported interaction types:
+
+- `LockedDoor`
+- `LockedChest`
+- `PuzzleSlot`
+- `PuzzleLever`
+- `PuzzleDoor`
+
+The editor writes a `LevelInteractionDef` object onto the selected entity with fields for kind, state id, required item, prompt text, success text, target entity names, required solved-state ids, reward items, and optional swing-door hinge data.
+
+Locked-door workflow:
+
+1. Select the actual door or door-blocking entity, not only the visual frame.
+2. Click `Add Locked Door`.
+3. Set `Required Item` to the inventory item id, for example `RustedKey`.
+4. Set a unique `State Id`, for example `Door_Room1_RustedKey`.
+5. Adjust the locked/success prompts if needed.
+6. For real hinged doors, set `Hinge Local Offset` to the hinge edge in the door entity's local space and leave `Open Angle Deg` at 90 unless the door needs a different arc.
+
+Key pickup workflow:
+
+- A pickup named like `ItemKey_RustedKey` grants the `RustedKey` item id.
+- The door opens when the runtime sees that the player has the required item id on the selected locked entity.
+- For the current locked-door runtime, `Targets` are not needed; the locked entity itself is hidden/opened once unlocked.
+
+Puzzle-slot workflow:
+
+- Add `PuzzleSlot` to the slot/interactable entity.
+- Set `Required Item`.
+- Add one or more target entity names in `Targets`.
+- Target entities should use `PuzzleDoor` or another runtime-supported target kind.
+
+Puzzle-lever workflow:
+
+- Add `PuzzleLever` to the lever/interactable entity.
+- Add required solved-state ids in `Required States`, usually the `StateId` values from several puzzle slots.
+- Add one or more target entity names in `Targets`; the runtime opens those targets only once every required state has been solved and the lever is pulled.
+
+Rewards are stored on the interaction for future chest/puzzle reward workflows. The editor can author them now, but each runtime interaction kind must still explicitly consume those reward fields before they affect gameplay.
+## Visual Props And Collision
+
+`Prop` entities should be treated as visual-only scene dressing in runtime. If an imported model needs to block the player, weapon traces, gravity-gun targeting, or physics objects, author it as a `RigidBody` and choose the appropriate collider shape.
+
+For modular architecture, prefer stable primitive colliders during early level blocking even when the visible object uses a GLB mesh. Use `Shape = "Mesh"` only when the opening or silhouette matters, such as a walkable frame or irregular static object. Dynamic objects should stay on box/sphere/capsule colliders until convex/dynamic mesh physics exists.
+
+The current basement slice uses visible GLB meshes with box colliders for the main floors/walls/ceilings, split primitive blocker pieces for door and rolling-door frames, and separate visual-only props where a decorative mesh should not become one large solid wall.
+
+
+## Interaction Inspector UI Update
+
+The inspector interaction authoring UI now uses full-width vertical controls so labels are not clipped in narrow inspector panels. `Targets` are editable for `PuzzleSlot` and `PuzzleLever` interactions, where they name the entities affected by the interaction. `LockedDoor` and `LockedChest` interactions do not need targets because runtime opens/hides the selected locked entity itself; if stale targets exist, the inspector shows a clear-unused-targets action.
+
+Every interaction edit goes through the standard editor dirty/save path. While dirty, the interaction inspector shows `Save Active Document`, and changes persist when the current level or prefab is saved.
+## Lighting Authoring Direction
+
+The editor already has a `PointLight` entity type with colour, intensity, and range fields in the level data. The next lighting pass should make those entities drive the game renderer instead of relying on the current fixed global textured-model light.
+
+Recommended authoring model:
+
+- Light fixture models and actual light sources should be separate entities. A lamp, bulb, ceiling fixture, or wall sconce model is normal scene geometry; one or more `PointLight` entities provide illumination.
+- The editor should allow light entities to be placed, selected, moved, coloured, ranged, and previewed in the Scene view with a visible light icon/gizmo and radius helper.
+- Light fixtures can be parented/grouped with their light entities once parent workflows are stable, so moving a lamp can also move its light source.
+- Light switches should not hard-code individual object references in code. They should target named light groups or explicit entity IDs from level data.
+- A switch entity should expose an interaction component such as `ToggleLights`, with fields for target light group/entity IDs, starts-on state, one-shot vs reusable behavior, prompt text, and optional sound/event names.
+- Light entities should store runtime state such as enabled/disabled, colour, intensity, range, falloff, and group name. Save data should persist any switch-controlled light state that the player changes.
+- The editor should show enough of the final lighting to support level dressing, even if the first pass is simple forward point lights rather than baked/global illumination.
+
+Short implementation path once code work starts:
+
+1. Extend `LevelEntityDef`/inspector if needed with `Enabled`, `LightGroup`, and possibly `Falloff` fields for point lights.
+2. Make `BasicWorldRenderer` accept a small fixed array of active point lights each frame, plus ambient light, and pass them to the textured model shader.
+3. Replace the current single hard-coded textured-model light with ambient plus directional plus nearby point lights.
+4. Add a registered switch/interactable script that toggles target point lights by group or entity ID.
+5. Save/load changed light states so a switched-off room stays switched off.
+6. Add editor Scene preview for point-light influence radius and on/off state.
 
 ## Prefabs
 
@@ -225,3 +332,38 @@ These run the relevant project from the repository root.
 - Navmesh tools.
 - Animation timeline editing.
 - Material graph editing.
+
+
+
+## Prefab Workflow Update
+Door prefab placement update:
+
+- Prefabs are JSON assets under `Game/Content/Prefabs` and are placed with `Place`, not assigned as model meshes.
+- Placed prefab instances remap entity ids and now also suffix interaction `StateId` values so each placed locked door has an independent lock state.
+- Doorframe/root entities should not carry `LockedDoor`; the actual child door entity should own the interaction.
+
+Prefab assets now use a `PrefabFile` JSON format under `Content/Prefabs` with a root entity id, optional base prefab path for variants, and an entity list. Legacy one-entity prefab JSONs are still loaded and wrapped into the new format.
+
+The editor can now build a prefab from the selected hierarchy root and all of its children. The selected root becomes the prefab root, children keep their parent links, and the root position is normalized to zero so new instances can be placed cleanly.
+
+Placed prefab instances remap every entity id, preserve parent-child links, and write prefab metadata onto each placed entity: asset path, instance id, and source entity id. This supports Apply, Revert, and Unpack operations.
+
+Supported first-pass prefab operations:
+
+- Create prefab from selected hierarchy.
+- Create variant from a selected prefab instance or selected prefab asset.
+- Place prefab instances from `Content/Prefabs`.
+- Apply selected instance changes back to its prefab asset.
+- Revert selected instance from its prefab asset while preserving root placement.
+- Unpack selected instance into normal scene entities.
+- Edit a prefab in an isolated prefab workspace, then save and return to the previous level.
+- Browse prefabs in a dedicated Content Browser tab.
+
+Variants currently store a base prefab path and a full copied entity set. Full live inheritance/merge behavior is a later milestone.
+
+## Scene Mesh Selection Visibility
+
+The standalone editor now treats assigned GLB meshes as the primary scene visual when `View > Show Scene Meshes` is enabled. Collider boxes are no longer forced on for selected GLB entities; they are shown only when the `Show Colliders (OBB)` toolbar toggle is enabled.
+
+Selected GLB entities get an editor-only yellow solid highlight pass so dark imported materials do not make the mesh disappear against the scene. Children of the selected hierarchy root get a softer blue highlight, which makes grouped objects such as a doorframe root with a child door easier to line up as one assembly.
+

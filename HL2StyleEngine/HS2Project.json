@@ -1,11 +1,12 @@
 {
   "ProjectName": "HL2StyleEngine",
   "ContentRoot": "Game/Content",
-  "StartupLevel": "Game/Content/Levels/interaction_test.json",
+  "StartupLevel": "Game/Content/Levels/basementLevel.json",
   "RecentLevels": [
+    "Game/Content/Levels/basementLevel.json",
     "Game/Content/Levels/interaction_test.json",
-    "Game/Content/Levels/interaction_test_blockout.json",
-    "Game/Content/Levels/room01.json"
+    "Game/Content/Levels/room01.json",
+    "Game/Content/Levels/interaction_test_blockout.json"
   ],
   "RecentAssets": [],
   "BlenderExecutablePath": "",

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Numerics;
 
 namespace Engine.Physics.Collision
@@ -164,6 +164,62 @@ namespace Engine.Physics.Collision
             return true;
         }
 
+        public static bool RayIntersectsMesh(in Ray ray, MeshCollisionMesh mesh, float tMin, float tMax, out float hitT)
+        {
+            hitT = 0f;
+
+            if (!mesh.IsValid || !RayIntersectsAabb(ray, mesh.Bounds, tMin, tMax, out _))
+                return false;
+
+            float bestT = tMax;
+            bool found = false;
+
+            for (int i = 0; i < mesh.Triangles.Count; i++)
+            {
+                MeshCollisionTriangle tri = mesh.Triangles[i];
+                if (!RayIntersectsAabb(ray, tri.Bounds, tMin, bestT, out _))
+                    continue;
+
+                if (RayIntersectsTriangle(ray, tri.A, tri.B, tri.C, tMin, bestT, out float t))
+                {
+                    bestT = t;
+                    found = true;
+                }
+            }
+
+            hitT = found ? bestT : 0f;
+            return found;
+        }
+
+        private static bool RayIntersectsTriangle(in Ray ray, Vector3 a, Vector3 b, Vector3 c, float tMin, float tMax, out float hitT)
+        {
+            hitT = 0f;
+
+            Vector3 edge1 = b - a;
+            Vector3 edge2 = c - a;
+            Vector3 p = Vector3.Cross(ray.Dir, edge2);
+            float det = Vector3.Dot(edge1, p);
+            if (MathF.Abs(det) < 1e-7f)
+                return false;
+
+            float invDet = 1f / det;
+            Vector3 tVec = ray.Origin - a;
+            float u = Vector3.Dot(tVec, p) * invDet;
+            if (u < 0f || u > 1f)
+                return false;
+
+            Vector3 q = Vector3.Cross(tVec, edge1);
+            float v = Vector3.Dot(ray.Dir, q) * invDet;
+            if (v < 0f || u + v > 1f)
+                return false;
+
+            float t = Vector3.Dot(edge2, q) * invDet;
+            if (t < tMin || t > tMax)
+                return false;
+
+            hitT = t;
+            return true;
+        }
         private static bool TryAcceptCapsuleT(
             Vector3 localOrigin,
             Vector3 localDir,
@@ -185,3 +241,5 @@ namespace Engine.Physics.Collision
         }
     }
 }
+
+

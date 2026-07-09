@@ -25,6 +25,7 @@ internal sealed partial class HS2EditorModule
         {
             if (ImGui.MenuItem("New Empty Level")) CreateLevel(_newLevelName);
             if (ImGui.MenuItem("Prefab From Selection")) SaveSelectedPrefab();
+            if (ImGui.MenuItem("Prefab Variant From Selection")) SaveSelectedPrefab(isVariant: true);
             ImGui.EndMenu();
         }
 
@@ -120,7 +121,7 @@ internal sealed partial class HS2EditorModule
                 break;
             case "Prefabs":
                 pos = rootPos + new Vector2(leftWidth + centerWidth, rootSize.Y * 0.78f);
-                size = new Vector2(rightWidth, rootSize.Y * 0.10f);
+                size = new Vector2(rightWidth, rootSize.Y * 0.18f);
                 break;
             case "UI Manager":
                 pos = rootPos + new Vector2(leftWidth + centerWidth, rootSize.Y * 0.88f);
@@ -203,6 +204,7 @@ internal sealed partial class HS2EditorModule
         {
             if (ImGui.BeginTabItem("Models")) { DrawAssetList(Path.Combine(_contentRoot, "Models"), "*.glb", true); ImGui.EndTabItem(); }
             if (ImGui.BeginTabItem("Animations")) { DrawAssetList(Path.Combine(_contentRoot, "Animations"), "*.glb", false); ImGui.EndTabItem(); }
+            if (ImGui.BeginTabItem("Prefabs")) { DrawPrefabAssetList(); ImGui.EndTabItem(); }
             if (ImGui.BeginTabItem("All Content")) { DrawAssetList(_contentRoot, "*.*", false); ImGui.EndTabItem(); }
             ImGui.EndTabBar();
         }
@@ -318,21 +320,138 @@ internal sealed partial class HS2EditorModule
         ApplyDefaultWindowPlacement("Prefabs");
         ImGui.Begin("Prefabs");
         MarkUiHover();
-        ImGui.SetNextItemWidth(180f);
+
+        if (IsEditingPrefab)
+        {
+            ImGui.Text($"Editing: {MakeProjectRelative(_editingPrefabPath)}");
+            if (ImGui.Button("Save Prefab")) SaveEditedPrefab();
+            ImGui.SameLine();
+            if (ImGui.Button("Return To Level")) ReturnFromPrefabEdit();
+            ImGui.Separator();
+        }
+
+        ImGui.SetNextItemWidth(170f);
         ImGui.InputText("Name", ref _prefabName, 96);
         ImGui.SameLine();
         bool hasSelection = _editor.TryGetSelectedEntity(out _);
         if (!hasSelection) ImGui.BeginDisabled();
         if (ImGui.Button("Create From Selection")) SaveSelectedPrefab();
         if (!hasSelection) ImGui.EndDisabled();
+
+        ImGui.SetNextItemWidth(170f);
+        ImGui.InputText("Variant", ref _prefabVariantName, 96);
+        ImGui.SameLine();
+        if (!hasSelection) ImGui.BeginDisabled();
+        if (ImGui.Button("Create Variant")) SaveSelectedPrefab(isVariant: true);
+        if (!hasSelection) ImGui.EndDisabled();
+
         ImGui.Separator();
-        foreach (string path in Directory.EnumerateFiles(_prefabsRoot, "*.json", SearchOption.TopDirectoryOnly).OrderBy(Path.GetFileName))
+        bool isPrefabInstance = _editor.TryGetSelectedPrefabInstance(out _, out string selectedPrefabAssetPath);
+        if (isPrefabInstance)
         {
-            ImGui.Text(Path.GetFileNameWithoutExtension(path));
+            ImGui.TextDisabled(selectedPrefabAssetPath);
+            if (ImGui.Button("Apply")) ApplySelectedPrefabInstance();
             ImGui.SameLine();
-            if (ImGui.SmallButton($"Place##{path}")) PlacePrefab(path);
+            if (ImGui.Button("Revert")) RevertSelectedPrefabInstance();
+            ImGui.SameLine();
+            if (ImGui.Button("Unpack")) UnpackSelectedPrefabInstance();
         }
+        else
+        {
+            ImGui.TextDisabled("Select a prefab instance for Apply / Revert / Unpack.");
+        }
+
+        ImGui.Separator();
+        DrawPrefabListRows(compact: true);
         ImGui.End();
+    }
+
+    private void DrawPrefabAssetList()
+    {
+        DrawPrefabListRows(compact: false);
+    }
+
+    private void DrawPrefabListRows(bool compact)
+    {
+        if (!Directory.Exists(_prefabsRoot))
+        {
+            ImGui.TextDisabled("No Prefabs folder yet.");
+            return;
+        }
+
+        string[] prefabs = Directory.EnumerateFiles(_prefabsRoot, "*.json", SearchOption.AllDirectories)
+            .Where(FileMatchesContentFilter)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .Take(500)
+            .ToArray();
+
+        if (prefabs.Length == 0)
+        {
+            ImGui.TextDisabled("No matching prefabs.");
+            return;
+        }
+
+        if (compact)
+        {
+            foreach (string path in prefabs.Take(8))
+                DrawPrefabRow(path);
+            if (prefabs.Length > 8)
+                ImGui.TextDisabled($"{prefabs.Length - 8} more in Content Browser > Prefabs.");
+            return;
+        }
+
+        ImGui.TextDisabled($"{prefabs.Length} prefab(s) in {MakeProjectRelative(_prefabsRoot)}");
+        ImGui.Separator();
+        if (ImGui.BeginTable("prefabAssetTable", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable | ImGuiTableFlags.ScrollY))
+        {
+            ImGui.TableSetupColumn("Prefab", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Place", ImGuiTableColumnFlags.WidthFixed, 58f);
+            ImGui.TableSetupColumn("Edit", ImGuiTableColumnFlags.WidthFixed, 48f);
+            ImGui.TableSetupColumn("Kind", ImGuiTableColumnFlags.WidthFixed, 72f);
+
+            foreach (string path in prefabs)
+            {
+                ImGui.TableNextRow();
+                ImGui.TableSetColumnIndex(0);
+                bool selected = string.Equals(Path.GetFullPath(path), _selectedPrefabPath, StringComparison.OrdinalIgnoreCase);
+                if (ImGui.Selectable(MakeProjectRelative(path), selected))
+                    _selectedPrefabPath = Path.GetFullPath(path);
+
+                ImGui.TableSetColumnIndex(1);
+                if (ImGui.SmallButton($"Place##cb{path}")) PlacePrefab(path);
+
+                ImGui.TableSetColumnIndex(2);
+                if (ImGui.SmallButton($"Edit##cb{path}")) EditPrefab(path);
+
+                ImGui.TableSetColumnIndex(3);
+                DrawPrefabKind(path);
+            }
+            ImGui.EndTable();
+        }
+    }
+
+    private void DrawPrefabRow(string path)
+    {
+        bool selected = string.Equals(Path.GetFullPath(path), _selectedPrefabPath, StringComparison.OrdinalIgnoreCase);
+        if (ImGui.Selectable(Path.GetFileNameWithoutExtension(path), selected))
+            _selectedPrefabPath = Path.GetFullPath(path);
+        ImGui.SameLine();
+        if (ImGui.SmallButton($"Place##{path}")) PlacePrefab(path);
+        ImGui.SameLine();
+        if (ImGui.SmallButton($"Edit##{path}")) EditPrefab(path);
+    }
+
+    private void DrawPrefabKind(string path)
+    {
+        try
+        {
+            PrefabFile prefab = PrefabIO.Load(path);
+            ImGui.TextDisabled(prefab.IsVariant ? "Variant" : "Prefab");
+        }
+        catch
+        {
+            ImGui.TextDisabled("Legacy");
+        }
     }
 
     private void DrawViewportPanel()
@@ -355,6 +474,8 @@ internal sealed partial class HS2EditorModule
         Vector2 textPos = _sceneViewportMin + new Vector2(8f, 8f);
         drawList.AddText(textPos, 0xD0FFFFFF, "Scene  RMB + WASD/QE to fly  LMB selects/drags");
         drawList.AddText(textPos + new Vector2(0f, 18f), 0x90FFFFFF, $"Camera: {_cameraPosition.X:0.0}, {_cameraPosition.Y:0.0}, {_cameraPosition.Z:0.0}");
+        if (!_drawSceneGlbModels)
+            drawList.AddText(textPos + new Vector2(0f, 36f), 0xFF66AAFF, "Scene meshes hidden: View > Show Scene Meshes");
 
         ImGui.End();
         ImGui.PopStyleColor();
@@ -376,3 +497,4 @@ internal sealed partial class HS2EditorModule
         _keyboardOverUi |= ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows);
     }
 }
+
