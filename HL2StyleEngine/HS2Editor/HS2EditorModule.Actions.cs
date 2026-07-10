@@ -86,8 +86,13 @@ internal sealed partial class HS2EditorModule
 
     private void SaveCurrentLevelOnly()
     {
+        string savedPath = Path.GetFullPath(_editor.LevelPath);
         _editor.Save();
-        _status = $"Saved {MakeProjectRelative(_editor.LevelPath)}.";
+        int mirrorCount = MirrorSavedLevelToRuntimeOutputs(savedPath);
+        string savedAt = File.GetLastWriteTime(savedPath).ToString("HH:mm:ss");
+        _status = mirrorCount > 0
+            ? $"Saved level {MakeProjectRelative(savedPath)} at {savedAt}. Updated {mirrorCount} runtime level copy/copies."
+            : $"Saved level {MakeProjectRelative(savedPath)} at {savedAt}.";
     }
 
     private void CreateLevel(string rawName)
@@ -339,7 +344,14 @@ internal sealed partial class HS2EditorModule
 
     private void LaunchGameFromCurrentLevel()
     {
-        _editor.Save();
+        if (IsEditingPrefab)
+        {
+            SaveEditedPrefab();
+            _status = "Prefab saved. Return to the level before launching play.";
+            return;
+        }
+
+        SaveCurrentLevelOnly();
         StartDotnetProject(ToAbsolutePath(_project.GameProject), ["--", "--level", _editor.LevelPath]);
         _status = $"Launching game from {MakeProjectRelative(_editor.LevelPath)}.";
     }
@@ -358,6 +370,7 @@ internal sealed partial class HS2EditorModule
         catch (Exception ex) { _status = $"Launch failed: {ex.Message}"; }
     }
 }
+
 
 
 

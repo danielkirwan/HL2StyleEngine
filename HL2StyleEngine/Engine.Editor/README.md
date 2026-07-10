@@ -40,15 +40,26 @@ Implemented:
 - Inspector interaction authoring for locked doors, locked chests, puzzle slots, and puzzle doors. Interaction JSON is stored directly on the selected level entity, not as a separate attached document.
 - Content browser for models, animations, and all content files. The Models tab uses a table layout with a visible asset count/path header, explicit Asset and Assign columns, and a selected-model material-colour shaded 3D preview pane for `.glb` assets when there is enough room.
 - Assign selected model from `Content/Models` to the selected entity by writing a `Content/...` mesh path.
-- Drag a `.glb` model from the Content Browser onto the Scene panel to create a selected static `RigidBody` at the drop point. The new entity uses the existing selection, drag, and gizmo movement path, defaults to a one-unit mesh collider/model fit for static GLB rigid bodies, and can be resized in the inspector. Scene placement avoids the Scene viewport ImGui payload target and instead places the tracked dragged asset on mouse release over the Scene. Assigned/dropped GLBs now render in the Scene view using a colour-only editor render model, with texture decoding disabled in the editor scene path for drag/browse stability. The same bounds-fit transform as the game renderer is used, and the collider/blockout box can be shown as an overlay so mesh orientation and collision volume can be tuned together.
+- Drag a `.glb` model from the Content Browser onto the Scene panel to create a selected static `RigidBody` at the drop point. The new entity uses the existing selection, drag, and gizmo movement path, defaults to a one-unit mesh collider/model fit for static GLB rigid bodies, and can be resized in the inspector. Scene placement avoids the Scene viewport ImGui payload target and instead places the tracked dragged asset on mouse release over the Scene. Assigned/dropped GLBs now render in the Scene view using textured engine render models. The same bounds-fit transform as the game renderer is used, and the collider/blockout box can be shown as an overlay so mesh orientation, texture direction, and collision volume can be tuned together.
 - Drag/drop GLB asset payloads from the content browser into inspector model fields and model lists. Selected boxes, props, and rigid bodies accept dropped `.glb` paths into `MeshPath`, so blockout walls, floors, ceilings, and props can be assigned imported models without typing paths. Damageable object replacement and debris model lists still accept dragged `.glb` paths for workflows such as dragging `DamagedCrate*.glb` onto a crate replacement list.
 - Prefab creation from the selected entity and prefab placement from JSON files under `Content/Prefabs`. Prefabs are now visible in the Content Browser `Prefabs` tab as well as the compact Prefabs panel.
 - Basic UI manager for creating, opening, editing, and saving `.rml` and `.rcss` files.
 - Asset importer launch from the editor.
-- Play selected level by saving the current level and launching `Game` with `--level <current level path>`.
+- Play selected level by saving the current level, mirroring existing runtime output copies, and launching `Game` with `--level <current source level path>`.
 - Game startup now accepts `--level` so editor-launched play can load the selected scene.
 
 
+
+## Save And Runtime Level Sync
+
+HS2Editor treats `Game/Content/Levels/*.json` as the source of truth for authored levels. Save actions now behave as follows:
+
+- Toolbar `Save`, File > `Save Level`, and `Play Selected Level` save the active level document.
+- Project panel `Save Project` saves the active level or prefab document first, then writes `HS2Project.json`.
+- Level saves mirror the JSON into any existing `Game/bin/.../Content/Levels` and `HS2Editor/bin/.../Content/Levels` copies so direct launches do not keep stale level data.
+- Editor play still launches the game with `--level` and the absolute source-level path.
+
+The game now also reads `HS2Project.json` when launched without `--level`, using `StartupLevel` before falling back to the old `interaction_test.json` practice level.
 ## 2026-07-09 Mesh Collider Update
 
 Locked-in editor/runtime collision direction from this pass:
@@ -59,7 +70,7 @@ Locked-in editor/runtime collision direction from this pass:
 - Mesh colliders use the same bounds-fit transform as runtime GLB rendering, so the visible model orientation/scale and collision triangles are generated from the same data. Runtime mesh colliders also use a small collision skin so thin architectural triangles, such as doorframe edges and wall surfaces, are not easy to step through at player movement speed.
 - Mesh colliders are intentionally static-only in this first pass. If a mesh-shaped rigid body is made dynamic or kinematic, runtime falls back to box physics behavior. Moving doors, pickups, crates, and other interactive physics objects should remain separate primitive collider bodies for now.
 - Doorframes should be authored as static mesh-collider rigid bodies so the player can walk through the real opening. The actual moving door should be a separate entity with its own primitive collider and movement/interaction script.
-- Editor Scene drawing still uses the stable colour-only mesh preview path; the collider overlay can remain visible for selection and size tuning, but runtime collision now follows the GLB triangles when the object shape is `Mesh`.
+- Editor Scene drawing now uses the engine GLB renderer with textures for placed models; the collider overlay can remain visible for selection and size tuning, and runtime collision follows GLB triangles when the object shape is `Mesh`.
 
 ## 2026-07-08 Editor Updates
 
@@ -68,18 +79,18 @@ Locked-in editor updates from this pass:
 - Content Browser model assignment works from the explicit Assign button without the asset row swallowing the click.
 - Dragging a `.glb` from the Content Browser into the Scene uses tracked drag state and mouse release over the Scene view instead of a Scene ImGui drop target, reducing crash risk.
 - Dropped GLB models create selected static `RigidBody` entities with `Shape = "Mesh"` so they can immediately be moved, resized, and used as mesh collision in play.
-- Assigned/dropped GLB models now render in the editor Scene view again using a colour-only, no-texture render model. This shows the real mesh shape and orientation without using texture decoding in the editor scene path.
+- Assigned/dropped GLB models now render in the editor Scene view using textured engine render models. This shows the real mesh shape, orientation, and material/texture direction while editing.
 - The collider/blockout shape remains available as a lightweight overlay, so visible mesh placement and collision volume tuning can be compared in the same view.
 - `View > Show Scene Meshes` can toggle Scene mesh drawing if a problem asset needs primitive-box fallback while editing.
 - Dock layout version `8` resets stale/broken saved layouts and keeps the Unity-style panel placement alive long enough to recover from collapsed windows.
-- Current limitation: editor Scene meshes are not fully textured yet; runtime/game rendering still uses the normal textured GLB renderer.
+- Editor Scene meshes now use textured GLB rendering; the Content Browser thumbnail preview remains the lighter material-colour/wireframe path for now.
 
 Current first-pass limitations:
 
 - UI preview is currently source/text preview, not the final native RmlUi visual preview.
 - Asset references are path-based; GUID/meta files are still future work.
 - Play mode launches a separate game process and does not embed runtime play in the editor viewport yet.
-- Content Browser model preview uses an editor-side material-colour shaded projection first; full textured offscreen thumbnail rendering is a later viewport/render-target milestone. Texture-average thumbnail sampling was removed from the preview path because native image decoding is not safe enough for drag/browse stability. The Scene view renders assigned GLBs through the engine renderer, but disables texture loading for editor scene models and keeps the collider/blockout shape available as an overlay. Runtime/game rendering still uses the normal textured GLB renderer. Full textured editor Scene drawing should return later through a safer renderer-backed preview path.
+- Content Browser model preview uses an editor-side material-colour shaded projection first; full textured offscreen thumbnail rendering is a later viewport/render-target milestone. The Scene view renders assigned GLBs through the engine renderer with textures enabled and keeps the collider/blockout shape available as an overlay.
 - Rich object creation palettes, visual UI layout editing, lighting preview/tools, terrain, navmesh, material tools, and animation timelines are later milestones.
 
 ## First Milestone
@@ -205,7 +216,7 @@ Rewards are stored on the interaction for future chest/puzzle reward workflows. 
 
 For modular architecture, prefer stable primitive colliders during early level blocking even when the visible object uses a GLB mesh. Use `Shape = "Mesh"` only when the opening or silhouette matters, such as a walkable frame or irregular static object. Dynamic objects should stay on box/sphere/capsule colliders until convex/dynamic mesh physics exists.
 
-The current basement slice uses visible GLB meshes with box colliders for the main floors/walls/ceilings, split primitive blocker pieces for door and rolling-door frames, and separate visual-only props where a decorative mesh should not become one large solid wall.
+The current basement slice uses visible GLB meshes with box colliders for the main floors/walls/ceilings, split primitive blocker pieces for door and rolling-door frames, and separate visual-only props where a decorative mesh should not become one large solid wall. Collision-only helpers should use primitive shapes with no `MeshPath` and can set `Color.W = 0` so runtime skips only the primitive fallback visual while still using the collider data.
 
 
 ## Interaction Inspector UI Update
@@ -363,7 +374,10 @@ Variants currently store a base prefab path and a full copied entity set. Full l
 
 ## Scene Mesh Selection Visibility
 
-The standalone editor now treats assigned GLB meshes as the primary scene visual when `View > Show Scene Meshes` is enabled. Collider boxes are no longer forced on for selected GLB entities; they are shown only when the `Show Colliders (OBB)` toolbar toggle is enabled.
+The standalone editor now treats assigned GLB meshes as the primary scene visual when `View > Show Scene Meshes` is enabled and loads their embedded GLB textures in the Scene view. The in-game editor view also tries to draw selected GLB meshes before using primitive debug boxes, so play-mode editing no longer shows large fitted boxes as the main visual for imported models. Collider boxes are no longer forced on for selected GLB entities in the standalone editor; they are shown only when the `Show Colliders (OBB)` toolbar toggle is enabled.
 
 Selected GLB entities get an editor-only yellow solid highlight pass so dark imported materials do not make the mesh disappear against the scene. Children of the selected hierarchy root get a softer blue highlight, which makes grouped objects such as a doorframe root with a child door easier to line up as one assembly.
+
+
+
 

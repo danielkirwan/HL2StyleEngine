@@ -152,7 +152,7 @@ internal sealed partial class HS2EditorModule
         ImGui.Text($"Level: {MakeProjectRelative(_editor.LevelPath)}");
         ImGui.Text($"Startup: {_project.StartupLevel}");
         ImGui.Separator();
-        if (ImGui.Button("Save Project")) { SaveProject(); _status = "Project settings saved."; }
+        if (ImGui.Button("Save Project")) SaveProjectAndActiveDocument();
         ImGui.SameLine();
         if (ImGui.Button("Launch Importer")) LaunchAssetImporter();
         ImGui.SameLine();
@@ -497,4 +497,5 @@ internal sealed partial class HS2EditorModule
         _keyboardOverUi |= ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows);
     }
 }
+
 

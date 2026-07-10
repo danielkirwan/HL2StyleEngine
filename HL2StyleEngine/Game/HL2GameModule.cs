@@ -1046,15 +1046,86 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private static string? ResolveInitialLevelPath(string? requestedPath)
     {
-        if (string.IsNullOrWhiteSpace(requestedPath))
+        string? projectRoot = FindProjectRootFromRuntime();
+        if (!string.IsNullOrWhiteSpace(requestedPath))
+            return ResolveLevelPathCandidate(requestedPath, projectRoot);
+
+        return ResolveStartupLevelPathFromProject(projectRoot);
+    }
+
+    private static string? ResolveStartupLevelPathFromProject(string? projectRoot)
+    {
+        if (string.IsNullOrWhiteSpace(projectRoot))
             return null;
 
-        string trimmed = requestedPath.Trim('"');
+        string projectPath = Path.Combine(projectRoot, "HS2Project.json");
+        if (!File.Exists(projectPath))
+            return null;
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(File.ReadAllText(projectPath));
+            if (document.RootElement.TryGetProperty("StartupLevel", out JsonElement startupLevel) &&
+                startupLevel.ValueKind == JsonValueKind.String)
+            {
+                return ResolveLevelPathCandidate(startupLevel.GetString(), projectRoot);
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
+    private static string? ResolveLevelPathCandidate(string? levelPath, string? projectRoot)
+    {
+        if (string.IsNullOrWhiteSpace(levelPath))
+            return null;
+
+        string trimmed = levelPath.Trim('"');
         if (Path.IsPathRooted(trimmed))
             return File.Exists(trimmed) ? Path.GetFullPath(trimmed) : null;
 
-        string outputRelative = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, trimmed.Replace('/', Path.DirectorySeparatorChar)));
-        return File.Exists(outputRelative) ? outputRelative : null;
+        string relativePath = trimmed.Replace('/', Path.DirectorySeparatorChar);
+        foreach (string root in EnumerateLevelSearchRoots(projectRoot))
+        {
+            string candidate = Path.GetFullPath(Path.Combine(root, relativePath));
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> EnumerateLevelSearchRoots(string? projectRoot)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string? root in new[] { projectRoot, Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            if (string.IsNullOrWhiteSpace(root))
+                continue;
+
+            string full = Path.GetFullPath(root);
+            if (seen.Add(full))
+                yield return full;
+        }
+    }
+
+    private static string? FindProjectRootFromRuntime()
+    {
+        foreach (string start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            DirectoryInfo? dir = new(start);
+            while (dir != null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "HS2Project.json")))
+                    return dir.FullName;
+                dir = dir.Parent;
+            }
+        }
+
+        return null;
     }
     private static string GetPracticeLevelsDirectory()
         => Path.Combine(AppContext.BaseDirectory, "Content", "Levels");
@@ -6843,9 +6914,16 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             {
                 var d = _editor.DrawBoxes[i];
 
+                bool selected = i == _editor.SelectedEntityIndex;
+                if (TryDrawEditorModeModel(renderer, i, d, selected))
+                    continue;
+
                 Vector4 color = d.Color;
-                if (i == _editor.SelectedEntityIndex)
+                if (selected)
                     color = new Vector4(1f, 1f, 0.1f, 1f);
+
+                if (d.Color.W <= 0.01f && !selected)
+                    continue;
 
                 RuntimeShapeKind shape =
                     d.IsSphere
@@ -6960,6 +7038,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             Vector3 size = ent.Render.Size;
             Vector4 col = ent.Render.Color;
 
+            bool hasModel = !string.IsNullOrWhiteSpace(ent.Render.ModelAssetPath);
+            if (!hasModel && col.W <= 0.01f)
+                continue;
+
             if (!TryDrawWorldModel(renderer, ent, pos, size, rot, col))
                 DrawPrimitive(renderer, ent.Render.Shape, pos, size, rot, col, ent.Render.Radius, ent.Render.Height);
         }
@@ -6969,6 +7051,26 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _weaponSystem.Render(this, renderer, visible: !_editorEnabled && !GameplayModalOpen);
     }
 
+    private bool TryDrawEditorModeModel(Renderer renderer, int entityIndex, EditorDrawBox draw, bool selected)
+    {
+        if (entityIndex < 0 || entityIndex >= _editor.LevelFile.Entities.Count)
+            return false;
+
+        LevelEntityDef def = _editor.LevelFile.Entities[entityIndex];
+        if (!IsGlbModelPath(def.MeshPath))
+            return false;
+
+        if (!TryGetReadyModel(def.MeshPath, "editor scene model", out WeaponModelCacheEntry? entry) || entry?.Model == null)
+            return false;
+
+        Matrix4x4 transform = CreateBoundsFitTransform(entry.Bounds, draw.Position, draw.Size, draw.Rotation);
+        _world.DrawModel(renderer.CommandList, entry.Model, transform, Vector4.One);
+
+        if (selected)
+            _world.DrawModelSolidColor(renderer.CommandList, entry.Model, transform, new Vector4(1f, 0.92f, 0.16f, 0.38f));
+
+        return true;
+    }
     public void RenderOverlay(Renderer renderer)
     {
         _gameplayUi.RenderOverlay(renderer);
@@ -9700,6 +9802,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _world?.Dispose();
     }
 }
+
+
+
+
 
 
 

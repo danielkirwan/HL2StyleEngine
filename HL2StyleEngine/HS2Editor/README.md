@@ -15,7 +15,7 @@ The editor loads `HS2Project.json`, creates missing content folders under `Game/
 ## Current Features
 
 - Level create, load, save, duplicate, and rename.
-- Scene panel with grid, selection, transform gizmo drawing, and editor camera controls.
+- Scene panel with grid, selection, transform gizmo drawing, editor camera controls, and textured GLB scene rendering for placed models.
 - Unity-style default window placement: Scene center, hierarchy/levels/project left, inspector/toolbar right, and content/prefab/UI/status panels around it. Panels remain dockable and manually rearrangeable through ImGui docking. Layout-version changes, missing saved layouts, and saved layouts with collapsed/tiny key panels now clear stale `imgui.ini` state and hold the default placement for several seconds so old collapsed/off-screen windows cannot leave the editor black. The scene render fallback also treats very small saved scene panels as invalid and renders full-window until the layout recovers.
 - Content browser for models, animations, prefabs, and project files. The Models tab uses a table layout with an explicit Asset column and Assign column, plus a selected-model 3D shaded/wireframe preview pane for `.glb` model assets when the panel is wide enough. The Prefabs tab lists JSON prefabs from `Game/Content/Prefabs` with Place/Edit actions.
 - Assign a `.glb` model from `Content/Models` to the selected entity, or drag a model from the content browser into inspector lists that accept model assets. Assigning/dropping a GLB onto a static rigid body now defaults it to `Shape = "Mesh"` so imported architecture can use triangle mesh collision. Use visual-only `Prop` entities for decoration and `RigidBody` entities for anything that should collide.
@@ -30,7 +30,7 @@ The editor loads `HS2Project.json`, creates missing content folders under `Game/
 - UI preview is source/text based until native RmlUi visual preview is wired into the editor.
 - Asset references are path-based; GUID/meta files are planned for a later asset database pass.
 - Play mode launches a separate game process instead of embedded play-in-editor.
-- Content Browser previews are currently editor-side shaded/wireframe previews, not full textured offscreen render targets. Static GLB mesh colliders are supported, but dynamic mesh physics is not; moving objects should still use box/sphere/capsule colliders. Programmatic dock splitting is limited by the current ImGui.NET wrapper, so the first reset uses default window placement rather than generated dock nodes. If the saved ImGui layout records tiny/off-screen panels, startup now treats that file as broken and rebuilds the layout. Rich object palettes, terrain, navmesh, material editing, animation timeline editing, and C# script creation are later milestones.
+- Content Browser previews are still editor-side shaded/wireframe previews rather than full textured offscreen render targets, but the Scene view now loads GLB textures for placed models. Static GLB mesh colliders are supported, but dynamic mesh physics is not; moving objects should still use box/sphere/capsule colliders. Programmatic dock splitting is limited by the current ImGui.NET wrapper, so the first reset uses default window placement rather than generated dock nodes. If the saved ImGui layout records tiny/off-screen panels, startup now treats that file as broken and rebuilds the layout. Rich object palettes, terrain, navmesh, material editing, animation timeline editing, and C# script creation are later milestones.
 
 ## Prefab Editing Update
 
@@ -62,8 +62,18 @@ The interaction inspector now uses vertical, full-width fields so labels remain 
 
 Interaction changes mark the active level or prefab document dirty. The inspector shows a `Save Active Document` button while dirty, and the normal editor save flow still works: toolbar Save, File > Save Level, or Play Selected Level before launch.
 
+## Save And Play Sync
+
+The source level JSON under `Game/Content/Levels` is the canonical editable level file. Toolbar `Save`, File > `Save Level`, and `Play Selected Level` save the active level document before launch. The Project panel `Save Project` button now also saves the active level or prefab first, then writes `HS2Project.json`, so saving project settings does not leave scene edits unsaved.
+
+When a source level is saved, HS2Editor also mirrors that JSON into any existing runtime output copies under `Game/bin/.../Content/Levels` and `HS2Editor/bin/.../Content/Levels`. This keeps direct game launches from reading stale copied content between builds. Editor-launched play still passes the exact source level path through `--level`.
+
 ## Scene Mesh Selection Visibility
 
 Scene meshes are now easier to edit directly. GLB objects render as their mesh shape, selected meshes receive a yellow editor highlight, and child meshes under the selected root receive a softer blue highlight. This is intended for prefab-style assemblies such as `PracticeDoorFrameMesh` with a child door.
 
-Collider/blockout boxes default to hidden for GLB scene editing and can be enabled from the toolbar with `Show Colliders (OBB)` when collision tuning is needed. If scene meshes are hidden from the View menu, the Scene panel shows a warning.
+Collider/blockout boxes default to hidden for GLB scene editing and can be enabled from the toolbar with `Show Colliders (OBB)` when collision tuning is needed. Rigid-body fallback boxes now respect the entity `Color` value instead of forcing magenta, so primitive helper colliders can use `Color.W = 0` to stay collision-only. Do not rely on alpha to hide GLB renderers; collision-only helpers should have no `MeshPath`. If scene meshes are hidden from the View menu, the Scene panel shows a warning.
+
+
+
+

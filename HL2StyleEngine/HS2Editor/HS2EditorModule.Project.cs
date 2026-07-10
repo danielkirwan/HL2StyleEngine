@@ -1,4 +1,4 @@
-﻿using Engine.Editor.Level;
+using Engine.Editor.Level;
 using Game.World;
 using System.Numerics;
 
@@ -109,6 +109,81 @@ internal sealed partial class HS2EditorModule
         _project.Save(_projectFilePath);
     }
 
+    private void SaveProjectAndActiveDocument()
+    {
+        string documentStatus = "";
+        if (IsEditingPrefab)
+        {
+            SaveEditedPrefab();
+            documentStatus = _status;
+        }
+        else if (_editor.LevelFile != null)
+        {
+            SaveCurrentLevelOnly();
+            documentStatus = _status;
+        }
+
+        SaveProject();
+        _status = string.IsNullOrWhiteSpace(documentStatus)
+            ? "Project settings saved."
+            : $"{documentStatus} Project settings saved.";
+    }
+
+    private int MirrorSavedLevelToRuntimeOutputs(string savedLevelPath)
+    {
+        savedLevelPath = Path.GetFullPath(savedLevelPath);
+        string levelsRoot = Path.GetFullPath(_levelsRoot);
+        if (!IsSameOrChildPath(levelsRoot, savedLevelPath))
+            return 0;
+
+        string relativeLevelPath = Path.GetRelativePath(levelsRoot, savedLevelPath);
+        int copied = 0;
+        foreach (string runtimeLevelsRoot in EnumerateRuntimeLevelOutputDirectories())
+        {
+            string destination = Path.GetFullPath(Path.Combine(runtimeLevelsRoot, relativeLevelPath));
+            if (string.Equals(destination, savedLevelPath, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            try
+            {
+                string? destinationDirectory = Path.GetDirectoryName(destination);
+                if (!string.IsNullOrWhiteSpace(destinationDirectory))
+                    Directory.CreateDirectory(destinationDirectory);
+                File.Copy(savedLevelPath, destination, overwrite: true);
+                copied++;
+            }
+            catch
+            {
+                // Saving the source level is the important part; stale output copies are repaired on the next build.
+            }
+        }
+
+        return copied;
+    }
+
+    private IEnumerable<string> EnumerateRuntimeLevelOutputDirectories()
+    {
+        foreach (string projectName in new[] { "Game", "HS2Editor" })
+        {
+            string binRoot = Path.Combine(_projectRoot, projectName, "bin");
+            if (!Directory.Exists(binRoot))
+                continue;
+
+            foreach (string levelsDirectory in Directory.EnumerateDirectories(binRoot, "Levels", SearchOption.AllDirectories))
+            {
+                DirectoryInfo? parent = Directory.GetParent(levelsDirectory);
+                if (parent != null && string.Equals(parent.Name, "Content", StringComparison.OrdinalIgnoreCase))
+                    yield return levelsDirectory;
+            }
+        }
+    }
+
+    private static bool IsSameOrChildPath(string root, string path)
+    {
+        string relative = Path.GetRelativePath(root, path);
+        return relative == "." || (!relative.StartsWith("..", StringComparison.Ordinal) && !Path.IsPathRooted(relative));
+    }
+
     private static string MakeSafeFileName(string value, string fallback)
     {
         string name = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
@@ -132,3 +207,4 @@ internal sealed partial class HS2EditorModule
         return Directory.GetCurrentDirectory();
     }
 }
+

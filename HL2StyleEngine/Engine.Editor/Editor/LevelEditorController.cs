@@ -2807,10 +2807,11 @@ public sealed class LevelEditorController
             }
             else if (e.Type == EntityTypes.RigidBody)
             {
+                Vector4 color = e.Color;
                 if (IsSphereShape(e.Shape))
                 {
                     float radius = GetScaledSphereRadius(e, ws);
-                    DrawBoxes.Add(EditorDrawBox.Sphere(wt, radius * 2f, new Vector4(0.9f, 0.2f, 0.6f, 1f)));
+                    DrawBoxes.Add(EditorDrawBox.Sphere(wt, radius * 2f, color));
                 }
                 else if (IsCapsuleShape(e.Shape))
                 {
@@ -2819,14 +2820,14 @@ public sealed class LevelEditorController
                     DrawBoxes.Add(new EditorDrawBox(
                         wt,
                         new Vector3(radius * 2f, height, radius * 2f),
-                        new Vector4(0.9f, 0.2f, 0.6f, 1f),
+                        color,
                         wr,
                         isSphere: true));
                 }
                 else
                 {
                     Vector3 size = Mul(e.Size, ws);
-                    DrawBoxes.Add(new EditorDrawBox(wt, size, new Vector4(0.9f, 0.2f, 0.6f, 1f), wr));
+                    DrawBoxes.Add(new EditorDrawBox(wt, size, color, wr));
                 }
             }
             else

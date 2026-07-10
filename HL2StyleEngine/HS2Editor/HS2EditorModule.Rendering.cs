@@ -188,6 +188,14 @@ internal sealed partial class HS2EditorModule
                 continue;
             }
 
+            bool invisibleHelper = draw.Color.W <= 0.01f;
+            if (invisibleHelper && !selectedHierarchy)
+            {
+                if (_editor.ShowColliders)
+                    DrawColliderOverlay(renderer, draw, selected: false);
+                continue;
+            }
+
             Vector4 color = selected
                 ? new Vector4(1f, 1f, 0.16f, 1f)
                 : selectedHierarchy
@@ -305,7 +313,7 @@ internal sealed partial class HS2EditorModule
                         LoadedModel loaded = task.Result;
                         ComputeModelBounds(loaded, out Vector3 min, out Vector3 max);
                         entry.LoadedModel = loaded;
-                        entry.RenderModel = _world.CreateRenderModel(loaded, loadTextures: false);
+                        entry.RenderModel = _world.CreateRenderModel(loaded, loadTextures: true);
                         entry.Min = min;
                         entry.Max = max;
                         entry.LoadTask = null;
