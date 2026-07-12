@@ -2848,14 +2848,18 @@ public sealed class LevelEditorController
         for (int i = 0; i < DrawBoxes.Count; i++)
         {
             var inst = DrawBoxes[i];
+            if (inst.Color.W <= 0.01f && !ShowColliders)
+                continue;
 
             Vector3 half = inst.Size * 0.5f;
+            bool hit;
+            float t;
+            if (inst.IsSphere)
+                hit = EditorPicking.RayIntersectsAabb(ray, inst.Position - half, inst.Position + half, out t);
+            else
+                hit = EditorPicking.RayIntersectsObb(ray, inst.Position, half, inst.Rotation, out t);
 
-            Vector3 halfAabb = OrientedBoxAabbHalfExtents(half, inst.Rotation);
-            Vector3 mn = inst.Position - halfAabb;
-            Vector3 mx = inst.Position + halfAabb;
-
-            if (EditorPicking.RayIntersectsAabb(ray, mn, mx, out float t) && t < bestT)
+            if (hit && t < bestT)
             {
                 bestT = t;
                 bestIndex = i;

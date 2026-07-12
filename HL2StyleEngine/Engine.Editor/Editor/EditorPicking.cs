@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Numerics;
 
 namespace Editor.Editor;
@@ -81,6 +81,29 @@ public static class EditorPicking
         tmax = MathF.Min(tmax, t2);
 
         return tmin <= tmax;
+    }
+
+    public static bool RayIntersectsObb(Ray ray, Vector3 center, Vector3 halfExtents, Quaternion rotation, out float tHit)
+    {
+        Quaternion inverseRotation = Quaternion.Inverse(rotation);
+        Vector3 localOrigin = Vector3.Transform(ray.Origin - center, inverseRotation);
+        Vector3 localDirection = Vector3.Transform(ray.Dir, inverseRotation);
+        if (localDirection.LengthSquared() < 1e-8f)
+        {
+            tHit = 0f;
+            return false;
+        }
+
+        Vector3 safeHalf = new(
+            MathF.Max(0.001f, MathF.Abs(halfExtents.X)),
+            MathF.Max(0.001f, MathF.Abs(halfExtents.Y)),
+            MathF.Max(0.001f, MathF.Abs(halfExtents.Z)));
+
+        return RayIntersectsAabb(
+            new Ray(localOrigin, localDirection),
+            -safeHalf,
+            safeHalf,
+            out tHit);
     }
 
     public static bool RayIntersectsPlane(Ray ray, Vector3 planeNormal, float planeD, out float t)

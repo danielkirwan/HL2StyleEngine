@@ -5,7 +5,7 @@
   </head>
   <body>
     <div id="gameplay-root">
-      <div id="crosshair" style="left: 622px; top: 342px;">
+      <div id="crosshair" style="left: 942px; top: 486px;">
         <div class="crosshair-line horizontal left"></div>
         <div class="crosshair-line horizontal right"></div>
         <div class="crosshair-line vertical top"></div>
@@ -19,8 +19,14 @@
         </div>
         <div class='hud-readout suit-readout'>
           <div class='hud-label'><img class="ui-text-image ui-text-hud-label" src="Text/872c961f0f07e5d0.png" width="39" height="19" /></div>
-          <div class='hud-number'><img class="ui-text-image ui-text-hud-number" src="Text/796273b11c9fa812.png" width="64" height="59" /></div>
+          <div class='hud-number'><img class="ui-text-image ui-text-hud-number" src="Text/1b35e1273fce0096.png" width="64" height="59" /></div>
         </div>
+      </section>
+      <section id='ammo-hud-right' class='hl2-hud'>
+        <div class='ammo-label'><img class="ui-text-image ui-text-hud-label" src="Text/3aef3ebfee231005.png" width="40" height="19" /></div>
+        <div class='ammo-current'><img class="ui-text-image ui-text-hud-number" src="Text/f562a0c112ff83f8.png" width="64" height="59" /></div>
+        <div class='ammo-divider'></div>
+        <div class='ammo-reserve'><img class="ui-text-image ui-text-hud-number" src="Text/21ec17d679b148c6.png" width="30" height="45" /></div>
       </section>
     </div>
   </body>

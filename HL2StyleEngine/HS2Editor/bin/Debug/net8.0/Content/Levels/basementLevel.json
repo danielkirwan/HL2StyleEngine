@@ -1,4 +1,4 @@
-﻿{
+{
   "Version": 2,
   "Entities": [
     {
@@ -15,7 +15,7 @@
       "LocalPosition": {
         "X": 0,
         "Y": 0,
-        "Z": -13.2
+        "Z": -11.408042
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -49,144 +49,6 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
-      "MaterialPath": "",
-      "Damageable": false,
-      "MaxHealth": 100,
-      "BreakReplacementModelPaths": [],
-      "BreakReplacementKeepsPhysics": true,
-      "BreakDebrisModelPaths": [],
-      "TriggerSize": {
-        "X": 2,
-        "Y": 2,
-        "Z": 2
-      },
-      "TriggerEvent": "OnEnter",
-      "Shape": "Box",
-      "Mass": 10,
-      "Friction": 0.8,
-      "Restitution": 0.05,
-      "IsKinematic": false,
-      "Radius": 0.5,
-      "Height": 1
-    },
-    {
-      "Id": "83a6f77c8b9f42039d79ebf014822896",
-      "Type": "PointLight",
-      "Name": "Light_Start_Cool",
-      "Scripts": [],
-      "Interaction": null,
-      "Parent": null,
-      "PrefabAssetPath": "",
-      "PrefabInstanceId": "",
-      "PrefabSourceEntityId": "",
-      "PrefabUnpacked": false,
-      "LocalPosition": {
-        "X": 0,
-        "Y": 2.8,
-        "Z": -11.5
-      },
-      "LocalRotationEulerDeg": {
-        "X": 0,
-        "Y": 0,
-        "Z": 0
-      },
-      "LocalScale": {
-        "X": 1,
-        "Y": 1,
-        "Z": 1
-      },
-      "CanPickUp": false,
-      "MotionType": 0,
-      "Size": {
-        "X": 1,
-        "Y": 1,
-        "Z": 1
-      },
-      "Color": {
-        "X": 0.6,
-        "Y": 0.6,
-        "Z": 0.6,
-        "W": 1
-      },
-      "YawDeg": 0,
-      "LightColor": {
-        "X": 0.55,
-        "Y": 0.68,
-        "Z": 0.95,
-        "W": 1
-      },
-      "Intensity": 2.4,
-      "Range": 8,
-      "MeshPath": "",
-      "MaterialPath": "",
-      "Damageable": false,
-      "MaxHealth": 100,
-      "BreakReplacementModelPaths": [],
-      "BreakReplacementKeepsPhysics": true,
-      "BreakDebrisModelPaths": [],
-      "TriggerSize": {
-        "X": 2,
-        "Y": 2,
-        "Z": 2
-      },
-      "TriggerEvent": "OnEnter",
-      "Shape": "Box",
-      "Mass": 10,
-      "Friction": 0.8,
-      "Restitution": 0.05,
-      "IsKinematic": false,
-      "Radius": 0.5,
-      "Height": 1
-    },
-    {
-      "Id": "6923ae4eb8ac4fc487366a1dd1d5d49f",
-      "Type": "PointLight",
-      "Name": "Light_Key_Shelf_Warm",
-      "Scripts": [],
-      "Interaction": null,
-      "Parent": null,
-      "PrefabAssetPath": "",
-      "PrefabInstanceId": "",
-      "PrefabSourceEntityId": "",
-      "PrefabUnpacked": false,
-      "LocalPosition": {
-        "X": 1.1999993,
-        "Y": 2.6,
-        "Z": -9.071901
-      },
-      "LocalRotationEulerDeg": {
-        "X": 0,
-        "Y": 0,
-        "Z": 0
-      },
-      "LocalScale": {
-        "X": 1,
-        "Y": 1,
-        "Z": 1
-      },
-      "CanPickUp": false,
-      "MotionType": 0,
-      "Size": {
-        "X": 1,
-        "Y": 1,
-        "Z": 1
-      },
-      "Color": {
-        "X": 0.6,
-        "Y": 0.6,
-        "Z": 0.6,
-        "W": 1
-      },
-      "YawDeg": 0,
-      "LightColor": {
-        "X": 1,
-        "Y": 0.72,
-        "Z": 0.42,
-        "W": 1
-      },
-      "Intensity": 1.8,
-      "Range": 5.5,
       "MeshPath": "",
       "MaterialPath": "",
       "Damageable": false,
@@ -359,7 +221,7 @@
       "PrefabUnpacked": false,
       "LocalPosition": {
         "X": 0,
-        "Y": -0.02,
+        "Y": -0.019999996,
         "Z": -12
       },
       "LocalRotationEulerDeg": {
@@ -427,9 +289,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -4.7683716E-07,
+        "X": -0.02752614,
         "Y": 3.1,
-        "Z": -12
+        "Z": -11.992522
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -496,9 +358,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -3.1,
+        "X": -3.0010498,
         "Y": 1.45,
-        "Z": -12
+        "Z": -11.999999
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -565,9 +427,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 3.1,
-        "Y": 1.45,
-        "Z": -12
+        "X": 2.9755604,
+        "Y": 1.2779456,
+        "Z": -12.004931
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -772,9 +634,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -3.1,
+        "X": -2.9957278,
         "Y": 1.45,
-        "Z": -8
+        "Z": -8.000001
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -841,9 +703,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 3.1,
+        "X": 2.9923112,
         "Y": 1.45,
-        "Z": -8
+        "Z": -7.983564
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -853,7 +715,7 @@
       "LocalScale": {
         "X": 1,
         "Y": 1,
-        "Z": 1
+        "Z": 1.33
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -910,9 +772,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 0,
-        "Y": -0.02,
-        "Z": -4
+        "X": 0.019047022,
+        "Y": -0.019999996,
+        "Z": -3.9638872
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -1048,7 +910,7 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -3.1,
+        "X": -3.025322,
         "Y": 1.45,
         "Z": -4
       },
@@ -1117,7 +979,7 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 3.1,
+        "X": 3.015692,
         "Y": 1.45,
         "Z": -4
       },
@@ -1187,7 +1049,7 @@
       "PrefabUnpacked": false,
       "LocalPosition": {
         "X": 0,
-        "Y": -0.02,
+        "Y": -0.019999996,
         "Z": 0
       },
       "LocalRotationEulerDeg": {
@@ -1324,9 +1186,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -3.1,
+        "X": -3.0213428,
         "Y": 1.45,
-        "Z": 0
+        "Z": 0.006136775
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -1334,9 +1196,9 @@
         "Z": 0
       },
       "LocalScale": {
-        "X": 1,
+        "X": 0.1,
         "Y": 1,
-        "Z": 1
+        "Z": 1.04
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -1393,7 +1255,7 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 3.1,
+        "X": 3.0117347,
         "Y": 1.45,
         "Z": 0
       },
@@ -1463,7 +1325,7 @@
       "PrefabUnpacked": false,
       "LocalPosition": {
         "X": 0,
-        "Y": -0.02,
+        "Y": -0.019999996,
         "Z": 4
       },
       "LocalRotationEulerDeg": {
@@ -1531,9 +1393,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 0,
+        "X": -0.001577735,
         "Y": 3.1,
-        "Z": 4
+        "Z": 4.000552
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -1600,9 +1462,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -3.1,
+        "X": -3.0003886,
         "Y": 1.45,
-        "Z": 4
+        "Z": 3.9999995
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -1669,7 +1531,7 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 3.1,
+        "X": 3.0125136,
         "Y": 1.45,
         "Z": 4
       },
@@ -1738,9 +1600,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 0,
-        "Y": -0.02,
-        "Z": 8
+        "X": 0.03662443,
+        "Y": -0.019999996,
+        "Z": 7.9540076
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -1807,9 +1669,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 0,
+        "X": -4.7683716E-07,
         "Y": 3.1,
-        "Z": 8
+        "Z": 7.999999
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -1876,7 +1738,7 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -3.1,
+        "X": -3.019875,
         "Y": 1.45,
         "Z": 8
       },
@@ -1888,7 +1750,7 @@
       "LocalScale": {
         "X": 1,
         "Y": 1,
-        "Z": 1
+        "Z": 1.08
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -1945,9 +1807,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 3.1,
+        "X": 3.006788,
         "Y": 1.45,
-        "Z": 8
+        "Z": 8.000001
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -1957,7 +1819,7 @@
       "LocalScale": {
         "X": 1,
         "Y": 1,
-        "Z": 1
+        "Z": 1.18
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -2014,9 +1876,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 0,
-        "Y": 1.8104606,
-        "Z": -13.944804
+        "X": 0.055809736,
+        "Y": 1.8104608,
+        "Z": -14.375191
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -2025,7 +1887,7 @@
       },
       "LocalScale": {
         "X": 1,
-        "Y": 2.5,
+        "Y": 1.33,
         "Z": 30
       },
       "CanPickUp": false,
@@ -2063,7 +1925,7 @@
         "Z": 2
       },
       "TriggerEvent": "OnEnter",
-      "Shape": "Box",
+      "Shape": "Mesh",
       "Mass": 10,
       "Friction": 1,
       "Restitution": 0,
@@ -2083,19 +1945,19 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -2.1845312,
-        "Y": 1.45,
-        "Z": -6.297172
+        "X": -2.1684287,
+        "Y": 1.7855015,
+        "Z": -5.9292793
       },
       "LocalRotationEulerDeg": {
         "X": 0,
-        "Y": 0,
+        "Y": 90,
         "Z": 0
       },
       "LocalScale": {
-        "X": 1.14,
-        "Y": 1.45,
-        "Z": 1
+        "X": 0.2,
+        "Y": 1.19,
+        "Z": 6.37
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -2119,7 +1981,7 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_sided_2m.glb",
       "MaterialPath": "",
       "Damageable": false,
       "MaxHealth": 100,
@@ -2132,7 +1994,7 @@
         "Z": 2
       },
       "TriggerEvent": "OnEnter",
-      "Shape": "Box",
+      "Shape": "Mesh",
       "Mass": 0,
       "Friction": 1,
       "Restitution": 0,
@@ -2154,17 +2016,17 @@
       "LocalPosition": {
         "X": 2.0717716,
         "Y": 1.45,
-        "Z": -6.035051
+        "Z": -5.914461
       },
       "LocalRotationEulerDeg": {
         "X": 0,
-        "Y": 180,
+        "Y": 90,
         "Z": 0
       },
       "LocalScale": {
-        "X": 1.14,
+        "X": 0.2,
         "Y": 1.43,
-        "Z": 1
+        "Z": 7
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -2188,7 +2050,7 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_sided_2m.glb",
       "MaterialPath": "",
       "Damageable": false,
       "MaxHealth": 100,
@@ -2201,7 +2063,7 @@
         "Z": 2
       },
       "TriggerEvent": "OnEnter",
-      "Shape": "Box",
+      "Shape": "Mesh",
       "Mass": 0,
       "Friction": 1,
       "Restitution": 0,
@@ -2307,9 +2169,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 0,
+        "X": 5.9604645E-08,
         "Y": 1.4362842,
-        "Z": -5.98
+        "Z": -5.9800005
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -2386,7 +2248,7 @@
         "Z": 0
       },
       "LocalScale": {
-        "X": 1,
+        "X": 8.59,
         "Y": 1,
         "Z": 1
       },
@@ -3076,9 +2938,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 0,
+        "X": 0.0070523024,
         "Y": 1.28,
-        "Z": 8.02
+        "Z": 8.019742
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -3145,18 +3007,18 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 1.449998,
-        "Y": 2.3712456,
+        "X": 2.5441844,
+        "Y": 1.8118408,
         "Z": -10.450001
       },
       "LocalRotationEulerDeg": {
         "X": 0,
         "Y": 0,
-        "Z": 0
+        "Z": -90
       },
       "LocalScale": {
-        "X": 1,
-        "Y": 1,
+        "X": 0.1,
+        "Y": 6,
         "Z": 1
       },
       "CanPickUp": false,
@@ -3181,7 +3043,7 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_sided_2m.glb",
       "MaterialPath": "",
       "Damageable": false,
       "MaxHealth": 100,
@@ -3194,8 +3056,8 @@
         "Z": 2
       },
       "TriggerEvent": "OnEnter",
-      "Shape": "Box",
-      "Mass": 10,
+      "Shape": "Mesh",
+      "Mass": 0,
       "Friction": 1,
       "Restitution": 0,
       "IsKinematic": false,
@@ -3283,9 +3145,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 1.4499941,
-        "Y": 2.522,
-        "Z": -10.45
+        "X": 2.4564247,
+        "Y": 1.9831078,
+        "Z": -10.450003
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -3293,9 +3155,9 @@
         "Z": 0
       },
       "LocalScale": {
-        "X": 1,
+        "X": 0.3,
         "Y": 1,
-        "Z": 1
+        "Z": 1.28
       },
       "CanPickUp": true,
       "MotionType": 1,
@@ -3904,7 +3766,7 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 1.05,
+        "X": 1.8364135,
         "Y": 0.61,
         "Z": 6.65
       },
@@ -4042,9 +3904,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -0.25,
-        "Y": 0.32,
-        "Z": 6.5
+        "X": 0.2029618,
+        "Y": 0.48569208,
+        "Z": 6.4999995
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -4180,13 +4042,13 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 0.0030062199,
+        "X": 0.0039025545,
         "Y": 1.6492203,
-        "Z": -6.056883
+        "Z": -5.9990673
       },
       "LocalRotationEulerDeg": {
         "X": 0,
-        "Y": -90,
+        "Y": 90,
         "Z": 0
       },
       "LocalScale": {
@@ -4249,19 +4111,19 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -2.3,
-        "Y": 1.45,
+        "X": -2.3000002,
+        "Y": 2.05,
         "Z": 7.92
       },
       "LocalRotationEulerDeg": {
         "X": 0,
-        "Y": 0,
+        "Y": 90,
         "Z": 0
       },
       "LocalScale": {
-        "X": 1,
-        "Y": 1,
-        "Z": 1
+        "X": 0.1,
+        "Y": 1.31,
+        "Z": 7
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -4285,7 +4147,7 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_sided_2m.glb",
       "MaterialPath": "",
       "Damageable": false,
       "MaxHealth": 100,
@@ -4298,8 +4160,8 @@
         "Z": 2
       },
       "TriggerEvent": "OnEnter",
-      "Shape": "Box",
-      "Mass": 10,
+      "Shape": "Mesh",
+      "Mass": 0,
       "Friction": 1,
       "Restitution": 0,
       "IsKinematic": false,
@@ -4318,19 +4180,19 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 2.3,
-        "Y": 1.45,
-        "Z": 7.92
+        "X": 2.2,
+        "Y": 1.8,
+        "Z": 7.920003
       },
       "LocalRotationEulerDeg": {
         "X": 0,
-        "Y": 0,
+        "Y": 90,
         "Z": 0
       },
       "LocalScale": {
-        "X": 1,
-        "Y": 1,
-        "Z": 1
+        "X": 0.1,
+        "Y": 1.2,
+        "Z": 7
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -4354,7 +4216,7 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_sided_2m.glb",
       "MaterialPath": "",
       "Damageable": false,
       "MaxHealth": 100,
@@ -4367,8 +4229,8 @@
         "Z": 2
       },
       "TriggerEvent": "OnEnter",
-      "Shape": "Box",
-      "Mass": 10,
+      "Shape": "Mesh",
+      "Mass": 0,
       "Friction": 1,
       "Restitution": 0,
       "IsKinematic": false,
@@ -4387,19 +4249,19 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 0,
-        "Y": 2.75,
-        "Z": 7.92
+        "X": -5.662441E-07,
+        "Y": 3.562,
+        "Z": 8.029501
       },
       "LocalRotationEulerDeg": {
         "X": 0,
-        "Y": 0,
+        "Y": 90,
         "Z": 0
       },
       "LocalScale": {
-        "X": 1,
-        "Y": 1,
-        "Z": 1
+        "X": 0.1,
+        "Y": 6.36,
+        "Z": 10
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -4423,7 +4285,7 @@
       },
       "Intensity": 3,
       "Range": 8,
-      "MeshPath": "",
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_sided_2m.glb",
       "MaterialPath": "",
       "Damageable": false,
       "MaxHealth": 100,
@@ -4436,8 +4298,8 @@
         "Z": 2
       },
       "TriggerEvent": "OnEnter",
-      "Shape": "Box",
-      "Mass": 10,
+      "Shape": "Mesh",
+      "Mass": 0,
       "Friction": 1,
       "Restitution": 0,
       "IsKinematic": false,
@@ -4594,9 +4456,9 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": -3.1,
+        "X": -3.0026689,
         "Y": 1.45,
-        "Z": 12
+        "Z": 12.000104
       },
       "LocalRotationEulerDeg": {
         "X": 0,
@@ -4663,7 +4525,7 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 3.1,
+        "X": 3.0222468,
         "Y": 1.45,
         "Z": 12
       },
@@ -4675,7 +4537,7 @@
       "LocalScale": {
         "X": 1,
         "Y": 1,
-        "Z": 1
+        "Z": 1.32
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -4732,19 +4594,19 @@
       "PrefabSourceEntityId": "",
       "PrefabUnpacked": false,
       "LocalPosition": {
-        "X": 0,
-        "Y": 1.45,
-        "Z": 14.2
+        "X": -4.7683716E-07,
+        "Y": 1.6253719,
+        "Z": 14.027688
       },
       "LocalRotationEulerDeg": {
         "X": 0,
-        "Y": 0,
+        "Y": 90,
         "Z": 0
       },
       "LocalScale": {
         "X": 1,
-        "Y": 1,
-        "Z": 1
+        "Y": 1.47,
+        "Z": 30
       },
       "CanPickUp": false,
       "MotionType": 0,
@@ -4781,7 +4643,7 @@
         "Z": 2
       },
       "TriggerEvent": "OnEnter",
-      "Shape": "Box",
+      "Shape": "Mesh",
       "Mass": 10,
       "Friction": 1,
       "Restitution": 0,

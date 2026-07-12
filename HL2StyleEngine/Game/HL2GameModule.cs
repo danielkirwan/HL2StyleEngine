@@ -3237,6 +3237,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         bool widthUsesX = size.X >= size.Z;
         LevelInteractionDef? interaction = GetInteraction(door);
         Vector3 hingeLocalOffset = interaction?.HingeLocalOffset ?? Vector3.Zero;
+        if (hingeLocalOffset.LengthSquared() > 0.0001f)
+            hingeLocalOffset = Mul(hingeLocalOffset, door.Transform.Scale);
         float configuredAngle = interaction?.OpenAngleDeg ?? DoorSwingOpenAngleDeg;
 
         _swingDoorStates[door.Name] = new SwingDoorRuntimeState
@@ -3323,16 +3325,16 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             state.HingeSide = lateral > 0.05f ? -1f : 1f;
         }
 
-        Vector3 playerForward = FlattenHorizontal(_camera.Forward);
-        if (playerForward.LengthSquared() < 1e-6f)
-            playerForward = FlattenHorizontal(state.ClosedPosition - _camera.Position);
-        if (playerForward.LengthSquared() < 1e-6f)
-            playerForward = Vector3.UnitZ;
-        playerForward = Vector3.Normalize(playerForward);
+        Vector3 awayFromPlayer = FlattenHorizontal(state.ClosedPosition - _camera.Position);
+        if (awayFromPlayer.LengthSquared() < 1e-6f)
+            awayFromPlayer = FlattenHorizontal(_camera.Forward);
+        if (awayFromPlayer.LengthSquared() < 1e-6f)
+            awayFromPlayer = Vector3.UnitZ;
+        awayFromPlayer = Vector3.Normalize(awayFromPlayer);
 
         float openAngle = Math.Clamp(MathF.Abs(state.OpenAngleDeg), 1f, 179f);
-        float positiveScore = ScoreSwingDoorOpenDirection(state, openAngle, playerForward);
-        float negativeScore = ScoreSwingDoorOpenDirection(state, -openAngle, playerForward);
+        float positiveScore = ScoreSwingDoorOpenDirection(state, openAngle, awayFromPlayer);
+        float negativeScore = ScoreSwingDoorOpenDirection(state, -openAngle, awayFromPlayer);
         state.TargetAngleDeg = positiveScore >= negativeScore ? openAngle : -openAngle;
     }
 
@@ -3366,7 +3368,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     {
         Quaternion delta = Quaternion.CreateFromAxisAngle(Vector3.UnitY, state.CurrentAngleDeg * MathF.PI / 180f);
         Vector3 pivot = GetSwingDoorPivot(state);
-        Quaternion rotation = Quaternion.Normalize(state.ClosedRotation * delta);
+        Quaternion rotation = Quaternion.Normalize(delta * state.ClosedRotation);
 
         door.Transform.Position = pivot + Vector3.Transform(state.ClosedPosition - pivot, delta);
         door.Transform.RotationEulerDeg = QuatToEulerDeg(rotation);
@@ -5333,6 +5335,16 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             }
         }
 
+        if (!entity.IsHeld && touchingSupport && IsWorldItem(entity))
+        {
+            if (GetPhysicsBodyVelocity(entity).LengthSquared() < 0.05f)
+                SetPhysicsBodyVelocity(entity, Vector3.Zero);
+
+            entity.Physics.AngularVelocity = Vector3.Zero;
+            SyncEntityRotationFromPhysics(entity);
+            return;
+        }
+
         if (!entity.IsHeld && touchingSupport && (shape == RuntimeShapeKind.Box || shape == RuntimeShapeKind.Capsule))
         {
             if (shape == RuntimeShapeKind.Box)
@@ -5847,6 +5859,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 };
             }
 
+            if (def.MotionType == MotionType.Dynamic && IsWorldItem(e))
+                ConfigureWorldPickupPhysics(e);
+
             bool hasMovingPlatform =
                 def.Scripts.Any(sd => sd.Type == "MovingPlatform");
 
@@ -5906,6 +5921,17 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         ApplyPersistentInteractionStateToRuntime();
     }
 
+    private static void ConfigureWorldPickupPhysics(Entity entity)
+    {
+        entity.Physics.AngularDamping = MathF.Max(entity.Physics.AngularDamping, 12f);
+
+        if (entity.Physics.BoxBody != null)
+            entity.Physics.BoxBody.LinearDamping = MathF.Max(entity.Physics.BoxBody.LinearDamping, 1.15f);
+        if (entity.Physics.SphereBody != null)
+            entity.Physics.SphereBody.LinearDamping = MathF.Max(entity.Physics.SphereBody.LinearDamping, 1.15f);
+        if (entity.Physics.CapsuleBody != null)
+            entity.Physics.CapsuleBody.LinearDamping = MathF.Max(entity.Physics.CapsuleBody.LinearDamping, 1.15f);
+    }
     private void PreloadBreakReplacementModels(Entity entity)
     {
         foreach (string modelPath in entity.BreakReplacementModelPaths)
@@ -7861,7 +7887,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         => IsWorldItem(e) || IsLockedObject(e) || IsSavePoint(e) || IsStorageBox(e) || IsPuzzleSlot(e) || IsPuzzleLever(e);
 
     private static bool IsWorldItem(Entity e)
-        => IsKeyItem(e) || IsInkRibbon(e) || e.Name.StartsWith("Item_", StringComparison.OrdinalIgnoreCase);
+        => TryGetWorldItem(e, out _, out _);
 
     private static bool IsKeyItem(Entity e)
         => e.Name.StartsWith("ItemKey_", StringComparison.OrdinalIgnoreCase);
@@ -7921,9 +7947,41 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             return !string.IsNullOrWhiteSpace(itemId);
         }
 
+        if (e.CanPickUp && TryResolveLooseWorldPickupItem(e, out itemId))
+        {
+            count = GetWorldItemCount(e.Name);
+            return true;
+        }
+
         itemId = "";
         return false;
     }
+
+    private static bool TryResolveLooseWorldPickupItem(Entity e, out string itemId)
+    {
+        string name = e.Name ?? "";
+        string modelPath = e.Render.ModelAssetPath ?? "";
+
+        if (ContainsInvariant(name, "FirstAid") || ContainsInvariant(modelPath, "FirstAid") ||
+            ContainsInvariant(name, "HealthPack") || ContainsInvariant(name, "MedPack"))
+        {
+            itemId = ItemCatalog.HealthPack;
+            return true;
+        }
+
+        if (ContainsInvariant(name, "SuitBattery") || ContainsInvariant(modelPath, "Battery07") ||
+            ContainsInvariant(name, "Battery") || ContainsInvariant(name, "HEV"))
+        {
+            itemId = ItemCatalog.SuitBattery;
+            return true;
+        }
+
+        itemId = "";
+        return false;
+    }
+
+    private static bool ContainsInvariant(string value, string token)
+        => value.Contains(token, StringComparison.OrdinalIgnoreCase);
 
     private static int GetWorldItemCount(string entityName)
     {
@@ -8311,7 +8369,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     {
         if (_held != null)
         {
-            SetInteractionPrompt("Drop object");
+            SetInteractionPrompt(TryGetWorldItem(_held, out _, out _) ? "Collect item" : "Drop object");
             return;
         }
 
@@ -8346,26 +8404,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (hit == null)
             return false;
 
-        if (TryGetWorldItem(hit, out string itemId, out int itemCount))
-        {
-            if (TryApplyImmediateWorldPickup(itemId, itemCount, out bool consumedImmediatePickup))
-            {
-                if (consumedImmediatePickup)
-                {
-                    _collectedInteractables.Add(hit.Name);
-                    HideRuntimeEntity(hit);
-                }
-
-                return true;
-            }
-
-            if (!AddInventoryItem(itemId, itemCount, showCollectedScreen: true))
-                return true;
-
-            _collectedInteractables.Add(hit.Name);
-            HideRuntimeEntity(hit);
+        if (TryCollectWorldItem(hit))
             return true;
-        }
 
         if (IsLockedObject(hit))
         {
@@ -8453,6 +8493,30 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
 
         return false;
+    }
+
+    private bool TryCollectWorldItem(Entity hit)
+    {
+        if (!TryGetWorldItem(hit, out string itemId, out int itemCount))
+            return false;
+
+        if (TryApplyImmediateWorldPickup(itemId, itemCount, out bool consumedImmediatePickup))
+        {
+            if (consumedImmediatePickup)
+            {
+                _collectedInteractables.Add(hit.Name);
+                HideRuntimeEntity(hit);
+            }
+
+            return true;
+        }
+
+        if (!AddInventoryItem(itemId, itemCount, showCollectedScreen: true))
+            return true;
+
+        _collectedInteractables.Add(hit.Name);
+        HideRuntimeEntity(hit);
+        return true;
     }
 
     private void ShowGameMessage(string message, float seconds = 3.0f)
@@ -8724,7 +8788,12 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (InteractPressedThisFrame())
         {
             if (_held != null)
+            {
+                if (TryCollectHeldWorldItem())
+                    return;
+
                 DropHeld();
+            }
             else if (TryUseFocusedInteractable())
                 return;
             else
@@ -8738,6 +8807,31 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             }
         }
     }
+
+    private bool TryCollectHeldWorldItem()
+    {
+        if (_held == null || !TryGetWorldItem(_held, out _, out _))
+            return false;
+
+        Entity held = _held;
+        bool handled = TryCollectWorldItem(held);
+        if (handled && (held.Render.Shape == RuntimeShapeKind.None || held.Collider.Shape == RuntimeShapeKind.None))
+            ClearHeldReference(held);
+
+        return handled;
+    }
+
+    private void ClearHeldReference(Entity e)
+    {
+        if (!ReferenceEquals(_held, e))
+            return;
+
+        e.IsHeld = false;
+        _held = null;
+        _heldRotation = Quaternion.Identity;
+        _heldByGravityGun = false;
+    }
+
     private void PickUp(Entity e, bool grabbedByGravityGun = false)
     {
         if (!HasPhysicsBody(e)) return;

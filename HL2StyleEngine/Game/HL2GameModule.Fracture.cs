@@ -29,6 +29,7 @@ public sealed partial class HL2GameModule
         public Vector3 Position;
         public Vector3 LocalCenter;
         public Vector3 Size = Vector3.One;
+        public Vector4 Tint = Vector4.One;
         public Quaternion Rotation = Quaternion.Identity;
         public Vector3 Velocity;
         public Vector3 AngularVelocity;
@@ -232,7 +233,9 @@ public sealed partial class HL2GameModule
                 continue;
 
             Matrix4x4 transform = CreateModelPartCenterTransform(entry.Bounds, piece.LocalCenter, piece.Position, piece.Size, piece.Rotation);
-            _world.DrawModel(renderer.CommandList, entry.Model, transform, new Vector4(1f, 1f, 1f, alpha), piece.HiddenPartKeys);
+            Vector4 tint = piece.Tint;
+            tint.W = Math.Clamp(tint.W, 0f, 1f) * alpha;
+            _world.DrawModel(renderer.CommandList, entry.Model, transform, tint, piece.HiddenPartKeys);
         }
     }
 
@@ -278,6 +281,7 @@ public sealed partial class HL2GameModule
                 Position = worldCenter,
                 LocalCenter = localCenter,
                 Size = entity.Render.Size,
+                Tint = entity.Render.Color,
                 Rotation = baseRotation,
                 Velocity = BuildFractureDebrisVelocity(part, modelCenter, rotationMatrix),
                 AngularVelocity = BuildFractureDebrisAngularVelocity(),

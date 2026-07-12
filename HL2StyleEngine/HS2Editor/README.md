@@ -70,9 +70,9 @@ When a source level is saved, HS2Editor also mirrors that JSON into any existing
 
 ## Scene Mesh Selection Visibility
 
-Scene meshes are now easier to edit directly. GLB objects render as their mesh shape, selected meshes receive a yellow editor highlight, and child meshes under the selected root receive a softer blue highlight. This is intended for prefab-style assemblies such as `PracticeDoorFrameMesh` with a child door.
+Scene meshes are now easier to edit directly. GLB objects render as their mesh shape, selected meshes receive a yellow editor highlight, and child meshes under the selected root receive a softer blue highlight. Selection uses exact oriented-box picking for the editor draw volume, and transparent collision helpers are ignored unless `Show Colliders (OBB)` is enabled. This is intended for prefab-style assemblies such as `PracticeDoorFrameMesh` with a child door.
 
-Collider/blockout boxes default to hidden for GLB scene editing and can be enabled from the toolbar with `Show Colliders (OBB)` when collision tuning is needed. Rigid-body fallback boxes now respect the entity `Color` value instead of forcing magenta, so primitive helper colliders can use `Color.W = 0` to stay collision-only. Do not rely on alpha to hide GLB renderers; collision-only helpers should have no `MeshPath`. If scene meshes are hidden from the View menu, the Scene panel shows a warning.
+Collider/blockout boxes default to hidden for GLB scene editing and can be enabled from the toolbar with `Show Colliders (OBB)` when collision tuning or selection of invisible helpers is needed. Rigid-body fallback boxes now respect the entity `Color` value instead of forcing magenta, so primitive helper colliders can use `Color.W = 0` to stay collision-only. Do not rely on alpha to hide GLB renderers; collision-only helpers should have no `MeshPath`. For static GLB architecture that is rotated or heavily scaled to make the texture face correctly, use `Shape = "Mesh"` so the collider follows the model triangles instead of the fitted box. If scene meshes are hidden from the View menu, the Scene panel shows a warning.
 
 
 
