@@ -1357,3 +1357,4 @@ F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\View
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\ElectricalWires03_13.glb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Models\ViewModels\Lever04.glb
 F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Levels\basementLevel.json
+F:\Tools\HL2StyleEngine\HL2StyleEngine\Game\bin\Debug\net8.0\Content\Levels\sixRoomTest.json

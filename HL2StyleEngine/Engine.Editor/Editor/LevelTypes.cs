@@ -8,6 +8,7 @@ namespace Engine.Editor.Level;
 public sealed class LevelFile
 {
     public int Version { get; set; } = 2;
+    public bool UsePointLights { get; set; }
 
     public List<LevelEntityDef> Entities { get; set; } = new();
 

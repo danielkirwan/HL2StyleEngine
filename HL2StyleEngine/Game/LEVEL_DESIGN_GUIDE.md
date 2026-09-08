@@ -2,6 +2,10 @@
 
 This project is aiming for slower to medium paced horror/action exploration: closer to Half-Life 2 pacing and immersive environmental storytelling than arena shooter speed.
 
+## Current Larger Test
+
+`sixRoomTest.json` applies the exploration/physics side of this guide at a larger scale: one central landmark space and five optional branches, approximately five times the `interaction_test.json` floor footprint. No puzzles, locks or enemies are included yet. Different floor finishes, room proportions, light colours and equipment establish identity; crate breaking/throwing, elevated gravity-gun pickups and supplies provide optional activities. See `SIX_ROOM_TEST.md` for the floor plan, dimensions, validation and the next review criteria. Puzzles will follow after the layout is accepted.
+
 ## Core Loop
 
 A useful room-to-room loop:

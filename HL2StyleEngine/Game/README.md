@@ -12,6 +12,16 @@ A matching primitive/blockout version is generated as `Content/Levels/interactio
 
 ## Completed Systems
 
+### 2026-09-08 Six-Room Test Level
+
+`Content/Levels/sixRoomTest.json` adds an enclosed 2,536-square-metre layout based on the 504-square-metre `interaction_test.json` floor, approximately 5.03 times its footprint. A large hall connects to freight, workshop, medical, utility and loading rooms. It includes the three default weapons, 26 breakable crates, gravity-gun pickups and ammo supplies, with no puzzles or locks. Root-level `LaunchSixRoomTest.bat` plays it directly; the project startup level remains unchanged. See `SIX_ROOM_TEST.md` for layout and validation.
+
+Explicit `--level` launches now begin at the authored spawn with the default loadout instead of automatically loading another level's saved player position and inventory. Normal launches without `--level` keep existing auto-load behaviour.
+
+Levels can opt into point lighting with `UsePointLights`, exposed as Scene Point Lights in the editor toolbar. The test level enables it; previous levels default to disabled. Textured models use up to 32 nearby lights in game and editor, with colour/intensity/range falloff and inverse-transpose normal handling. Shadows and switch/group control remain pending.
+
+### Gameplay Systems
+
 - Source-style first-person movement and camera.
 - Runtime/editor level loading through `LevelEditorController`.
 - Inventory, storage box, item collection, item use, item combining, stack splitting, discarding, and save/load persistence.
@@ -22,7 +32,7 @@ A matching primitive/blockout version is generated as `Content/Levels/interactio
 - Weapon framework with weapon-system-owned loadout, magazine/reserve ammo state, category selection, firing cooldowns, traces, melee swings, and viewmodel fallback geometry.
 - First-pass GLB weapon model loading: weapon definitions try their `ModelAssetPath` before falling back to primitive viewmodels. Gravity Gun, pistol, and crowbar viewmodels are placed on the right-hand side of the screen for the current camera-mounted weapon pass; viewmodel placement maps positive local X to screen-right while rotation keeps a proper camera basis to avoid weapon orbiting when turning. The Debug window includes live viewmodel tuning sliders for model offset, model euler rotation, model scale, and muzzle offset, plus a copy-to-clipboard C# snippet for locking tuned values into `WeaponDefinitions.cs`.
 - First-pass GLB world prop rendering: rigid bodies can point `MeshPath` at an imported `.glb`, and the renderer fits imported bounds to the entity size. GLB node/mesh names are preserved on loaded model parts, and world models can skip named parts at draw time. Static rigid bodies can now use `Shape = "Mesh"` to generate a triangle mesh collider from the same fitted GLB transform used for rendering, so doorframes and architectural models can collide through their real openings instead of a solid box. `Prop` entities are visual-only at runtime; use `RigidBody` when a model should block movement, traces, or physics. All current throwable `Crate_*` props use the imported breakable wooden crate model and still use primitive physics while alive.
-- Runtime primitive rendering skips untextured entities whose colour alpha is zero. GLB renderables are not hidden by alpha, so visible imported walls and props cannot disappear because of a colour setting. Collision-only helpers should use primitive box colliders with no `MeshPath`; the in-game editor mode draws selected GLB scene meshes before falling back to primitive debug boxes, matching the standalone editor more closely.
+- Runtime primitive rendering skips untextured entities whose colour alpha is zero. GLB renderables are not hidden by alpha, so visible imported walls and props cannot disappear because of a colour setting. Collision-only helpers should use primitive box colliders with no `MeshPath`; the in-game editor mode draws selected GLB scene meshes before falling back to primitive debug boxes, and selected objects use the same outline/corner marker style as the standalone editor so textures remain visible while editing.
 - Local player character placeholder hook: `Future_Soldier_02.glb` still preloads through the shared GLB model cache, but the imported full-body mesh is disabled by default because it is a skinned character and the runtime currently renders static GLB meshes only. Editor/free-camera inspection now shows the player capsule placeholder until glTF skin/joint/animation support is implemented.
 - Configurable object health for box and rigid-body entities, with editor-selected broken replacement models and save/load persistence for broken state. Visual-only props should be converted to rigid bodies if they need health, collision, or weapon hits. Current breakable wooden crates use named GLB fracture parts for staged damage, then collapse remaining pieces into short-lived falling/fading debris instead of swapping to damaged crate models.
 
@@ -77,15 +87,14 @@ Static imported level geometry now has a first-pass triangle mesh collider path.
 
 ## Lighting Direction
 
-Current textured world rendering is still using a simple first-pass lighting model: a hard-coded directional light, low ambient light, imported mesh normals, and metallic/roughness factors. This is why identical wall models can look very different depending on rotation and placement: surfaces facing the fixed light are bright, while surfaces facing away can fall almost completely to ambient. Non-uniform model scale can make this worse until normals are transformed through a proper normal matrix.
+Textured world rendering retains directional fill, ambient light and metallic/roughness factors. Since 2026-09-08, levels with `UsePointLights` enabled also evaluate editor-authored point lights. The new `sixRoomTest.json` enables this path. Non-uniform model scale now uses an inverse-transpose normal matrix. Legacy levels keep point lights disabled until enabled in the toolbar, so differently facing surfaces can still vary under the original directional fill.
 
 Target lighting model:
 
 - Keep a small global ambient term so textured surfaces never crush to black in normal indoor scenes.
 - Keep an optional directional fill/sun light for broad readability, but do not depend on it for indoor rooms.
-- Add runtime `PointLight` support from level data: position, colour, intensity, range, falloff, enabled state, and optional group name.
-- Submit nearby active point lights to `BasicWorldRenderer` each frame and evaluate them in the textured model shader.
-- Fix normal handling for scaled/rotated models by using a proper normal matrix or equivalent CPU/GPU normal transform path.
+- Implemented: point-light position, colour, intensity, range and falloff from level data, submitted to the textured model shader in game and editor. Intensity zero disables an individual light. Named groups and persistent enabled states remain planned.
+- Implemented: inverse-transpose normal handling for scaled/rotated models.
 - Later add spot lights for flashlights, wall lamps, and directional fixtures once point lights are stable.
 
 Gameplay/light-switch direction:
@@ -95,7 +104,7 @@ Gameplay/light-switch direction:
 - Switches should support starts-on state, reusable toggle vs one-shot behavior, prompt text, optional sound/VFX hooks, and save/load persistence for changed light states.
 - Door/chest/puzzle interaction patterns should be reused where possible: author the switch in the editor, attach a registered script/component, expose editable fields, and let runtime state persistence record the result.
 
-First implementation should prioritize: ambient/fill correction, point lights in renderer, editor-authored light groups, one switch script that toggles a group, and save/load of changed light enabled states.
+Next lighting priorities: shadows/occlusion, ambient/fill tuning, editor-authored light groups, a switch script that toggles a group, and save/load of changed light states.
 
 
 ## Debug UI
@@ -194,9 +203,9 @@ Object health is now data-driven enough for the first crate-damage pass.
 
 The standalone editor app now exists under `HS2Editor`. The full target and roadmap are documented in `Engine.Editor/README.md`.
 
-Implemented direction: separate executable, existing renderer plus ImGui, project/content browser, level manager, 3D viewport, hierarchy, inspector, model assignment, direct GLB drag/drop placement into the Scene as static rigid bodies with box colliders, GLB MeshPath drops onto selected boxes/props/rigid bodies, textured editor Scene GLB drawing for placement previews, collider/blockout overlay for tuning the physical volume against the visible mesh, stable Content Browser drag tracking, prefab JSONs, registered script attachment through the existing inspector path, basic UI file management, asset importer launch, and game launch from the selected level.
+Implemented direction: separate executable, existing renderer plus ImGui, project/content browser, level manager, 3D viewport, hierarchy, inspector, model assignment, direct GLB drag/drop placement into the Scene as static rigid bodies with box colliders, GLB MeshPath drops onto selected boxes/props/rigid bodies, textured editor Scene GLB drawing for placement previews, non-destructive outline selection, first-pass `V` corner snapping, collider/blockout overlay for tuning the physical volume against the visible mesh, stable Content Browser drag tracking, prefab JSONs, registered script attachment through the existing inspector path, basic UI file management, asset importer launch, and game launch from the selected level.
 
-The root `HS2Project.json` stores the project name, content root, startup level, recent levels, Blender path placeholder, asset importer project path, game project path, and preferences. Root launchers are available for `LaunchEditor.bat`, `LaunchAssetImporter.bat`, and `LaunchGame.bat`.
+The root `HS2Project.json` stores the project name, content root, startup level, recent levels, Blender path placeholder, asset importer project path, game project path, and preferences. Root launchers are available for `LaunchEditor.bat`, `LaunchAssetImporter.bat`, and `LaunchGame.bat`. `LaunchGame.bat` now explicitly opens `sixRoomTest.json`, as does `LaunchSixRoomTest.bat`; the editor's configured startup level remains `basementLevel.json`.
 
 The first pass still uses path-based asset references because the current level format already does. GUID/meta asset identity should be added later when content browser rename/move support and prefab references need stable asset ids.
 
@@ -212,7 +221,7 @@ The first pass still uses path-based asset references because the current level 
 - Add impact damage for launched physics props, so Gravity Gun-thrown crates can damage or break when they hit walls/objects hard enough.
 - Add debris spawning from `BreakDebrisModelPaths`, plus folders/search in the model picker once the model library grows.
 - Add crate break VFX such as dust/splinters to support the fracture collapse and make impacts feel better.
-- Add renderer lighting polish: stronger ambient/fill, proper normal-matrix handling for scaled models, point lights from level data, light groups, and switch-controlled light state. Continue material polish from the validated lit/metallic pistol viewmodel with normal-map, emission, environment reflection, and fuller PBR support.
+- Extend the implemented point lights and normal-matrix handling with shadows, light groups, switches and ambient/fill tuning. Continue material polish with normal-map, emission, environment reflection, and fuller PBR support.
 - Add simple damageable targets/enemies so bullet, melee, impact, and explosion damage have more gameplay consequences.
 - Add gravity gun polish: hold beam effects, blocked pickup checks, mass-based throw tuning, and sound/VFX hooks.
 - Replace placeholder health/suit values with a real player damage and armor system.

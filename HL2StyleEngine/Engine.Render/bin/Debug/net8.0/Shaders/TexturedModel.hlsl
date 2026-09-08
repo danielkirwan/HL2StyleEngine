@@ -9,6 +9,19 @@ cbuffer Object : register(b1)
     float4x4 Model;
     float4 Color;
     float4 Material;
+    float4x4 NormalMatrix;
+};
+
+struct PointLight
+{
+    float4 PositionRange;
+    float4 ColorIntensity;
+};
+
+cbuffer Lighting : register(b2)
+{
+    float4 LightInfo;
+    PointLight Lights[32];
 };
 
 Texture2D BaseColorTex : register(t0);
@@ -39,7 +52,7 @@ VSOutput VSMain(VSInput input)
     float4 worldPos = mul(Model, float4(input.Position, 1.0));
     o.Position = mul(ViewProj, worldPos);
     o.WorldPosition = worldPos.xyz;
-    o.Normal = normalize(mul((float3x3)Model, input.Normal));
+    o.Normal = normalize(mul((float3x3)NormalMatrix, input.Normal));
     o.TexCoord = input.TexCoord;
     o.Color = Color;
 
@@ -71,5 +84,14 @@ float4 PSMain(VSOutput input) : SV_TARGET
     float3 specular = specColor * pow(ndoth, specPower) * specStrength;
 
     float3 lit = ambient + diffuse + specular;
+    for (int i = 0; i < (int)LightInfo.x; i++)
+    {
+        float3 offset = Lights[i].PositionRange.xyz - input.WorldPosition;
+        float distanceToLight = length(offset);
+        float falloff = saturate(1.0 - distanceToLight / max(0.01, Lights[i].PositionRange.w));
+        float lambert = saturate(dot(normal, offset / max(0.001, distanceToLight)));
+        float3 energy = Lights[i].ColorIntensity.rgb * Lights[i].ColorIntensity.w;
+        lit += baseColor.rgb * energy * falloff * falloff * (0.15 + 0.85 * lambert);
+    }
     return float4(saturate(lit), baseColor.a);
 }

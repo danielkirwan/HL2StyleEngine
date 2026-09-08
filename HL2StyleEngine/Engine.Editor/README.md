@@ -35,7 +35,7 @@ Implemented:
 - Dock layout version `8` forces stale saved ImGui window layouts to reset.
 - Dockspace-based editor workspace with a Unity-style default placement: Scene center, hierarchy/levels/project on the left, inspector/toolbar on the right, and content/prefab/UI/status panels around the scene. The current ImGui.NET wrapper does not expose dock-builder calls, so the editor seeds default window placement and still leaves panels dockable/manually rearrangeable. Layout-version changes, missing saved layouts, and saved layouts with collapsed/tiny key panels clear stale `imgui.ini` state and hold default placement long enough to recover from old collapsed/off-screen windows.
 - Scene camera controls: RMB look plus WASD/QE fly movement while the Scene panel is hovered or focused.
-- Scene selection and dragging through the existing `LevelEditorController` picking path. Picking rays now use the Scene panel rectangle instead of the whole application window, and the Scene panel is not treated as regular UI for mouse blocking. Selection now raycasts against the actual oriented editor boxes instead of inflated world AABBs, and transparent collision helpers are skipped unless `Show Colliders (OBB)` is enabled. If the Scene panel bounds are missing or saved below a usable size during startup, world rendering falls back to the full app window rather than leaving a tiny black viewport.
+- Scene selection and dragging through the existing `LevelEditorController` picking path. Picking rays now use the Scene panel rectangle instead of the whole application window, and the Scene panel is not treated as regular UI for mouse blocking. Selection now raycasts against the actual oriented editor boxes instead of inflated world AABBs, selected objects render with yellow outline/corner markers instead of a solid overlay, and transparent collision helpers are skipped unless `Show Colliders (OBB)` is enabled. If the Scene panel bounds are missing or saved below a usable size during startup, world rendering falls back to the full app window rather than leaving a tiny black viewport.
 - Existing hierarchy, inspector, and toolbar panels reused inside the standalone app.
 - Inspector interaction authoring for locked doors, locked chests, puzzle slots, and puzzle doors. Interaction JSON is stored directly on the selected level entity, not as a separate attached document.
 - Content browser for models, animations, and all content files. The Models tab uses a table layout with a visible asset count/path header, explicit Asset and Assign columns, and a selected-model material-colour shaded 3D preview pane for `.glb` assets when there is enough room.
@@ -50,6 +50,22 @@ Implemented:
 
 
 
+## 2026-09-08 Level And Lighting Update
+
+- Added `Game/Content/Levels/sixRoomTest.json`: one large central hall, five connected rooms, open entrances, physics props and supplies. The floor footprint is approximately five times `interaction_test.json`. See `Game/SIX_ROOM_TEST.md` for the design and checks.
+- Toolbar Scene Point Lights controls the saved `LevelFile.UsePointLights` flag, with dirty/undo support. The game and editor share submission of up to 32 nearby authored PointLights to textured model rendering. Inspector light position/colour/intensity/range now affect the scene when enabled. Existing levels opt in explicitly; the new level enables this by default.
+- Lighting remains unshadowed; groups, light switches, spotlights and occlusion are still future work. Textured meshes now use inverse-transpose normals for non-uniform scale.
+- Explicit `--level` launches start from the selected scene's spawn and default weapons, without automatically applying unrelated save data. The ordinary startup path retains its existing save loading.
+
+## 2026-07-14 Selection And Snapping Update
+
+Locked-in editor usability direction from this pass:
+
+- Selected textured GLB objects no longer receive a solid yellow overlay. The standalone editor and in-game editor now draw a yellow wire outline and corner markers around the selected oriented bounds so the texture, material direction, and model details remain visible while editing.
+- Child entities under the selected root keep a softer blue outline in the standalone editor, which helps prefab-style assemblies stay readable without hiding their textures.
+- First-pass vertex snapping is implemented as oriented-bounds corner snapping. Hold `V` in the Scene view, click a corner on the selected object to choose the source corner, then click a corner on another object to snap the selected object so those two corners line up.
+- The snap markers are editor-only draw boxes and do not change runtime collision or level data until a snap is completed. The completed snap moves the selected entity through the same world-position setter used by normal editor dragging, so parenting and undo tracking stay on the existing editor path.
+- Future improvement: true imported mesh-vertex snapping can build on this workflow once the editor exposes per-model vertex positions and has a screen-space vertex picker. For now, bounds corners are the intended tool for modular wall/floor/doorframe alignment.
 ## Save And Runtime Level Sync
 
 HS2Editor treats `Game/Content/Levels/*.json` as the source of truth for authored levels. Save actions now behave as follows:
@@ -226,7 +242,7 @@ The inspector interaction authoring UI now uses full-width vertical controls so 
 Every interaction edit goes through the standard editor dirty/save path. While dirty, the interaction inspector shows `Save Active Document`, and changes persist when the current level or prefab is saved.
 ## Lighting Authoring Direction
 
-The editor already has a `PointLight` entity type with colour, intensity, and range fields in the level data. The next lighting pass should make those entities drive the game renderer instead of relying on the current fixed global textured-model light.
+The `PointLight` entity type has colour, intensity and range fields. Since 2026-09-08 these drive textured game/editor rendering when Toolbar > Scene Point Lights is enabled for the level. Fixture geometry and light entities remain separate; shadows, influence-radius gizmos and group/switch controls are the next authoring work.
 
 Recommended authoring model:
 
@@ -238,11 +254,11 @@ Recommended authoring model:
 - Light entities should store runtime state such as enabled/disabled, colour, intensity, range, falloff, and group name. Save data should persist any switch-controlled light state that the player changes.
 - The editor should show enough of the final lighting to support level dressing, even if the first pass is simple forward point lights rather than baked/global illumination.
 
-Short implementation path once code work starts:
+Lighting progress and remaining work:
 
 1. Extend `LevelEntityDef`/inspector if needed with `Enabled`, `LightGroup`, and possibly `Falloff` fields for point lights.
-2. Make `BasicWorldRenderer` accept a small fixed array of active point lights each frame, plus ambient light, and pass them to the textured model shader.
-3. Replace the current single hard-coded textured-model light with ambient plus directional plus nearby point lights.
+2. Implemented: `BasicWorldRenderer` receives up to 32 nearby point lights per frame.
+3. Implemented: textured models combine ambient, directional fill and nearby point lights, with inverse-transpose normals.
 4. Add a registered switch/interactable script that toggles target point lights by group or entity ID.
 5. Save/load changed light states so a switched-off room stays switched off.
 6. Add editor Scene preview for point-light influence radius and on/off state.

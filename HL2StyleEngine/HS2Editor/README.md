@@ -14,8 +14,11 @@ The editor loads `HS2Project.json`, creates missing content folders under `Game/
 
 ## Current Features
 
+- `sixRoomTest.json` is available in the Levels panel as a larger six-room physics/exploration test. See `Game/SIX_ROOM_TEST.md` for its layout. `LaunchSixRoomTest.bat` plays it directly.
+- Scene Point Lights in the Toolbar toggles saved level lighting (`UsePointLights`). Enabled levels render nearby PointLight colour, intensity and range in both the Scene viewport and game. `sixRoomTest` enables it; older levels default to off. Select a PointLight to tune it in the Inspector. Shadows, groups and switches are not implemented yet.
+
 - Level create, load, save, duplicate, and rename.
-- Scene panel with grid, selection, transform gizmo drawing, editor camera controls, and textured GLB scene rendering for placed models.
+- Scene panel with grid, selection, transform gizmo drawing, editor camera controls, textured GLB scene rendering for placed models, outline/corner selection markers, and first-pass vertex/corner snapping with `V`.
 - Unity-style default window placement: Scene center, hierarchy/levels/project left, inspector/toolbar right, and content/prefab/UI/status panels around it. Panels remain dockable and manually rearrangeable through ImGui docking. Layout-version changes, missing saved layouts, and saved layouts with collapsed/tiny key panels now clear stale `imgui.ini` state and hold the default placement for several seconds so old collapsed/off-screen windows cannot leave the editor black. The scene render fallback also treats very small saved scene panels as invalid and renders full-window until the layout recovers.
 - Content browser for models, animations, prefabs, and project files. The Models tab uses a table layout with an explicit Asset column and Assign column, plus a selected-model 3D shaded/wireframe preview pane for `.glb` model assets when the panel is wide enough. The Prefabs tab lists JSON prefabs from `Game/Content/Prefabs` with Place/Edit actions.
 - Assign a `.glb` model from `Content/Models` to the selected entity, or drag a model from the content browser into inspector lists that accept model assets. Assigning/dropping a GLB onto a static rigid body now defaults it to `Shape = "Mesh"` so imported architecture can use triangle mesh collision. Use visual-only `Prop` entities for decoration and `RigidBody` entities for anything that should collide.
@@ -26,6 +29,8 @@ The editor loads `HS2Project.json`, creates missing content folders under `Game/
 - Launch the game from the selected level via `--level`.
 
 ## Current Limitations
+
+- During the 2026-09-08 test, the persisted editor layout still opened with overlapping/collapsed panels despite the earlier layout recovery work. This remains an editor usability issue; the new six-room level was verified through its direct game launcher and through editor-controller data checks.
 
 - UI preview is source/text based until native RmlUi visual preview is wired into the editor.
 - Asset references are path-based; GUID/meta files are planned for a later asset database pass.
@@ -66,14 +71,13 @@ Interaction changes mark the active level or prefab document dirty. The inspecto
 
 The source level JSON under `Game/Content/Levels` is the canonical editable level file. Toolbar `Save`, File > `Save Level`, and `Play Selected Level` save the active level document before launch. The Project panel `Save Project` button now also saves the active level or prefab first, then writes `HS2Project.json`, so saving project settings does not leave scene edits unsaved.
 
-When a source level is saved, HS2Editor also mirrors that JSON into any existing runtime output copies under `Game/bin/.../Content/Levels` and `HS2Editor/bin/.../Content/Levels`. This keeps direct game launches from reading stale copied content between builds. Editor-launched play still passes the exact source level path through `--level`.
+When a source level is saved, HS2Editor also mirrors that JSON into any existing runtime output copies under `Game/bin/.../Content/Levels` and `HS2Editor/bin/.../Content/Levels`. This keeps direct game launches from reading stale copied content between builds. Editor-launched play passes the exact source level path through `--level` and now starts at its authored spawn with the prototype loadout, without automatically restoring another level's save state.
 
 ## Scene Mesh Selection Visibility
 
-Scene meshes are now easier to edit directly. GLB objects render as their mesh shape, selected meshes receive a yellow editor highlight, and child meshes under the selected root receive a softer blue highlight. Selection uses exact oriented-box picking for the editor draw volume, and transparent collision helpers are ignored unless `Show Colliders (OBB)` is enabled. This is intended for prefab-style assemblies such as `PracticeDoorFrameMesh` with a child door.
+Scene meshes are now easier to edit directly. GLB objects render as their mesh shape, and selected meshes use a yellow wire/corner outline instead of a solid yellow fill so the texture and orientation remain visible while editing. Child meshes under the selected root receive a softer blue outline. Selection uses exact oriented-box picking for the editor draw volume, and transparent collision helpers are ignored unless `Show Colliders (OBB)` is enabled. This is intended for prefab-style assemblies such as `PracticeDoorFrameMesh` with a child door.
 
 Collider/blockout boxes default to hidden for GLB scene editing and can be enabled from the toolbar with `Show Colliders (OBB)` when collision tuning or selection of invisible helpers is needed. Rigid-body fallback boxes now respect the entity `Color` value instead of forcing magenta, so primitive helper colliders can use `Color.W = 0` to stay collision-only. Do not rely on alpha to hide GLB renderers; collision-only helpers should have no `MeshPath`. For static GLB architecture that is rotated or heavily scaled to make the texture face correctly, use `Shape = "Mesh"` so the collider follows the model triangles instead of the fitted box. If scene meshes are hidden from the View menu, the Scene panel shows a warning.
+## Vertex/Corner Snapping
 
-
-
-
+Hold `V` in the Scene view to enter the first-pass snapping workflow. While holding `V`, click a corner on the selected object to choose the source corner, then click a corner on another object to move the selected object so those two corners align. This currently uses the editor object's oriented bounds corners rather than every imported mesh vertex, which is enough for lining up modular walls, floors, frames, and doors.

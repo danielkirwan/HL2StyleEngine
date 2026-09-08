@@ -38,6 +38,11 @@ public sealed class BasicWorldRenderer : IDisposable
     private readonly Pipeline _texturedPipeline;
     private readonly ResourceLayout _textureLayout;
     private readonly Sampler _modelSampler;
+    private const int MaxPointLights = 32;
+    private readonly DeviceBuffer _lightingBuffer;
+    private readonly ResourceLayout _lightingLayout;
+    private readonly ResourceSet _lightingSet;
+    private readonly Vector4[] _lightingData = new Vector4[1 + MaxPointLights * 2];
 
     // Ring config
     private const uint MaxObjectsPerFrame = 4096;
@@ -50,6 +55,7 @@ public sealed class BasicWorldRenderer : IDisposable
         public Matrix4x4 Model;
         public Vector4 Color;
         public Vector4 Material;
+        public Matrix4x4 NormalMatrix;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -113,6 +119,13 @@ public sealed class BasicWorldRenderer : IDisposable
             new ResourceLayoutElementDescription("Camera", ResourceKind.UniformBuffer, ShaderStages.Vertex | ShaderStages.Fragment)));
 
         _cameraSet = _factory.CreateResourceSet(new ResourceSetDescription(_cameraLayout, _cameraBuffer));
+
+        _lightingBuffer = _factory.CreateBuffer(new BufferDescription(
+            (uint)(_lightingData.Length * 16), BufferUsage.UniformBuffer | BufferUsage.Dynamic));
+        _lightingLayout = _factory.CreateResourceLayout(new ResourceLayoutDescription(
+            new ResourceLayoutElementDescription("Lighting", ResourceKind.UniformBuffer, ShaderStages.Fragment)));
+        _lightingSet = _factory.CreateResourceSet(new ResourceSetDescription(_lightingLayout, _lightingBuffer));
+        _gd.UpdateBuffer(_lightingBuffer, 0, _lightingData);
 
         uint objectDataSize = (uint)Marshal.SizeOf<ObjectData>(); 
         _objectStride = AlignUp(objectDataSize, 256);             
@@ -213,7 +226,7 @@ public sealed class BasicWorldRenderer : IDisposable
                 depthClipEnabled: true,
                 scissorTestEnabled: false),
             PrimitiveTopology = PrimitiveTopology.TriangleList,
-            ResourceLayouts = new[] { _cameraLayout, _objectLayout, _textureLayout },
+            ResourceLayouts = new[] { _cameraLayout, _objectLayout, _textureLayout, _lightingLayout },
             ShaderSet = new ShaderSetDescription(new[] { texturedVertexLayout }, _texturedShaders),
             Outputs = output
         };
@@ -224,6 +237,24 @@ public sealed class BasicWorldRenderer : IDisposable
     public void BeginFrame()
     {
         _objectWriteIndex = 0;
+    }
+
+    public void UpdatePointLights(IEnumerable<WorldPointLight> lights, Vector3 cameraPosition)
+    {
+        Array.Clear(_lightingData);
+        int count = 0;
+        foreach (var light in lights
+            .Where(l => l.Intensity > 0f && l.Range > 0f && float.IsFinite(l.Range) && float.IsFinite(l.Intensity))
+            .OrderBy(l => MathF.Max(0f, Vector3.Distance(l.Position, cameraPosition) - l.Range))
+            .ThenBy(l => Vector3.DistanceSquared(l.Position, cameraPosition))
+            .Take(MaxPointLights))
+        {
+            _lightingData[1 + count * 2] = new Vector4(light.Position, light.Range);
+            _lightingData[2 + count * 2] = new Vector4(Vector3.Max(light.Color, Vector3.Zero), light.Intensity);
+            count++;
+        }
+        _lightingData[0] = new Vector4(count, 0f, 0f, 0f);
+        _gd.UpdateBuffer(_lightingBuffer, 0, _lightingData);
     }
 
     public void UpdateCamera(Matrix4x4 viewProj, Vector3 cameraPosition = default)
@@ -314,7 +345,12 @@ public sealed class BasicWorldRenderer : IDisposable
         if (_objectWriteIndex >= MaxObjectsPerFrame)
             return;
 
-        ObjectData obj = new ObjectData { Model = model, Color = color, Material = material };
+        Matrix4x4.Invert(model, out Matrix4x4 inverse);
+        ObjectData obj = new ObjectData
+        {
+            Model = model, Color = color, Material = material,
+            NormalMatrix = Matrix4x4.Transpose(inverse)
+        };
 
         uint slot = _objectWriteIndex++;
         uint offset = slot * _objectStride;
@@ -325,6 +361,7 @@ public sealed class BasicWorldRenderer : IDisposable
         cl.SetGraphicsResourceSet(0, _cameraSet);
         cl.SetGraphicsResourceSet(1, _objectSets[slot]);
         cl.SetGraphicsResourceSet(2, textureSet);
+        cl.SetGraphicsResourceSet(3, _lightingSet);
         cl.SetVertexBuffer(0, vertexBuffer);
         cl.SetIndexBuffer(indexBuffer, indexFormat);
         cl.DrawIndexed(indexCount, 1, 0, 0, 0);
@@ -368,6 +405,9 @@ public sealed class BasicWorldRenderer : IDisposable
 
         _textureLayout.Dispose();
         _modelSampler.Dispose();
+        _lightingSet.Dispose();
+        _lightingLayout.Dispose();
+        _lightingBuffer.Dispose();
 
         foreach (var rs in _objectSets) rs.Dispose();
 

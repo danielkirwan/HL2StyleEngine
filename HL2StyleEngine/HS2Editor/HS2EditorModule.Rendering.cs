@@ -85,18 +85,27 @@ internal sealed partial class HS2EditorModule
     private void UpdateEditorPicking(bool sceneMouse, bool wantsMouse)
     {
         bool ctrl = _input.IsDown(Key.ControlLeft) || _input.IsDown(Key.ControlRight);
+        bool vertexSnap = _input.IsDown(Key.V);
 
         if (!string.IsNullOrWhiteSpace(_activeGlbDragPath))
+        {
+            _editor.UpdateVertexSnapPreview(default, active: false);
             return;
+        }
+
+        if (sceneMouse && !wantsMouse)
+            _editor.UpdateVertexSnapPreview(GetMouseRay(), vertexSnap);
+        else
+            _editor.UpdateVertexSnapPreview(default, active: false);
 
         if (_input.LeftMousePressedThisFrame && sceneMouse && !wantsMouse)
         {
-            _sceneMouseDragActive = true;
-            _editor.OnMousePressed(GetMouseRay(), ctrl);
+            _sceneMouseDragActive = !vertexSnap;
+            _editor.OnMousePressed(GetMouseRay(), ctrl, vertexSnap);
         }
         else if (_input.LeftMouseDown && _sceneMouseDragActive)
         {
-            _editor.OnMouseHeld(GetMouseRay(), leftDown: true, ctrl);
+            _editor.OnMouseHeld(GetMouseRay(), leftDown: true, ctrl, vertexSnap);
         }
         else if (!_input.LeftMouseDown && _sceneMouseDragActive)
         {
@@ -172,6 +181,7 @@ internal sealed partial class HS2EditorModule
 
         _world.BeginFrame();
         _world.UpdateCamera(viewProj, _cameraPosition);
+        LevelLighting.Apply(_world, _editor, _cameraPosition);
 
         DrawGrid(renderer);
 
@@ -185,6 +195,8 @@ internal sealed partial class HS2EditorModule
             {
                 if (_editor.ShowColliders)
                     DrawColliderOverlay(renderer, draw, selectedHierarchy);
+
+                DrawSelectionOutline(renderer, draw, selected, selectedHierarchy);
                 continue;
             }
 
@@ -196,18 +208,16 @@ internal sealed partial class HS2EditorModule
                 continue;
             }
 
-            Vector4 color = selected
-                ? new Vector4(1f, 1f, 0.16f, 1f)
-                : selectedHierarchy
-                    ? new Vector4(0.35f, 0.82f, 1f, 1f)
-                    : draw.Color;
+            if (!invisibleHelper)
+            {
+                if (draw.IsSphere)
+                    DrawSphere(renderer, draw.Position, MathF.Max(0.05f, draw.Size.X * 0.5f), draw.Color);
+                else
+                    DrawBox(renderer, draw.Position, draw.Size, draw.Rotation, draw.Color);
+            }
 
-            if (draw.IsSphere)
-                DrawSphere(renderer, draw.Position, MathF.Max(0.05f, draw.Size.X * 0.5f), color);
-            else
-                DrawBox(renderer, draw.Position, draw.Size, draw.Rotation, color);
+            DrawSelectionOutline(renderer, draw, selected, selectedHierarchy);
         }
-
         if (_editor.HasGizmo(out EditorDrawBox xLine, out EditorDrawBox xHandle,
                              out EditorDrawBox yLine, out EditorDrawBox yHandle,
                              out EditorDrawBox zLine, out EditorDrawBox zHandle))
@@ -220,6 +230,11 @@ internal sealed partial class HS2EditorModule
             DrawBox(renderer, zHandle.Position, zHandle.Size, zHandle.Rotation, zHandle.Color);
         }
 
+        for (int i = 0; i < _editor.VertexSnapMarkers.Count; i++)
+        {
+            EditorDrawBox marker = _editor.VertexSnapMarkers[i];
+            DrawBox(renderer, marker.Position, marker.Size, marker.Rotation, marker.Color);
+        }
         renderer.CommandList.SetViewport(0, new Viewport(0f, 0f, windowWidth, windowHeight, 0f, 1f));
         renderer.CommandList.SetScissorRect(0, 0, 0, (uint)windowWidth, (uint)windowHeight);
     }
@@ -243,10 +258,6 @@ internal sealed partial class HS2EditorModule
         {
             Matrix4x4 transform = CreateBoundsFitTransform(entry.Min, entry.Max, draw.Position, draw.Size, draw.Rotation);
             _world.DrawModel(renderer.CommandList, entry.RenderModel, transform, Vector4.One);
-            if (selected)
-                _world.DrawModelSolidColor(renderer.CommandList, entry.RenderModel, transform, new Vector4(1f, 0.92f, 0.16f, 0.42f));
-            else if (selectedHierarchy)
-                _world.DrawModelSolidColor(renderer.CommandList, entry.RenderModel, transform, new Vector4(0.2f, 0.78f, 1f, 0.30f));
             return true;
         }
         catch (Exception ex)
@@ -413,6 +424,104 @@ internal sealed partial class HS2EditorModule
             DrawSphere(renderer, draw.Position, MathF.Max(0.05f, draw.Size.X * 0.5f), color);
         else
             DrawBox(renderer, draw.Position, draw.Size, draw.Rotation, color);
+    }
+    private void DrawSelectionOutline(Renderer renderer, EditorDrawBox draw, bool selected, bool selectedHierarchy)
+    {
+        if (!selectedHierarchy)
+            return;
+
+        Vector4 color = selected
+            ? new Vector4(1f, 0.92f, 0.16f, 1f)
+            : new Vector4(0.2f, 0.78f, 1f, 0.9f);
+        float thickness = selected ? 0.035f : 0.025f;
+        float cornerSize = selected ? 0.12f : 0.09f;
+        Quaternion rotation = draw.IsSphere ? Quaternion.Identity : draw.Rotation;
+
+        DrawWireObb(renderer, draw.Position, draw.Size, rotation, color, thickness);
+        DrawObbCorners(renderer, draw.Position, draw.Size, rotation, color, cornerSize);
+    }
+
+    private void DrawObbCorners(Renderer renderer, Vector3 center, Vector3 size, Quaternion rotation, Vector4 color, float cornerSize)
+    {
+        Vector3 he = new(MathF.Abs(size.X) * 0.5f, MathF.Abs(size.Y) * 0.5f, MathF.Abs(size.Z) * 0.5f);
+        Span<Vector3> corners = stackalloc Vector3[8];
+        corners[0] = new Vector3(-he.X, -he.Y, -he.Z);
+        corners[1] = new Vector3( he.X, -he.Y, -he.Z);
+        corners[2] = new Vector3( he.X, -he.Y,  he.Z);
+        corners[3] = new Vector3(-he.X, -he.Y,  he.Z);
+        corners[4] = new Vector3(-he.X,  he.Y, -he.Z);
+        corners[5] = new Vector3( he.X,  he.Y, -he.Z);
+        corners[6] = new Vector3( he.X,  he.Y,  he.Z);
+        corners[7] = new Vector3(-he.X,  he.Y,  he.Z);
+
+        Vector3 cube = new(cornerSize);
+        for (int i = 0; i < corners.Length; i++)
+        {
+            Vector3 world = Vector3.Transform(corners[i], rotation) + center;
+            DrawBox(renderer, world, cube, Quaternion.Identity, color);
+        }
+    }
+
+    private void DrawWireObb(Renderer renderer, Vector3 center, Vector3 size, Quaternion rotation, Vector4 color, float thickness)
+    {
+        Vector3 he = new(MathF.Abs(size.X) * 0.5f, MathF.Abs(size.Y) * 0.5f, MathF.Abs(size.Z) * 0.5f);
+        Span<Vector3> corners = stackalloc Vector3[8];
+        corners[0] = new Vector3(-he.X, -he.Y, -he.Z);
+        corners[1] = new Vector3( he.X, -he.Y, -he.Z);
+        corners[2] = new Vector3( he.X, -he.Y,  he.Z);
+        corners[3] = new Vector3(-he.X, -he.Y,  he.Z);
+        corners[4] = new Vector3(-he.X,  he.Y, -he.Z);
+        corners[5] = new Vector3( he.X,  he.Y, -he.Z);
+        corners[6] = new Vector3( he.X,  he.Y,  he.Z);
+        corners[7] = new Vector3(-he.X,  he.Y,  he.Z);
+
+        for (int i = 0; i < corners.Length; i++)
+            corners[i] = Vector3.Transform(corners[i], rotation) + center;
+
+        Span<(int A, int B)> edges = stackalloc (int, int)[12]
+        {
+            (0, 1), (1, 2), (2, 3), (3, 0),
+            (4, 5), (5, 6), (6, 7), (7, 4),
+            (0, 4), (1, 5), (2, 6), (3, 7)
+        };
+
+        for (int i = 0; i < edges.Length; i++)
+            DrawEdgeBox(renderer, corners[edges[i].A], corners[edges[i].B], thickness, color);
+    }
+
+    private void DrawEdgeBox(Renderer renderer, Vector3 a, Vector3 b, float thickness, Vector4 color)
+    {
+        Vector3 dir = b - a;
+        float length = dir.Length();
+        if (length < 0.0001f)
+            return;
+
+        dir /= length;
+        Quaternion rotation = FromToRotation(Vector3.UnitZ, dir);
+        DrawBox(renderer, (a + b) * 0.5f, new Vector3(thickness, thickness, length), rotation, color);
+    }
+
+    private static Quaternion FromToRotation(Vector3 from, Vector3 to)
+    {
+        from = Vector3.Normalize(from);
+        to = Vector3.Normalize(to);
+        float dot = Vector3.Dot(from, to);
+
+        if (dot > 0.9999f)
+            return Quaternion.Identity;
+
+        if (dot < -0.9999f)
+        {
+            Vector3 axis = Vector3.Cross(from, Vector3.UnitX);
+            if (axis.LengthSquared() < 0.0001f)
+                axis = Vector3.Cross(from, Vector3.UnitY);
+
+            return Quaternion.CreateFromAxisAngle(Vector3.Normalize(axis), MathF.PI);
+        }
+
+        Vector3 cross = Vector3.Normalize(Vector3.Cross(from, to));
+        float angle = MathF.Acos(Math.Clamp(dot, -1f, 1f));
+        return Quaternion.CreateFromAxisAngle(cross, angle);
     }
     private void DrawBox(Renderer renderer, Vector3 position, Vector3 size, Quaternion rotation, Vector4 color)
     {

@@ -23,6 +23,7 @@ public sealed class LevelEditorController
     public Action? SaveActionOverride { get; set; }
 
     public readonly List<EditorDrawBox> DrawBoxes = new();
+    public readonly List<EditorDrawBox> VertexSnapMarkers = new();
     public readonly List<Aabb> SolidColliders = new();
     public readonly List<(string eventName, Aabb aabb, bool wasInside)> Triggers = new();
 
@@ -31,6 +32,8 @@ public sealed class LevelEditorController
     public bool GizmoEnabled = true;
     public bool SnapEnabled = false;
     public float SnapStep = 0.25f;
+    public bool VertexSnapActive { get; private set; }
+    public string VertexSnapStatus { get; private set; } = "";
 
     public float GizmoAxisLen = 1.5f;
     public float GizmoAxisThickness = 0.05f;
@@ -40,6 +43,7 @@ public sealed class LevelEditorController
     public float MarkerMedium = 0.35f;
 
     private enum GizmoAxis { None, X, Y, Z }
+    private enum VertexSnapPickMode { Source, Target }
 
     private bool _dragging;
     private GizmoAxis _dragAxis = GizmoAxis.None;
@@ -50,6 +54,12 @@ public sealed class LevelEditorController
     private Vector3 _axisOriginAtGrab;
     private float _axisGrabT;
     private Vector3 _entityPosAtGrab;
+    private bool _vertexSnapSourceActive;
+    private int _vertexSnapSourceEntityIndex = -1;
+    private int _vertexSnapSourceCornerIndex = -1;
+    private Vector3 _vertexSnapSourceOffset;
+    private int _vertexSnapHoverEntityIndex = -1;
+    private int _vertexSnapHoverCornerIndex = -1;
 
     private bool _layoutDockedOnce = false;
 
@@ -884,10 +894,23 @@ public sealed class LevelEditorController
 
         ImGui.Checkbox("Gizmo", ref GizmoEnabled);
         ImGui.SameLine();
+        bool usePointLights = LevelFile.UsePointLights;
+        if (ImGui.Checkbox("Scene Point Lights", ref usePointLights))
+        {
+            BeginEdit();
+            LevelFile.UsePointLights = usePointLights;
+            Dirty = true;
+            EndEditIfAny();
+        }
         ImGui.Checkbox("Snap", ref SnapEnabled);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(100);
         ImGui.DragFloat("Step", ref SnapStep, 0.01f, 0.01f, 10f);
+        if (VertexSnapActive)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(new Vector4(1f, 0.92f, 0.16f, 1f), VertexSnapStatus);
+        }
 
         ImGui.Separator();
         ImGui.Text("Debug Draw");
@@ -2207,6 +2230,7 @@ public sealed class LevelEditorController
         ImGui.BulletText("LMB on axis handle: axis drag (X/Y/Z)");
         ImGui.BulletText("RMB: look  |  WASD/QE: move  |  Shift: fast");
         ImGui.BulletText("Snap: checkbox, hold Ctrl to disable");
+        ImGui.BulletText("Vertex snap: hold V, click selected corner, then click target corner");
         ImGui.BulletText("Duplicate: Ctrl+D");
         ImGui.BulletText("Hierarchy: search name contains, t:type, drag-drop to parent, F to frame");
     }
@@ -2518,8 +2542,51 @@ public sealed class LevelEditorController
         }
     }
 
-    public void OnMousePressed(EditorPicking.Ray ray, bool ctrlDown)
+    public void UpdateVertexSnapPreview(EditorPicking.Ray ray, bool active)
     {
+        bool hasSelection = SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count;
+        VertexSnapActive = active && hasSelection;
+
+        if (!VertexSnapActive)
+        {
+            ResetVertexSnapState();
+            return;
+        }
+
+        if (_vertexSnapSourceActive && _vertexSnapSourceEntityIndex != SelectedEntityIndex)
+            ResetVertexSnapSource();
+
+        VertexSnapPickMode mode = _vertexSnapSourceActive ? VertexSnapPickMode.Target : VertexSnapPickMode.Source;
+        if (TryPickVertexSnapCorner(ray, mode, out int hoverEntity, out int hoverCorner, out _))
+        {
+            _vertexSnapHoverEntityIndex = hoverEntity;
+            _vertexSnapHoverCornerIndex = hoverCorner;
+        }
+        else
+        {
+            _vertexSnapHoverEntityIndex = -1;
+            _vertexSnapHoverCornerIndex = -1;
+        }
+
+        VertexSnapStatus = _vertexSnapSourceActive
+            ? "Vertex snap: click target corner"
+            : "Vertex snap: click selected corner";
+
+        RebuildVertexSnapMarkers();
+    }
+
+    public void OnMousePressed(EditorPicking.Ray ray, bool ctrlDown, bool vertexSnapDown = false)
+    {
+        if (vertexSnapDown)
+        {
+            _dragging = false;
+            _dragAxis = GizmoAxis.None;
+            HandleVertexSnapClick(ray);
+            return;
+        }
+
+        ResetVertexSnapState();
+
         if (GizmoEnabled && SelectedEntityIndex >= 0 && SelectedEntityIndex < LevelFile.Entities.Count)
         {
             Vector3 p = GetEntityWorldPosition(SelectedEntityIndex);
@@ -2550,8 +2617,11 @@ public sealed class LevelEditorController
         }
     }
 
-    public void OnMouseHeld(EditorPicking.Ray ray, bool leftDown, bool ctrlDown)
+    public void OnMouseHeld(EditorPicking.Ray ray, bool leftDown, bool ctrlDown, bool vertexSnapDown = false)
     {
+        if (vertexSnapDown)
+            return;
+
         if (!_dragging || !leftDown)
             return;
 
@@ -2563,7 +2633,6 @@ public sealed class LevelEditorController
         else
             ContinueXZDrag(ray, ctrlDown);
     }
-
     public void OnMouseReleased()
     {
         _dragging = false;
@@ -2571,6 +2640,179 @@ public sealed class LevelEditorController
         EndEditIfAny();
     }
 
+    private void HandleVertexSnapClick(EditorPicking.Ray ray)
+    {
+        if (SelectedEntityIndex < 0 || SelectedEntityIndex >= LevelFile.Entities.Count)
+            return;
+
+        if (!_vertexSnapSourceActive)
+        {
+            if (TryPickVertexSnapCorner(ray, VertexSnapPickMode.Source, out int sourceEntity, out int sourceCorner, out Vector3 sourceWorld))
+                SetVertexSnapSource(sourceEntity, sourceCorner, sourceWorld);
+
+            RebuildVertexSnapMarkers();
+            return;
+        }
+
+        if (TryPickVertexSnapCorner(ray, VertexSnapPickMode.Target, out _, out _, out Vector3 targetWorld))
+        {
+            BeginEdit();
+            SetEntityWorldPosition(SelectedEntityIndex, targetWorld - _vertexSnapSourceOffset);
+            EndEditIfAny();
+            ResetVertexSnapSource();
+            RebuildVertexSnapMarkers();
+            return;
+        }
+
+        if (TryPickVertexSnapCorner(ray, VertexSnapPickMode.Source, out int newSourceEntity, out int newSourceCorner, out Vector3 newSourceWorld))
+        {
+            SetVertexSnapSource(newSourceEntity, newSourceCorner, newSourceWorld);
+            RebuildVertexSnapMarkers();
+        }
+    }
+
+    private void SetVertexSnapSource(int entityIndex, int cornerIndex, Vector3 sourceWorld)
+    {
+        if (entityIndex != SelectedEntityIndex)
+            return;
+
+        _vertexSnapSourceActive = true;
+        _vertexSnapSourceEntityIndex = entityIndex;
+        _vertexSnapSourceCornerIndex = cornerIndex;
+        _vertexSnapSourceOffset = sourceWorld - GetEntityWorldPosition(entityIndex);
+        VertexSnapStatus = "Vertex snap: click target corner";
+    }
+
+    private void ResetVertexSnapState()
+    {
+        VertexSnapActive = false;
+        VertexSnapStatus = "";
+        VertexSnapMarkers.Clear();
+        ResetVertexSnapSource();
+        _vertexSnapHoverEntityIndex = -1;
+        _vertexSnapHoverCornerIndex = -1;
+    }
+
+    private void ResetVertexSnapSource()
+    {
+        _vertexSnapSourceActive = false;
+        _vertexSnapSourceEntityIndex = -1;
+        _vertexSnapSourceCornerIndex = -1;
+        _vertexSnapSourceOffset = Vector3.Zero;
+    }
+
+    private bool TryPickVertexSnapCorner(EditorPicking.Ray ray, VertexSnapPickMode mode, out int entityIndex, out int cornerIndex, out Vector3 cornerWorld)
+    {
+        entityIndex = -1;
+        cornerIndex = -1;
+        cornerWorld = default;
+
+        float radius = MathF.Max(0.08f, CornerSize * 1.75f);
+        Vector3 halfMarker = new(radius);
+        float bestT = float.PositiveInfinity;
+
+        Span<Vector3> corners = stackalloc Vector3[8];
+        for (int i = 0; i < DrawBoxes.Count; i++)
+        {
+            if (!CanUseVertexSnapBox(i, mode))
+                continue;
+
+            GetObbCorners(DrawBoxes[i], corners);
+
+            for (int c = 0; c < corners.Length; c++)
+            {
+                Vector3 p = corners[c];
+                if (EditorPicking.RayIntersectsAabb(ray, p - halfMarker, p + halfMarker, out float t) && t < bestT)
+                {
+                    bestT = t;
+                    entityIndex = i;
+                    cornerIndex = c;
+                    cornerWorld = p;
+                }
+            }
+        }
+
+        return entityIndex >= 0;
+    }
+
+    private bool CanUseVertexSnapBox(int entityIndex, VertexSnapPickMode mode)
+    {
+        if (entityIndex < 0 || entityIndex >= DrawBoxes.Count)
+            return false;
+
+        EditorDrawBox draw = DrawBoxes[entityIndex];
+        if (draw.IsSphere)
+            return false;
+
+        if (draw.Color.W <= 0.01f && !ShowColliders)
+            return false;
+
+        if (mode == VertexSnapPickMode.Source)
+            return entityIndex == SelectedEntityIndex;
+
+        return entityIndex != SelectedEntityIndex;
+    }
+
+    private void RebuildVertexSnapMarkers()
+    {
+        VertexSnapMarkers.Clear();
+        if (!VertexSnapActive || SelectedEntityIndex < 0 || SelectedEntityIndex >= DrawBoxes.Count)
+            return;
+
+        AddVertexSnapMarkersForEntity(SelectedEntityIndex, new Vector4(1f, 0.92f, 0.16f, 1f));
+
+        if (!_vertexSnapSourceActive)
+            return;
+
+        for (int i = 0; i < DrawBoxes.Count; i++)
+        {
+            if (i == SelectedEntityIndex || !CanUseVertexSnapBox(i, VertexSnapPickMode.Target))
+                continue;
+
+            AddVertexSnapMarkersForEntity(i, new Vector4(0.2f, 0.78f, 1f, 0.95f));
+        }
+    }
+
+    private void AddVertexSnapMarkersForEntity(int entityIndex, Vector4 baseColor)
+    {
+        if (entityIndex < 0 || entityIndex >= DrawBoxes.Count)
+            return;
+
+        Span<Vector3> corners = stackalloc Vector3[8];
+        GetObbCorners(DrawBoxes[entityIndex], corners);
+
+        float marker = MathF.Max(0.08f, CornerSize * (entityIndex == SelectedEntityIndex ? 1.35f : 1.05f));
+        Vector3 markerSize = new(marker);
+
+        for (int i = 0; i < corners.Length; i++)
+        {
+            Vector4 color = baseColor;
+            if (_vertexSnapSourceActive && entityIndex == _vertexSnapSourceEntityIndex && i == _vertexSnapSourceCornerIndex)
+                color = new Vector4(1f, 0.55f, 0.05f, 1f);
+
+            if (entityIndex == _vertexSnapHoverEntityIndex && i == _vertexSnapHoverCornerIndex)
+                color = new Vector4(0.3f, 1f, 0.25f, 1f);
+
+            VertexSnapMarkers.Add(EditorDrawBox.AxisAligned(corners[i], markerSize, color));
+        }
+    }
+
+    private static void GetObbCorners(EditorDrawBox draw, Span<Vector3> corners)
+    {
+        Vector3 he = new(MathF.Abs(draw.Size.X) * 0.5f, MathF.Abs(draw.Size.Y) * 0.5f, MathF.Abs(draw.Size.Z) * 0.5f);
+
+        corners[0] = new Vector3(-he.X, -he.Y, -he.Z);
+        corners[1] = new Vector3( he.X, -he.Y, -he.Z);
+        corners[2] = new Vector3( he.X, -he.Y,  he.Z);
+        corners[3] = new Vector3(-he.X, -he.Y,  he.Z);
+        corners[4] = new Vector3(-he.X,  he.Y, -he.Z);
+        corners[5] = new Vector3( he.X,  he.Y, -he.Z);
+        corners[6] = new Vector3( he.X,  he.Y,  he.Z);
+        corners[7] = new Vector3(-he.X,  he.Y,  he.Z);
+
+        for (int i = 0; i < corners.Length; i++)
+            corners[i] = Vector3.Transform(corners[i], draw.Rotation) + draw.Position;
+    }
     private Vector3 GetEntityWorldPosition(int idx)
     {
         Matrix4x4 w = GetWorldMatrix(idx);

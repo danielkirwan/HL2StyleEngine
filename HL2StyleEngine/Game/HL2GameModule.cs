@@ -325,7 +325,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         string levelPath = ResolveInitialLevelPath(_initialLevelPath) ?? Path.Combine(levelsDirectory, MeshedPracticeLevelFileName);
         _editor.LoadOrCreate(levelPath, GetDefaultLevelFactoryForPath(levelPath));
         RebuildRuntimeWorld();
-        if (!TryLoadPrototypeSave())
+        if (!string.IsNullOrWhiteSpace(_initialLevelPath) || !TryLoadPrototypeSave())
         {
             ApplySpawnFromEditor(forceResetVelocity: true);
             EnsurePrototypeWeaponLoadout(includeStarterAmmo: true);
@@ -6085,20 +6085,25 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         bool leftReleased = !leftDown && _prevLeftMouseDown;
 
         bool ctrlDown = _inputState.IsDown(Key.ControlLeft) || _inputState.IsDown(Key.ControlRight);
+        bool vertexSnapDown = _inputState.IsDown(Key.V);
 
         if (!uiWantsMouse)
         {
+            _editor.UpdateVertexSnapPreview(GetMouseRay(), vertexSnapDown);
+
             if (leftPressed)
-                _editor.OnMousePressed(GetMouseRay(), ctrlDown);
+                _editor.OnMousePressed(GetMouseRay(), ctrlDown, vertexSnapDown);
 
             if (leftDown)
-                _editor.OnMouseHeld(GetMouseRay(), leftDown: true, ctrlDown);
+                _editor.OnMouseHeld(GetMouseRay(), leftDown: true, ctrlDown, vertexSnapDown);
 
             if (leftReleased)
                 _editor.OnMouseReleased();
         }
         else
         {
+            _editor.UpdateVertexSnapPreview(default, active: false);
+
             if (leftReleased)
                 _editor.OnMouseReleased();
         }
@@ -6930,6 +6935,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         _world.BeginFrame();
         _world.UpdateCamera(viewProj, _camera.Position);
+        LevelLighting.Apply(_world, _editor, _camera.Position);
 
         // -----------------------------
         // EDITOR MODE: draw editor view
@@ -6942,13 +6948,15 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
                 bool selected = i == _editor.SelectedEntityIndex;
                 if (TryDrawEditorModeModel(renderer, i, d, selected))
+                {
+                    if (selected)
+                        DrawEditorSelectionOutline(renderer, d);
                     continue;
+                }
 
                 Vector4 color = d.Color;
-                if (selected)
-                    color = new Vector4(1f, 1f, 0.1f, 1f);
-
-                if (d.Color.W <= 0.01f && !selected)
+                bool invisibleHelper = d.Color.W <= 0.01f;
+                if (invisibleHelper && !selected)
                     continue;
 
                 RuntimeShapeKind shape =
@@ -6958,7 +6966,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 float radius = d.Size.X * 0.5f;
                 float height = d.Size.Y;
 
-                DrawPrimitive(renderer, shape, d.Position, d.Size, d.Rotation, color, radius, height);
+                if (!invisibleHelper)
+                    DrawPrimitive(renderer, shape, d.Position, d.Size, d.Rotation, color, radius, height);
+
+                if (selected)
+                    DrawEditorSelectionOutline(renderer, d);
             }
 
             if (_editor.HasGizmo(out var xLine, out var xHandle,
@@ -6975,6 +6987,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 DrawEditorBox(renderer, zHandle.Position, zHandle.Size, zHandle.Rotation, zHandle.Color);
             }
 
+            for (int i = 0; i < _editor.VertexSnapMarkers.Count; i++)
+            {
+                var marker = _editor.VertexSnapMarkers[i];
+                DrawEditorBox(renderer, marker.Position, marker.Size, marker.Rotation, marker.Color);
+            }
             if (_editor.ShowColliders)
             {
                 for (int i = 0; i < _editor.LevelFile.Entities.Count; i++)
@@ -7091,10 +7108,6 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         Matrix4x4 transform = CreateBoundsFitTransform(entry.Bounds, draw.Position, draw.Size, draw.Rotation);
         _world.DrawModel(renderer.CommandList, entry.Model, transform, Vector4.One);
-
-        if (selected)
-            _world.DrawModelSolidColor(renderer.CommandList, entry.Model, transform, new Vector4(1f, 0.92f, 0.16f, 0.38f));
-
         return true;
     }
     public void RenderOverlay(Renderer renderer)
@@ -7541,6 +7554,13 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     }
 
 
+    private void DrawEditorSelectionOutline(Renderer renderer, EditorDrawBox draw)
+    {
+        Vector4 color = new(1f, 0.92f, 0.16f, 1f);
+        Quaternion rotation = draw.IsSphere ? Quaternion.Identity : draw.Rotation;
+        DrawWireObb(renderer, draw.Position, draw.Size, rotation, color, 0.035f);
+        DrawObbCorners(renderer, draw.Position, draw.Size, rotation, color, 0.12f);
+    }
     private void DrawObbCorners(Renderer renderer, Vector3 center, Vector3 size, Quaternion rot, Vector4 color, float cornerSize)
     {
         Vector3 he = size * 0.5f;
