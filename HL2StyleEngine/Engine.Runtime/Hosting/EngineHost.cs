@@ -54,6 +54,7 @@ public sealed class EngineHost : IDisposable
     public void Run(IGameModule module)
     {
         module.Initialize(Context);
+        FrameProfile? profile = FrameProfile.FromEnvironment();
 
         _prevTime = _sw.Elapsed.TotalSeconds;
 
@@ -92,11 +93,15 @@ public sealed class EngineHost : IDisposable
             if (dt > 0.1f) dt = 0.1f;
             Time.DeltaTime = dt;
 
+            profile?.Begin();
             module.Update(dt, snapshot);
+            profile?.Mark();
             _fixed.Update(dt, () => module.FixedUpdate(Time.FixedDeltaTime));
+            profile?.Mark();
 
             _imgui.Update(dt, snapshot);
             module.DrawImGui();
+            profile?.Mark();
 
             _renderer.BeginFrame();
 
@@ -106,6 +111,7 @@ public sealed class EngineHost : IDisposable
             }
 
             _renderer.ResolveWorldToSwapchain();
+            profile?.Mark();
 
             if (module is IOverlayRenderer overlay)
             {
@@ -113,8 +119,11 @@ public sealed class EngineHost : IDisposable
             }
 
             _imgui.Render(_renderer.GraphicsDevice, _renderer.CommandList);
+            profile?.Mark();
 
             _renderer.EndFrame();
+            profile?.Mark();
+            if (profile?.Finish(w, h) == true) break;
         }
     }
 

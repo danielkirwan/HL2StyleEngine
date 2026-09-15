@@ -19,6 +19,7 @@ public readonly struct WorldCollider
     public readonly float Height;
     public readonly Quaternion Rotation;
     public readonly MeshCollisionMesh? MeshData;
+    private readonly Aabb _bounds;
 
     private WorldCollider(WorldColliderShape shape, Vector3 center, Vector3 halfExtents, float radius, float height, Quaternion rotation, MeshCollisionMesh? meshData = null)
     {
@@ -29,6 +30,8 @@ public readonly struct WorldCollider
         Height = height;
         Rotation = Quaternion.Normalize(rotation);
         MeshData = meshData;
+        _bounds = default;
+        _bounds = CalculateAabb();
     }
 
     public static WorldCollider Box(Vector3 center, Vector3 halfExtents, Quaternion rotation)
@@ -56,7 +59,10 @@ public readonly struct WorldCollider
         b = Center + offset;
     }
 
-    public Aabb GetAabb()
+    // This value cannot become stale: changing a pose creates a new collider.
+    public Aabb GetAabb() => _bounds;
+
+    private Aabb CalculateAabb()
     {
         if (Shape == WorldColliderShape.Mesh && MeshData != null)
             return MeshData.Bounds;

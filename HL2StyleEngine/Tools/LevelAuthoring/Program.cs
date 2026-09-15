@@ -3,6 +3,35 @@ using Engine.Render;
 using Engine.Editor.Level;
 
 string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+if (args.Length == 1 && args[0] == "validate-inventory-input")
+{
+    try { InventoryInputChecks.Run(root); }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine(ex);
+        Environment.ExitCode = 1;
+    }
+    return;
+}
+if (args.Length == 1 && args[0] == "validate-six-room-puzzles")
+{
+    PuzzleChecks.Run(root);
+    return;
+}
+if (args.Length == 1 && args[0] == "add-six-room-puzzles")
+{
+    string path = Path.Combine(root, "Game/Content/Levels/sixRoomTest.json");
+    var level = LevelIO.Load(path);
+    SixRoomPuzzles.AddTo(root, level);
+    LevelIO.Save(path, level);
+    Console.WriteLine($"Added puzzles to existing layout: {level.Entities.Count} entities.");
+    return;
+}
+if (args.Length == 1 && args[0] == "validate-collider-bounds")
+{
+    CollisionBoundsChecks.Run();
+    return;
+}
 if (args.Length > 0 && args[0] == "build-six-room-test")
 {
     string path = Path.Combine(root, "Game/Content/Levels/sixRoomTest.json");
@@ -15,6 +44,7 @@ if (args.Length > 0 && args[0] == "build-six-room-test")
 if (args.Length == 1 && args[0] == "validate-six-room-test")
 {
     SixRoomTest.Validate(root, Path.Combine(root, "Game/Content/Levels/sixRoomTest.json"));
+    PuzzleChecks.Run(root);
     return;
 }
 foreach (string name in args)

@@ -4,10 +4,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../Engine.Editor/Engine.Editor.csproj" />
-    <Compile Include="../../Game/SourcePlayerMotor.cs" Link="Runtime/SourcePlayerMotor.cs" />
-    <Compile Include="../../Game/SourceMovementSettings.cs" Link="Runtime/SourceMovementSettings.cs" />
+    <ProjectReference Include="../../Game/Game.csproj" />
+    <ProjectReference Include="../../Engine.UI/Engine.UI.csproj" />
   </ItemGroup>
 </Project>

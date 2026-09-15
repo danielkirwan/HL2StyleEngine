@@ -12,9 +12,41 @@ A matching primitive/blockout version is generated as `Content/Levels/interactio
 
 ## Completed Systems
 
+### 2026-09-08 Inventory Combine Input Fix
+
+The cable recipe was correct, but the menu-to-target input path had gaps. Mouse clicks with both press and release in one game frame were lost. Native menu clicks also used the previous frame's hovered row, and stationary mouse hover could override keyboard/controller selection. The fallback inventory could change the selected source while its action menu was open.
+
+Mouse input now preserves both edges, native action clicks use the freshly hit-tested document, and menu/target selection is protected from stale or inactive pointer input. Selecting Combine preserves the source item until a separate target click or E/controller X confirmation. Quick clicks do not leave an unfinished inventory drag. The fallback action menu also accepts press-edge clicks.
+
+Use either Damaged Cable or Spare Wire, choose Combine, then click the other ingredient. The result is one Repaired Cable. Wrong/self/empty targets and cancellation consume nothing. Existing Scrap + Gunpowder crafting still adds 12 bullets directly to weapon reserves with a notification, not an inventory stack. Level geometry, puzzle requirements, rendering and recipes are unchanged.
+
+`validate-inventory-input` in `Tools/LevelAuthoring` covers native document hit testing, normal/quick clicks, move-and-click menu selection, both recipe orders, keyboard/controller selection, cancellation, ammo crafting and the ImGui fallback. These are automated CPU UI/input tests, not a new manual playthrough. The full solution build and `validate-six-room-test` also pass.
+
+### 2026-09-08 Five-Room Puzzle Pass
+
+`sixRoomTest.json` now gates its five room entrances with rolling shutters: Freight keyed override, Workshop gravity-gun cable retrieval, Medical inventory cable repair, Utility crate pressure plate and Loading Bay three-feed circuit. The original 700 entities remain intact, with 58 additions. There are 27 breakable crates plus an indestructible movable puzzle weight. Required pickups are deterministic, gravity-gun compatible and protected from discard. No enemies were added.
+
+The rolling-door frame and leaf are derived separately from existing `Rollup Door 1.glb`, retaining embedded materials. The static frame uses mesh collision; only the shutter and its fitted collider lift. `PuzzleDoor.LiftHeight` is now configurable (3.35 m here, legacy default 3 m). `PressurePlate` exposes minimum mass and settle time; occupancy is transient, while releasing its gated lever persists and latches the door open. `PuzzleIndicator` displays red/green state using primitive colour. These interaction kinds and fields are editable in the shared Inspector. No renderer, shader, weapon-control or original layout changes were made.
+
+New catalogue items and the `DamagedCable + SpareWire -> RepairedCable` recipe reuse existing inventory combining. Plate sensing is isolated in `Puzzles/PressurePlateSensor.cs`, with runtime integration in `HL2GameModule.Puzzles.cs`. Existing solved-state persistence restores slots, indicators and released shutters, but never persists live plate occupancy.
+
+Full solution build and runtime/layout regression checks passed. Live textures/shutters/panels were inspected; normal Debug stationary capture measured about 45.4 FPS at 1920x1009. A full manual playthrough and puzzle-feel review remain. See `SIX_ROOM_TEST.md` for solutions, editor settings, verification limits and the play-test checklist.
+
+### 2026-09-08 Launch, F2 Panels And Performance
+
+Both Visual Studio profiles in `Properties/launchSettings.json` now pass `--level Game/Content/Levels/sixRoomTest.json`. Set Game as the startup project and use either Game or Game - Font Preview. `LaunchGame.bat` and `LaunchSixRoomTest.bat` target the same level. This does not change `HS2Project.json` or the standalone editor's startup scene.
+
+F2 retains the shared Toolbar, Hierarchy and Inspector, including entity transforms, interactions, scripts and snapping. The saved game layout had the Toolbar and Inspector collapsed; they are expanded on first entry to F2 without discarding saved positions. F2 now has View > Restore Editor Panels for resetting their positions, sizes and docking. View > Debug / Weapon Tools (or F3) opens the existing debug window, weapon tuning and practice-level switcher. That window remains closed at normal game startup. Content Browser, project management, prefab browsing and UI management are standalone HS2Editor panels, not integrated F2 panels. Panel recovery is in `HL2GameModule.EditorPanels.cs`.
+
+The larger scene exposed quadratic interaction-definition searches in both per-frame interaction prompts and fixed-step puzzle-door updates, even with no puzzles present. Runtime entities now bind directly to their authored definitions during each world rebuild; reload and returning from F2 rebuild the bindings. Spawned pickups have no authored definition. Physics also caches the AABB of each immutable world collider and rejects distant dynamic-support candidates before expensive support geometry tests. Changing a collider pose constructs new bounds, so this is not a cache of old world transforms.
+
+At the central-hall spawn, a 1920x1009 isolated Debug capture improved from 226.39 ms/frame (4.4 FPS) to 16.58 ms/frame (about 60 FPS). Physics fell from 206.49 to 7.34 ms/frame; normal update work fell from 13.50 to 1.65 ms/frame. A final capture from the normal Visual Studio Debug output measured 24.74 ms/frame (40.4 FPS), with 10.81 ms physics and 6.39 ms submission/presentation wait. These are bounded stationary captures, not a locked-60 claim or a guarantee for every viewpoint or large debris burst. No level geometry, textures, lighting, collider shapes, simulation rates or crate counts were removed. See `SIX_ROOM_TEST.md` for profiling and regression checks.
+
+Verification: normal Game Debug build passed with zero warnings/errors; 1,000 randomized collider-bound cases plus mesh contact passed; six-room asset/serialization/traversal/settling validation passed; live game textures remained intact. Automated F2 key injection did not register, so the new panel recovery menu still needs a manual UI check. The standalone editor layout was not changed by this fix.
+
 ### 2026-09-08 Six-Room Test Level
 
-`Content/Levels/sixRoomTest.json` adds an enclosed 2,536-square-metre layout based on the 504-square-metre `interaction_test.json` floor, approximately 5.03 times its footprint. A large hall connects to freight, workshop, medical, utility and loading rooms. It includes the three default weapons, 26 breakable crates, gravity-gun pickups and ammo supplies, with no puzzles or locks. Root-level `LaunchSixRoomTest.bat` plays it directly; the project startup level remains unchanged. See `SIX_ROOM_TEST.md` for layout and validation.
+`Content/Levels/sixRoomTest.json` adds an enclosed 2,536-square-metre layout based on the 504-square-metre `interaction_test.json` floor, approximately 5.03 times its footprint. A large hall connects to freight, workshop, medical, utility and loading rooms. The initial open exploration pass included three default weapons, 26 breakable crates, gravity-gun pickups and supplies; the later five-puzzle pass above adds gated shutters and one breakable cover crate. Root-level `LaunchSixRoomTest.bat` plays it directly; the project startup level remains unchanged. See `SIX_ROOM_TEST.md` for layout and validation.
 
 Explicit `--level` launches now begin at the authored spawn with the default loadout instead of automatically loading another level's saved player position and inventory. Normal launches without `--level` keep existing auto-load behaviour.
 

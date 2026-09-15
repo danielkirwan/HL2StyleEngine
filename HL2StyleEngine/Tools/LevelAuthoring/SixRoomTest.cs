@@ -245,7 +245,7 @@ internal static class SixRoomTest
         Require(level.Entities.Select(e => e.Id).Distinct().Count() == level.Entities.Count, "Duplicate entity IDs.");
         Require(level.Entities.Select(e => e.Name).Distinct().Count() == level.Entities.Count, "Duplicate entity names.");
         Require(level.Entities.Count(e => e.Type == EntityTypes.PlayerSpawn) == 1, "Expected one player spawn.");
-        Require(level.Entities.All(e => e.Interaction == null && e.Scripts.Count == 0), "Unexpected puzzle, lock or script.");
+        Require(level.Entities.All(e => e.Scripts.Count == 0), "Unexpected script in six-room test.");
         Require(level.UsePointLights, "Scene lighting must be enabled.");
         var editor = new LevelEditorController();
         editor.LoadFromMemory(path, level);
@@ -268,7 +268,9 @@ internal static class SixRoomTest
         }
 
         // Sample player-radius clearance at ground level, then flood-fill from the authored spawn.
-        var obstacles = level.Entities.Where(e => e.Type == EntityTypes.RigidBody && e.MotionType == MotionType.Static)
+        // Open shutters for general exploration checks; PuzzleChecks separately tests closed gates and mesh frames.
+        var obstacles = level.Entities.Where(e => e.Type == EntityTypes.RigidBody && e.MotionType == MotionType.Static &&
+                e.Interaction?.Kind != "PuzzleDoor" && e.MeshPath != RollupDoorAssets.FramePath)
             .Select(e =>
             {
                 Vector3 size = e.Size, p = e.LocalPosition, r = e.LocalRotationEulerDeg;
@@ -298,7 +300,11 @@ internal static class SixRoomTest
 
         foreach (var entity in level.Entities.Where(e => e.MotionType == MotionType.Dynamic))
         {
-            Vector3 p = entity.LocalPosition, size = entity.Size;
+            Vector3 p = entity.LocalPosition;
+            Vector3 r = entity.LocalRotationEulerDeg;
+            var rotation = Quaternion.CreateFromYawPitchRoll(r.Y * MathF.PI / 180, r.X * MathF.PI / 180, r.Z * MathF.PI / 180);
+            var bounds = WorldCollider.Box(p, (Vector3)entity.Size / 2, rotation).GetAabb();
+            Vector3 size = bounds.Max - bounds.Min;
             Require(Rooms.Any(r => r.Contains(p.X, p.Z)), "Pickup outside level: " + entity.Name);
             Require(p.Y - size.Y / 2 >= 0.025f, "Dynamic object intersects floor: " + entity.Name);
             Require(!obstacles.Any(b => p.X + size.X / 2 > b.Min.X && p.X - size.X / 2 < b.Max.X &&
@@ -307,16 +313,17 @@ internal static class SixRoomTest
         }
         float area = Rooms.Concat(Connections).Sum(r => r.Width * r.Depth);
         Require(MathF.Abs(area / (18 * 28) - 5) < 0.1f, "Level does not meet reference scale.");
-        Console.WriteLine($"PASS: six rooms, five open connections, {area} m2 ({area / 504:F2}x reference), {visited.Count} reachable floor samples.");
+        Console.WriteLine($"PASS: six rooms, five connections with gates open, {area} m2 ({area / 504:F2}x reference), {visited.Count} reachable floor samples.");
         Console.WriteLine($"PASS: {level.Entities.Count} unique entities; all asset paths and {parts} model parts load; all dynamic props clear static geometry.");
-        Console.WriteLine($"PASS: {level.Entities.Count(e => e.Damageable)} breakable crates; {level.Entities.Count(e => e.Type == EntityTypes.PointLight)} lights; no puzzles or locks.");
+        Console.WriteLine($"PASS: {level.Entities.Count(e => e.Damageable)} breakable crates; {level.Entities.Count(e => e.Type == EntityTypes.PointLight)} lights.");
         Console.WriteLine("PASS: editor loads all entity transforms; lighting and entity count survive serialization.");
         ValidatePhysics(level, Require);
     }
 
     private static void ValidatePhysics(LevelFile level, Action<bool, string> require)
     {
-        var colliders = level.Entities.Where(e => e.Type == EntityTypes.RigidBody && e.MotionType == MotionType.Static)
+        var colliders = level.Entities.Where(e => e.Type == EntityTypes.RigidBody && e.MotionType == MotionType.Static &&
+                e.Interaction?.Kind != "PuzzleDoor" && e.MeshPath != RollupDoorAssets.FramePath)
             .Select(e => WorldCollider.Box(e.LocalPosition, (Vector3)e.Size / 2,
                 Quaternion.CreateFromYawPitchRoll(((Vector3)e.LocalRotationEulerDeg).Y * MathF.PI / 180, 0, 0))).ToArray();
         var routes = new Vector2[][]
@@ -344,12 +351,14 @@ internal static class SixRoomTest
         }
         foreach (var entity in level.Entities.Where(e => e.MotionType == MotionType.Dynamic))
         {
+            Vector3 euler = entity.LocalRotationEulerDeg;
+            var rotation = Quaternion.CreateFromYawPitchRoll(euler.Y * MathF.PI / 180, euler.X * MathF.PI / 180, euler.Z * MathF.PI / 180);
             var box = new BoxBody(entity.LocalPosition, (Vector3)entity.Size / 2)
             {
                 Restitution = entity.Restitution, Friction = entity.Friction
             };
-            for (int tick = 0; tick < 180; tick++) box.Step(1f / 60, colliders, Quaternion.Identity);
-            require(box.Center.Y - box.HalfExtents.Y >= -0.01f, "Physics prop fell through the floor: " + entity.Name);
+            for (int tick = 0; tick < 180; tick++) box.Step(1f / 60, colliders, rotation);
+            require(WorldCollider.Box(box.Center, box.HalfExtents, rotation).GetAabb().Min.Y >= -0.01f, "Physics prop fell through the floor: " + entity.Name);
             require(MathF.Abs(box.Velocity.Y) < 0.05f, "Physics prop failed to settle: " + entity.Name);
         }
         Console.WriteLine("PASS: production player motor traverses all five branches and returns; production box physics settles every pickup/crate on solid geometry.");

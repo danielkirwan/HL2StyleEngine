@@ -1,0 +1,27 @@
+﻿<rml>
+  <head>
+    <title>Gameplay UI</title>
+    <link type="text/rcss" href="../Inventory/inventory.rcss" />
+  </head>
+  <body>
+    <div id="gameplay-root">
+      <div id="crosshair" style="left: 942px; top: 486px;">
+        <div class="crosshair-line horizontal left"></div>
+        <div class="crosshair-line horizontal right"></div>
+        <div class="crosshair-line vertical top"></div>
+        <div class="crosshair-line vertical bottom"></div>
+        <div class="crosshair-dot"></div>
+      </div>
+      <section id='status-hud-left' class='hl2-hud'>
+        <div class='hud-readout health-readout'>
+          <div class='hud-label'><img class="ui-text-image ui-text-hud-label" src="Text/7d357669691595d4.png" width="53" height="19" /></div>
+          <div class='hud-number'><img class="ui-text-image ui-text-hud-number" src="Text/d5ae9258e4b8c62f.png" width="87" height="59" /></div>
+        </div>
+        <div class='hud-readout suit-readout'>
+          <div class='hud-label'><img class="ui-text-image ui-text-hud-label" src="Text/872c961f0f07e5d0.png" width="39" height="19" /></div>
+          <div class='hud-number'><img class="ui-text-image ui-text-hud-number" src="Text/796273b11c9fa812.png" width="64" height="59" /></div>
+        </div>
+      </section>
+    </div>
+  </body>
+</rml>

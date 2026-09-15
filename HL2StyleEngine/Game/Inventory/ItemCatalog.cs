@@ -14,9 +14,26 @@ public static class ItemCatalog
     public const string Fuse = "Fuse";
     public const string HealthPack = "HealthPack";
     public const string SuitBattery = "SuitBattery";
+    public const string MaintenanceKey = "MaintenanceKey";
+    public const string WorkshopCable = "WorkshopCable";
+    public const string DamagedCable = "DamagedCable";
+    public const string SpareWire = "SpareWire";
+    public const string RepairedCable = "RepairedCable";
+    public const string FreightFeed = "FreightFeed";
+    public const string MedicalFeed = "MedicalFeed";
+    public const string UtilityFeed = "UtilityFeed";
 
     private static readonly Dictionary<string, InventoryItemDefinition> KnownItems = new(StringComparer.OrdinalIgnoreCase)
     {
+        [MaintenanceKey] = new(MaintenanceKey, "Maintenance Key", "Brass override key for the Freight Store shutter panel.",
+            InventoryItemType.Key, 1, 1, 1),
+        [WorkshopCable] = PuzzleItem(WorkshopCable, "Workshop Cable", "Replacement cable for the Workshop shutter panel."),
+        [DamagedCable] = PuzzleItem(DamagedCable, "Damaged Cable", "Medical shutter cable with a broken conductor. Combine with Spare Wire."),
+        [SpareWire] = PuzzleItem(SpareWire, "Spare Wire", "A spare conductor. Combine with the Damaged Cable to repair the medical connection."),
+        [RepairedCable] = PuzzleItem(RepairedCable, "Repaired Cable", "Repaired power connection for the Medical Supplies shutter."),
+        [FreightFeed] = PuzzleItem(FreightFeed, "Freight Feed", "Power lead marked FREIGHT. Fits the Loading Bay's freight socket."),
+        [MedicalFeed] = PuzzleItem(MedicalFeed, "Medical Feed", "Power lead marked MEDICAL. Fits the Loading Bay's medical socket."),
+        [UtilityFeed] = PuzzleItem(UtilityFeed, "Utility Feed", "Power lead marked UTILITY. Fits the Loading Bay's utility socket."),
         [InkRibbon] = new(
             InkRibbon,
             "Ink Ribbon",
@@ -158,6 +175,8 @@ public static class ItemCatalog
 
     private static readonly IReadOnlyList<InventoryCombineRecipe> CombineRecipes =
     [
+        new(DamagedCable, SpareWire, RepairedCable, resultCount: 1,
+            displayName: "Repair Cable", description: "Splices the spare conductor into the damaged medical power cable."),
         new(
             Scrap,
             Gunpowder,
@@ -166,6 +185,9 @@ public static class ItemCatalog
             displayName: "Craft Bullets",
             description: "Combines scrap metal and gunpowder into a small batch of prototype ammunition.")
     ];
+
+    private static InventoryItemDefinition PuzzleItem(string id, string name, string description)
+        => new(id, name, description, InventoryItemType.Puzzle, 1, 1, 1);
 
     public static InventoryItemDefinition Get(string itemId)
     {

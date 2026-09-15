@@ -8,6 +8,12 @@ HS2Editor should become the Unity-style project and level authoring app for the 
 
 The first implementation reuses the existing engine renderer and ImGui editor tooling so the app can have a real 3D viewport, hierarchy, inspector, project browser, and content browser without duplicating runtime systems.
 
+## In-Game Editor Scope (2026-09-08)
+
+F2 in Game uses this controller's Toolbar, Hierarchy and Inspector; HS2Editor additionally supplies Content Browser, prefab browsing, project/level management and UI panels. Those standalone panels have not been integrated into F2. The game's saved layout had collapsed Toolbar/Inspector windows. Game now expands its shared panels on first F2 entry and provides View > Restore Editor Panels to recover positions, sizes and docking, while preserving saved placement otherwise. View > Debug / Weapon Tools (F3) exposes the separate debug/weapon-tuning window, which stays closed on game startup. Automated F2 key injection did not register during verification; manual verification of these controls remains pending. This does not reset the standalone editor layout.
+
+Game's Visual Studio launch profiles now open `sixRoomTest.json`, matching the game launchers. HS2Editor still follows the project startup scene. Runtime interaction lookup and collider-bound optimizations improved stationary six-room captures from 4.4 FPS to approximately 40-60 FPS (40.4 FPS in the final normal Debug capture), without changing level content or rendering. Details and limitations are in `Game/SIX_ROOM_TEST.md`.
+
 ## Confirmed Direction
 
 - App name: `HS2Editor`.
@@ -52,7 +58,8 @@ Implemented:
 
 ## 2026-09-08 Level And Lighting Update
 
-- Added `Game/Content/Levels/sixRoomTest.json`: one large central hall, five connected rooms, open entrances, physics props and supplies. The floor footprint is approximately five times `interaction_test.json`. See `Game/SIX_ROOM_TEST.md` for the design and checks.
+- Added `Game/Content/Levels/sixRoomTest.json`: one large central hall and five connected rooms, approximately five times the `interaction_test.json` floor footprint. Its subsequent puzzle pass adds five rolling shutters and keyed, gravity-gun retrieval, cable repair, weighted-plate and three-feed mechanisms. Original layout entities are preserved. See `Game/SIX_ROOM_TEST.md` for solutions and checks.
+- Puzzle Inspector additions (2026-09-08): `PuzzleDoor` exposes Lift Height, retaining the legacy 3 m default. `PressurePlate` exposes Minimum Mass and Settle Seconds; author it as a horizontal static box rigid body. `PuzzleIndicator` exposes Required States; use it on a small primitive Prop for red/green feedback. Live plate occupancy is not saved, but a released lever's solved state keeps its shutter open. These are shared Inspector features available in HS2Editor and F2; they do not change docking or textured rendering.
 - Toolbar Scene Point Lights controls the saved `LevelFile.UsePointLights` flag, with dirty/undo support. The game and editor share submission of up to 32 nearby authored PointLights to textured model rendering. Inspector light position/colour/intensity/range now affect the scene when enabled. Existing levels opt in explicitly; the new level enables this by default.
 - Lighting remains unshadowed; groups, light switches, spotlights and occlusion are still future work. Textured meshes now use inverse-transpose normals for non-uniform scale.
 - Explicit `--level` launches start from the selected scene's spawn and default weapons, without automatically applying unrelated save data. The ordinary startup path retains its existing save loading.

@@ -31,6 +31,14 @@ The weapon selector/HUD pass is paused again after these fixes:
 - Ammo HUD initialization now loads an empty clip from reserve when an ammo weapon is equipped or already active, so clip/reserve values appear in the correct slots before the first shot.
 - Health/suit and ammo HUD blocks now use the same translucent dark yellow/black background colors and yellow borders as the weapon-switching rectangles. HUD borders are inset by one pixel to avoid ImGui clipping on the top/left edges.
 
+## Inventory Input Follow-Up (2026-09-08)
+
+- Native inventory action clicks are handled after the current document has been rebuilt and hit-tested. Do not act on the previous frame's hovered row in keyboard navigation updates.
+- Action-menu hover only changes selection on pointer activity; a stationary cursor must not block keyboard/controller navigation or E/X confirmation.
+- Inventory grid selection ignores action-menu IDs, open action/split/discard overlays and the frame that executes an item action. Hovering another slot while the menu is open must not replace the Combine source.
+- `InputState` preserves press and release edges independently, including a complete click within one frame. The fallback action menu accepts the press edge as well as ImGui activation. Inventory quick clicks finish their move/drop lifecycle in the same frame when appropriate.
+- `Tools/LevelAuthoring` command `validate-inventory-input` checks native document hit tests and fallback ImGui draw/input handling without GPU submission. It covers Combine menu/target clicks, both cable ingredient orders, keyboard/controller selection, invalid targets, cancellation and ammo crafting.
+
 ## HS2Editor UI Authoring Target
 
 The standalone `HS2Editor` app now has a first-pass UI manager for assets under `Content/UI`. It can create, open, edit, save, and source-preview `.rml` and `.rcss` files. A later milestone should replace the source/text preview with a real RmlUi visual preview, then add a visual layout canvas, selectable elements, property/style inspection, font/image asset picking, and live preview against sample gameplay UI state.

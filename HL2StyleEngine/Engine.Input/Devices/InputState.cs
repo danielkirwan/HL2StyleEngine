@@ -17,14 +17,10 @@ public sealed class InputState
     public bool RightMouseDown { get; private set; }
     public bool LeftMouseDown { get; private set; }
 
-    // NEW: pressed-this-frame for mouse buttons
     public bool LeftMousePressedThisFrame { get; private set; }
     public bool RightMousePressedThisFrame { get; private set; }
     public bool LeftMouseReleasedThisFrame { get; private set; }
     public bool RightMouseReleasedThisFrame { get; private set; }
-
-    private bool _prevLeftMouseDown;
-    private bool _prevRightMouseDown;
 
     private Vector2 _lastMousePos;
     private bool _hasLastMousePos;
@@ -200,21 +196,27 @@ public sealed class InputState
             }
         }
 
-        // Mouse buttons (down state)
+        LeftMousePressedThisFrame = false;
+        RightMousePressedThisFrame = false;
+        LeftMouseReleasedThisFrame = false;
+        RightMouseReleasedThisFrame = false;
+
+        // Keep both edges when a quick click starts and ends between game frames.
         foreach (var me in snapshot.MouseEvents)
         {
-            if (me.MouseButton == MouseButton.Right) RightMouseDown = me.Down;
-            if (me.MouseButton == MouseButton.Left) LeftMouseDown = me.Down;
+            if (me.MouseButton == MouseButton.Right)
+            {
+                RightMousePressedThisFrame |= me.Down && !RightMouseDown;
+                RightMouseReleasedThisFrame |= !me.Down && RightMouseDown;
+                RightMouseDown = me.Down;
+            }
+            if (me.MouseButton == MouseButton.Left)
+            {
+                LeftMousePressedThisFrame |= me.Down && !LeftMouseDown;
+                LeftMouseReleasedThisFrame |= !me.Down && LeftMouseDown;
+                LeftMouseDown = me.Down;
+            }
         }
-
-        // NEW: pressed this frame
-        LeftMousePressedThisFrame = LeftMouseDown && !_prevLeftMouseDown;
-        RightMousePressedThisFrame = RightMouseDown && !_prevRightMouseDown;
-        LeftMouseReleasedThisFrame = !LeftMouseDown && _prevLeftMouseDown;
-        RightMouseReleasedThisFrame = !RightMouseDown && _prevRightMouseDown;
-
-        _prevLeftMouseDown = LeftMouseDown;
-        _prevRightMouseDown = RightMouseDown;
 
         MousePosition = snapshot.MousePosition;
 

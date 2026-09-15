@@ -64,6 +64,9 @@ public sealed class LevelInteractionDef
 
     public SerVec3 HingeLocalOffset { get; set; } = Vector3.Zero;
     public float OpenAngleDeg { get; set; } = 90f;
+    public float LiftHeight { get; set; } = 3f;
+    public float PressurePlateMinMass { get; set; } = 8f;
+    public float PressurePlateSettleSeconds { get; set; } = 0.35f;
 }
 
 public sealed class LevelEntityDef

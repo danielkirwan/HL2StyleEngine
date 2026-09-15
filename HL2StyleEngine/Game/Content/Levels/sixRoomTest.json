@@ -48301,6 +48301,4614 @@
       "IsKinematic": false,
       "Radius": 0.5,
       "Height": 1
+    },
+    {
+      "Id": "d7e69ab4d090849044a1a06d4ceead52",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_Freight_Frame",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -15.154035,
+        "Y": 1.625,
+        "Z": -8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 3.2500007,
+        "Z": 0.5501998
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/Puzzles/RollupDoor1_Frame.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Mesh",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "ed1c5b159e2c8965026ed4db6fb68e75",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_Freight_Shutter",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleDoor",
+        "StateId": "SRPuzzle_FreightDoor",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3.35,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -14.978982,
+        "Y": 1.5979168,
+        "Z": -8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 3.8666666,
+        "Y": 3.1958337,
+        "Z": 0.0492513
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/Puzzles/RollupDoor1_Leaf.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "3863b7d060bc3cfc3fc24270be905c34",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_Workshop_Frame",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 15.154035,
+        "Y": 1.625,
+        "Z": -8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 3.2500007,
+        "Z": 0.5501998
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/Puzzles/RollupDoor1_Frame.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Mesh",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "2bc65419d7bb11f8a6c4a2aa574bc28b",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_Workshop_Shutter",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleDoor",
+        "StateId": "SRPuzzle_WorkshopDoor",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3.35,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 14.978982,
+        "Y": 1.5979168,
+        "Z": -8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 3.8666666,
+        "Y": 3.1958337,
+        "Z": 0.0492513
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/Puzzles/RollupDoor1_Leaf.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "8a1f49ad1d425ec98beae57fef0b5053",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_Medical_Frame",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -15.154035,
+        "Y": 1.625,
+        "Z": 8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 3.2500007,
+        "Z": 0.5501998
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/Puzzles/RollupDoor1_Frame.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Mesh",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "0f04317e43681d2c8b85ad528f50c4a4",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_Medical_Shutter",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleDoor",
+        "StateId": "SRPuzzle_MedicalDoor",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3.35,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -14.978982,
+        "Y": 1.5979168,
+        "Z": 8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 3.8666666,
+        "Y": 3.1958337,
+        "Z": 0.0492513
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/Puzzles/RollupDoor1_Leaf.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "6f3766c5c3fac50f718bebe89f8a2ed8",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_Utility_Frame",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 15.154035,
+        "Y": 1.625,
+        "Z": 8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 3.2500007,
+        "Z": 0.5501998
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/Puzzles/RollupDoor1_Frame.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Mesh",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "4f5e80a4a3a46529aa6278329dd9e478",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_Utility_Shutter",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleDoor",
+        "StateId": "SRPuzzle_UtilityDoor",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3.35,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 14.978982,
+        "Y": 1.5979168,
+        "Z": 8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 3.8666666,
+        "Y": 3.1958337,
+        "Z": 0.0492513
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/Puzzles/RollupDoor1_Leaf.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "6ea15fd122fab3add282c3f398a641dd",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_Loading_Frame",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 1.3466146E-08,
+        "Y": 1.625,
+        "Z": 17.154036
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 180,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 3.2500007,
+        "Z": 0.5501998
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/Puzzles/RollupDoor1_Frame.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Mesh",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "bbe118a917bf433ac9c317ec7670fb1a",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_Loading_Shutter",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleDoor",
+        "StateId": "SRPuzzle_LoadingDoor",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3.35,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -1.83748E-09,
+        "Y": 1.5979168,
+        "Z": 16.978981
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 180,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 3.8666666,
+        "Y": 3.1958337,
+        "Z": 0.0492513
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/Puzzles/RollupDoor1_Leaf.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "60cebd3cd02dbc091edea266d6a67786",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_KeyStand",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -11.5,
+        "Y": 0.4,
+        "Z": -13
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.6,
+        "Y": 0.8,
+        "Z": 0.9
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "39844842a84936228a3f11608ec2a37a",
+      "Type": "RigidBody",
+      "Name": "Item_MaintenanceKey__SRPuzzle_Pickup",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -11.5,
+        "Y": 0.91,
+        "Z": -13
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 0.18,
+        "Y": 0.035,
+        "Z": 0.42
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Bronze Key.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 1.2,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "52c62fe744d97e5855655309ee7ade97",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_KeyCover",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -11.5,
+        "Y": 0.54,
+        "Z": -11.5
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "Damageable": true,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "a6ba9611c2e96d5a8e009a1b823f1bb3",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_FreightOverride",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleSlot",
+        "StateId": "SRPuzzle_FreightOverride",
+        "RequiredItem": "MaintenanceKey",
+        "ConsumesItem": true,
+        "Prompt": "Use Maintenance Key",
+        "LockedPrompt": "Needs Maintenance Key",
+        "SuccessMessage": "Freight override accepted. Shutter opening.",
+        "Targets": [
+          "SRPuzzle_Freight_Shutter"
+        ],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.7,
+        "Y": 1.45,
+        "Z": -5.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.85,
+        "Y": 1.15,
+        "Z": 0.18
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Electrical Panel.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "a3a6c70435bad52ea5e8bffa9a02ca64",
+      "Type": "Prop",
+      "Name": "SRPuzzle_FreightOverride_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_FreightOverrideLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_FreightOverride"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.55,
+        "Y": 1.85,
+        "Z": -5.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "94b26e7a1d6183260cd653b8440bacbe",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_RetrievalShelf",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 11.8,
+        "Y": 4.35,
+        "Z": -12.5
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.3,
+        "Y": 0.16,
+        "Z": 3
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Beam_4m.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "85b501f32b5a371ebf91fb74d39eff1f",
+      "Type": "RigidBody",
+      "Name": "Item_WorkshopCable__SRPuzzle_Pickup",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 11.8,
+        "Y": 4.59,
+        "Z": -11.9
+      },
+      "LocalRotationEulerDeg": {
+        "X": 90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 0.2,
+        "Y": 0.9,
+        "Z": 0.2
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/ElectricalWires03_03.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 1.2,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "489f8c5eb2985b91506f080c192dab38",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_WorkshopSocket",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleSlot",
+        "StateId": "SRPuzzle_WorkshopSocket",
+        "RequiredItem": "WorkshopCable",
+        "ConsumesItem": true,
+        "Prompt": "Install Workshop Cable",
+        "LockedPrompt": "Needs Workshop Cable",
+        "SuccessMessage": "Workshop connection restored. Shutter opening.",
+        "Targets": [
+          "SRPuzzle_Workshop_Shutter"
+        ],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 13.7,
+        "Y": 1.45,
+        "Z": -5.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.85,
+        "Y": 1.15,
+        "Z": 0.18
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Electrical Panel.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "67f7b0e56068602368101d53f6a25f07",
+      "Type": "Prop",
+      "Name": "SRPuzzle_WorkshopSocket_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_WorkshopSocketLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_WorkshopSocket"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 13.55,
+        "Y": 1.85,
+        "Z": -5.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "22ac0acf522f58043c9f644067dda6ba",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_MedicalCableStand",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -11.5,
+        "Y": 0.4,
+        "Z": 12
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.6,
+        "Y": 0.8,
+        "Z": 0.9
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "5b569cceb7f8ac9de4666db5659aac8f",
+      "Type": "RigidBody",
+      "Name": "Item_DamagedCable__SRPuzzle_Pickup",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -11.5,
+        "Y": 0.92,
+        "Z": 12
+      },
+      "LocalRotationEulerDeg": {
+        "X": 90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 0.13,
+        "Y": 0.75,
+        "Z": 0.13
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/ElectricalWires03_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 1.2,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "70c62381c04dbaf6818566174c0ea8e0",
+      "Type": "RigidBody",
+      "Name": "Item_SpareWire__SRPuzzle_Pickup",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 25.5,
+        "Y": 1.04,
+        "Z": -15
+      },
+      "LocalRotationEulerDeg": {
+        "X": 90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 0.13,
+        "Y": 0.75,
+        "Z": 0.13
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/ElectricalWires03_02.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 1.2,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "b290f39ed315eebdf2a2c890a37035e2",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_MedicalSocket",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleSlot",
+        "StateId": "SRPuzzle_MedicalSocket",
+        "RequiredItem": "RepairedCable",
+        "ConsumesItem": true,
+        "Prompt": "Install Repaired Cable",
+        "LockedPrompt": "Needs Repaired Cable",
+        "SuccessMessage": "Medical connection repaired. The release lever is ready.",
+        "Targets": [],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.7,
+        "Y": 1.45,
+        "Z": 10.9
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.85,
+        "Y": 1.15,
+        "Z": 0.18
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Electrical Panel.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "2d0870413f6f851c386fbf15c567806e",
+      "Type": "Prop",
+      "Name": "SRPuzzle_MedicalSocket_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_MedicalSocketLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_MedicalSocket"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.55,
+        "Y": 1.85,
+        "Z": 10.9
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "6278529c115b02f8fc219a7eb10c2d28",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_MedicalRelease",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleLever",
+        "StateId": "SRPuzzle_MedicalRelease",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "Open Medical shutter",
+        "LockedPrompt": "Repair the medical cable first",
+        "SuccessMessage": "Medical shutter released. It will stay open.",
+        "Targets": [
+          "SRPuzzle_Medical_Shutter"
+        ],
+        "RequiredStates": [
+          "SRPuzzle_MedicalSocket"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.6,
+        "Y": 1.35,
+        "Z": 12.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 0.65,
+        "Z": 0.4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Lever04.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "62ad603eb5ad3bcdffe4eb76f9e57f6c",
+      "Type": "Prop",
+      "Name": "SRPuzzle_MedicalReleaseReady_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_MedicalReleaseReadyLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_MedicalSocket"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.6,
+        "Y": 1.85,
+        "Z": 12.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "2abc61b3dafa79dea42f7b66115cb1b9",
+      "Type": "Prop",
+      "Name": "SRPuzzle_MedicalReleaseOpen_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_MedicalReleaseOpenLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_MedicalRelease"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.6,
+        "Y": 2.0700002,
+        "Z": 12.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "6b5d5532c65ecffcc76cf4ee6d3051b2",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_UtilityPressurePlate",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PressurePlate",
+        "StateId": "SRPuzzle_UtilityWeight",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 10.5,
+        "Y": 0.08,
+        "Z": 11.5
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 2.2,
+        "Y": 0.16,
+        "Z": 2.2
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_C_Grating_Floor_2x2m.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "eb5313a07ea70d0e7c5ebc5d1dba4c39",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_UtilityWeightCrate",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 8,
+        "Y": 0.54,
+        "Z": 11.5
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "01f3b194810dab471f4aad925f7710ea",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_UtilityRelease",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleLever",
+        "StateId": "SRPuzzle_UtilityRelease",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "Open Utility shutter",
+        "LockedPrompt": "A crate must rest on the pressure plate",
+        "SuccessMessage": "Utility shutter released. It will stay open.",
+        "Targets": [
+          "SRPuzzle_Utility_Shutter"
+        ],
+        "RequiredStates": [
+          "SRPuzzle_UtilityWeight"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 13.6,
+        "Y": 1.35,
+        "Z": 11.5
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -180,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 0.65,
+        "Z": 0.4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Lever04.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "42af6654d961a845a12db382b4abd4c4",
+      "Type": "Prop",
+      "Name": "SRPuzzle_UtilityReleaseReady_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_UtilityReleaseReadyLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_UtilityWeight"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 13.6,
+        "Y": 1.85,
+        "Z": 11.5
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "03cd1326c1029a1bf6ef92aacebeda76",
+      "Type": "Prop",
+      "Name": "SRPuzzle_UtilityReleaseOpen_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_UtilityReleaseOpenLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_UtilityRelease"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 13.6,
+        "Y": 2.0700002,
+        "Z": 11.5
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "6ef964c5fbba06e23e214a077f126aa2",
+      "Type": "Prop",
+      "Name": "SRPuzzle_UtilityPlate_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_UtilityPlateLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_UtilityWeight"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 10.5,
+        "Y": 0.19,
+        "Z": 12.4
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "eb288468ec60cc3dd7541283235250c4",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_FreightFeedStand",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -29,
+        "Y": 0.4,
+        "Z": -10
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.6,
+        "Y": 0.8,
+        "Z": 0.9
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "5619c4d95c36506e2ac05810735d40f3",
+      "Type": "RigidBody",
+      "Name": "Item_FreightFeed__SRPuzzle_Pickup",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -29,
+        "Y": 0.92,
+        "Z": -10
+      },
+      "LocalRotationEulerDeg": {
+        "X": 90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 0.13,
+        "Y": 0.75,
+        "Z": 0.13
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/ElectricalWires03_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 1.2,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "63a7982e086e0f1d23a6c47ba5544c68",
+      "Type": "RigidBody",
+      "Name": "Item_MedicalFeed__SRPuzzle_Pickup",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -24.5,
+        "Y": 1.03,
+        "Z": 15
+      },
+      "LocalRotationEulerDeg": {
+        "X": 90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 0.13,
+        "Y": 0.75,
+        "Z": 0.13
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/ElectricalWires03_02.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 1.2,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "193b464bea0488796580a3009bc5c4eb",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_UtilityFeedStand",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 27,
+        "Y": 0.4,
+        "Z": 15
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.6,
+        "Y": 0.8,
+        "Z": 0.9
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "04cfda990e1f94e8fa86e16be1e0f8c2",
+      "Type": "RigidBody",
+      "Name": "Item_UtilityFeed__SRPuzzle_Pickup",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 27,
+        "Y": 0.92,
+        "Z": 15
+      },
+      "LocalRotationEulerDeg": {
+        "X": 90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 0.13,
+        "Y": 0.75,
+        "Z": 0.13
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/ElectricalWires03_04.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 1.2,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "fb9fabeafc13d6b3c20c09288d47de92",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_LoadingFreightSocket",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleSlot",
+        "StateId": "SRPuzzle_LoadingFreightSocket",
+        "RequiredItem": "FreightFeed",
+        "ConsumesItem": true,
+        "Prompt": "Connect Freight Feed",
+        "LockedPrompt": "Needs Freight Feed",
+        "SuccessMessage": "Loading Bay: freight feed connected.",
+        "Targets": [],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -5.2,
+        "Y": 1.45,
+        "Z": 15.7
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 180,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.85,
+        "Y": 1.15,
+        "Z": 0.18
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Electrical Panel.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "88b4414fb21fbdb5982ba16d79b90d2d",
+      "Type": "Prop",
+      "Name": "SRPuzzle_LoadingFreightSocket_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_LoadingFreightSocketLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_LoadingFreightSocket"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -5.2,
+        "Y": 1.85,
+        "Z": 15.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "83771c3d79750bfc7f9014e68abe6059",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_LoadingMedicalSocket",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleSlot",
+        "StateId": "SRPuzzle_LoadingMedicalSocket",
+        "RequiredItem": "MedicalFeed",
+        "ConsumesItem": true,
+        "Prompt": "Connect Medical Feed",
+        "LockedPrompt": "Needs Medical Feed",
+        "SuccessMessage": "Loading Bay: medical feed connected.",
+        "Targets": [],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -4.1,
+        "Y": 1.45,
+        "Z": 15.7
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 180,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.85,
+        "Y": 1.15,
+        "Z": 0.18
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Electrical Panel.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "0688ce523c611fe1ddb5e830c3ba4347",
+      "Type": "Prop",
+      "Name": "SRPuzzle_LoadingMedicalSocket_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_LoadingMedicalSocketLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_LoadingMedicalSocket"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -4.1,
+        "Y": 1.85,
+        "Z": 15.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "770a149dabf176138efdb0c898e069d4",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_LoadingUtilitySocket",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleSlot",
+        "StateId": "SRPuzzle_LoadingUtilitySocket",
+        "RequiredItem": "UtilityFeed",
+        "ConsumesItem": true,
+        "Prompt": "Connect Utility Feed",
+        "LockedPrompt": "Needs Utility Feed",
+        "SuccessMessage": "Loading Bay: utility feed connected.",
+        "Targets": [],
+        "RequiredStates": [],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -3,
+        "Y": 1.45,
+        "Z": 15.7
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 180,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.85,
+        "Y": 1.15,
+        "Z": 0.18
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Electrical Panel.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "92d36e1f027163fe405ebeaf2131eee2",
+      "Type": "Prop",
+      "Name": "SRPuzzle_LoadingUtilitySocket_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_LoadingUtilitySocketLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_LoadingUtilitySocket"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -3,
+        "Y": 1.85,
+        "Z": 15.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "3cc606d1e1e9007b24358a5767413cb4",
+      "Type": "RigidBody",
+      "Name": "SRPuzzle_LoadingRelease",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleLever",
+        "StateId": "SRPuzzle_LoadingRelease",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "Open Loading shutter",
+        "LockedPrompt": "Connect all three Loading Bay power feeds",
+        "SuccessMessage": "Loading shutter released. It will stay open.",
+        "Targets": [
+          "SRPuzzle_Loading_Shutter"
+        ],
+        "RequiredStates": [
+          "SRPuzzle_LoadingFreightSocket",
+          "SRPuzzle_LoadingMedicalSocket",
+          "SRPuzzle_LoadingUtilitySocket"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 3,
+        "Y": 1.35,
+        "Z": 15.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 0.65,
+        "Z": 0.4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Lever04.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "85237ce6a609cbdb7f9eca4fc75fff65",
+      "Type": "Prop",
+      "Name": "SRPuzzle_LoadingReleaseReady_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_LoadingReleaseReadyLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_LoadingFreightSocket",
+          "SRPuzzle_LoadingMedicalSocket",
+          "SRPuzzle_LoadingUtilitySocket"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 3,
+        "Y": 1.85,
+        "Z": 15.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "ac808e8dc494297ba2e76d6f0098d12d",
+      "Type": "Prop",
+      "Name": "SRPuzzle_LoadingReleaseOpen_Indicator",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "PuzzleIndicator",
+        "StateId": "SRPuzzle_LoadingReleaseOpenLamp",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [],
+        "RequiredStates": [
+          "SRPuzzle_LoadingRelease"
+        ],
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 3,
+        "Y": 2.0700002,
+        "Z": 15.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.14,
+        "Y": 0.14,
+        "Z": 0.14
+      },
+      "Color": {
+        "X": 0.9,
+        "Y": 0.13,
+        "Z": 0.06,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "f0e2e046d8b3d8888e249f5fd89ea9a9",
+      "Type": "Prop",
+      "Name": "SRPuzzle_Freight_Conduit",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.73,
+        "Y": 2.35,
+        "Z": -5.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 1.25,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "c623f0580c8f09bd704d639c6ac6bb78",
+      "Type": "Prop",
+      "Name": "SRPuzzle_Freight_OverheadCable",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.73,
+        "Y": 3,
+        "Z": -6.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 2.9,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "14dfc73d63c8b43fcdd4bb803f8c2414",
+      "Type": "Prop",
+      "Name": "SRPuzzle_Workshop_Conduit",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 13.73,
+        "Y": 2.35,
+        "Z": -5.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 1.25,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "27a54f64201502ac20eeb3a0a0d22cf6",
+      "Type": "Prop",
+      "Name": "SRPuzzle_Workshop_OverheadCable",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 13.73,
+        "Y": 3,
+        "Z": -6.55
+      },
+      "LocalRotationEulerDeg": {
+        "X": 90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 2.9,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "b32f992444297e53b5c3107c3f2d1177",
+      "Type": "Prop",
+      "Name": "SRPuzzle_Medical_Conduit",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.73,
+        "Y": 2.35,
+        "Z": 10.9
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 1.25,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "31b655c52180e8ab88e79ed1990b1f5d",
+      "Type": "Prop",
+      "Name": "SRPuzzle_Medical_OverheadCable",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -13.73,
+        "Y": 3,
+        "Z": 9.45
+      },
+      "LocalRotationEulerDeg": {
+        "X": 90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 2.8999996,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "bbcdd588a0abdda964b39bb7831b5770",
+      "Type": "Prop",
+      "Name": "SRPuzzle_Utility_Conduit",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 13.73,
+        "Y": 2.35,
+        "Z": 11.5
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": -90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 1.25,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "ef9c34db14dd11400ce6a6b4a88091ac",
+      "Type": "Prop",
+      "Name": "SRPuzzle_Utility_OverheadCable",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 13.73,
+        "Y": 3,
+        "Z": 9.75
+      },
+      "LocalRotationEulerDeg": {
+        "X": 90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 3.5,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "7f1c737190a7f14ad7864161783870aa",
+      "Type": "Prop",
+      "Name": "SRPuzzle_LoadingFeedConduit0",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -5.2,
+        "Y": 2.45,
+        "Z": 15.74
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 1.35,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "9d6a9269c9cd9004eea0f9f488f8bbc6",
+      "Type": "Prop",
+      "Name": "SRPuzzle_LoadingFeedConduit1",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -4.1,
+        "Y": 2.45,
+        "Z": 15.74
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 1.35,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "1b47b6496b4c2250ec6d19894aaa0422",
+      "Type": "Prop",
+      "Name": "SRPuzzle_LoadingFeedConduit2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2.9999998,
+        "Y": 2.45,
+        "Z": 15.74
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.045,
+        "Y": 1.35,
+        "Z": 0.045
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "MeshPath": "Content/Models/ViewModels/Cables01_01.glb",
+      "MaterialPath": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 1,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
     }
   ],
   "Boxes": null

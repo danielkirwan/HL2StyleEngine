@@ -4,7 +4,7 @@ This project is aiming for slower to medium paced horror/action exploration: clo
 
 ## Current Larger Test
 
-`sixRoomTest.json` applies the exploration/physics side of this guide at a larger scale: one central landmark space and five optional branches, approximately five times the `interaction_test.json` floor footprint. No puzzles, locks or enemies are included yet. Different floor finishes, room proportions, light colours and equipment establish identity; crate breaking/throwing, elevated gravity-gun pickups and supplies provide optional activities. See `SIX_ROOM_TEST.md` for the floor plan, dimensions, validation and the next review criteria. Puzzles will follow after the layout is accepted.
+`sixRoomTest.json` applies this guide at a larger scale: one central landmark space and five branches, approximately five times the `interaction_test.json` floor footprint. The accepted puzzle pass now gates the branches with keyed override, gravity-gun retrieval, inventory cable repair, crate pressure plate and a final three-feed circuit. Freight, Workshop and Utility have independent hall-accessible solutions; Workshop enables Medical, and Freight/Medical/Utility provide the final feeds. Doors latch open to keep return journeys short. Required items are deterministic and protected from discard, with a non-breakable fallback crate for the plate. There are no enemies. Different floor finishes, proportions, lighting and equipment retain each room's identity, and existing physics activities remain after unlocking. See `SIX_ROOM_TEST.md` for solutions, dimensions, verification and the next manual review criteria.
 
 ## Core Loop
 

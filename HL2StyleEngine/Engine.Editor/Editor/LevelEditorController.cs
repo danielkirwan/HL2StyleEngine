@@ -1395,13 +1395,17 @@ public sealed class LevelEditorController
                 SetDefaultInteraction(ent, "PuzzleLever");
             if (ImGui.Button("Add Puzzle Door", new Vector2(-1f, 0f)))
                 SetDefaultInteraction(ent, "PuzzleDoor");
+            if (ImGui.Button("Add Pressure Plate", new Vector2(-1f, 0f)))
+                SetDefaultInteraction(ent, "PressurePlate");
+            if (ImGui.Button("Add Puzzle Indicator", new Vector2(-1f, 0f)))
+                SetDefaultInteraction(ent, "PuzzleIndicator");
             return;
         }
 
         LevelInteractionDef interaction = ent.Interaction!;
         EnsureInteractionDefaults(ent, interaction);
 
-        string[] kinds = ["LockedDoor", "LockedChest", "PuzzleSlot", "PuzzleLever", "PuzzleDoor", "None"];
+        string[] kinds = ["LockedDoor", "LockedChest", "PuzzleSlot", "PuzzleLever", "PuzzleDoor", "PressurePlate", "PuzzleIndicator", "None"];
         _interactionKindPickerIndex = Array.FindIndex(kinds, kind => string.Equals(kind, interaction.Kind, StringComparison.OrdinalIgnoreCase));
         if (_interactionKindPickerIndex < 0)
             _interactionKindPickerIndex = 0;
@@ -1466,7 +1470,16 @@ public sealed class LevelEditorController
         if (IsInteractionKind(interaction, "LockedDoor"))
             DrawInteractionDoorHinge(interaction);
 
-        if (IsInteractionKind(interaction, "PuzzleLever"))
+        if (IsInteractionKind(interaction, "PuzzleDoor"))
+            DrawPuzzleFloat("Lift Height", interaction.LiftHeight, 0.01f, value => interaction.LiftHeight = value);
+
+        if (IsInteractionKind(interaction, "PressurePlate"))
+        {
+            DrawPuzzleFloat("Minimum Mass", interaction.PressurePlateMinMass, 0.01f, value => interaction.PressurePlateMinMass = value);
+            DrawPuzzleFloat("Settle Seconds", interaction.PressurePlateSettleSeconds, 0f, value => interaction.PressurePlateSettleSeconds = value);
+        }
+
+        if (IsInteractionKind(interaction, "PuzzleLever") || IsInteractionKind(interaction, "PuzzleIndicator"))
             DrawInteractionRequiredStates(interaction);
 
         if (InteractionUsesTargets(interaction))
@@ -1484,6 +1497,18 @@ public sealed class LevelEditorController
     {
         Dirty = true;
         EndEditIfAny();
+    }
+
+    private void DrawPuzzleFloat(string label, float value, float minimum, Action<float> setValue)
+    {
+        ImGui.TextUnformatted(label);
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.DragFloat($"##puzzle_{label}", ref value, 0.05f, minimum, 100f))
+        {
+            BeginEdit();
+            setValue(float.IsFinite(value) ? Math.Clamp(value, minimum, 100f) : minimum);
+            CommitInteractionEdit();
+        }
     }
 
     private void SetDefaultInteraction(LevelEntityDef ent, string kind)
@@ -1541,7 +1566,7 @@ public sealed class LevelEditorController
         if (name.Contains("Fuse", StringComparison.OrdinalIgnoreCase))
             return "Fuse";
 
-        return kind == "PuzzleDoor" ? "" : "RustedKey";
+        return kind is "PuzzleDoor" or "PuzzleLever" or "PressurePlate" or "PuzzleIndicator" ? "" : "RustedKey";
     }
 
     private static string MakeDefaultInteractionSuccessMessage(string kind, string requiredItem)

@@ -182,6 +182,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private bool _inventoryNavYHeld;
     private bool _inventorySplitHandledThisFrame;
     private bool _inventoryToggleConsumedThisFrame;
+    private bool _inventoryActionHandledThisFrame;
     private bool _inventoryActionMenuOpen;
     private int _inventoryActionIndex;
     private bool _inventorySplitPickerOpen;
@@ -251,6 +252,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private bool _keyboardOverEditorUi;
     private readonly ScriptRegistry _scriptRegistry = new();
     private readonly List<Entity> _runtimeEntities = new();
+    private readonly Dictionary<Entity, LevelEntityDef> _runtimeDefinitions = new();
 
     private readonly List<WorldCollider> _runtimeWorldColliders = new();
 
@@ -479,6 +481,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _fps = dt > 0 ? 1f / dt : 0f;
         _inventorySplitHandledThisFrame = false;
         _inventoryToggleConsumedThisFrame = false;
+        _inventoryActionHandledThisFrame = false;
 
         _inputState.Update(snapshot);
         _inputSystem.Update();
@@ -2739,7 +2742,6 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (_inputState.LeftMousePressedThisFrame)
         {
             BeginInventoryMoveFromSelection();
-            return;
         }
 
         if (IsMovingInventoryItem && _inputState.LeftMouseReleasedThisFrame)
@@ -2793,18 +2795,6 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             return;
         }
 
-        if (_gameplayUi.TryGetNativeHoveredSlot(out int hoveredActionSlot) &&
-            hoveredActionSlot >= NativeInventoryActionSlotOffset &&
-            hoveredActionSlot < NativeInventoryActionSlotOffset + InventoryActionLabels.Length)
-        {
-            int hoveredActionIndex = hoveredActionSlot - NativeInventoryActionSlotOffset;
-            _inventoryActionIndex = hoveredActionIndex;
-            if (_inputState.LeftMousePressedThisFrame)
-                ExecuteSelectedInventoryAction();
-
-            return;
-        }
-
         if (_inputState.WasPressed(Key.W) || _inputState.GetGamepadPressed(GamepadButton.DpadUp))
             _inventoryActionIndex--;
         else if (_inputState.WasPressed(Key.S) || _inputState.GetGamepadPressed(GamepadButton.DpadDown))
@@ -2816,8 +2806,22 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             ExecuteSelectedInventoryAction();
     }
 
+    private void UpdateInventoryActionMenuPointer(int hoveredSlot)
+    {
+        if (hoveredSlot < NativeInventoryActionSlotOffset ||
+            hoveredSlot >= NativeInventoryActionSlotOffset + InventoryActionLabels.Length)
+            return;
+
+        if (_inputState.MouseDelta.LengthSquared() > 0.01f || _inputState.LeftMousePressedThisFrame)
+            _inventoryActionIndex = hoveredSlot - NativeInventoryActionSlotOffset;
+
+        if (_inputState.LeftMousePressedThisFrame)
+            ExecuteSelectedInventoryAction();
+    }
+
     private void ExecuteSelectedInventoryAction()
     {
+        _inventoryActionHandledThisFrame = true;
         InventoryItemStack? selectedStack = _inventory.GetStackCoveringSlot(_selectedInventoryStackIndex);
         if (selectedStack == null)
         {
@@ -3110,6 +3114,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
 
         ApplyPersistentObjectDamageStateToRuntime();
+        UpdatePuzzleIndicators();
     }
 
     private void ApplyPersistentObjectDamageStateToRuntime()
@@ -3215,7 +3220,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 if (door == null || !_puzzleDoorClosedPositions.TryGetValue(door.Name, out Vector3 closedPosition))
                     continue;
 
-                Vector3 target = closedPosition + Vector3.UnitY * PuzzleDoorLiftHeight;
+                Vector3 target = PuzzleDoorOpenPosition(door, closedPosition);
                 door.Transform.Position = MoveTowards(door.Transform.Position, target, PuzzleDoorLiftSpeed * dt);
             }
         }
@@ -3224,7 +3229,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private void MovePuzzleDoorToOpenPosition(Entity door)
     {
         if (_puzzleDoorClosedPositions.TryGetValue(door.Name, out Vector3 closedPosition))
-            door.Transform.Position = closedPosition + Vector3.UnitY * PuzzleDoorLiftHeight;
+            door.Transform.Position = PuzzleDoorOpenPosition(door, closedPosition);
     }
 
     private void RegisterSwingDoor(Entity door)
@@ -3424,9 +3429,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         => _runtimeEntities.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
 
     private LevelEntityDef? FindLevelEntityDef(Entity entity)
-        => _editor.LevelFile.Entities.FirstOrDefault(def =>
-            string.Equals(def.Id, entity.Id, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(def.Name, entity.Name, StringComparison.OrdinalIgnoreCase));
+        => _runtimeDefinitions.GetValueOrDefault(entity);
 
     private LevelInteractionDef? GetInteraction(Entity entity)
         => FindLevelEntityDef(entity)?.Interaction;
@@ -4308,16 +4311,25 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         bool found = false;
         float bestTopY = float.NegativeInfinity;
 
+        Aabb supportRegion = new(
+            new Vector3(bodyAabb.Min.X, bodyAabb.Min.Y - yTolerance, bodyAabb.Min.Z),
+            new Vector3(bodyAabb.Max.X, bodyAabb.Min.Y + yTolerance, bodyAabb.Max.Z));
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             Entity candidateEntity = _runtimeEntities[i];
             if (ReferenceEquals(candidateEntity, entity) ||
                 GetPhysicsBodyShape(candidateEntity) != RuntimeShapeKind.Box ||
-                !TryCreatePhysicsWorldCollider(candidateEntity, out WorldCollider candidateCollider) ||
-                !TryBuildStableBoxTopFaceAabb(candidateEntity, candidateCollider, out Aabb candidate))
+                !TryCreatePhysicsWorldCollider(candidateEntity, out WorldCollider candidateCollider))
             {
                 continue;
             }
+
+            // Only nearby geometry can support the body's bottom face. Keep the
+            // existing exact support test for the candidates that pass this bound.
+            Aabb candidateBounds = candidateCollider.GetAabb();
+            if (!supportRegion.Overlaps(candidateBounds) ||
+                !TryBuildStableBoxTopFaceAabb(candidateEntity, candidateCollider, out Aabb candidate))
+                continue;
 
             if (!DoesBodyTouchSupportSurface(bodyAabb, candidate, yTolerance, overlapInset))
                 continue;
@@ -5687,6 +5699,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private void RebuildRuntimeWorld()
     {
         _runtimeEntities.Clear();
+        _runtimeDefinitions.Clear();
         _runtimeWorldColliders.Clear();
         _puzzleDoorClosedPositions.Clear();
         _swingDoorStates.Clear();
@@ -5700,6 +5713,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             var def = levelEntities[entityIndex];
             LevelWorldTransform worldTransform = levelTransforms[entityIndex];
             var e = new Entity(def.Id, def.Type, def.Name ?? def.Type);
+            _runtimeDefinitions.Add(e, def);
             e.ParentId = def.ParentId;
 
             e.Transform.Position = worldTransform.Position;
@@ -5918,6 +5932,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 RegisterSwingDoor(e);
         }
 
+        RegisterPuzzleMechanisms();
         ApplyPersistentInteractionStateToRuntime();
     }
 
@@ -6243,6 +6258,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         // 6) Update held object (spring + world collision)
         FixedUpdateHeldObject(fixedDt);
+        UpdatePressurePlates(fixedDt);
 
         // 7) Player collides with EVERYTHING (STATIC + KINEMATIC + DYNAMIC), except held
         BuildRuntimeCollidersThisFrame(includeDynamicBodies: true, includeHeldBodies: false);
@@ -6395,9 +6411,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         if (_editorEnabled)
         {
-            _editor.DrawToolbarPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
-            _editor.DrawHierarchyPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
-            _editor.DrawInspectorPanel(ref _mouseOverEditorUi, ref _keyboardOverEditorUi);
+            DrawInGameEditorPanels();
             if (_editor.FrameSelectionRequested)
             {
                 if (_editor.TryGetSelectedWorldPosition(out var target))
@@ -6588,6 +6602,26 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private static string FormatFloat(float value)
         => value.ToString("0.###", CultureInfo.InvariantCulture) + "f";
 
+    private bool CanHandleInventoryPointer(int slot)
+    {
+        if (slot < 0 || slot >= _inventory.SlotCapacity)
+            return false;
+
+        if (_inventoryOpen && !IsPendingUseSelectionActive)
+        {
+            if (_inventoryActionMenuOpen || _inventorySplitPickerOpen || _inventoryDiscardConfirmOpen ||
+                _inventoryActionHandledThisFrame || _inventoryToggleConsumedThisFrame)
+                return false;
+
+            // A stationary mouse must not undo keyboard/controller target selection.
+            return _inputState.MouseDelta.LengthSquared() > 0.01f ||
+                   _inputState.LeftMousePressedThisFrame || _inputState.LeftMouseReleasedThisFrame ||
+                   InventorySplitPressedThisFrame();
+        }
+
+        return true;
+    }
+
     private void DrawGameplayHud()
     {
         if (_editorEnabled)
@@ -6595,7 +6629,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         if (_gameplayUi.DrawPreview(out int previewSelectedSlot))
         {
-            if (previewSelectedSlot >= 0)
+            if (CanHandleInventoryPointer(previewSelectedSlot))
             {
                 SelectInventorySlot(previewSelectedSlot);
                 if (_inventoryOpen)
@@ -6627,6 +6661,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             return;
         }
 
+        // Native hover is current only after UpdateGameplayUi has rebuilt and hit-tested the document.
+        if (_inventoryOpen && _inventoryActionMenuOpen && !IsPendingUseSelectionActive &&
+            _gameplayUi.TryGetNativeHoveredSlot(out int actionSlot))
+        {
+            UpdateInventoryActionMenuPointer(actionSlot);
+            return;
+        }
+
         if (!_inventoryOpen ||
             _storageOpen ||
             (_inventoryOpen && !IsPendingUseSelectionActive && (_inventoryActionMenuOpen || _inventorySplitPickerOpen || _inventoryDiscardConfirmOpen)))
@@ -6635,7 +6677,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 return;
         }
 
-        if (_gameplayUi.TryGetNativeHoveredSlot(out int nativeHoveredSlot))
+        if (_gameplayUi.TryGetNativeHoveredSlot(out int nativeHoveredSlot) && CanHandleInventoryPointer(nativeHoveredSlot))
         {
             SelectInventorySlot(nativeHoveredSlot);
             if (_inventoryOpen)
@@ -7422,7 +7464,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.48f, 0.50f, 0.48f, 1f));
 
             string suffix = disabled ? " (locked)" : "";
-            if (ImGui.Selectable($"{label}{suffix}", selected))
+            bool clicked = ImGui.Selectable($"{label}{suffix}", selected);
+            if (clicked || (ImGui.IsItemHovered() && _inputState.LeftMousePressedThisFrame))
             {
                 _inventoryActionIndex = i;
                 ExecuteSelectedInventoryAction();
@@ -8239,7 +8282,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         {
             if (string.IsNullOrWhiteSpace(state))
                 continue;
-            if (!_solvedPuzzles.Contains(state) && !_openedDoors.Contains(state) && !_collectedInteractables.Contains(state))
+            if (!IsPuzzleRequirementComplete(state))
                 return false;
         }
 
@@ -8248,9 +8291,13 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private void UsePuzzleLever(Entity target)
     {
+        UpdatePressurePlates(0);
+        if (IsInteractionStateComplete(_solvedPuzzles, target) || !AreInteractionRequiredStatesComplete(target))
+            return;
         LevelInteractionDef? interaction = GetInteraction(target);
         _solvedPuzzles.Add(GetInteractionStateId(target));
         OpenPuzzleTargets(target, instant: false);
+        UpdatePuzzleIndicators();
 
         string? message = interaction?.SuccessMessage;
         ShowGameMessage(
@@ -8261,6 +8308,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     }
     private void UseSelectedItemOnPuzzleSlot(Entity target, string itemId)
     {
+        if (IsInteractionStateComplete(_solvedPuzzles, target) ||
+            !string.Equals(itemId, GetPuzzleSlotRequiredItem(target), StringComparison.OrdinalIgnoreCase) ||
+            !_inventory.Contains(itemId))
+            return;
         LevelInteractionDef? interaction = GetInteraction(target);
         _solvedPuzzles.Add(GetInteractionStateId(target));
 
@@ -8268,6 +8319,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             _inventory.RemoveCount(itemId);
 
         OpenPuzzleTargets(target, instant: false);
+        UpdatePuzzleIndicators();
 
         ClearPendingUseSelection();
         SetInventoryOpen(false);

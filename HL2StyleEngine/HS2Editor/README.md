@@ -12,9 +12,12 @@ dotnet run --project HS2Editor\HS2Editor.csproj
 
 The editor loads `HS2Project.json`, creates missing content folders under `Game/Content`, and opens the configured startup level.
 
+Game's Visual Studio launch profiles and both game launchers explicitly open `sixRoomTest.json` for testing; this does not change the startup scene selected here. F2 inside Game is a smaller in-game editor with the shared Toolbar/Hierarchy/Inspector, not this full application. Its new View menu restores those panels or opens F3 debug/weapon tools. Content Browser, prefab browsing and UI management remain in HS2Editor. The September 8 six-room performance fixes change runtime lookups and physics bounds/support queries, not this application's docking or textured renderer. See `Game/SIX_ROOM_TEST.md` for measured results and remaining manual checks.
+
 ## Current Features
 
-- `sixRoomTest.json` is available in the Levels panel as a larger six-room physics/exploration test. See `Game/SIX_ROOM_TEST.md` for its layout. `LaunchSixRoomTest.bat` plays it directly.
+- `sixRoomTest.json` is available in the Levels panel as a larger six-room physics/exploration test, now with five shutter puzzles. See `Game/SIX_ROOM_TEST.md` for layout, solutions and the play-test checklist. `LaunchSixRoomTest.bat` plays it directly.
+- Puzzle authoring additions (2026-09-08): Interaction > Add Pressure Plate, Add Puzzle Indicator, and Puzzle Door > Lift Height. Plates use a horizontal static box rigid body's top and yaw-rotated footprint, with editable minimum mass/settle time. Indicators use Required States on a primitive Prop. Filter `SRPuzzle_` in Hierarchy to find the authored puzzle objects. Required pickups remain dynamic/Can Pick Up; frames are static Mesh colliders and separate shutter leaves own the lifting interaction. No layout or renderer changes accompany this pass.
 - Scene Point Lights in the Toolbar toggles saved level lighting (`UsePointLights`). Enabled levels render nearby PointLight colour, intensity and range in both the Scene viewport and game. `sixRoomTest` enables it; older levels default to off. Select a PointLight to tune it in the Inspector. Shadows, groups and switches are not implemented yet.
 
 - Level create, load, save, duplicate, and rename.
