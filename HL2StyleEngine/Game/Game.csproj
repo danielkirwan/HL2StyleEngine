@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\Native\runtimes\win-x64\HS2RmlUiBridge.dll" Link="HS2RmlUiBridge.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('..\Native\runtimes\win-x64\HS2RmlUiBridge.dll')" />
     <None Include="Content\UI\**\*.rml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\UI\**\*.rcss" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\UI\**\*.png" CopyToOutputDirectory="PreserveNewest" />

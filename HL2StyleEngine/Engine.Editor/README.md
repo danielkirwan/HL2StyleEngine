@@ -2,6 +2,10 @@
 
 HS2Editor is the standalone project and level editor for the engine. It is separate from the runtime game and separate from the asset importer.
 
+## Persistence Update (2026-10-05)
+
+The solution now targets .NET 10. `LevelIO` loads editable JSON through shared RE:Dox persistence, with source-content/schema-validated DOX caches under each level folder's `.hs2cache`. `LevelIO` and `PrefabIO` save JSON through flushed temporary files and retain the previous file as `.json.bak`. Existing transforms, parent aliases, legacy boxes and prefab structures remain compatible. The cache is never the authoring source; saved source changes invalidate it even if timestamps are unchanged. Project settings, script configuration and undo serialization retain their existing paths. No renderer, collider, docking or level-layout changes accompany this migration. See `Game/PERSISTENCE_AND_INVENTORY.md`.
+
 ## Goal
 
 HS2Editor should become the Unity-style project and level authoring app for the engine. It should let the project owner manage content folders, create and edit levels, place objects, attach scripts/components, assign imported models, manage prefabs, inspect UI files, and launch the game from the selected scene.

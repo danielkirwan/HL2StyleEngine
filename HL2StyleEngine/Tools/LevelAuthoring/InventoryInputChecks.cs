@@ -24,8 +24,8 @@ internal static class InventoryInputChecks
 
     internal static void Run(string root)
     {
-        using var backend = RmlUiBackend.Probe(Path.Combine(root, "Game/bin/Debug/net8.0/Content/UI"),
-            Path.Combine(root, "Game/bin/Debug/net8.0/HS2RmlUiBridge.dll"));
+        using var backend = RmlUiBackend.Probe(Path.Combine(root, "Game/bin/Debug/net10.0/Content/UI"),
+            Path.Combine(root, "Game/bin/Debug/net10.0/HS2RmlUiBridge.dll"));
         var ui = new GameplayUiLayer(backend, nativePresentationEnabled: true);
         var module = new HL2GameModule();
         Call(module, "BuildActions");
@@ -48,6 +48,8 @@ internal static class InventoryInputChecks
                 InventoryOpen = true,
                 GridWidth = inventory.GridWidth,
                 GridHeight = inventory.GridHeight,
+                PrimaryGridHeight = inventory.PrimaryGridHeight,
+                ViewportWidth = 1920, ViewportHeight = 1080,
                 SelectedSlot = Field<int>(module, "_selectedInventoryStackIndex"),
                 CombiningInventoryItem = Field<int>(module, "_combineSourceSlot") >= 0,
                 CombineSourceSlot = Field<int>(module, "_combineSourceSlot"),
@@ -64,7 +66,8 @@ internal static class InventoryInputChecks
             Call(module, "DrawGameplayHud");
         }
 
-        Vector2 source = new(130, 230), target = new(214, 230);
+        var layout = new InventoryLayout(1920, 1080, 8, 8, 4);
+        Vector2 source = layout.SlotCenter(0), target = layout.SlotCenter(1);
         Frame(source); Frame(source);
         Require(backend.TryGetHoveredDataSlot(out int hovered) && hovered == 0, "Source slot hit test failed: " + hovered);
         Frame(source, Key.E);
@@ -80,8 +83,8 @@ internal static class InventoryInputChecks
 
         Vector2 FindNativeSlot(int slot)
         {
-            for (int y = 360; y < 700; y += 12)
-                for (int x = 780; x < 1100; x += 12)
+            for (int y = 320; y < 800; y += 12)
+                for (int x = 750; x < 1200; x += 12)
                 {
                     Vector2 point = new(x, y);
                     input.Update(new Snapshot(point, null, []));
@@ -171,8 +174,8 @@ internal static class InventoryInputChecks
         for (int i = 0; i < 3; i++) Frame(source, Key.S);
         Frame(source, Key.E);
         Frame(source, null, click);
-        Frame(new Vector2(298, 230), null, click);
-        Frame(new Vector2(382, 230), null, click);
+        Frame(layout.SlotCenter(2), null, click);
+        Frame(layout.SlotCenter(3), null, click);
         Require(inventory.StackCount == 3 && Field<int>(module, "_combineSourceSlot") == 0, "Invalid/self target consumed ingredients.");
         Frame(target, Key.Escape);
         Require(inventory.StackCount == 3 && Field<int>(module, "_combineSourceSlot") < 0, "Cancel consumed ingredients.");
@@ -198,6 +201,17 @@ internal static class InventoryInputChecks
                 Field<string>(module, "_gameMessage").Contains("Created Bullets x12"),
             "Crafting did not deliver ammo directly to weapon reserves with a notification.");
         Console.WriteLine("PASS: existing ammo crafting bypasses inventory and reports the created amount.");
+
+        Reset(ItemCatalog.DamagedCable, ItemCatalog.SpareWire);
+        Require(inventory.MoveStackToSlot(0, 32), "Cannot seed overflow drag.");
+        Vector2 overflow = layout.SlotCenter(32), destination = layout.SlotCenter(7);
+        Frame(overflow); Frame(overflow);
+        Frame(overflow, null, new MouseEvent(MouseButton.Left, true));
+        Frame(destination, null, new MouseEvent(MouseButton.Left, true));
+        Frame(destination, null, new MouseEvent(MouseButton.Left, false));
+        Require(inventory.GetStackCoveringSlot(7)?.ItemId == ItemCatalog.DamagedCable &&
+            !inventory.OverflowStacks.Any(), "Native overflow drag did not reach destination.");
+        Console.WriteLine("PASS: native overflow-to-inventory drag.");
 
         var quickClick = new InputState();
         quickClick.Update(new Snapshot(target, null,
@@ -235,7 +249,7 @@ internal static class InventoryInputChecks
             io.DeltaTime = 1f / 60;
             io.Fonts.AddFontDefault();
             io.Fonts.GetTexDataAsRGBA32(out IntPtr _, out int _, out int _, out int _);
-            using var ui = new GameplayUiLayer(RmlUiBackend.Probe(Path.Combine(root, "Tools/LevelAuthoring/bin/Debug/net8.0/Content/UI"),
+            using var ui = new GameplayUiLayer(RmlUiBackend.Probe(Path.Combine(root, "Tools/LevelAuthoring/bin/Debug/net10.0/Content/UI"),
                 "UnavailableInventoryTestBridge"), false);
             var module = new HL2GameModule();
             Call(module, "BuildActions");
@@ -254,6 +268,9 @@ internal static class InventoryInputChecks
                 ui.SubmitState(new GameplayUiState
                 {
                     InventoryOpen = true,
+                    GridWidth = inventory.GridWidth, GridHeight = inventory.GridHeight,
+                    PrimaryGridHeight = inventory.PrimaryGridHeight,
+                    ViewportWidth = 1920, ViewportHeight = 1080,
                     InventoryActionMenuOpen = Field<bool>(module, "_inventoryActionMenuOpen"),
                     SelectedSlot = Field<int>(module, "_selectedInventoryStackIndex"),
                     InventoryItems = (List<GameplayUiInventoryItem>)Call(module, "BuildInventoryUiItems")!,
@@ -265,7 +282,8 @@ internal static class InventoryInputChecks
                 Call(module, "DrawGameplayHud");
                 ImGui.Render();
             }
-            Vector2 source = new(123, 174), target = new(197, 174);
+            var layout = new InventoryLayout(1920, 1080, 8, 8, 4);
+            Vector2 source = layout.SlotCenter(0), target = layout.SlotCenter(1);
             Frame(source); Frame(source);
             Frame(source, Key.E);
             Frame(target);
@@ -276,6 +294,15 @@ internal static class InventoryInputChecks
             Frame(target, null, new MouseEvent(MouseButton.Left, true), new MouseEvent(MouseButton.Left, false));
             Require(inventory.Contains(ItemCatalog.RepairedCable), "Preview second-item quick click failed.");
             Console.WriteLine("PASS: ImGui fallback menu preserves source and accepts quick target clicks.");
+            Require(inventory.MoveStackToSlot(inventory.Stacks[0].SlotIndex, 32), "Cannot seed preview overflow drag.");
+            Vector2 overflow = layout.SlotCenter(32), destination = layout.SlotCenter(7);
+            Frame(overflow); Frame(overflow);
+            Frame(overflow, null, new MouseEvent(MouseButton.Left, true));
+            Frame(destination, null, new MouseEvent(MouseButton.Left, true));
+            Frame(destination, null, new MouseEvent(MouseButton.Left, false));
+            Require(inventory.GetStackCoveringSlot(7)?.ItemId == ItemCatalog.RepairedCable &&
+                !inventory.OverflowStacks.Any(), "Preview overflow drag did not reach destination.");
+            Console.WriteLine("PASS: ImGui fallback overflow-to-inventory drag.");
         }
         finally { ImGui.DestroyContext(context); }
     }

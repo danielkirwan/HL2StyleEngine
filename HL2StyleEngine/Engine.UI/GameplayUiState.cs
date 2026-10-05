@@ -26,6 +26,9 @@ public sealed class GameplayUiState
     public string GameMessage { get; init; } = "";
     public int GridWidth { get; init; } = 8;
     public int GridHeight { get; init; } = 4;
+    public int PrimaryGridHeight { get; init; } = 4;
+    public int ViewportWidth { get; init; } = 1280;
+    public int ViewportHeight { get; init; } = 720;
     public int UsedSlotCount { get; init; }
     public int SelectedSlot { get; init; } = -1;
     public int SelectedStorageSlot { get; init; } = -1;

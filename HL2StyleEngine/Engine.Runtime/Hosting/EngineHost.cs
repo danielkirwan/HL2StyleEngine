@@ -48,7 +48,7 @@ public sealed class EngineHost : IDisposable
             _window.Window.Width,
             _window.Window.Height);
 
-        Context = new EngineContext(_window, _renderer);
+        Context = new EngineContext(_window, _renderer, _imgui);
     }
 
     public void Run(IGameModule module)

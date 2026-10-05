@@ -19,6 +19,7 @@ internal static class RmlUiDocumentBuilder
         sb.AppendLine("  <head>");
         sb.AppendLine("    <title>Gameplay UI</title>");
         sb.AppendLine("    <link type=\"text/rcss\" href=\"../Inventory/inventory.rcss\" />");
+        sb.AppendLine("    <link type=\"text/rcss\" href=\"../Inventory/grid.rcss\" />");
         sb.AppendLine("  </head>");
         sb.AppendLine("  <body>");
         sb.AppendLine("    <div id=\"gameplay-root\">");
@@ -394,163 +395,53 @@ internal static class RmlUiDocumentBuilder
 
     private static void AppendInventory(StringBuilder sb, GameplayUiState state, RmlUiTextImageResolver? textImageResolver)
     {
-        Dictionary<int, GameplayUiInventoryItem> byOriginSlot = state.InventoryItems.ToDictionary(item => item.SlotIndex);
-        Dictionary<int, GameplayUiInventoryItem> byCoveredSlot = BuildCoveredSlotLookup(state);
-        GameplayUiInventoryItem? selected = byCoveredSlot.GetValueOrDefault(state.SelectedSlot);
-
-        sb.AppendLine("      <section id=\"inventory-panel\" class=\"glass-panel\">");
-        sb.AppendLine("        <div class=\"inventory-backplate\"></div>");
-        sb.AppendLine("        <div id=\"inventory-header\">");
-        sb.AppendLine("          <div>");
-        sb.AppendLine($"            <p class=\"eyebrow\">{TextOrImage("Attache Case", "eyebrow", 12, textImageResolver)}</p>");
-        sb.AppendLine($"            <h1>{TextOrImage("Inventory", "title", 31, textImageResolver)}</h1>");
-        sb.AppendLine("          </div>");
-        sb.AppendLine($"          <p class=\"slot-count\">{TextOrImage($"{state.UsedSlotCount}/{Math.Max(1, state.GridWidth * state.GridHeight)} occupied", "muted", 15, textImageResolver)}</p>");
-        sb.AppendLine("        </div>");
-        sb.AppendLine("        <div id=\"case-panel\">");
-        sb.AppendLine($"        <div id=\"inventory-grid\" class=\"cols-{Math.Max(1, state.GridWidth)}\">");
-
-        int slotCapacity = Math.Max(1, state.GridWidth * state.GridHeight);
-        for (int slot = 0; slot < slotCapacity; slot++)
+        var layout = new InventoryLayout(state.ViewportWidth, state.ViewportHeight,
+            state.GridWidth, state.GridHeight, state.PrimaryGridHeight);
+        var covered = BuildCoveredSlotLookup(state);
+        sb.AppendLine("<section id='inventory-grid-overlay'>");
+        sb.AppendLine($"<div class='grid-label' style='left:{(int)layout.PrimaryOrigin.X}px;top:{(int)layout.PrimaryOrigin.Y - 28}px;'>INVENTORY</div>");
+        if (layout.OverflowRows > 0)
+            sb.AppendLine($"<div class='grid-label' style='left:{(int)layout.OverflowOrigin.X}px;top:{(int)layout.OverflowOrigin.Y - 28}px;'>OVERFLOW</div>");
+        for (int slot = 0; slot < state.GridWidth * state.GridHeight; slot++)
         {
-            string slotStyle = BuildSlotStyle(slot, state.GridWidth);
-            bool isSelected = slot == state.SelectedSlot;
-            string selectedClass = isSelected ? " selected" : "";
-            if (state.MovingInventoryItem && slot == state.MovingFromSlot)
-                selectedClass += " moving-source";
-            if (state.MovingInventoryItem && slot == state.MovingTargetSlot)
-                selectedClass += state.CanPlaceMovingItem ? " move-valid" : " move-invalid";
-            bool covered = byCoveredSlot.TryGetValue(slot, out GameplayUiInventoryItem? coveredItem);
-            bool origin = byOriginSlot.TryGetValue(slot, out GameplayUiInventoryItem? item);
-            if (covered && coveredItem != null)
+            var at = layout.SlotOrigin(slot);
+            sb.AppendLine($"<div class='grid-cell' data-slot='{slot}' style='left:{(int)at.X}px;top:{(int)at.Y}px;width:{layout.Cell}px;height:{layout.Cell}px;'></div>");
+        }
+        foreach (var item in state.InventoryItems)
+        {
+            var at = layout.SlotOrigin(item.SlotIndex);
+            int width = item.SlotWidth * layout.Cell, height = item.SlotHeight * layout.Cell;
+            string classes = item.SlotIndex == state.SelectedSlot || item.CoveredSlots.Contains(state.SelectedSlot) ? " selected" : "";
+            if (item.IsValidCombineTarget) classes += " combine-valid";
+            if (item.IsCombineSource) classes += " combine-source";
+            sb.AppendLine($"<div class='grid-item{classes}' style='left:{(int)at.X + 1}px;top:{(int)at.Y + 1}px;width:{width - 2}px;height:{height - 2}px;'>");
+            if (!string.IsNullOrWhiteSpace(item.IconPath))
             {
-                if (coveredItem.IsCombineSource)
-                    selectedClass += " combine-source";
-                else if (coveredItem.IsValidCombineTarget)
-                    selectedClass += " combine-valid";
-                else if (coveredItem.IsInvalidCombineTarget)
-                    selectedClass += " combine-invalid";
-
-                if (coveredItem.IsValidUseTarget)
-                    selectedClass += " use-valid";
-                else if (coveredItem.IsInvalidUseTarget)
-                    selectedClass += " use-invalid";
+                int iconSize = Math.Min(width, height) - 12;
+                string rotation = item.Rotated ? "transform:rotate(90deg);" : "";
+                sb.AppendLine($"<img class='grid-sprite' src='{Esc(item.IconPath)}' style='left:{(width - iconSize) / 2 - 1}px;top:{(height - iconSize) / 2 - 1}px;width:{iconSize}px;height:{iconSize}px;{rotation}'/>");
             }
-
-            if (origin && item != null)
-            {
-                string countSuffix = item.Count > 1 ? $" x{item.Count}" : "";
-                string footprintClass = item.SlotWidth > 1 || item.SlotHeight > 1 ? " footprint-origin" : "";
-                string rotatedClass = item.Rotated ? " rotated" : "";
-                string toneClass = ItemToneClass(item.Type);
-                sb.AppendLine($"          <div class=\"slot filled{footprintClass}{rotatedClass}{selectedClass}\" data-slot=\"{slot}\"{slotStyle}>");
-                sb.AppendLine($"            <div class=\"mini-icon {Esc(toneClass)}\">");
-                AppendIconOrText(sb, item.IconPath, item.Id, item.Type, "mini");
-                sb.AppendLine("            </div>");
-                sb.AppendLine($"            <p class=\"slot-name\">{Esc(ShortLabel(item.DisplayName))}{Esc(countSuffix)}</p>");
-                sb.AppendLine($"            <p class=\"slot-footprint\">{item.SlotWidth} x {item.SlotHeight}</p>");
-                sb.AppendLine("          </div>");
-            }
-            else if (covered && coveredItem != null)
-            {
-                sb.AppendLine($"          <div class=\"slot filled footprint-covered{selectedClass}\" data-slot=\"{slot}\"{slotStyle}>");
-                sb.AppendLine("            <div class=\"covered-stitch\"></div>");
-                sb.AppendLine($"            <p class=\"slot-name\">{Esc(ShortLabel(coveredItem.DisplayName))}</p>");
-                sb.AppendLine("          </div>");
-            }
-            else
-            {
-                sb.AppendLine($"          <div class=\"slot empty{selectedClass}\" data-slot=\"{slot}\"{slotStyle}></div>");
-            }
+            else sb.AppendLine($"<div class='grid-fallback'>{Esc(item.DisplayName)}</div>");
+            if (item.MaxStack > 1)
+                sb.AppendLine($"<div class='grid-count'>{item.Count}</div>");
+            sb.AppendLine("</div>");
         }
-
-        sb.AppendLine("        </div>");
-        sb.AppendLine("        <aside id=\"description-panel\">");
-        if (selected != null)
+        if (state.MovingInventoryItem && state.MovingTargetSlot >= 0)
         {
-            string countSuffix = selected.Count > 1 ? $" x{selected.Count}" : "";
-            string toneClass = ItemToneClass(selected.Type);
-            sb.AppendLine($"          <div class=\"item-preview-card {Esc(toneClass)}\">");
-            AppendIconOrText(sb, selected.IconPath, selected.Id, selected.Type, "preview");
-            sb.AppendLine("          </div>");
-            sb.AppendLine($"          <h2>{TextOrImage($"{selected.DisplayName}{countSuffix}", "title", 23, textImageResolver)}</h2>");
-            sb.AppendLine($"          <p class=\"muted\">{TextOrImage($"{selected.Type} | {selected.SlotWidth}x{selected.SlotHeight} slots | Stack {selected.MaxStack}", "muted", 13, textImageResolver)}</p>");
-            if (!string.IsNullOrWhiteSpace(selected.Description))
-                sb.AppendLine($"          <p class=\"description\">{Esc(selected.Description)}</p>");
+            var at = layout.SlotOrigin(state.MovingTargetSlot);
+            sb.AppendLine($"<div class='grid-focus{(state.CanPlaceMovingItem ? "" : " invalid")}' style='left:{(int)at.X}px;top:{(int)at.Y}px;width:{state.MovingItemSlotWidth * layout.Cell}px;height:{state.MovingItemSlotHeight * layout.Cell}px;'></div>");
         }
-        else
+        sb.AppendLine($"<div class='grid-description' style='left:{(int)layout.DescriptionOrigin.X}px;top:{(int)layout.DescriptionOrigin.Y}px;width:{layout.DescriptionWidth}px;'>");
+        if (covered.TryGetValue(state.SelectedSlot, out var selected))
         {
-            sb.AppendLine("          <div class=\"item-preview-card empty-preview\"><div class=\"preview-symbol\">?</div></div>");
-            sb.AppendLine($"          <h2>{TextOrImage("No item selected", "title", 23, textImageResolver)}</h2>");
-            sb.AppendLine($"          <p class=\"muted\">{TextOrImage("Move across the case with WASD, D-pad, or left stick.", "muted", 13, textImageResolver)}</p>");
+            sb.AppendLine($"<h2>{TextOrImage(selected.DisplayName, "subtitle", 16, textImageResolver)}</h2>");
+            sb.AppendLine($"<p>{Esc(selected.Description)}</p>");
         }
-
-        if (state.SaveCount > 0)
-            sb.AppendLine($"          <p class=\"muted\">{TextOrImage($"Saves used: {state.SaveCount}", "muted", 13, textImageResolver)}</p>");
-
-        if (state.UsingInventoryItem)
-        {
-            if (!string.IsNullOrWhiteSpace(state.UseTargetPrompt))
-                sb.AppendLine($"          <p class=\"use-hint\">{TextOrImage(state.UseTargetPrompt, "muted", 13, textImageResolver)}</p>");
-
-            if (selected?.IsValidUseTarget == true)
-                sb.AppendLine($"          <p class=\"use-hint good\">{TextOrImage("This item can be used here. E / X: Use", "muted", 13, textImageResolver)}</p>");
-            else if (selected?.IsInvalidUseTarget == true)
-                sb.AppendLine($"          <p class=\"use-hint bad\">{TextOrImage("This item does not fit this use. Choose a highlighted item.", "warning", 13, textImageResolver)}</p>");
-            else
-                sb.AppendLine($"          <p class=\"use-hint\">{TextOrImage("Select a highlighted item to use.", "muted", 13, textImageResolver)}</p>");
-
-            sb.AppendLine($"          <p class=\"footer-hint\">{TextOrImage("I / Back: Cancel use", "footer", 12, textImageResolver)}</p>");
-        }
-        else if (state.CombiningInventoryItem)
-        {
-            if (selected?.IsValidCombineTarget == true)
-            {
-                sb.AppendLine($"          <p class=\"combine-hint good\">{TextOrImage("This item can be combined. E / X: Combine", "muted", 13, textImageResolver)}</p>");
-                if (!string.IsNullOrWhiteSpace(state.CombinePreviewTitle))
-                {
-                    string resultSuffix = state.CombinePreviewResultCount > 1 ? $" x{state.CombinePreviewResultCount}" : "";
-                    sb.AppendLine("          <div class=\"combine-preview-card\">");
-                    sb.AppendLine($"            <p class=\"eyebrow\">{TextOrImage("Recipe", "eyebrow", 12, textImageResolver)}</p>");
-                    sb.AppendLine($"            <h2>{TextOrImage(state.CombinePreviewTitle, "title", 20, textImageResolver)}</h2>");
-                    if (!string.IsNullOrWhiteSpace(state.CombinePreviewResultName))
-                        sb.AppendLine($"            <p class=\"muted\">{TextOrImage($"Result: {state.CombinePreviewResultName}{resultSuffix}", "muted", 13, textImageResolver)}</p>");
-                    if (!string.IsNullOrWhiteSpace(state.CombinePreviewDescription))
-                        sb.AppendLine($"            <p class=\"description\">{Esc(state.CombinePreviewDescription)}</p>");
-                    sb.AppendLine("          </div>");
-                }
-            }
-            else if (selected?.IsCombineSource == true)
-                sb.AppendLine($"          <p class=\"combine-hint source\">{TextOrImage("Combining from this item. Select a highlighted target.", "muted", 13, textImageResolver)}</p>");
-            else if (selected?.IsInvalidCombineTarget == true)
-                sb.AppendLine($"          <p class=\"combine-hint bad\">{TextOrImage("This item cannot combine here. Choose a highlighted item.", "warning", 13, textImageResolver)}</p>");
-            else
-                sb.AppendLine($"          <p class=\"combine-hint\">{TextOrImage("Select a highlighted item to combine.", "muted", 13, textImageResolver)}</p>");
-
-            sb.AppendLine($"          <p class=\"footer-hint\">{TextOrImage("I / Back: Cancel combine", "footer", 12, textImageResolver)}</p>");
-        }
-        else if (state.MovingInventoryItem)
-        {
-            string moveHint = state.CanSwapMovingItem
-                ? "Release here to swap items."
-                : state.CanMergeMovingItem
-                    ? "Release here to merge stacks."
-                : state.CanPlaceMovingItem
-                    ? "Move target is valid."
-                    : "That item will not fit there.";
-            sb.AppendLine($"          <p class=\"muted\">{TextOrImage(moveHint, "muted", 13, textImageResolver)}</p>");
-            string rotationText = state.MovingItemRotated ? "rotated" : "normal";
-            sb.AppendLine($"          <p class=\"muted\">{TextOrImage($"Held footprint: {state.MovingItemSlotWidth}x{state.MovingItemSlotHeight} ({rotationText})", "muted", 13, textImageResolver)}</p>");
-            sb.AppendLine($"          <p class=\"footer-hint\">{TextOrImage("E / X: Place | R / Y: Rotate | I / Back: Cancel", "footer", 12, textImageResolver)}</p>");
-        }
-        else
-        {
-            sb.AppendLine($"          <p class=\"footer-hint\">{TextOrImage("Mouse: Drag / Click | E / X: Actions | R / Y: Rotate | Q / LB: Split | I / Back: Close", "footer", 12, textImageResolver)}</p>");
-        }
-        sb.AppendLine("        </aside>");
-        sb.AppendLine("        </div>");
+        if (state.CombiningInventoryItem && !string.IsNullOrWhiteSpace(state.CombinePreviewResultName))
+            sb.AppendLine($"<p>{Esc(state.CombinePreviewResultName)}</p>");
+        sb.AppendLine("</div>");
         AppendInventoryOverlays(sb, state, textImageResolver);
-        sb.AppendLine("      </section>");
+        sb.AppendLine("</section>");
     }
 
     private static string BuildSlotStyle(int slot, int gridWidth)
@@ -575,7 +466,7 @@ internal static class RmlUiDocumentBuilder
     {
         if (state.InventoryActionMenuOpen)
         {
-            sb.AppendLine("        <section id=\"inventory-action-menu\" class=\"floating-menu\">");
+            sb.AppendLine($"<section id='inventory-action-menu' class='floating-menu' {InventoryMenuStyle(state)}>");
             sb.AppendLine($"          <div class=\"menu-title\">{TextOrImage("Item Actions", "subtitle", 12, textImageResolver)}</div>");
             IReadOnlyList<string> labels = state.InventoryActionLabels.Count > 0
                 ? state.InventoryActionLabels
@@ -591,7 +482,7 @@ internal static class RmlUiDocumentBuilder
 
         if (state.InventorySplitPickerOpen)
         {
-            sb.AppendLine("        <section id=\"inventory-split-picker\" class=\"floating-menu\">");
+            sb.AppendLine($"<section id='inventory-split-picker' class='floating-menu' {InventoryMenuStyle(state)}>");
             sb.AppendLine($"          <div class=\"menu-title\">{TextOrImage("Split Stack", "subtitle", 12, textImageResolver)}</div>");
             sb.AppendLine($"          <div class=\"quantity-readout\">x{Math.Max(1, state.InventorySplitAmount)}</div>");
             sb.AppendLine($"          <div class=\"menu-footer\">{TextOrImage("A/D or D-pad: Amount - E / X: Confirm - I / Back: Cancel", "footer", 11, textImageResolver)}</div>");
@@ -600,13 +491,16 @@ internal static class RmlUiDocumentBuilder
 
         if (state.InventoryDiscardConfirmOpen)
         {
-            sb.AppendLine("        <section id=\"inventory-discard-confirm\" class=\"floating-menu warning-menu\">");
+            sb.AppendLine($"<section id='inventory-discard-confirm' class='floating-menu warning-menu' {InventoryMenuStyle(state)}>");
             sb.AppendLine($"          <div class=\"menu-title\">{TextOrImage("Discard Item?", "warning", 12, textImageResolver)}</div>");
             sb.AppendLine($"          <div class=\"warning-copy\">{TextOrImage("Confirm discard", "warning", 20, textImageResolver)}</div>");
             sb.AppendLine($"          <div class=\"menu-footer\">{TextOrImage("E / X: Discard - I / Back: Cancel", "footer", 11, textImageResolver)}</div>");
             sb.AppendLine("        </section>");
         }
     }
+
+    private static string InventoryMenuStyle(GameplayUiState state)
+        => $"style='left:{Math.Max(8, state.ViewportWidth / 2 - 148)}px;top:{Math.Max(8, state.ViewportHeight / 2 - 166)}px;'";
 
     private static void AppendUseItemPanel(StringBuilder sb, GameplayUiState state, RmlUiTextImageResolver? textImageResolver)
     {

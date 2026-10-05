@@ -360,7 +360,12 @@ internal sealed partial class HS2EditorModule
     {
         try
         {
-            var info = new ProcessStartInfo("dotnet") { WorkingDirectory = _projectRoot, UseShellExecute = false };
+            string portableHost = Path.Combine(_projectRoot, ".dotnet", "dotnet.exe");
+            var info = new ProcessStartInfo(File.Exists(portableHost) ? portableHost : "dotnet")
+            {
+                WorkingDirectory = _projectRoot, UseShellExecute = false
+            };
+            if (File.Exists(portableHost)) info.Environment["DOTNET_ROOT"] = Path.GetDirectoryName(portableHost)!;
             info.ArgumentList.Add("run");
             info.ArgumentList.Add("--project");
             info.ArgumentList.Add(projectPath);

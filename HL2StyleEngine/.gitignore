@@ -1,0 +1,5 @@
+.dotnet/
+**/.hs2cache/
+**/bin/
+**/obj/
+*.json.bak

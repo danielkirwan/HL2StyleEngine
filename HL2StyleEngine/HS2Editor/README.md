@@ -7,10 +7,12 @@ Standalone first-pass project and level editor for HL2StyleEngine.
 Use `LaunchEditor.bat` from the repository root, or run:
 
 ```powershell
-dotnet run --project HS2Editor\HS2Editor.csproj
+.\.dotnet\dotnet.exe run --project HS2Editor\HS2Editor.csproj
 ```
 
 The editor loads `HS2Project.json`, creates missing content folders under `Game/Content`, and opens the configured startup level.
+
+Since 2026-10-05, the toolchain targets .NET 10. Root launchers and editor Play/importer actions prefer the project-local SDK; `Tools/SetupDotnet.ps1` provisions it on fresh checkouts, or use a compatible installed SDK. Shared level/prefab persistence now uses RE:Dox while keeping editable JSON and `.json.bak` backups. Level `.hs2cache/*.dox` files are disposable and validated against source contents, so stale timestamps cannot override saved edits. Scene rendering, docking and model transforms are unchanged by this migration. See `Game/PERSISTENCE_AND_INVENTORY.md` for details and Visual Studio requirements.
 
 Game's Visual Studio launch profiles and both game launchers explicitly open `sixRoomTest.json` for testing; this does not change the startup scene selected here. F2 inside Game is a smaller in-game editor with the shared Toolbar/Hierarchy/Inspector, not this full application. Its new View menu restores those panels or opens F3 debug/weapon tools. Content Browser, prefab browsing and UI management remain in HS2Editor. The September 8 six-room performance fixes change runtime lookups and physics bounds/support queries, not this application's docking or textured renderer. See `Game/SIX_ROOM_TEST.md` for measured results and remaining manual checks.
 

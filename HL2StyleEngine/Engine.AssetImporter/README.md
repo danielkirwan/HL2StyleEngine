@@ -1,6 +1,8 @@
 # HS2 Asset Importer
 
 Standalone Windows tool for converting source art FBX files into GLB files for the engine content folders.
+
+Toolchain update (2026-10-05): this application now targets `net10.0-windows` alongside the engine's RE:Dox migration. `LaunchAssetImporter.bat` and HS2Editor prefer the project-local .NET 10 SDK. Use `Tools/SetupDotnet.ps1` on a fresh checkout or install a compatible SDK; direct commands below can use `.\.dotnet\dotnet.exe` instead of `dotnet`. Blender conversion logic and model/animation export settings are unchanged.
 Editor integration: the standalone `HS2Editor` app launches this importer rather than duplicating the converter in its first pass. `HS2Project.json` stores useful paths such as `blender.exe`, the importer project, the game project, and preferred content roots under `Game/Content`.
 
 The UI now has two tabs:

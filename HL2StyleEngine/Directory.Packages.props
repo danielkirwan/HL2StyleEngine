@@ -1,5 +1,7 @@
 <Project>
   <ItemGroup>
+    <PackageVersion Include="CAPCOM.REDox" Version="1.0.0" />
+    <PackageVersion Include="CAPCOM.REDox.Serialization.SystemTextJson" Version="1.0.0-preview" />
     <!-- Veldrid fork (all matching versions) -->
     <PackageVersion Include="opticfluorine.Veldrid" Version="4.9.6" />
     <PackageVersion Include="opticfluorine.Veldrid.SDL2" Version="4.9.6" />

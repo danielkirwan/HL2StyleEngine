@@ -3,6 +3,26 @@ using Engine.Render;
 using Engine.Editor.Level;
 
 string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+if (args.Length > 0 && args[0] == "preview-inventory")
+{
+    Environment.SetEnvironmentVariable("HS2_RMLUI_NATIVE_PRESENTATION", args.Contains("--native") ? "1" : "0");
+    int width = args.Contains("--small") ? 800 : 1280;
+    int height = args.Contains("--small") ? 600 : 720;
+    using var host = new Engine.Runtime.Hosting.EngineHost(width, height, "Inventory QA");
+    using var preview = new InventoryPreview(root);
+    host.Run(preview);
+    return;
+}
+if (args.Length == 1 && args[0] == "build-inventory-thumbnails")
+{
+    InventoryThumbnails.Run(root);
+    return;
+}
+if (args.Length == 1 && args[0] == "validate-redox-inventory")
+{
+    PersistenceInventoryChecks.Run(root);
+    return;
+}
 if (args.Length == 1 && args[0] == "validate-inventory-input")
 {
     try { InventoryInputChecks.Run(root); }

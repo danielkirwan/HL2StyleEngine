@@ -11,7 +11,7 @@ The reference floor is 18 x 28 m (504 square metres). The six new rooms total 2,
 ## Launch And Edit
 
 - Run `LaunchGame.bat` or `LaunchSixRoomTest.bat` at the project root. Both explicitly open `sixRoomTest.json`.
-- Or run `dotnet run --project Game/Game.csproj -- --level Game/Content/Levels/sixRoomTest.json`.
+- Or run `.\.dotnet\dotnet.exe run --project Game/Game.csproj -- --level Game/Content/Levels/sixRoomTest.json`. The October 5 toolchain update requires .NET 10; an installed compatible SDK can be used instead of the local executable.
 - In HS2Editor, load `sixRoomTest.json` from the Levels panel, then use Play Selected Level.
 - The project startup level remains `basementLevel.json`. Existing levels remain separate files.
 - An explicit `--level` launch starts at the authored spawn with the default loadout. It no longer automatically restores an unrelated save's position and inventory. Ordinary launches without `--level` retain existing automatic save loading.
@@ -119,7 +119,7 @@ For the Medical puzzle, collect Damaged Cable and Spare Wire, open the inventory
 
 Fixed the menu-to-target input path: quick press/release clicks are retained even within a single game frame; native menu clicks use current hit testing rather than last frame's row; a stationary pointer no longer steals keyboard/controller selection; opening the item menu preserves its source. The recipe and level data have not changed.
 
-After building the solution and `Tools/LevelAuthoring`, run `dotnet Tools/LevelAuthoring/bin/Debug/net8.0/LevelAuthoring.dll validate-inventory-input`. This exercises the native RmlUi document and ImGui fallback input paths, both ingredient orders, invalid/self/empty targets, cancel and existing ammo crafting. Native hit testing uses the bridge from the Game Debug output; this CPU harness does not submit GPU frames or replace a manual playtest. The original puzzle harness tested crafting directly and did not cover the menu-to-target click sequence. The new checks pass, as do the full solution build and all six-room geometry/progression checks. The authoring-tool build still reports NU1900 when NuGet vulnerability metadata is unavailable.
+After building the solution and `Tools/LevelAuthoring`, run `.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Debug/net10.0/LevelAuthoring.dll validate-inventory-input`. This exercises the native RmlUi document and ImGui fallback input paths, both ingredient orders, invalid/self/empty targets, cancel, overflow dragging and existing ammo crafting. Native hit testing uses the bridge from the Game Debug output; this CPU harness does not submit GPU frames or replace a manual playtest. The original puzzle harness tested crafting directly and did not cover the menu-to-target click sequence. The October 5 inventory refresh adds temporary overflow, returning remaining items to the world when inventory closes. Level geometry and puzzle requirements are unchanged; see `PERSISTENCE_AND_INVENTORY.md` for current persistence/toolchain details.
 
 ## Lighting
 
@@ -152,7 +152,7 @@ The capture includes render submission/presentation waits, but is not a GPU time
 
 For a bounded repeat, set the process-local environment variable `HS2_PROFILE_FRAMES=180`, then launch the game with this level. `EngineHost` discards 120 warmup frames, prints frame-stage averages and p95 to stdout, and exits the game automatically. Leave the variable unset for normal play; it is not set in any launcher or Visual Studio profile.
 
-Additional regression command after building `Tools/LevelAuthoring`: `dotnet Tools/LevelAuthoring/bin/Debug/net8.0/LevelAuthoring.dll validate-collider-bounds`. This checks randomized rotated/scaled/moved boxes, spheres, capsules, default bounds and mesh contact. Run `validate-six-room-test` with the same executable for the saved level's geometry, assets, traversal and settling checks.
+Additional regression command after building `Tools/LevelAuthoring`: `.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Debug/net10.0/LevelAuthoring.dll validate-collider-bounds`. This checks randomized rotated/scaled/moved boxes, spheres, capsules, default bounds and mesh contact. Run `validate-six-room-test` with the same executable for the saved level's geometry, assets, traversal and settling checks.
 
 F2's shared panels are still available. View > Restore Editor Panels resets their layout; View > Debug / Weapon Tools exposes the existing F3 window. Collapsed Toolbar/Inspector panels are expanded on the first F2 entry. This does not add the standalone Content Browser or prefab/UI management to F2. Live game textures were checked; automated F2 keyboard injection did not register during verification, so manual confirmation of the recovery menu remains outstanding.
 

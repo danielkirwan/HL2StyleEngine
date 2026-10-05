@@ -12,6 +12,22 @@ A matching primitive/blockout version is generated as `Content/Levels/interactio
 
 ## Completed Systems
 
+### 2026-10-05 RE:Dox Integration And Inventory Refresh
+
+The production engine, game, editor and importer now target .NET 10. Levels load through RE:Dox with disposable, source-hash-validated binary DOX caches; levels, prefabs and player saves remain editable JSON and use flushed temporary-file replacement with `.bak` backups. Unversioned saves and existing level/prefab contracts remain readable. Script/undo/project configuration JSON retains its existing implementation.
+
+Inventory now has compact continuous grids and actual item thumbnails in native RmlUi and the ImGui fallback, retaining an 8-by-4 main bag plus a separate 8-by-4 temporary overflow grid. Stacking, splitting, merging and combining preserve quantities. Closing inventory returns overflow to collectible world items near the player; dropped items are also included in saves. Weapons/ammo remain outside inventory and ammo crafting still reports the amount added to reserves. Storage never silently uses temporary overflow.
+
+Root launchers prefer the local .NET 10 SDK; HS2Editor Play/importer launches do likewise. Visual Studio requires compatible .NET 10 tooling separately. No level geometry, world texture pipeline, lighting, weapon HUD or puzzle layouts were changed. Automated contract/container/input checks and native/fallback visual checks are recorded in [PERSISTENCE_AND_INVENTORY.md](PERSISTENCE_AND_INVENTORY.md), including remaining human playtest checks and the distinction between data-read speed and full level loading. [CAPCOM_RE2026_NOTES.md](CAPCOM_RE2026_NOTES.md) records the latest Japan conference research and suggested future priorities.
+
+### 2026-10-02 REDox Save/Load Evaluation
+
+Historical evaluation, superseded by the October 5 integration above: REDox was evaluated from pinned upstream source in an isolated benchmark, without changing production project targets, serializers, levels or player saves at that time. All five levels, the prefab and representative save-state contracts passed typed read/round-trip checks using its System.Text.Json compatibility settings. REDox required .NET 10 while the production engine still targeted .NET 8. The tested adapter was preview and its JSON reader did not accept comments.
+
+For the 758-entity six-room level, warm file-read/deserialization fell from 7.35 ms with the then-current .NET 8 path to 4.52 ms with REDox JSON or 2.00 ms with binary DOX on .NET 10. However, five-run median asset-ready startup was 6.03 s at baseline, 6.32 s with the .NET 10 serializer control, 6.21 s with REDox JSON and 6.31 s with DOX. This did not demonstrate a full-startup improvement. It informed the later decision to retain authoring JSON and validate disposable runtime caches rather than replacing source files with binary data.
+
+See [REDOX_EVALUATION.md](REDOX_EVALUATION.md) for measurements, compatibility limits, save migration/recovery requirements and the proposed integration. Reproducible code and raw results are in `Tools/REDoxBenchmark`.
+
 ### 2026-09-08 Inventory Combine Input Fix
 
 The cable recipe was correct, but the menu-to-target input path had gaps. Mouse clicks with both press and release in one game frame were lost. Native menu clicks also used the previous frame's hovered row, and stationary mouse hover could override keyboard/controller selection. The fallback inventory could change the selected source while its action menu was open.

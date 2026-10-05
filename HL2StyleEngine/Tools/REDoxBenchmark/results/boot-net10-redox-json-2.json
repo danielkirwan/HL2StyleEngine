@@ -1,0 +1,28 @@
+{
+  "labelDate": "2026-10-02",
+  "codec": "redox-json",
+  "runtime": ".NET 10.0.12",
+  "hostMs": 778.8788,
+  "initializeMs": 1102.9127,
+  "firstPresentedMs": 2606.5229,
+  "assetsReadyPresentedMs": 6211.7049,
+  "models": 32,
+  "failedModels": 0,
+  "width": 1920,
+  "height": 1009,
+  "levelReads": [
+    {
+      "path": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Tools\\REDoxBenchmark\\.work\\build-net10.0\\bin\\REDoxBenchmark\\release\\Content\\Levels\\interaction_test.json",
+      "milliseconds": 62.9744
+    },
+    {
+      "path": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Tools\\REDoxBenchmark\\.work\\build-net10.0\\bin\\REDoxBenchmark\\release\\Content\\Levels\\interaction_test_blockout.json",
+      "milliseconds": 2.0738
+    },
+    {
+      "path": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Game\\Content\\Levels\\sixRoomTest.json",
+      "milliseconds": 26.8849
+    }
+  ],
+  "note": "Fresh process; Release; requested 1280x720, actual framebuffer size recorded separately; VSync on; OS disk cache not flushed. Clock starts before window/device creation, excludes process/CLR entry. Ready means a presented world frame with every requested model uploaded and no failed/pending cache entry. Includes production loading-overlay delay before ready is recorded. No saves loaded (explicit --level)."
+}

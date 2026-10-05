@@ -14,14 +14,18 @@ public sealed class InventoryContainer
 {
     private readonly List<InventoryItemStack> _stacks = new();
 
-    public InventoryContainer(int gridWidth, int gridHeight)
+    public InventoryContainer(int gridWidth, int gridHeight, int overflowRows = 0)
     {
         GridWidth = Math.Max(1, gridWidth);
-        GridHeight = Math.Max(1, gridHeight);
+        PrimaryGridHeight = Math.Max(1, gridHeight);
+        GridHeight = PrimaryGridHeight + Math.Max(0, overflowRows);
     }
 
     public int GridWidth { get; }
     public int GridHeight { get; }
+    public int PrimaryGridHeight { get; }
+    public int PrimarySlotCapacity => GridWidth * PrimaryGridHeight;
+    public IEnumerable<InventoryItemStack> OverflowStacks => _stacks.Where(stack => stack.SlotIndex >= PrimarySlotCapacity);
     public int SlotCapacity => GridWidth * GridHeight;
     public int UsedSlotCount => _stacks.Sum(stack => ItemCatalog.Get(stack.ItemId).SlotCount);
     public int StackCount => _stacks.Count;
@@ -53,7 +57,7 @@ public sealed class InventoryContainer
             .Where(stack => string.Equals(stack.ItemId, itemId, StringComparison.OrdinalIgnoreCase))
             .Sum(stack => stack.Count);
 
-    public bool Add(string itemId, int count = 1)
+    public bool Add(string itemId, int count = 1, bool allowOverflow = true)
     {
         if (string.IsNullOrWhiteSpace(itemId) || count <= 0)
             return false;
@@ -63,12 +67,10 @@ public sealed class InventoryContainer
             .ToList();
 
         InventoryItemDefinition definition = ItemCatalog.Get(itemId);
-        if (definition.MaxStack == 1 && Contains(itemId))
-            return true;
-
         int remaining = count;
         foreach (InventoryItemStack stack in _stacks)
         {
+            if (!allowOverflow && stack.SlotIndex >= PrimarySlotCapacity) continue;
             if (!string.Equals(stack.ItemId, itemId, StringComparison.OrdinalIgnoreCase))
                 continue;
 
@@ -86,7 +88,7 @@ public sealed class InventoryContainer
         while (remaining > 0)
         {
             int stackCount = Math.Min(definition.MaxStack, remaining);
-            int slotIndex = FindFirstFreeSlot(definition);
+            int slotIndex = FindFirstFreeSlot(definition, rotated: false, allowOverflow);
             if (slotIndex < 0)
             {
                 Restore(snapshot);
@@ -154,12 +156,13 @@ public sealed class InventoryContainer
     public bool TransferStackTo(int slotIndex, int count, InventoryContainer destination, out int transferredCount)
     {
         transferredCount = 0;
+        if (ReferenceEquals(this, destination)) return false;
         InventoryItemStack? stack = GetStackCoveringSlot(slotIndex);
         if (stack == null || count <= 0)
             return false;
 
         int amount = Math.Clamp(count, 1, stack.Count);
-        if (!destination.Add(stack.ItemId, amount))
+        if (!destination.Add(stack.ItemId, amount, allowOverflow: false))
             return false;
 
         stack.Remove(amount);
@@ -189,14 +192,16 @@ public sealed class InventoryContainer
 
     public void LoadFromSave(IEnumerable<InventoryItemSaveData> items)
     {
-        Clear();
+        var loaded = new InventoryContainer(GridWidth, PrimaryGridHeight, GridHeight - PrimaryGridHeight);
         foreach (InventoryItemSaveData item in items.OrderBy(item => item.SlotIndex < 0 ? int.MaxValue : item.SlotIndex))
         {
-            if (item.SlotIndex >= 0 && TryAddStackAt(item.ItemId, item.Count, item.SlotIndex, item.Rotated))
+            if (item.SlotIndex >= 0 && loaded.TryAddStackAt(item.ItemId, item.Count, item.SlotIndex, item.Rotated))
                 continue;
 
-            Add(item.ItemId, item.Count);
+            if (!loaded.Add(item.ItemId, item.Count))
+                throw new InvalidDataException($"Saved inventory cannot fit {item.ItemId} x{item.Count}.");
         }
+        Restore(loaded._stacks);
     }
 
     public bool CanMoveStackToSlot(int fromSlotIndex, int toSlotIndex)
@@ -223,6 +228,9 @@ public sealed class InventoryContainer
 
         if (CanMerge(moving, target))
             return true;
+
+        if (string.Equals(moving.ItemId, target.ItemId, StringComparison.OrdinalIgnoreCase) &&
+            ItemCatalog.Get(moving.ItemId).MaxStack > 1) return false;
 
         return CanSwap(moving, movingRotated, toSlotIndex, target);
     }
@@ -283,6 +291,9 @@ public sealed class InventoryContainer
 
         if (TryMergeStacks(moving, target, out result))
             return true;
+
+        if (result == InventoryMoveResult.StackFull)
+            return false;
 
         if (!CanSwap(moving, movingRotated, toSlotIndex, target))
             return false;
@@ -396,9 +407,9 @@ public sealed class InventoryContainer
     private int FindFirstFreeSlot(InventoryItemDefinition definition)
         => FindFirstFreeSlot(definition, rotated: false);
 
-    private int FindFirstFreeSlot(InventoryItemDefinition definition, bool rotated)
+    private int FindFirstFreeSlot(InventoryItemDefinition definition, bool rotated, bool allowOverflow = true)
     {
-        for (int slot = 0; slot < SlotCapacity; slot++)
+        for (int slot = 0; slot < (allowOverflow ? SlotCapacity : PrimarySlotCapacity); slot++)
         {
             if (CanPlaceAt(definition, rotated, slot, ignoredStack: null))
                 return slot;
@@ -472,7 +483,8 @@ public sealed class InventoryContainer
         int startX = slotIndex % GridWidth;
         int startY = slotIndex / GridWidth;
         if (startX + GetSlotWidth(definition, rotated) > GridWidth ||
-            startY + GetSlotHeight(definition, rotated) > GridHeight)
+            startY + GetSlotHeight(definition, rotated) > GridHeight ||
+            (startY < PrimaryGridHeight && startY + GetSlotHeight(definition, rotated) > PrimaryGridHeight))
             return false;
 
         foreach (InventoryItemStack stack in _stacks)
@@ -512,7 +524,8 @@ public sealed class InventoryContainer
         int startX = slotIndex % GridWidth;
         int startY = slotIndex / GridWidth;
         if (startX + GetSlotWidth(definition, rotated) > GridWidth ||
-            startY + GetSlotHeight(definition, rotated) > GridHeight)
+            startY + GetSlotHeight(definition, rotated) > GridHeight ||
+            (startY < PrimaryGridHeight && startY + GetSlotHeight(definition, rotated) > PrimaryGridHeight))
             return false;
 
         foreach (InventoryItemStack stack in _stacks)

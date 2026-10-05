@@ -5,22 +5,14 @@
   </head>
   <body>
     <div id="gameplay-root">
-      <div id="crosshair" style="left: 942px; top: 486px;">
-        <div class="crosshair-line horizontal left"></div>
-        <div class="crosshair-line horizontal right"></div>
-        <div class="crosshair-line vertical top"></div>
-        <div class="crosshair-line vertical bottom"></div>
-        <div class="crosshair-dot"></div>
-      </div>
-      <section id='status-hud-left' class='hl2-hud'>
-        <div class='hud-readout health-readout'>
-          <div class='hud-label'><img class="ui-text-image ui-text-hud-label" src="Text/7d357669691595d4.png" width="53" height="19" /></div>
-          <div class='hud-number'><img class="ui-text-image ui-text-hud-number" src="Text/d5ae9258e4b8c62f.png" width="87" height="59" /></div>
+      <section id="pause-panel" class="modal-card">
+        <div class="pause-title"><img class="ui-text-image ui-text-title" src="Text/96db4ca2b4707580.png" width="116" height="41" /></div>
+        <div class="pause-subtitle"><img class="ui-text-image ui-text-subtitle" src="Text/7f436b34a0b112d5.png" width="114" height="18" /></div>
+        <div id="pause-menu-list">
+          <div class="pause-menu-row selected" data-slot="0" style="top: 0px;"><img class="ui-text-image ui-text-menu" src="Text/437d312d099cd1c4.png" width="68" height="24" /></div>
+          <div class="pause-menu-row" data-slot="1" style="top: 54px;"><img class="ui-text-image ui-text-menu" src="Text/e086ce84ecf3cd45.png" width="92" height="24" /></div>
         </div>
-        <div class='hud-readout suit-readout'>
-          <div class='hud-label'><img class="ui-text-image ui-text-hud-label" src="Text/872c961f0f07e5d0.png" width="39" height="19" /></div>
-          <div class='hud-number'><img class="ui-text-image ui-text-hud-number" src="Text/d5ae9258e4b8c62f.png" width="87" height="59" /></div>
-        </div>
+        <div class="pause-footer"><img class="ui-text-image ui-text-footer" src="Text/3f742b839928ee7c.png" width="458" height="17" /></div>
       </section>
     </div>
   </body>

@@ -1,16 +1,10 @@
 using System.Text.Json;
+using Engine.Core.Serialization;
 
 namespace Engine.Editor.Level;
 
 public static class PrefabIO
 {
-    private static readonly JsonSerializerOptions Options = new()
-    {
-        WriteIndented = true,
-        AllowTrailingCommas = true,
-        ReadCommentHandling = JsonCommentHandling.Skip
-    };
-
     public static PrefabFile Load(string path)
     {
         if (!File.Exists(path))
@@ -27,11 +21,11 @@ public static class PrefabIO
         if (doc.RootElement.TryGetProperty(nameof(PrefabFile.Entities), out JsonElement entitiesElement) &&
             entitiesElement.ValueKind == JsonValueKind.Array)
         {
-            prefab = JsonSerializer.Deserialize<PrefabFile>(json, Options);
+            prefab = StructuredData.ReadJson<PrefabFile>(System.Text.Encoding.UTF8.GetBytes(json));
         }
         else
         {
-            LevelEntityDef? entity = JsonSerializer.Deserialize<LevelEntityDef>(json, Options);
+            LevelEntityDef? entity = StructuredData.ReadJson<LevelEntityDef>(System.Text.Encoding.UTF8.GetBytes(json));
             if (entity != null)
             {
                 prefab = new PrefabFile
@@ -57,7 +51,7 @@ public static class PrefabIO
             Directory.CreateDirectory(dir);
 
         Fixup(prefab, path);
-        File.WriteAllText(path, JsonSerializer.Serialize(prefab, Options));
+        StructuredData.Save(path, prefab);
     }
 
     private static void Fixup(PrefabFile prefab, string path)

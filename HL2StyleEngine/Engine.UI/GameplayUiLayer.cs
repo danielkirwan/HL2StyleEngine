@@ -21,6 +21,7 @@ public sealed class GameplayUiLayer : IDisposable
     }
 
     public string BackendName => _rmlUiBackend.Name;
+    public Func<string, UiImage>? IconResolver { set => _previewRenderer.IconResolver = value; }
     public string Status => BuildStatus();
     public string RenderStatus => _rmlUiBackend.RenderStatus;
     public bool IsReady => _rmlUiBackend.IsReady;

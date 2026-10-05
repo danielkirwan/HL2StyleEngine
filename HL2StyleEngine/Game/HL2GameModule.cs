@@ -69,6 +69,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private sealed class PrototypeSaveData
     {
+        public int SaveVersion { get; set; }
+        public List<DroppedItemSaveData> DroppedItems { get; set; } = new();
         public int SaveSlot { get; set; }
         public string SavedAtUtc { get; set; } = "";
         public string LevelName { get; set; } = "";
@@ -166,7 +168,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private int _playerHealth = 100;
     private int _playerSuit = 75;
     private float _loadingOverlayTimer;
-    private readonly InventoryContainer _inventory = new(gridWidth: 8, gridHeight: 4);
+    private readonly InventoryContainer _inventory = new(gridWidth: 8, gridHeight: 4, overflowRows: 4);
     private readonly InventoryContainer _storage = new(gridWidth: 8, gridHeight: 6);
     private readonly HashSet<string> _collectedInteractables = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _openedDoors = new(StringComparer.OrdinalIgnoreCase);
@@ -221,7 +223,6 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private float _playTimeSeconds;
     private bool _spawnCommandOpen;
     private string _spawnCommandText = "";
-    private int _spawnedItemSequence;
 
     private readonly FpsCamera _camera = new(new Vector3(0, 1.8f, -5f));
     private UIModeController _ui = null!;
@@ -314,6 +315,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             shaderDirRelativeToApp: "Shaders");
 
         _gameplayUi = GameplayUiLayer.CreateRmlUi(Path.Combine(AppContext.BaseDirectory, "Content", "UI"));
+        _gameplayUi.IconResolver = path => _ctx.ImGui?.GetImage(Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory, "Content", "UI", "Runtime", path))) ?? default;
 
         BuildActions();
         _scriptRegistry.Register<MovingPlatformParams>("MovingPlatform",e => new MovingPlatform(e));
@@ -504,7 +507,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
             if (_editorEnabled)
             {
-                _inventoryOpen = false;
+                SetInventoryOpen(false);
                 _storageOpen = false;
                 _saveSlotPanelOpen = false;
                 _saveOverwriteConfirmOpen = false;
@@ -795,6 +798,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             GameMessage = !_editorEnabled ? _gameMessage : "",
             GridWidth = _inventory.GridWidth,
             GridHeight = _inventory.GridHeight,
+            PrimaryGridHeight = _inventory.PrimaryGridHeight,
+            ViewportWidth = _ctx?.Window.Window.Width ?? 1280,
+            ViewportHeight = _ctx?.Window.Window.Height ?? 720,
             UsedSlotCount = _inventory.UsedSlotCount,
             SelectedSlot = _selectedInventoryStackIndex,
             SelectedStorageSlot = _selectedStorageSlot,
@@ -1323,8 +1329,24 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (!File.Exists(path))
             return false;
 
-        string json = File.ReadAllText(path);
-        data = JsonSerializer.Deserialize<PrototypeSaveData>(json, PrototypeSaveJsonOptions);
+        data = Engine.Core.Serialization.StructuredData.Load<PrototypeSaveData>(path);
+        if (data.SaveVersion < 0 || data.SaveVersion > 1)
+            throw new InvalidDataException($"Unsupported save version: {data.SaveVersion}.");
+        data.Inventory ??= new();
+        data.InventoryItems ??= new();
+        data.StorageItems ??= new();
+        data.CollectedInteractables ??= new();
+        data.OpenedDoors ??= new();
+        data.SolvedPuzzles ??= new();
+        data.BrokenObjects ??= new();
+        data.WeaponStates ??= new();
+        data.DroppedItems ??= new();
+        if (data.DroppedItems.Any(item => item == null || item.Count <= 0 ||
+            string.IsNullOrWhiteSpace(item.ItemId) || !float.IsFinite(item.X) ||
+            !float.IsFinite(item.Y) || !float.IsFinite(item.Z)))
+            throw new InvalidDataException("Save contains an invalid world item.");
+        new InventoryContainer(8, 4, 4).LoadFromSave(data.InventoryItems);
+        new InventoryContainer(8, 6).LoadFromSave(data.StorageItems);
         return data != null;
     }
 
@@ -1506,6 +1528,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             _camera.Yaw = data.CameraYaw;
             _camera.Pitch = data.CameraPitch;
             _camera.Position = _motor.Position + new Vector3(0f, _movement.EyeHeight, 0f);
+            RestoreDroppedItems(data.DroppedItems);
+            ReturnOverflowToWorld();
             string loadedSlot = Path.GetFileNameWithoutExtension(path).StartsWith("slot_", StringComparison.OrdinalIgnoreCase)
                 ? $"Loaded {PrettifyToken(Path.GetFileNameWithoutExtension(path))}."
                 : "Loaded saved progress.";
@@ -1532,6 +1556,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             string savePointDisplayName = PrettifyToken(GetNameToken(savePointName, "SavePoint_"));
             var data = new PrototypeSaveData
             {
+                SaveVersion = 1,
+                DroppedItems = CaptureDroppedItems(),
                 SaveSlot = safeSlot + 1,
                 SavedAtUtc = DateTime.UtcNow.ToString("O"),
                 LevelName = Path.GetFileName(_editor.LevelPath),
@@ -1569,7 +1595,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
             Directory.CreateDirectory(SaveDirectory);
 
-            File.WriteAllText(GetSaveSlotPath(safeSlot), JsonSerializer.Serialize(data, PrototypeSaveJsonOptions));
+            Engine.Core.Serialization.StructuredData.Save(GetSaveSlotPath(safeSlot), data);
             ShowGameMessage($"Saved to Slot {safeSlot + 1} at {savePointDisplayName}. Ink ribbons left: {_inventory.GetCount(ItemCatalog.InkRibbon)}.");
             return true;
         }
@@ -1651,6 +1677,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private void SetInventoryOpen(bool open)
     {
         if (_inventoryOpen == open)
+            return;
+
+        if (!open && !ReturnOverflowToWorld())
             return;
 
         _inventoryOpen = open;
@@ -2176,13 +2205,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             return;
 
         int slot = Math.Clamp(_selectedInventoryStackIndex, 0, _inventory.SlotCapacity - 1);
-        int col = slot % _inventory.GridWidth;
-        int row = slot / _inventory.GridWidth;
-
-        col = Math.Clamp(col + dx, 0, _inventory.GridWidth - 1);
-        row = Math.Clamp(row + dy, 0, Math.Max(0, (_inventory.SlotCapacity - 1) / _inventory.GridWidth));
-
-        SelectInventorySlot(Math.Clamp(row * _inventory.GridWidth + col, 0, _inventory.SlotCapacity - 1));
+        var layout = new InventoryLayout(_ctx?.Window.Window.Width ?? 1280, _ctx?.Window.Window.Height ?? 720,
+            _inventory.GridWidth, _inventory.GridHeight, _inventory.PrimaryGridHeight);
+        SelectInventorySlot(layout.Navigate(slot, dx, dy));
     }
 
     private bool IsMovingInventoryItem => _movingInventoryFromSlot >= 0;
@@ -2366,13 +2391,13 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private static int MoveGridSlot(int slotIndex, int dx, int dy, InventoryContainer container)
     {
-        int slot = Math.Clamp(slotIndex, 0, Math.Max(0, container.SlotCapacity - 1));
+        int slot = Math.Clamp(slotIndex, 0, Math.Max(0, container.PrimarySlotCapacity - 1));
         int col = slot % container.GridWidth;
         int row = slot / container.GridWidth;
 
         col = Math.Clamp(col + dx, 0, container.GridWidth - 1);
-        row = Math.Clamp(row + dy, 0, Math.Max(0, (container.SlotCapacity - 1) / container.GridWidth));
-        return Math.Clamp(row * container.GridWidth + col, 0, container.SlotCapacity - 1);
+        row = Math.Clamp(row + dy, 0, container.PrimaryGridHeight - 1);
+        return Math.Clamp(row * container.GridWidth + col, 0, container.PrimarySlotCapacity - 1);
     }
 
     private static int SelectSlotInContainer(int slotIndex, InventoryContainer container)
@@ -3648,7 +3673,12 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             return false;
         }
 
-        if (showCollectedScreen)
+        if (_inventory.OverflowStacks.Any())
+        {
+            SetInventoryOpen(true);
+            ShowGameMessage("Items in overflow will be dropped when you close the inventory.");
+        }
+        else if (showCollectedScreen)
             ShowItemCollected(itemId, count);
 
         return true;
@@ -7289,14 +7319,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         ImGui.TextColored(
             focused ? new Vector4(0.92f, 0.88f, 0.58f, 1f) : new Vector4(0.78f, 0.78f, 0.72f, 1f),
             focused ? $"> {title}" : title);
-        ImGui.TextDisabled($"Slots: {container.UsedSlotCount}/{container.SlotCapacity}");
+        ImGui.TextDisabled($"Slots: {container.UsedSlotCount}/{container.PrimarySlotCapacity}");
         ImGui.Spacing();
 
         Dictionary<int, InventoryItemStack> byOriginSlot = container.Stacks.ToDictionary(stack => stack.SlotIndex);
         Dictionary<int, InventoryItemStack> byCoveredSlot = BuildStackCoveredSlotLookup(container);
 
         const float slotSize = 44f;
-        for (int slot = 0; slot < container.SlotCapacity; slot++)
+        for (int slot = 0; slot < container.PrimarySlotCapacity; slot++)
         {
             int col = slot % container.GridWidth;
             if (col > 0)
@@ -8710,6 +8740,15 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private static string GetInventoryIconPath(string itemId)
     {
+        if (!InventoryIconPaths.TryGetValue(itemId, out string? path))
+            InventoryIconPaths[itemId] = path = ResolveInventoryIconPath(itemId);
+        return path;
+    }
+
+    private static readonly Dictionary<string, string> InventoryIconPaths = new(StringComparer.OrdinalIgnoreCase);
+
+    private static string ResolveInventoryIconPath(string itemId)
+    {
         string iconRoot = Path.Combine(AppContext.BaseDirectory, "Content", "UI", "Icons");
         foreach (string fileName in GetInventoryIconFileCandidates(itemId))
         {
@@ -8733,6 +8772,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private static IEnumerable<string> GetInventoryIconFileCandidates(string itemId)
     {
+        if (itemId == ItemCatalog.MaintenanceKey) yield return "MasterKey.png";
+        if (itemId is ItemCatalog.WorkshopCable or ItemCatalog.FreightFeed or ItemCatalog.MedicalFeed or ItemCatalog.UtilityFeed)
+            yield return "RepairedCable.png";
         if (string.Equals(itemId, ItemCatalog.CrankHandle, StringComparison.OrdinalIgnoreCase))
             yield return "Crank.png";
 
@@ -8749,12 +8791,12 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         SpawnWorldItemAt(itemId, count, position, Quaternion.Identity);
     }
 
-    private void SpawnWorldItemAt(string itemId, int count, Vector3 position, Quaternion rotation)
+    private Entity SpawnWorldItemAt(string itemId, int count, Vector3 position, Quaternion rotation)
     {
         InventoryItemDefinition definition = ItemCatalog.Get(itemId);
         Vector3 size = GetSpawnedItemSize(definition);
 
-        var entity = new Entity(Guid.NewGuid().ToString("N"), EntityTypes.RigidBody, $"Item_{definition.Id}__x{Math.Clamp(count, 1, 999)}__Spawn{++_spawnedItemSequence}")
+        var entity = new Entity(Guid.NewGuid().ToString("N"), EntityTypes.RigidBody, $"Item_{definition.Id}__x{Math.Clamp(count, 1, 999)}__Spawn{Guid.NewGuid():N}")
         {
             CanPickUp = false
         };
@@ -8782,6 +8824,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         entity.Collider.Delta = Vector3.Zero;
 
         _runtimeEntities.Add(entity);
+        return entity;
     }
     private static Vector3 GetSpawnedItemSize(InventoryItemDefinition definition)
     {
@@ -8801,6 +8844,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         {
             ItemCatalog.HealthPack => "Content/Models/ViewModels/FirstAidKit01.glb",
             ItemCatalog.SuitBattery => "Content/Models/ViewModels/Battery07.glb",
+            ItemCatalog.DamagedCable => "Content/Models/ViewModels/Cables01_01.glb",
+            ItemCatalog.RepairedCable => "Content/Models/ViewModels/Cables01_01.glb",
+            ItemCatalog.SpareWire => "Content/Models/ViewModels/ElectricalWires01_01.glb",
+            ItemCatalog.MaintenanceKey => "Content/Models/ViewModels/Key01.glb",
+            "RustedKey" or "ServiceKey" or "ArchiveKey" or ItemCatalog.MasterKey => "Content/Models/ViewModels/Key01.glb",
             _ => ""
         };
 

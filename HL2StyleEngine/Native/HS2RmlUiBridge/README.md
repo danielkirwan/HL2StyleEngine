@@ -4,6 +4,10 @@ This folder defines and implements the native C ABI expected by `Engine.UI`.
 
 The bridge should wrap the C++ RmlUi library and export the functions declared in `HS2RmlUiBridge.h`. The managed side loads a native library named `HS2RmlUiBridge` and binds these exports at runtime.
 
+## Windows Runtime Packaging (2026-10-05)
+
+The existing working Windows x64 bridge is now stored at `Native/runtimes/win-x64/HS2RmlUiBridge.dll`. `Game.csproj` copies it into build/publish output, including the new .NET 10 output folders, rather than depending on a leftover DLL in an old .NET 8 build directory. The inventory reference layout has been visually checked through this bridge; combat overlays continue to use the existing ImGui path. Bridge source and ABI were not changed by this packaging update. Rebuilt bridge binaries must be validated with `validate-inventory-input` before replacing this runtime file.
+
 ## Current Responsibilities
 
 - initialize and shut down RmlUi

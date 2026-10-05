@@ -2,7 +2,7 @@
 
 `Engine.UI` is the gameplay UI integration point.
 
-The intended final gameplay UI backend is RmlUi. RmlUi is a C++ library, so this project currently provides the managed seam and content workflow while the native bridge and Veldrid renderer are still pending.
+The gameplay UI supports a native RmlUi bridge and a managed Veldrid overlay renderer, with an ImGui fallback. Combat HUD overlays still deliberately use the stable ImGui path.
 
 ## Current Setup
 
@@ -31,6 +31,12 @@ The weapon selector/HUD pass is paused again after these fixes:
 - Ammo HUD initialization now loads an empty clip from reserve when an ammo weapon is equipped or already active, so clip/reserve values appear in the correct slots before the first shot.
 - Health/suit and ammo HUD blocks now use the same translucent dark yellow/black background colors and yellow borders as the weapon-switching rectangles. HUD borders are inset by one pixel to avoid ImGui clipping on the top/left edges.
 
+## Inventory Layout And Overflow (2026-10-05)
+
+The inventory now uses thin continuous grids, existing PNG item thumbnails, compact counts and placement outlines over a darkened world. `InventoryLayout` supplies shared responsive geometry and canonical slot IDs for both native RML and `InventoryPreviewRenderer`: an 8-by-4 main grid and separate 8-by-4 overflow grid, side by side at 960 pixels and above, stacked below that width. The game handles stack/split/merge and returns overflow to world pickups on close; it also persists runtime drops. Weapons/ammo remain outside this inventory.
+
+Native styles live in `Game/Content/UI/Inventory/grid.rcss`. The ImGui fallback receives a cached image resolver from `ImGuiLayer`; it does not change world texture loading. Grid hover permits another active cell during dragging so destination detection remains available. Mouse capture is reapplied only on UI mode transitions rather than clearing pointer movement every UI frame. Existing Combine interaction tests are retained, with overflow drag checks for both renderers. See `Game/PERSISTENCE_AND_INVENTORY.md` for behaviour, verification and the remaining human playtest checklist.
+
 ## Inventory Input Follow-Up (2026-09-08)
 
 - Native inventory action clicks are handled after the current document has been rebuilt and hit-tested. Do not act on the previous frame's hovered row in keyboard navigation updates.
@@ -42,9 +48,9 @@ The weapon selector/HUD pass is paused again after these fixes:
 ## HS2Editor UI Authoring Target
 
 The standalone `HS2Editor` app now has a first-pass UI manager for assets under `Content/UI`. It can create, open, edit, save, and source-preview `.rml` and `.rcss` files. A later milestone should replace the source/text preview with a real RmlUi visual preview, then add a visual layout canvas, selectable elements, property/style inspection, font/image asset picking, and live preview against sample gameplay UI state.
-## Native Bridge Still Needed
+## Native Bridge Contract
 
-The bridge should eventually expose a small C ABI around RmlUi:
+The bridge exposes a small C ABI around RmlUi:
 
 - initialize/shutdown RmlUi
 - create and resize a context
@@ -56,6 +62,6 @@ The bridge should eventually expose a small C ABI around RmlUi:
 
 RmlUi rendering belongs in the overlay pass after the world has resolved to the swapchain and before ImGui debug/editor UI is rendered.
 
-## Current Rendering Limitation
+## Texture Support And Remaining Work
 
-The current managed draw path supports vertex color and texture-id lookup, but native font/image texture upload is not implemented yet. Unknown texture ids fall back to a white texture, so the next renderer slice should add bridge exports for texture creation/destruction and populate the texture registry from native RmlUi texture handles.
+The bridge loads PNGs and exports texture data to the managed renderer, which uploads it to Veldrid. Inventory images now render in both native and fallback presentation. The current native font path remains a temporary pixel-font implementation; the editor still needs a true visual UI authoring preview. Unknown texture IDs retain a fallback white texture. Windows x64 bridge packaging is documented in `Native/HS2RmlUiBridge/README.md`.

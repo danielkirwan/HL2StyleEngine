@@ -8,12 +8,15 @@ namespace Engine.Render;
 public sealed class ImGuiLayer : IDisposable
 {
     private readonly ImGuiRenderer _imgui;
+    private readonly GraphicsDevice _device;
+    private readonly ImGuiImageCache _images = new();
 
     private readonly string _iniPath;
     private double _saveTimer;
 
     public ImGuiLayer(GraphicsDevice gd, OutputDescription output, int width, int height)
     {
+        _device = gd;
         _iniPath = Path.Combine(AppContext.BaseDirectory, "imgui.ini");
 
         if (ImGui.GetCurrentContext() == IntPtr.Zero)
@@ -46,11 +49,13 @@ public sealed class ImGuiLayer : IDisposable
     }
 
     public void Render(GraphicsDevice gd, CommandList cl) => _imgui.Render(gd, cl);
+    public UiImage GetImage(string path) => _images.Get(path, _device, _imgui);
 
     public void Dispose()
     {
         TrySaveIni();
         _imgui.Dispose();
+        _images.Dispose();
     }
 
     private void TrySaveIni()

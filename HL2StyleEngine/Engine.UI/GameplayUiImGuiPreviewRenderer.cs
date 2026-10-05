@@ -5,6 +5,7 @@ namespace Engine.UI;
 
 internal sealed class GameplayUiImGuiPreviewRenderer
 {
+    public Func<string, Engine.Render.UiImage>? IconResolver { get; set; }
     public bool Draw(GameplayUiState state, out int selectedSlot)
     {
         selectedSlot = -1;
@@ -45,7 +46,7 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         if (state.InventoryOpen)
             selectedSlot = state.UsingInventoryItem
                 ? DrawUseItemPanel(state, viewport)
-                : DrawInventoryPanel(state, viewport);
+                : InventoryPreviewRenderer.Draw(state, viewport, IconResolver);
 
         DrawLoadingOverlay(state, viewport);
         return true;
@@ -524,122 +525,6 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         ImGui.PopStyleColor(2);
     }
 
-    private static int DrawInventoryPanel(GameplayUiState state, ImGuiViewportPtr viewport)
-    {
-        int selectedSlot = -1;
-
-        ImGui.SetNextWindowPos(new Vector2(viewport.Pos.X + 56f, viewport.Pos.Y + 54f), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new Vector2(980f, 610f), ImGuiCond.Always);
-        ImGui.SetNextWindowBgAlpha(0.94f);
-
-        ImGuiWindowFlags flags =
-            ImGuiWindowFlags.NoTitleBar |
-            ImGuiWindowFlags.NoResize |
-            ImGuiWindowFlags.NoMove |
-            ImGuiWindowFlags.NoSavedSettings;
-
-        Dictionary<int, GameplayUiInventoryItem> byOriginSlot = state.InventoryItems.ToDictionary(item => item.SlotIndex);
-        Dictionary<int, GameplayUiInventoryItem> byCoveredSlot = BuildCoveredSlotLookup(state);
-
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.018f, 0.022f, 0.024f, 0.96f));
-        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.66f, 0.68f, 0.61f, 0.36f));
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(34f, 30f));
-        ImGui.Begin("RmlUiPreviewInventory", flags);
-
-        ImGui.TextColored(new Vector4(0.56f, 0.58f, 0.53f, 1f), "ITEM BOX");
-        ImGui.TextColored(new Vector4(0.91f, 0.90f, 0.82f, 1f), "Inventory");
-        ImGui.SameLine();
-        ImGui.SetCursorPosX(ImGui.GetWindowWidth() - 165f);
-        ImGui.TextDisabled($"Slots: {state.UsedSlotCount}/{Math.Max(1, state.GridWidth * state.GridHeight)}");
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        Vector2 gridStart = ImGui.GetCursorScreenPos();
-        const float slotSize = 66f;
-        const float gap = 8f;
-        int capacity = Math.Max(1, state.GridWidth * state.GridHeight);
-
-        for (int slot = 0; slot < capacity; slot++)
-        {
-            int col = slot % state.GridWidth;
-            int row = slot / state.GridWidth;
-            Vector2 slotPos = gridStart + new Vector2(col * (slotSize + gap), row * (slotSize + gap));
-            ImGui.SetCursorScreenPos(slotPos);
-
-            bool hasItemOrigin = byOriginSlot.TryGetValue(slot, out GameplayUiInventoryItem? item);
-            bool hasCoveredItem = byCoveredSlot.TryGetValue(slot, out GameplayUiInventoryItem? coveredItem);
-            bool selected = slot == state.SelectedSlot;
-            bool movingSource = state.MovingInventoryItem && slot == state.MovingFromSlot;
-            bool movingTarget = state.MovingInventoryItem && slot == state.MovingTargetSlot;
-            bool occupiedByFootprint = hasCoveredItem && !hasItemOrigin;
-            bool combineSource = hasCoveredItem && coveredItem!.IsCombineSource;
-            bool combineTarget = hasCoveredItem && coveredItem!.IsValidCombineTarget;
-            bool combineInvalid = hasCoveredItem && coveredItem!.IsInvalidCombineTarget;
-            bool useTarget = hasCoveredItem && coveredItem!.IsValidUseTarget;
-            bool useInvalid = hasCoveredItem && coveredItem!.IsInvalidUseTarget;
-            Vector4 fill = hasCoveredItem
-                ? new Vector4(0.11f, 0.14f, 0.14f, 0.94f)
-                : new Vector4(0.055f, 0.065f, 0.070f, 0.88f);
-            if (occupiedByFootprint)
-                fill = new Vector4(0.085f, 0.11f, 0.11f, 0.94f);
-            if (useInvalid)
-                fill = new Vector4(0.060f, 0.064f, 0.070f, 0.76f);
-            if (useTarget)
-                fill = new Vector4(0.13f, 0.28f, 0.46f, 0.98f);
-            if (combineInvalid)
-                fill = new Vector4(0.060f, 0.064f, 0.064f, 0.76f);
-            if (combineTarget)
-                fill = new Vector4(0.12f, 0.34f, 0.25f, 0.98f);
-            if (combineSource)
-                fill = new Vector4(0.28f, 0.23f, 0.10f, 0.98f);
-            if (selected)
-                fill = new Vector4(0.29f, 0.34f, 0.33f, 0.98f);
-            if (selected && useTarget)
-                fill = new Vector4(0.16f, 0.36f, 0.62f, 1f);
-            if (selected && combineTarget)
-                fill = new Vector4(0.16f, 0.45f, 0.32f, 1f);
-            if (selected && combineSource)
-                fill = new Vector4(0.36f, 0.30f, 0.13f, 1f);
-            if (movingSource)
-                fill = new Vector4(0.23f, 0.22f, 0.13f, 0.98f);
-            if (movingTarget)
-                fill = state.CanPlaceMovingItem
-                    ? new Vector4(0.16f, 0.35f, 0.25f, 0.98f)
-                    : new Vector4(0.42f, 0.16f, 0.15f, 0.98f);
-
-            ImGui.PushStyleColor(ImGuiCol.Button, fill);
-            ImGui.PushStyleColor(
-                ImGuiCol.ButtonHovered,
-                combineTarget ? new Vector4(0.20f, 0.52f, 0.38f, 1f)
-                    : useTarget ? new Vector4(0.22f, 0.42f, 0.70f, 1f)
-                    : new Vector4(0.24f, 0.28f, 0.27f, 0.98f));
-            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.36f, 0.40f, 0.37f, 1f));
-            string label = hasItemOrigin
-                ? $"{ShortLabel(item!.DisplayName)}{(item.Count > 1 ? $" x{item.Count}" : "")}\n{item.SlotWidth}x{item.SlotHeight}##previewSlot{slot}"
-                : occupiedByFootprint
-                    ? $"({ShortLabel(coveredItem!.DisplayName)})##previewSlot{slot}"
-                : $"##previewSlot{slot}";
-
-            bool clicked = ImGui.Button(label, new Vector2(slotSize, slotSize));
-            if (clicked && (hasCoveredItem || state.MovingInventoryItem))
-                selectedSlot = slot;
-
-            if ((hasCoveredItem || state.MovingInventoryItem) && ImGui.IsItemHovered())
-                selectedSlot = slot;
-
-            ImGui.PopStyleColor(3);
-        }
-
-        DrawFootprintOverlays(state, gridStart, slotSize, gap);
-        DrawDescriptionPanel(state, byCoveredSlot);
-
-        ImGui.End();
-        ImGui.PopStyleVar();
-        ImGui.PopStyleColor(2);
-
-        return selectedSlot;
-    }
 
     private static int DrawUseItemPanel(GameplayUiState state, ImGuiViewportPtr viewport)
     {
