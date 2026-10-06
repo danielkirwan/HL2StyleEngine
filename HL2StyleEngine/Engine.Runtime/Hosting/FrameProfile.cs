@@ -17,7 +17,14 @@ internal sealed class FrameProfile
         => int.TryParse(Environment.GetEnvironmentVariable("HS2_PROFILE_FRAMES"), out int frames) && frames > 0
             ? new FrameProfile(Math.Clamp(frames, 1, 10000)) : null;
 
-    private FrameProfile(int target) => _target = target;
+    private FrameProfile(int target)
+    {
+        _target = target;
+        Engine.Physics.Collision.MeshCollisionMesh.CollectStatistics = true;
+        Engine.Physics.Collision.MeshCollisionMesh.QueryCount = 0;
+        Engine.Physics.Collision.MeshCollisionMesh.BoundsTests = 0;
+        Engine.Physics.Collision.MeshCollisionMesh.CandidateTriangles = 0;
+    }
 
     public void Begin()
     {
@@ -44,6 +51,11 @@ internal sealed class FrameProfile
             $"mean {average:F2} ms ({1000 / average:F1} FPS), p95 {totals[(int)((totals.Length - 1) * .95)]:F2} ms");
         for (int i = 0; i < Stages.Length; i++)
             Console.WriteLine($"[FrameProfile] {Stages[i]}: {_samples.Average(s => s[i]):F2} ms");
+        Console.WriteLine($"[MeshPhysics] queries {Engine.Physics.Collision.MeshCollisionMesh.QueryCount}, " +
+            $"bounds tests {Engine.Physics.Collision.MeshCollisionMesh.BoundsTests}, candidates {Engine.Physics.Collision.MeshCollisionMesh.CandidateTriangles}");
+        Console.WriteLine($"[Textures] cooked cache hits {Engine.Render.TextureCooker.CacheHits}, fallback decodes {Engine.Render.TextureCooker.FallbackDecodes}");
+        Console.WriteLine($"[Models] cooked cache hits {Engine.Render.CookedModelCache.CacheHits}, source parses {Engine.Render.CookedModelCache.FallbackLoads}");
+        Engine.Physics.Collision.MeshCollisionMesh.CollectStatistics = false;
         return true;
     }
 }

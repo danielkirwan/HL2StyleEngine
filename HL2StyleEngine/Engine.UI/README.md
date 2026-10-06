@@ -37,6 +37,14 @@ The inventory now uses thin continuous grids, existing PNG item thumbnails, comp
 
 Native styles live in `Game/Content/UI/Inventory/grid.rcss`. The ImGui fallback receives a cached image resolver from `ImGuiLayer`; it does not change world texture loading. Grid hover permits another active cell during dragging so destination detection remains available. Mouse capture is reapplied only on UI mode transitions rather than clearing pointer movement every UI frame. Existing Combine interaction tests are retained, with overflow drag checks for both renderers. See `Game/PERSISTENCE_AND_INVENTORY.md` for behaviour, verification and the remaining human playtest checklist.
 
+## Native Visibility Correction (2026-10-06)
+
+The inventory's RCSS colours must use alpha in the 0..255 range, not browser CSS's 0..1 range. The October 5 styles made the backgrounds effectively transparent. `grid.rcss` now uses alpha 158 for the full-screen shade, 102 for cell fills, 138 for cell borders and 204 for item fills. See the [RmlUi colour syntax](https://mikke89.github.io/RmlUiDoc/pages/rcss/syntax.html).
+
+`RmlUiDocumentBuilder.AppendInventory` explicitly sizes the block overlay to the current viewport because percentage sizing previously resolved to content-sized bounds. Keep this in step with the shared `InventoryLayout`. No native bridge, world material or combat HUD changes were required.
+
+`Tools/LevelAuthoring` command `validate-inventory-visuals` inspects the packaged native bridge's render commands at three viewport sizes. It checks backdrop coverage and visible backgrounds/borders for every cell, beyond the existing hit-test/input checks. A live native fixture confirmed restored rendering; this does not replace a full manual inventory/controller playtest.
+
 ## Inventory Input Follow-Up (2026-09-08)
 
 - Native inventory action clicks are handled after the current document has been rebuilt and hit-tested. Do not act on the previous frame's hovered row in keyboard navigation updates.

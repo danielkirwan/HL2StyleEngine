@@ -5,10 +5,23 @@ Standalone Windows tool for converting source art FBX files into GLB files for t
 Toolchain update (2026-10-05): this application now targets `net10.0-windows` alongside the engine's RE:Dox migration. `LaunchAssetImporter.bat` and HS2Editor prefer the project-local .NET 10 SDK. Use `Tools/SetupDotnet.ps1` on a fresh checkout or install a compatible SDK; direct commands below can use `.\.dotnet\dotnet.exe` instead of `dotnet`. Blender conversion logic and model/animation export settings are unchanged.
 Editor integration: the standalone `HS2Editor` app launches this importer rather than duplicating the converter in its first pass. `HS2Project.json` stores useful paths such as `blender.exe`, the importer project, the game project, and preferred content roots under `Game/Content`.
 
-The UI now has two tabs:
+The UI now has three tabs:
 
 - `Models`: static/world/viewmodel mesh import with material and texture matching.
 - `Animations`: animation FBX import that preserves armatures, skins, actions, and clips where Blender exposes them during GLB export.
+- `Compression`: cook imported GLB geometry/materials into lossless LZ4 model caches and textures into shared BC7/BC5 mip caches with LZ4 disk compression.
+
+## Compression Tab (2026-10-06)
+
+Choose the imported model folder, normally `Game/Content/Models`, and click `Cook models and textures`. All GLBs below it are processed. Existing valid model/image caches are reused, so repeat cooks only rebuild changed/new or invalid assets. The source GLBs are not overwritten and no Blender process is needed for this step. FBX conversion does not automatically run cooking yet.
+
+Alternatively run the root `CookAssets.bat`; an optional quoted folder argument limits the batch. It builds the Release authoring tool and runs `cook-assets`. Current project cooking processed 376 GLBs, created 168 unique texture caches and reported no failures. The first batch took about 13 minutes on the test machine; BC7 encoding is deliberately an offline operation.
+
+Caches live under `Content/.hs2cache/textures` and `Content/.hs2cache/models`, with source hashes, format versions, payload checksums and atomic writes. They are ignored by Git and copied into game build/publish output. Keep source art/GLBs. Restart the game/editor after cooking to replace resident assets. Missing/invalid model caches fall back to parsing the GLB; uncooked or invalid textures fall back to RGBA with generated mipmaps. Unsupported BC GPU formats also have an RGBA fallback. These caches are not RE:Dox level/save files.
+
+The model-cache follow-up processed all 376 GLBs in 7.8 seconds with existing texture caches, creating 374 unique content-addressed model files and no failures. Identical source files share a cache. Model payloads preserve imported geometry, material values and named destruction pieces exactly, with shared texture dependencies. This is not an animation or collision-BVH cook.
+
+BC7 colour/material maps and BC5 normal maps reduce GPU payload; lossless LZ4 reduces stored model and texture payloads where effective. Source GLBs are still read/hashed for validation, so the model cache saves parsing work rather than eliminating source I/O. Caches do not guarantee smaller total installed content while the original GLBs are shipped. See `Game/ENGINE_TECHNOLOGY_ROADMAP.md` and `Game/ENGINE_UPGRADE_VALIDATION.md` for measurements and remaining streaming work.
 
 ## Models Tab
 
@@ -95,4 +108,4 @@ The game can load and draw GLB mesh geometry through the first-pass renderer pat
 
 Animation GLBs can now be produced by the importer and copied by `Game.csproj`, but the game runtime still does not consume glTF `skins` or `animations`. Runtime playback still needs skeleton loading, inverse bind matrices, joint weights, animation samplers/channels, an animator, and skinned mesh rendering.
 
-Normal-map perturbation, emission, environment reflections, skeletal skinning, animation clips, and fuller PBR behavior are still pending.
+Normal-map sampling, mipmaps and compressed textures are now supported. Emission, environment reflections, skeletal skinning, animation clips, glTF normal-scale overrides and fuller PBR behavior remain pending.

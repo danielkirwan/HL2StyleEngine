@@ -9,11 +9,25 @@ public sealed class LevelFile
 {
     public int Version { get; set; } = 2;
     public bool UsePointLights { get; set; }
+    public float Exposure { get; set; } = 1f;
+    public float AmbientLight { get; set; } = .22f;
+    public float DirectionalLight { get; set; } = 1f;
+    public bool EnableShadows { get; set; } = true;
+    public LevelStreamingSettings Streaming { get; set; } = new();
 
     public List<LevelEntityDef> Entities { get; set; } = new();
 
     public List<BoxDef>? Boxes { get; set; }
     
+}
+
+public sealed class LevelStreamingSettings
+{
+    public bool Enabled { get; set; } = true;
+    public float ZoneSize { get; set; } = 32f;
+    public int PreloadNeighbours { get; set; } = 1;
+    public int BudgetMiB { get; set; } = 256;
+    public float RetainSeconds { get; set; } = 15f;
 }
 
 
@@ -60,6 +74,7 @@ public sealed class LevelInteractionDef
     public string SuccessMessage { get; set; } = "";
     public List<string> Targets { get; set; } = new();
     public List<string> RequiredStates { get; set; } = new();
+    public string LightGroup { get; set; } = "";
     public List<LevelInteractionRewardDef> Rewards { get; set; } = new();
 
     public SerVec3 HingeLocalOffset { get; set; } = Vector3.Zero;
@@ -108,6 +123,13 @@ public sealed class LevelEntityDef
     public SerVec4 LightColor { get; set; } = new(1f, 1f, 1f, 1f);
     public float Intensity { get; set; } = 3f;
     public float Range { get; set; } = 8f;
+    public bool LightEnabled { get; set; } = true;
+    public bool CastShadows { get; set; }
+    public bool IsSpotLight { get; set; }
+    public float SpotAngleDeg { get; set; } = 60f;
+    public string LightGroup { get; set; } = "";
+    public float FlickerAmount { get; set; }
+    public float FlickerSpeed { get; set; } = 4f;
 
     public string MeshPath { get; set; } = "";
     public string MaterialPath { get; set; } = "";

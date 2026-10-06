@@ -8,6 +8,10 @@ The solution now targets .NET 10. `LevelIO` loads editable JSON through shared R
 
 ## Goal
 
+Current rendering/lighting update (2026-10-06): `LevelLighting` shares HDR scene settings and enabled point/spot lights between Game and HS2Editor. Toolbar > Lighting edits Shadows, Exposure, Ambient and Directional strength; the PointLight Inspector adds Enabled, Cast Shadows, Spotlight and Cone Angle (local -Z direction). These fields save through existing level/prefab persistence, with backward-compatible defaults. Up to two spots and one point light cast shadows. Shadow casters use the existing fitted model transforms and hidden-part masks, not alternative collider transforms. Cook assets through the importer's Compression tab or `CookAssets.bat`; scene uploads are now budgeted and GPU textures are shared. No authored layouts or docking files were rewritten. See `HS2Editor/README.md` and `Game/ENGINE_TECHNOLOGY_ROADMAP.md` for usage, limits and verification.
+
+Cooked model follow-up (2026-10-06): scene loading now accepts validated lossless LZ4 snapshots of imported geometry/materials and shared texture dependencies, with source GLB fallback. Use Compression > Cook models and textures, then restart the editor. Source GLBs, transforms, collider alignment, selected-object outlines and docking are unchanged. The lightweight Content Browser preview keeps its original loader. See `Game/ENGINE_UPGRADE_VALIDATION.md` for exact geometry comparisons, failure-path checks and the distinction between CPU asset preparation and full render-ready timing.
+
 HS2Editor should become the Unity-style project and level authoring app for the engine. It should let the project owner manage content folders, create and edit levels, place objects, attach scripts/components, assign imported models, manage prefabs, inspect UI files, and launch the game from the selected scene.
 
 The first implementation reuses the existing engine renderer and ImGui editor tooling so the app can have a real 3D viewport, hierarchy, inspector, project browser, and content browser without duplicating runtime systems.
@@ -17,6 +21,12 @@ The first implementation reuses the existing engine renderer and ImGui editor to
 F2 in Game uses this controller's Toolbar, Hierarchy and Inspector; HS2Editor additionally supplies Content Browser, prefab browsing, project/level management and UI panels. Those standalone panels have not been integrated into F2. The game's saved layout had collapsed Toolbar/Inspector windows. Game now expands its shared panels on first F2 entry and provides View > Restore Editor Panels to recover positions, sizes and docking, while preserving saved placement otherwise. View > Debug / Weapon Tools (F3) exposes the separate debug/weapon-tuning window, which stays closed on game startup. Automated F2 key injection did not register during verification; manual verification of these controls remains pending. This does not reset the standalone editor layout.
 
 Game's Visual Studio launch profiles now open `sixRoomTest.json`, matching the game launchers. HS2Editor still follows the project startup scene. Runtime interaction lookup and collider-bound optimizations improved stationary six-room captures from 4.4 FPS to approximately 40-60 FPS (40.4 FPS in the final normal Debug capture), without changing level content or rendering. Details and limitations are in `Game/SIX_ROOM_TEST.md`.
+
+## Visual Streaming Settings (2026-10-06)
+
+The shared Toolbar now has an Asset Streaming section: Enabled, Zone Size (m), Neighbour Rings, Soft Budget (MiB), and Retain (seconds). Changes participate in level dirty/undo/save handling through `LevelFile.Streaming`. Defaults are enabled, 32 m, one ring, 256 MiB and 15 seconds; older JSON receives those defaults without conversion. These settings control runtime visual assets, not removal of logical objects or colliders.
+
+F2 editing uses full visual residency to preserve authoring access. Main-view bounds culling is shared by the editor renderers, retaining textured materials, selection outlines and transforms. This does not change snapping, docking or model fitting. See [the streaming guide](../Game/STREAMING_GUIDE.md) for retention, protected owners and soft-budget limits.
 
 ## Confirmed Direction
 
@@ -60,12 +70,18 @@ Implemented:
 
 
 
+## Light Control Follow-Up (2026-10-06)
+
+PointLight Inspector adds Light Group, Flicker Amount and Flicker Speed. Interaction > Add Light Switch targets a group and/or light entities; the picker saves IDs while showing names. Required States optionally gate power prerequisites. Switches are repeatable, and player saves store enabled overrides outside the authored defaults. HS2Editor and F2 preview authored states with flicker; gameplay adds runtime state. Prefab placement/apply remaps internal light IDs, and revert preserves IDs of surviving source entities. Named groups remain level-wide. Full workflow and limits: `Game/LIGHTING_GUIDE.md`.
+
+Shadow culling/caching is shared by both editor renderers and gameplay. This does not change model fitting, selected-object outlines, collision transforms, vertex snapping or saved dock layouts.
+
 ## 2026-09-08 Level And Lighting Update
 
 - Added `Game/Content/Levels/sixRoomTest.json`: one large central hall and five connected rooms, approximately five times the `interaction_test.json` floor footprint. Its subsequent puzzle pass adds five rolling shutters and keyed, gravity-gun retrieval, cable repair, weighted-plate and three-feed mechanisms. Original layout entities are preserved. See `Game/SIX_ROOM_TEST.md` for solutions and checks.
 - Puzzle Inspector additions (2026-09-08): `PuzzleDoor` exposes Lift Height, retaining the legacy 3 m default. `PressurePlate` exposes Minimum Mass and Settle Seconds; author it as a horizontal static box rigid body. `PuzzleIndicator` exposes Required States; use it on a small primitive Prop for red/green feedback. Live plate occupancy is not saved, but a released lever's solved state keeps its shutter open. These are shared Inspector features available in HS2Editor and F2; they do not change docking or textured rendering.
 - Toolbar Scene Point Lights controls the saved `LevelFile.UsePointLights` flag, with dirty/undo support. The game and editor share submission of up to 32 nearby authored PointLights to textured model rendering. Inspector light position/colour/intensity/range now affect the scene when enabled. Existing levels opt in explicitly; the new level enables this by default.
-- Lighting remains unshadowed; groups, light switches, spotlights and occlusion are still future work. Textured meshes now use inverse-transpose normals for non-uniform scale.
+- At that milestone lighting was unshadowed. The October updates above add spotlights, shadow maps, groups, switches and flicker. Textured meshes use inverse-transpose normals for non-uniform scale.
 - Explicit `--level` launches start from the selected scene's spawn and default weapons, without automatically applying unrelated save data. The ordinary startup path retains its existing save loading.
 
 ## 2026-07-14 Selection And Snapping Update
@@ -253,7 +269,7 @@ The inspector interaction authoring UI now uses full-width vertical controls so 
 Every interaction edit goes through the standard editor dirty/save path. While dirty, the interaction inspector shows `Save Active Document`, and changes persist when the current level or prefab is saved.
 ## Lighting Authoring Direction
 
-The `PointLight` entity type has colour, intensity and range fields. Since 2026-09-08 these drive textured game/editor rendering when Toolbar > Scene Point Lights is enabled for the level. Fixture geometry and light entities remain separate; shadows, influence-radius gizmos and group/switch controls are the next authoring work.
+The `PointLight` entity type has colour, intensity and range fields, plus enabled/shadow/spot/group/flicker controls. These drive textured game/editor rendering when Toolbar > Scene Point Lights is enabled. Fixture geometry and light entities remain separate. Groups and switches are implemented; influence-radius/cone gizmos remain future authoring work.
 
 Recommended authoring model:
 
@@ -261,17 +277,17 @@ Recommended authoring model:
 - The editor should allow light entities to be placed, selected, moved, coloured, ranged, and previewed in the Scene view with a visible light icon/gizmo and radius helper.
 - Light fixtures can be parented/grouped with their light entities once parent workflows are stable, so moving a lamp can also move its light source.
 - Light switches should not hard-code individual object references in code. They should target named light groups or explicit entity IDs from level data.
-- A switch entity should expose an interaction component such as `ToggleLights`, with fields for target light group/entity IDs, starts-on state, one-shot vs reusable behavior, prompt text, and optional sound/event names.
-- Light entities should store runtime state such as enabled/disabled, colour, intensity, range, falloff, and group name. Save data should persist any switch-controlled light state that the player changes.
+- A switch now exposes `LightSwitch` interaction data with target group/IDs, prompt text and optional prerequisite states. Starts-on is authored on each light; repeated toggles are supported. One-shot switches and sound/event hooks remain future work.
+- Authored colour, intensity, range, group and flicker remain in level/prefab data. Player save data separately persists switch-controlled enabled overrides by light ID.
 - The editor should show enough of the final lighting to support level dressing, even if the first pass is simple forward point lights rather than baked/global illumination.
 
 Lighting progress and remaining work:
 
-1. Extend `LevelEntityDef`/inspector if needed with `Enabled`, `LightGroup`, and possibly `Falloff` fields for point lights.
+1. Implemented: `LightEnabled`, `LightGroup`, shadow/spot controls and authored flicker. Custom falloff curves remain future work.
 2. Implemented: `BasicWorldRenderer` receives up to 32 nearby point lights per frame.
 3. Implemented: textured models combine ambient, directional fill and nearby point lights, with inverse-transpose normals.
-4. Add a registered switch/interactable script that toggles target point lights by group or entity ID.
-5. Save/load changed light states so a switched-off room stays switched off.
+4. Implemented: `LightSwitch` interaction toggles point/spot lights by group or entity ID, without a separate script file.
+5. Implemented: save/load changed enabled states separately from authored defaults.
 6. Add editor Scene preview for point-light influence radius and on/off state.
 
 ## Prefabs

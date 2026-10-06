@@ -16,6 +16,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Content\.hs2cache\textures\*.hs2tex" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Content\.hs2cache\models\*.hs2model" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="..\Native\runtimes\win-x64\HS2RmlUiBridge.dll" Link="HS2RmlUiBridge.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('..\Native\runtimes\win-x64\HS2RmlUiBridge.dll')" />
     <None Include="Content\UI\**\*.rml" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Content\UI\**\*.rcss" CopyToOutputDirectory="PreserveNewest" />

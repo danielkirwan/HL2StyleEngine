@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCnEncoder.Net" />
+    <PackageReference Include="K4os.Compression.LZ4" />
     <PackageReference Include="opticfluorine.Veldrid" />
     <PackageReference Include="opticfluorine.Veldrid.StartupUtilities" />
     <PackageReference Include="ImGui.NET" />
@@ -18,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="CompressionNotices.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="Shaders\**\*.cso" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Shaders\**\*.hlsl" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

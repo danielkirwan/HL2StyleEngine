@@ -25,9 +25,9 @@ internal static class PuzzleChecks
         if (!condition) throw new InvalidDataException(message);
     }
 
-    internal static void Run(string root)
+    internal static void Run(string root, string levelFileName = "sixRoomTest.json")
     {
-        string path = Path.Combine(root, "Game/Content/Levels/sixRoomTest.json");
+        string path = Path.Combine(root, "Game/Content/Levels", levelFileName);
         LevelFile level = LevelIO.Load(path);
         Require(level.Entities.Count(e => e.Interaction?.Kind == "PuzzleDoor") == 5, "Expected five shutters.");
         var states = level.Entities.Where(e => e.Interaction != null).Select(e => e.Interaction!.StateId).ToArray();

@@ -23,6 +23,12 @@ Visual Studio needs a compatible .NET 10 SDK and Visual Studio 2026 (18.0+) for 
 
 RE:Dox handles structured data here, not GLB parsing, texture upload, physics construction or world streaming. Inventory opening reads the live in-memory container, not a file on every opening. A 100-times-larger world still needs asset caching, culling and streaming; a serializer does not make rendering it 100 times faster.
 
+## Light-State Save Extension (2026-10-06)
+
+Version-1 saves now optionally contain `LightStates`, a list of `EntityId`/`Enabled` overrides. Older saves without it (or with null) use authored light defaults; no version bump is needed for this additive field. Overrides are separate from level/prefab `LightEnabled` and never get written back as authored defaults. The loader checks the saved level filename against the active one before restoring light states. Same-level runtime rebuilds retain them; level changes and progress reset clear them. Existing level-load behavior is unchanged: this field does not itself load another level.
+
+Unknown entity IDs are retained in the override list for later residency work, but room streaming and campaign-wide cross-level light state are not implemented. Existing play-time persistence also restores gameplay flicker phase. `validate-lighting-state` exercises the production save reader/loader using temporary files, including a legacy save, without modifying player save slots. See [LIGHTING_GUIDE.md](LIGHTING_GUIDE.md).
+
 ## Inventory Behaviour
 
 The inventory takes its visual direction from the supplied [JasozzGames reference video](https://x.com/JasozzGames/status/2106467936353366083/video/1): continuous fine-lined grids over the darkened world, item thumbnails, compact stack counts and selection/placement outlines. It retains this game's existing main capacity rather than copying the video's exact grid dimensions.
@@ -40,6 +46,16 @@ Native RmlUi and ImGui fallback share `Engine.UI/InventoryLayout.cs`. Native sty
 
 ## Verification
 
+### Native Visibility Repair (2026-10-06)
+
+The initial refresh had two rendering defects despite passing input checks: RCSS alpha values used 0..1 instead of 0..255, and the overlay's percentage size collapsed to its content bounds. Corrected alpha values and an explicit viewport-sized block restore the shade, cell backgrounds and borders. This is not a user configuration, data-loading or missing-asset issue. Rebuild/relaunch normally; no save deletion or reimport is needed.
+
+The new `validate-inventory-visuals` check reads the actual native render-command geometry and verifies full-screen shade coverage, all 64 cell fills/borders and item background opacity at 1300x775, 1920x1080 and 800x600. A live native window was also inspected, including item selection/description. The earlier visual inspection did not catch these defects; hit testing alone is not evidence that the UI is visible. Inventory storage and input behaviour have not been redesigned by this repair.
+
+October 6 verification: Debug and Release solution builds passed with zero warnings/errors, all three native visibility cases passed, all 11 input checks and 321 persistence/inventory checks passed, and the six-room layout/physics/progression regression passed. No authored levels, prefabs or player saves were changed by this repair. No new full-startup benchmark was performed.
+
+### Commands
+
 From the project root, using the local SDK:
 
 ```powershell
@@ -47,6 +63,7 @@ From the project root, using the local SDK:
 .\.dotnet\dotnet.exe build Tools/LevelAuthoring/LevelAuthoring.csproj
 .\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Debug/net10.0/LevelAuthoring.dll validate-redox-inventory
 .\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Debug/net10.0/LevelAuthoring.dll validate-inventory-input
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Debug/net10.0/LevelAuthoring.dll validate-inventory-visuals
 .\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Debug/net10.0/LevelAuthoring.dll validate-six-room-test
 .\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Debug/net10.0/LevelAuthoring.dll validate-collider-bounds
 ```

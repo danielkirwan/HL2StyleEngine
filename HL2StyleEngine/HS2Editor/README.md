@@ -1,5 +1,9 @@
 # HS2Editor
 
+Playtest standard (2026-10-06): Play Selected Level / Launch Game From Level saves the current level and launches Game in Release, regardless of the editor's own build configuration. It still uses that selected level, not a hardcoded test level. Debug remains available through Visual Studio. The importer launch and editor startup scene are unchanged.
+
+Rendering performance follow-up (2026-10-06): the scene viewport batches object uniform uploads before frame submission, shared with Game/F2. This preserves textured models, inverse-transpose normals, selection outlines, gizmos and draw order; it does not change docking or authored transforms. Main-scene batching is covered by GPU reference comparisons in `Game/ENGINE_UPGRADE_VALIDATION.md`. Standalone mouse/docking interaction remains a manual check.
+
 Standalone first-pass project and level editor for HL2StyleEngine.
 
 ## Run
@@ -16,11 +20,29 @@ Since 2026-10-05, the toolchain targets .NET 10. Root launchers and editor Play/
 
 Game's Visual Studio launch profiles and both game launchers explicitly open `sixRoomTest.json` for testing; this does not change the startup scene selected here. F2 inside Game is a smaller in-game editor with the shared Toolbar/Hierarchy/Inspector, not this full application. Its new View menu restores those panels or opens F3 debug/weapon tools. Content Browser, prefab browsing and UI management remain in HS2Editor. The September 8 six-room performance fixes change runtime lookups and physics bounds/support queries, not this application's docking or textured renderer. See `Game/SIX_ROOM_TEST.md` for measured results and remaining manual checks.
 
+## Asset And Lighting Update (2026-10-06)
+
+Scene models now use the same cooked/shared BC7/BC5 texture pipeline as Game, with mipmaps, normal maps and budgeted GPU uploads. Run `CookAssets.bat` or launch the importer and use its new Compression tab after converting assets; restart previews to pick up newly cooked textures. Existing model transforms, mesh fit, selection outlines and collision shapes are preserved. Missing/corrupt caches use an RGBA fallback.
+
+Cooked-model follow-up: Compression > Cook models and textures also creates validated lossless LZ4 geometry/material caches. Scene loading uses these automatically, skipping GLB parsing on a hit while preserving imported coordinates, part names and texture data. Missing/stale/invalid caches use the original GLB loader. Source GLBs remain required. The lightweight Content Browser preview retains its existing preview loader. No docking, selection or authored level settings were changed. Restart the editor after cooking; see `Game/ENGINE_UPGRADE_VALIDATION.md` for measured CPU preparation versus full render-ready timings.
+
+Toolbar > Lighting exposes scene Shadows, Exposure, Ambient and Directional controls. Select a PointLight to change Enabled, Cast Shadows, Spotlight and Cone Angle, as well as existing colour/intensity/range controls. A spotlight points along its local -Z axis. Save Level persists these settings. Scene Point Lights must be enabled for level-authored lights. Existing lights default to enabled but do not cast shadows until opted in. Shadow budgets are two spots and one point light; extra lights are unshadowed. A low ambient/directional setting is useful for horror-lighting tests, but is not forced onto existing levels.
+
+Game's F key toggles a shadowed flashlight during gameplay. Editor F-to-focus is unchanged. PointLight Inspector now includes Light Group, Flicker Amount and Flicker Speed. Add Light Switch under a switch object's Interaction section, then choose a group and/or explicit light targets; optional Required States gate use. Save Level persists authoring, while player saves retain runtime on/off overrides. Both editors preview authored defaults and flicker. Internal prefab light targets remap per instance and revert retains surviving IDs. See `Game/LIGHTING_GUIDE.md` for the full workflow and group-versus-ID behavior.
+
+Unchanged shadows are cached and each shadow face culls irrelevant objects. Baked indirect lighting and animated runtime light attachments remain future work. HDR/colour handling changes how lighting is displayed; inspect your scene and tune exposure rather than rotating a correctly aligned wall to compensate for light. See `Engine.Render/README.md` and `Game/ENGINE_TECHNOLOGY_ROADMAP.md`. Existing authored scenes and docking layouts were not rewritten.
+
+## Visibility And Runtime Streaming (2026-10-06)
+
+Scene rendering now shares conservative main-view primitive/model-part culling with Game/F2. Selected-object textures/outlines, authored transforms, vertex snapping and dock layouts are unchanged. The editor keeps its authoring resource cache; it does not unload logical scene objects.
+
+Toolbar > Asset Streaming saves runtime settings with the selected level: enabled by default, 32 m spatial zones, one neighbour ring, 256 MiB soft budget and 15 seconds retention. Game prefetches zone dependencies and releases distant unused render resources without removing entities/colliders or resetting gameplay state. F2 authoring temporarily uses full residency. Play Selected Level continues to save and launch Release. See [the streaming guide](../Game/STREAMING_GUIDE.md); no asset recook or level conversion is required.
+
 ## Current Features
 
 - `sixRoomTest.json` is available in the Levels panel as a larger six-room physics/exploration test, now with five shutter puzzles. See `Game/SIX_ROOM_TEST.md` for layout, solutions and the play-test checklist. `LaunchSixRoomTest.bat` plays it directly.
 - Puzzle authoring additions (2026-09-08): Interaction > Add Pressure Plate, Add Puzzle Indicator, and Puzzle Door > Lift Height. Plates use a horizontal static box rigid body's top and yaw-rotated footprint, with editable minimum mass/settle time. Indicators use Required States on a primitive Prop. Filter `SRPuzzle_` in Hierarchy to find the authored puzzle objects. Required pickups remain dynamic/Can Pick Up; frames are static Mesh colliders and separate shutter leaves own the lifting interaction. No layout or renderer changes accompany this pass.
-- Scene Point Lights in the Toolbar toggles saved level lighting (`UsePointLights`). Enabled levels render nearby PointLight colour, intensity and range in both the Scene viewport and game. `sixRoomTest` enables it; older levels default to off. Select a PointLight to tune it in the Inspector. Shadows, groups and switches are not implemented yet.
+- Scene Point Lights in the Toolbar toggles saved level lighting (`UsePointLights`). Enabled levels render nearby PointLight colour, intensity, range, flicker, spot cones and opt-in shadows in both Scene and game. `sixRoomTest` enables it; older levels default to off. Groups and repeatable switches are available through the Inspector.
 
 - Level create, load, save, duplicate, and rename.
 - Scene panel with grid, selection, transform gizmo drawing, editor camera controls, textured GLB scene rendering for placed models, outline/corner selection markers, and first-pass vertex/corner snapping with `V`.

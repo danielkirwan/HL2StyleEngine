@@ -12,6 +12,52 @@ A matching primitive/blockout version is generated as `Content/Levels/interactio
 
 ## Completed Systems
 
+### 2026-10-06 Confirmed Performance Standard
+
+The smoother flashlight result is user-confirmed. Main-scene/shadow batching is the production default, and all game batch launchers plus HS2Editor Play Selected Level now use Release. Visual Studio Debug remains available; choose Release for comparable performance testing. Preserve materials, shadows, collider alignment, movement and ready-before-replacement behavior. Main-view culling and the first visual-streaming milestone are now implemented below; see [ENGINE_TECHNOLOGY_ROADMAP.md](ENGINE_TECHNOLOGY_ROADMAP.md) for the remaining order.
+
+### 2026-10-06 Visibility And Visual Streaming
+
+Main-camera culling uses transformed primitive/model-part bounds, preserving off-camera shadow casters and weapon/UI rendering. Automatic XZ dependency zones prefetch nearby models/replacement assets; budgeted uploads, shared texture ownership, soft byte budgets, retention and fence-safe eviction manage distant resources. Gameplay entities and colliders remain resident, so streaming does not recreate IDs or reset inventory, puzzles, doors, lights or collected items. Held objects and live debris stay pinned. F2 editing uses full residency. Toolbar > Asset Streaming saves settings; existing levels receive defaults without conversion.
+
+Normal-desktop Release walking runs remain at 60 FPS with the flashlight on/off and zero streaming waits. Main draws averaged 368 versus 762; world CPU time was 2.12 versus 3.72 ms with the light on. Combined door/crate/gravity/inventory stress also passed (120 peak fragment bodies), averaging 59.8 FPS with one frame above 33.3 ms. This six-room route retains all 32 shared models; a separate distant-area fixture verifies memory release/reload. See [STREAMING_GUIDE.md](STREAMING_GUIDE.md) and [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md). Full entity/physics streaming, occlusion and cold-start measurements remain future work. Continue testing with the existing Release launchers.
+
+### 2026-10-06 Flashlight-Only Six-Room Test
+
+`LaunchSixRoomFlashlightTest.bat` opens a separate `sixRoomFlashlightTest.json` copy with no scene lights or directional fill. Following the playtest, ambient strength is now 0.025 for faint room visibility. Press F to turn the initially-off flashlight on/off. Ceiling diffuser strips no longer glow; the 13 red/green puzzle indicators remain visible without adding room illumination. Moving shadow maps now batch their object-transform uploads to reduce driver overhead; movement speed and shadow quality are unchanged. Original six-room lighting, launchers, geometry and gameplay are unchanged. See [SIX_ROOM_TEST.md](SIX_ROOM_TEST.md) and [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md) for the variant, measurements and validation details.
+
+Full-game performance follow-up: the main scene now batches object uniforms too, and this flashlight launcher builds/runs Release. A normal desktop walking/turning test averaged 60 FPS with the flashlight on and off, compared with 41.8 FPS using the old Release main-scene upload path. Debug's higher physics cost can compound slow rendering and hit the simulation time clamp; player speed and timestep settings were not changed. Close the old game and relaunch the flashlight batch file to test. See the validation report for precise conditions, image comparisons and remaining playtest limits.
+
+### 2026-10-06 Cooked Model Loading
+
+The next asset milestone adds lossless LZ4 caches for imported model geometry, material values and named parts, referencing the existing shared texture caches. `CookAssets.bat` and Asset Importer > Compression > Cook models and textures create them; game/editor scene loading uses them automatically. All 376 current GLBs are cooked and compared against source-loader output. Source GLBs and authored levels are unchanged and remain authoritative. Missing, stale, corrupt or incompatible caches fall back safely to the original loader.
+
+Three warm-filesystem Release runs reduced median serial CPU preparation of 28 directly referenced six-room models from 286.22 ms to 187.20 ms. A separate harness initialization-to-complete-GPU-readback measurement improved only from 1,577.65 ms to 1,555.51 ms; it is not an OS-launch-to-first-playable benchmark. Model cooking does not add room streaming, cached collision BVHs or skeletal animation. See [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md) for reproduction, regression coverage and remaining work. Restart the usual game/editor launchers to test; no project reset is required.
+
+### 2026-10-06 Light Switches, Flicker And Shadow Reuse
+
+PointLights now expose Light Group and flicker controls. Interaction > Add Light Switch creates a reusable E/controller interaction targeting a group and/or stable light IDs, with optional puzzle prerequisites. Player saves retain enabled-state overrides separately from authored defaults. Internal prefab light links remap on placement/apply; revert preserves IDs of surviving entities. Game and both editor views share the light calculation, with editors previewing authored states. See [LIGHTING_GUIDE.md](LIGHTING_GUIDE.md).
+
+Shadow faces cull irrelevant casters and cache unchanged depth. Moving doors/lights, model swaps and hidden crate parts invalidate affected maps; intensity/flicker changes alone do not. GPU regression images compare the optimized path with uncached/unculled rendering, including six-room viewpoints. Existing level JSON, source models, player saves, inventory and locked weapon HUD layout are untouched. Validation and remaining stages are tracked in [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md).
+
+### 2026-10-06 Compression, Lighting And Physics Foundations
+
+The importer now has a Compression tab and `CookAssets.bat` cooks source GLB textures to shared BC7/BC5 mip chains with LZ4 disk compression. All 376 current GLBs were processed without failures. Cached textures are source-hash/version/checksum validated; missing/corrupt caches fall back to RGBA. Source models and authored levels are unchanged. Game/editor prepare images on workers and budget model-part GPU uploads. Object replacement now queues until the replacement is ready and retains the original on failure. Do not hide/destroy first and hope the next object loads in time.
+
+World rendering now uses HDR, exposure/tone mapping, correct sRGB/linear texture handling and normal maps. F toggles a shadowed gameplay flashlight. Toolbar > Lighting exposes scene exposure/ambient/directional/shadows; PointLight Inspector adds Enabled, Cast Shadows, Spotlight and Cone Angle. Existing fixtures default to unshadowed, with at most two spots and one point light shadowed concurrently. The follow-ups above add groups/switches and visual streaming; baked GI and full entity/physics streaming remain future work. Primitive blockout geometry remains unlit.
+
+Mesh contacts/rays use a per-mesh BVH while retaining original triangle order, collider shapes and the existing C# solver. Tests compare accelerated and linear results. RE:Dox, inventory, weapon UI and gameplay persistence stay in place; no native rewrite was needed.
+
+Measured 56 level textures occupy 73.47 MiB of compressed mip data versus 293.85 MiB RGBA with equivalent mip chains. Warm serial CPU asset preparation had a three-run median of 271.46 ms cooked versus 7,129.09 ms for the new RGBA/mip fallback. This is not an old-engine startup comparison: the old path did not generate those mipmaps, and this test excludes GPU upload/physics/first playable frame. Actual six-room GPU capture loaded 32 model/weapon assets, shared 74 textures (94.8 MiB) and had zero fallback image decodes. See [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md) for all results and limitations.
+
+### 2026-10-06 Inventory Visibility Repair And Engine Review
+
+The missing inventory backgrounds were a native RmlUi styling regression, not a missing import or user setting. RCSS alpha values had used browser CSS's 0..1 range instead of RmlUi's 0..255 range. The inventory backdrop also collapsed to its containing content instead of covering the viewport. Alpha values now use the correct range and the backdrop receives explicit viewport dimensions. Inventory contents, capacities, stacking, overflow and save formats are unchanged.
+
+`validate-inventory-visuals` now inspects actual native render geometry for the backdrop, all 64 cell backgrounds/borders and item tiles at 1300x775, 1920x1080 and 800x600. A live native preview confirmed the restored dark overlay, grids, thumbnails and selected-item description. No configuration reset is required; rebuild/relaunch normally to copy the corrected UI assets.
+
+[ENGINE_TECHNOLOGY_ROADMAP.md](ENGINE_TECHNOLOGY_ROADMAP.md) records the source audit and remaining loading, horror-lighting, physics and C#/C++ direction. The subsequent authorized implementation is documented above; the inventory-only repair itself did not change those engine subsystems.
+
 ### 2026-10-05 RE:Dox Integration And Inventory Refresh
 
 The production engine, game, editor and importer now target .NET 10. Levels load through RE:Dox with disposable, source-hash-validated binary DOX caches; levels, prefabs and player saves remain editable JSON and use flushed temporary-file replacement with `.bak` backups. Unversioned saves and existing level/prefab contracts remain readable. Script/undo/project configuration JSON retains its existing implementation.
@@ -66,7 +112,7 @@ Verification: normal Game Debug build passed with zero warnings/errors; 1,000 ra
 
 Explicit `--level` launches now begin at the authored spawn with the default loadout instead of automatically loading another level's saved player position and inventory. Normal launches without `--level` keep existing auto-load behaviour.
 
-Levels can opt into point lighting with `UsePointLights`, exposed as Scene Point Lights in the editor toolbar. The test level enables it; previous levels default to disabled. Textured models use up to 32 nearby lights in game and editor, with colour/intensity/range falloff and inverse-transpose normal handling. Shadows and switch/group control remain pending.
+Levels can opt into point lighting with `UsePointLights`, exposed as Scene Point Lights in the editor toolbar. The test level enables it; previous levels default to disabled. Textured models use up to 32 nearby lights in game and editor, with colour/intensity/range falloff and inverse-transpose normal handling. The October lighting updates add opt-in shadows, groups, switches and flicker.
 
 ### Gameplay Systems
 
@@ -141,18 +187,18 @@ Target lighting model:
 
 - Keep a small global ambient term so textured surfaces never crush to black in normal indoor scenes.
 - Keep an optional directional fill/sun light for broad readability, but do not depend on it for indoor rooms.
-- Implemented: point-light position, colour, intensity, range and falloff from level data, submitted to the textured model shader in game and editor. Intensity zero disables an individual light. Named groups and persistent enabled states remain planned.
+- Implemented: point-light position, colour, intensity, range, falloff, named groups, authored flicker and persistent enabled overrides. Intensity zero disables an individual light.
 - Implemented: inverse-transpose normal handling for scaled/rotated models.
-- Later add spot lights for flashlights, wall lamps, and directional fixtures once point lights are stable.
+- Implemented: spot lights, a gameplay flashlight and budgeted point/spot shadows with per-face culling and caching.
 
 Gameplay/light-switch direction:
 
 - Light fixture models are just visible props/meshes. They do not automatically cast light unless paired with one or more light entities.
-- Light switches should be interactable entities/scripts that toggle one or more light entities by group name or explicit entity ID.
-- Switches should support starts-on state, reusable toggle vs one-shot behavior, prompt text, optional sound/VFX hooks, and save/load persistence for changed light states.
-- Door/chest/puzzle interaction patterns should be reused where possible: author the switch in the editor, attach a registered script/component, expose editable fields, and let runtime state persistence record the result.
+- Implemented: `LightSwitch` interaction data on the switch object, targeting a named light group or explicit light IDs. It uses the shared gameplay interaction binding and supports optional puzzle prerequisites.
+- Implemented: authored starts-on state, reusable toggles, prompt text and saved changed light states. One-shot switches and sound/VFX hooks remain future additions.
+- Switches are authored through the Interaction inspector, not a separate script document. Level saves retain defaults; player saves retain runtime overrides.
 
-Next lighting priorities: shadows/occlusion, ambient/fill tuning, editor-authored light groups, a switch script that toggles a group, and save/load of changed light states.
+Next lighting priorities: baked indirect light/probes, emission, light gizmos and representative moving/debris performance profiles. See `LIGHTING_GUIDE.md` for current controls and limitations.
 
 
 ## Debug UI
@@ -269,7 +315,7 @@ The first pass still uses path-based asset references because the current level 
 - Add impact damage for launched physics props, so Gravity Gun-thrown crates can damage or break when they hit walls/objects hard enough.
 - Add debris spawning from `BreakDebrisModelPaths`, plus folders/search in the model picker once the model library grows.
 - Add crate break VFX such as dust/splinters to support the fracture collapse and make impacts feel better.
-- Extend the implemented point lights and normal-matrix handling with shadows, light groups, switches and ambient/fill tuning. Continue material polish with normal-map, emission, environment reflection, and fuller PBR support.
+- Continue the implemented HDR/normal-map/shadow/switch lighting with baked indirect light, emission, environment reflection and fuller PBR support. Keep measured shadow budgets and editor/runtime parity.
 - Add simple damageable targets/enemies so bullet, melee, impact, and explosion damage have more gameplay consequences.
 - Add gravity gun polish: hold beam effects, blocked pickup checks, mass-based throw tuning, and sound/VFX hooks.
 - Replace placeholder health/suit values with a real player damage and armor system.

@@ -398,7 +398,7 @@ internal static class RmlUiDocumentBuilder
         var layout = new InventoryLayout(state.ViewportWidth, state.ViewportHeight,
             state.GridWidth, state.GridHeight, state.PrimaryGridHeight);
         var covered = BuildCoveredSlotLookup(state);
-        sb.AppendLine("<section id='inventory-grid-overlay'>");
+        sb.AppendLine($"<section id='inventory-grid-overlay' style='width:{Math.Max(1, state.ViewportWidth)}px;height:{Math.Max(1, state.ViewportHeight)}px;'>");
         sb.AppendLine($"<div class='grid-label' style='left:{(int)layout.PrimaryOrigin.X}px;top:{(int)layout.PrimaryOrigin.Y - 28}px;'>INVENTORY</div>");
         if (layout.OverflowRows > 0)
             sb.AppendLine($"<div class='grid-label' style='left:{(int)layout.OverflowOrigin.X}px;top:{(int)layout.OverflowOrigin.Y - 28}px;'>OVERFLOW</div>");

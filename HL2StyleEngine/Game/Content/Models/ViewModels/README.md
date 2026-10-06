@@ -2,6 +2,10 @@
 
 Converted `.glb` files currently live here and are copied into the game output by `Game.csproj`.
 
+Texture update (2026-10-06): source GLBs stay unchanged. The importer's Compression tab or root `CookAssets.bat` generates shared BC7 colour/material and BC5 normal-map mip caches in `Game/Content/.hs2cache/textures`, with LZ4 disk payloads. Game builds copy these disposable files. Models keep their original geometry, part names and bounds-fit conventions; missing caches fall back to RGBA mipmaps. Restart running previews after cooking. All current model GLBs have been cooked. See `Game/ENGINE_TECHNOLOGY_ROADMAP.md` for the implemented pipeline and remaining streaming work.
+
+Model-cache follow-up (2026-10-06): the same cook now writes lossless `.hs2model` caches under `Game/Content/.hs2cache/models`, referencing the shared texture caches. All 376 current GLBs passed geometry/material/part-identity comparisons. Game/editor scene loading uses valid caches automatically; missing/stale/corrupt caches fall back to the source loader. Source GLBs remain required and unchanged. Collision BVHs and animation playback are not included in this cook.
+
 Weapon viewmodels used by current or fallback weapon definitions:
 
 - `gravitygun.glb`

@@ -87,6 +87,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         public List<string> CollectedInteractables { get; set; } = new();
         public List<string> OpenedDoors { get; set; } = new();
         public List<string> SolvedPuzzles { get; set; } = new();
+        public List<LightStateOverride> LightStates { get; set; } = new();
         public List<BrokenObjectSaveData> BrokenObjects { get; set; } = new();
         public List<WeaponSaveData> WeaponStates { get; set; } = new();
         public int PlayerHealth { get; set; } = 100;
@@ -148,6 +149,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         public Task<LoadedModel>? LoadTask;
         public bool Failed;
         public string? Error;
+        public double LastWanted;
     }
 
     private readonly string? _initialLevelPath;
@@ -338,6 +340,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         PreloadWeaponModels();
         PreloadModelAsset(PlayerCharacterModelPath);
+        _residentPins.Add(ResolveModelAssetPath(PlayerCharacterModelPath));
         ShowLoadingOverlay();
     }
 
@@ -347,7 +350,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         {
             string? modelAssetPath = weapon.ViewModel.ModelAssetPath;
             if (!string.IsNullOrWhiteSpace(modelAssetPath))
+            {
                 PreloadModelAsset(modelAssetPath);
+                _residentPins.Add(ResolveModelAssetPath(modelAssetPath));
+            }
         }
     }
 
@@ -370,75 +376,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             return;
         }
 
-        try
-        {
-            LoadedModel loaded = GlbModelLoader.Load(path);
-            entry.LoadedModel = loaded;
-            entry.Bounds = CalculateModelBounds(loaded);
-            entry.Model = _world.CreateRenderModel(loaded);
-        }
-        catch (Exception ex)
-        {
-            entry.Failed = true;
-            entry.Error = ex.Message;
-        }
+        // Registration is cheap; only requested rooms and collision owners start CPU work.
     }
 
     private bool EnsureModelAssetReadyForSwap(string modelAssetPath, out string error)
     {
-        error = "";
-        if (string.IsNullOrWhiteSpace(modelAssetPath))
-        {
-            error = "empty model path";
-            return false;
-        }
-
-        string path = ResolveModelAssetPath(modelAssetPath);
-        if (!_weaponModelCache.TryGetValue(path, out WeaponModelCacheEntry? entry))
-        {
-            PreloadModelAsset(modelAssetPath);
-            if (_weaponModelCache.TryGetValue(path, out entry) && entry.Model != null)
-                return true;
-        }
-
-        if (entry == null)
-        {
-            error = "model cache entry missing";
-            return false;
-        }
-
-        if (entry.Model != null)
-            return true;
-
-        if (entry.Failed)
-        {
-            error = entry.Error ?? "model load failed";
-            return false;
-        }
-
-        if (entry.LoadTask is { } task)
-        {
-            try
-            {
-                LoadedModel loaded = task.GetAwaiter().GetResult();
-                entry.LoadedModel = loaded;
-                entry.Bounds = CalculateModelBounds(loaded);
-                entry.Model = _world.CreateRenderModel(loaded);
-                entry.LoadTask = null;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                entry.Failed = true;
-                entry.Error = ex.Message;
-                entry.LoadTask = null;
-                error = ex.Message;
-                return false;
-            }
-        }
-
-        error = "model not ready";
-        return false;
+        bool ready = TryGetReadyModel(modelAssetPath, "replacement", out var entry);
+        error = ready ? "" : entry?.Error ?? "model is warming up";
+        return ready;
     }
 
     private void ApplySpawnFromEditor(bool forceResetVelocity)
@@ -487,6 +432,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _inventoryActionHandledThisFrame = false;
 
         _inputState.Update(snapshot);
+        if (!_editorEnabled && !GameplayModalOpen && _inputState.WasPressed(Key.F))
+            _flashlightOn = !_flashlightOn;
         _inputSystem.Update();
         if (_interactionPromptGraceTimer > 0f)
             _interactionPromptGraceTimer = MathF.Max(0f, _interactionPromptGraceTimer - dt);
@@ -494,6 +441,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             _loadingOverlayTimer = MathF.Max(0f, _loadingOverlayTimer - dt);
         _weaponSystem.Update(dt);
         UpdateFractureDebris(dt);
+        UpdatePendingReplacements();
 
         if (GameplayModalOpen)
             _ui.OpenUI();
@@ -633,6 +581,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         if (_editorEnabled)
         {
+            _editorLightingSeconds += dt;
             EditorCameraUpdate(dt);
             EditorMouseUpdate();
             EditorHotkeys();
@@ -1338,6 +1287,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         data.CollectedInteractables ??= new();
         data.OpenedDoors ??= new();
         data.SolvedPuzzles ??= new();
+        data.LightStates ??= new();
         data.BrokenObjects ??= new();
         data.WeaponStates ??= new();
         data.DroppedItems ??= new();
@@ -1509,6 +1459,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 _openedDoors.Add(item);
             foreach (string item in data.SolvedPuzzles)
                 _solvedPuzzles.Add(item);
+            _lightState.Restore(string.Equals(Path.GetFileName(_editor.LevelPath), data.LevelName, StringComparison.OrdinalIgnoreCase)
+                ? data.LightStates : null);
             foreach (BrokenObjectSaveData item in data.BrokenObjects)
             {
                 if (!string.IsNullOrWhiteSpace(item.Name))
@@ -1577,6 +1529,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 CollectedInteractables = _collectedInteractables.OrderBy(static x => x).ToList(),
                 OpenedDoors = _openedDoors.OrderBy(static x => x).ToList(),
                 SolvedPuzzles = _solvedPuzzles.OrderBy(static x => x).ToList(),
+                LightStates = _lightState.Capture(),
                 WeaponStates = _weaponSystem.ToSaveData().ToList(),
                 PlayerHealth = _playerHealth,
                 PlayerSuit = _playerSuit,
@@ -1647,6 +1600,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private void ClearPrototypeInteractionState()
     {
+        _lightState.Clear();
         _inventory.Clear();
         _storage.Clear();
         _collectedInteractables.Clear();
@@ -3191,11 +3145,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (entity.IsBroken && string.Equals(entity.BrokenReplacementModelPath, replacementModelPath, StringComparison.OrdinalIgnoreCase))
             return;
 
-        if (ReferenceEquals(_held, entity))
-            DropHeld();
-
         string swapError = "";
         bool replacementReady = IsGlbModelPath(replacementModelPath) && EnsureModelAssetReadyForSwap(replacementModelPath, out swapError);
+        if (IsGlbModelPath(replacementModelPath) && !replacementReady)
+        {
+            _pendingReplacements[entity] = (replacementModelPath, persist, showMessage);
+            return;
+        }
+        if (ReferenceEquals(_held, entity)) DropHeld();
 
         entity.IsBroken = true;
         entity.Damageable = false;
@@ -5728,6 +5685,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     }
     private void RebuildRuntimeWorld()
     {
+        _roomAssets = null;
+        _streamingBlocked = false;
+        _lightState.BindLevel(_editor.LevelPath);
         _runtimeEntities.Clear();
         _runtimeDefinitions.Clear();
         _runtimeWorldColliders.Clear();
@@ -5955,6 +5915,13 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
                 e.Render.Color = hasMovingPlatform ? new Vector4(1f, 0.2f, 1f, 1f) : (Vector4)def.Color;
             }
 
+            if (IsLightSwitch(e) && !e.Collider.Enabled)
+            {
+                e.Collider.Shape = RuntimeShapeKind.Box;
+                e.Collider.Size = GetScaledSize(def, e.Transform.Scale, clampComponents: true);
+                e.Collider.IsSolid = false;
+            }
+
             _runtimeEntities.Add(e);
             if (IsPuzzleDoor(e))
                 _puzzleDoorClosedPositions[e.Name] = e.Transform.Position;
@@ -6178,6 +6145,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     public void FixedUpdate(float fixedDt)
     {
+        if (_streamingBlocked && !_editorEnabled) return;
         if (_editorEnabled)
             return;
 
@@ -7006,8 +6974,18 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         var viewProj = view * proj;
 
         _world.BeginFrame();
+        using var objectUploads = _world.BatchObjectUploads();
         _world.UpdateCamera(viewProj, _camera.Position);
-        LevelLighting.Apply(_world, _editor, _camera.Position);
+        renderer.Exposure = _editor.LevelFile.Exposure;
+        WorldPointLight? flashlight = !_editorEnabled && _flashlightOn
+            ? new WorldPointLight(_camera.Position, new Vector3(1f, .95f, .85f), 7f, 22f, _camera.Forward, 55f, true, 100)
+            : null;
+        LevelLighting.Apply(_world, _editor, _camera.Position, flashlight, _editorEnabled ? null : _lightState,
+            _editorEnabled ? _editorLightingSeconds : _playTimeSeconds);
+        PlanModelResidency();
+        PumpModelUploads();
+        EvictDistantModels();
+        DrawWorldShadows(renderer);
 
         // -----------------------------
         // EDITOR MODE: draw editor view
@@ -7142,6 +7120,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         {
             var ent = _runtimeEntities[i];
             if (!ent.Render.Enabled) continue;
+            RenderBounds(ent, out var min, out var max);
+            if (!_world.IntersectsView(min, max, Matrix4x4.Identity)) continue;
 
             // Position comes from runtime (MovingPlatform updates this)
             Vector3 pos = ent.Transform.Position;
@@ -7163,7 +7143,13 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         DrawFractureDebris(renderer);
         DrawPlayerCharacter(renderer, visible: DrawLocalPlayerCharacterInFirstPerson);
-        _weaponSystem.Render(this, renderer, visible: !_editorEnabled && !GameplayModalOpen);
+        bool cullView = _world.ViewCullingEnabled;
+        try
+        {
+            _world.ViewCullingEnabled = false;
+            _weaponSystem.Render(this, renderer, visible: !_editorEnabled && !GameplayModalOpen);
+        }
+        finally { _world.ViewCullingEnabled = cullView; }
     }
 
     private bool TryDrawEditorModeModel(Renderer renderer, int entityIndex, EditorDrawBox draw, bool selected)
@@ -7977,7 +7963,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     }
 
     private bool IsGameplayInteractable(Entity e)
-        => IsWorldItem(e) || IsLockedObject(e) || IsSavePoint(e) || IsStorageBox(e) || IsPuzzleSlot(e) || IsPuzzleLever(e);
+        => IsWorldItem(e) || IsLockedObject(e) || IsSavePoint(e) || IsStorageBox(e) || IsPuzzleSlot(e) || IsPuzzleLever(e) || IsLightSwitch(e);
 
     private static bool IsWorldItem(Entity e)
         => TryGetWorldItem(e, out _, out _);
@@ -8398,6 +8384,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private string GetInteractionPrompt(Entity e)
     {
+        if (IsLightSwitch(e)) return GetLightSwitchPrompt(e);
         if (TryGetWorldItem(e, out string worldItemId, out int worldItemCount))
         {
             string countSuffix = worldItemCount > 1 ? $" x{worldItemCount}" : "";
@@ -8505,6 +8492,12 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         Entity? hit = RaycastGameplayInteractable(maxDist: 3.0f);
         if (hit == null)
             return false;
+
+        if (IsLightSwitch(hit))
+        {
+            UseLightSwitch(hit);
+            return true;
+        }
 
         if (TryCollectWorldItem(hit))
             return true;
@@ -10008,6 +10001,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     public void Dispose()
     {
+        _ctx?.Renderer.DrainRetiredResources();
         foreach (WeaponModelCacheEntry entry in _weaponModelCache.Values)
             entry.Model?.Dispose();
 

@@ -1,12 +1,15 @@
 {
   "version": 2,
-  "dgSpecHash": "4eGWgyh9wWI=",
+  "dgSpecHash": "Yf30K3pd/KA=",
   "success": true,
   "projectFilePath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.UI\\Engine.UI.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\danie\\.nuget\\packages\\bcnencoder.net\\2.3.0\\bcnencoder.net.2.3.0.nupkg.sha512",
     "C:\\Users\\danie\\.nuget\\packages\\capcom.redox\\1.0.0\\capcom.redox.1.0.0.nupkg.sha512",
     "C:\\Users\\danie\\.nuget\\packages\\capcom.redox.serialization.systemtextjson\\1.0.0-preview\\capcom.redox.serialization.systemtextjson.1.0.0-preview.nupkg.sha512",
+    "C:\\Users\\danie\\.nuget\\packages\\communitytoolkit.highperformance\\8.4.0\\communitytoolkit.highperformance.8.4.0.nupkg.sha512",
     "C:\\Users\\danie\\.nuget\\packages\\imgui.net\\1.91.6.1\\imgui.net.1.91.6.1.nupkg.sha512",
+    "C:\\Users\\danie\\.nuget\\packages\\k4os.compression.lz4\\1.3.8\\k4os.compression.lz4.1.3.8.nupkg.sha512",
     "C:\\Users\\danie\\.nuget\\packages\\microsoft.dotnet.platformabstractions\\2.0.3\\microsoft.dotnet.platformabstractions.2.0.3.nupkg.sha512",
     "C:\\Users\\danie\\.nuget\\packages\\microsoft.extensions.dependencymodel\\2.0.3\\microsoft.extensions.dependencymodel.2.0.3.nupkg.sha512",
     "C:\\Users\\danie\\.nuget\\packages\\microsoft.win32.systemevents\\6.0.0\\microsoft.win32.systemevents.6.0.0.nupkg.sha512",

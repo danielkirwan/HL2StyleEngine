@@ -7,10 +7,16 @@ using Veldrid;
 
 namespace Engine.Render;
 
-public sealed class BasicWorldRenderer : IDisposable
+public sealed partial class BasicWorldRenderer : IDisposable
 {
     private readonly GraphicsDevice _gd;
     private readonly ResourceFactory _factory;
+    private readonly ModelTextureCache _textures;
+    private readonly Dictionary<LoadedModel, RenderModel> _pendingUploads = new();
+    private double _uploadMilliseconds;
+    public long TextureResidentBytes => _textures.ResidentBytes;
+    public int ResidentTextureCount => _textures.Count;
+    public double UploadBudgetMilliseconds { get; set; } = 2;
 
     private readonly DeviceBuffer _vb;
     private readonly DeviceBuffer _ib;
@@ -42,12 +48,34 @@ public sealed class BasicWorldRenderer : IDisposable
     private readonly DeviceBuffer _lightingBuffer;
     private readonly ResourceLayout _lightingLayout;
     private readonly ResourceSet _lightingSet;
-    private readonly Vector4[] _lightingData = new Vector4[1 + MaxPointLights * 2];
+    private readonly Vector4[] _lightingData = new Vector4[1 + MaxPointLights * 4];
+    private WorldPointLight[] _activeLights = [];
+    public float AmbientStrength { get; set; } = .22f;
+    public float DirectionalStrength { get; set; } = 1f;
 
     // Ring config
     private const uint MaxObjectsPerFrame = 4096;
     private readonly uint _objectStride;
     private uint _objectWriteIndex;
+    private readonly PaddedObjectData[] _objectData = new PaddedObjectData[MaxObjectsPerFrame];
+    private bool _objectBatchActive;
+    public bool ObjectBatchUploadsEnabled { get; set; } = true;
+    public int ObjectUploadCount { get; private set; }
+    public bool ViewCullingEnabled { get; set; } = true;
+    public int ViewCulledCount { get; private set; }
+    public uint ObjectDrawCount => _objectWriteIndex;
+    private ShadowFrustum _viewFrustum;
+    private bool _hasView;
+
+    public bool IntersectsView(Vector3 min, Vector3 max, Matrix4x4 transform)
+        => !ViewCullingEnabled || !_hasView || _viewFrustum.IntersectsBounds(min, max, transform);
+
+    private bool ShouldDraw(Vector3 min, Vector3 max, Matrix4x4 transform)
+    {
+        if (IntersectsView(min, max, transform)) return true;
+        ViewCulledCount++;
+        return false;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct ObjectData
@@ -56,6 +84,13 @@ public sealed class BasicWorldRenderer : IDisposable
         public Vector4 Color;
         public Vector4 Material;
         public Matrix4x4 NormalMatrix;
+    }
+
+    // Match the constant-buffer range alignment without changing the shader layout.
+    [StructLayout(LayoutKind.Sequential, Size = 256)]
+    private struct PaddedObjectData
+    {
+        public ObjectData Value;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -69,6 +104,7 @@ public sealed class BasicWorldRenderer : IDisposable
     {
         _gd = gd;
         _factory = gd.ResourceFactory;
+        _textures = new ModelTextureCache(gd);
 
         var vertices = CreateCubeVertices();
         var indices = CreateCubeIndices();
@@ -129,6 +165,8 @@ public sealed class BasicWorldRenderer : IDisposable
 
         uint objectDataSize = (uint)Marshal.SizeOf<ObjectData>(); 
         _objectStride = AlignUp(objectDataSize, 256);             
+        if (_objectStride != Marshal.SizeOf<PaddedObjectData>())
+            throw new InvalidOperationException("Batched object storage must match the constant-buffer stride.");
 
         _objectRingBuffer = _factory.CreateBuffer(new BufferDescription(
             _objectStride * MaxObjectsPerFrame,
@@ -193,11 +231,11 @@ public sealed class BasicWorldRenderer : IDisposable
             SamplerAddressMode.Wrap,
             SamplerAddressMode.Wrap,
             SamplerAddressMode.Wrap,
-            SamplerFilter.MinLinear_MagLinear_MipPoint,
+            SamplerFilter.Anisotropic,
             null,
+            8,
             0,
-            0,
-            0,
+            uint.MaxValue,
             0,
             SamplerBorderColor.TransparentBlack));
 
@@ -205,7 +243,8 @@ public sealed class BasicWorldRenderer : IDisposable
             new ResourceLayoutElementDescription("BaseColorTex", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
             new ResourceLayoutElementDescription("BaseColorSamp", ResourceKind.Sampler, ShaderStages.Fragment),
             new ResourceLayoutElementDescription("MetallicRoughnessTex", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
-            new ResourceLayoutElementDescription("MetallicRoughnessSamp", ResourceKind.Sampler, ShaderStages.Fragment)));
+            new ResourceLayoutElementDescription("MetallicRoughnessSamp", ResourceKind.Sampler, ShaderStages.Fragment),
+            new ResourceLayoutElementDescription("NormalTex", ResourceKind.TextureReadOnly, ShaderStages.Fragment)));
 
         var texturedVertexLayout = new VertexLayoutDescription(
             new VertexElementDescription("Position", VertexElementSemantic.Position, VertexElementFormat.Float3),
@@ -226,7 +265,7 @@ public sealed class BasicWorldRenderer : IDisposable
                 depthClipEnabled: true,
                 scissorTestEnabled: false),
             PrimitiveTopology = PrimitiveTopology.TriangleList,
-            ResourceLayouts = new[] { _cameraLayout, _objectLayout, _textureLayout, _lightingLayout },
+            ResourceLayouts = new[] { _cameraLayout, _objectLayout, _textureLayout, _lightingLayout, CreateShadowResources(shaderDir) },
             ShaderSet = new ShaderSetDescription(new[] { texturedVertexLayout }, _texturedShaders),
             Outputs = output
         };
@@ -236,29 +275,82 @@ public sealed class BasicWorldRenderer : IDisposable
 
     public void BeginFrame()
     {
+        if (_objectBatchActive)
+            throw new InvalidOperationException("End the object upload batch before starting another frame.");
         _objectWriteIndex = 0;
+        ObjectUploadCount = 0;
+        ViewCulledCount = 0;
+        _uploadMilliseconds = 0;
+    }
+
+    /// <summary>Dispose before submitting the frame's command list, including on early returns.</summary>
+    public ObjectUploadBatch BatchObjectUploads()
+    {
+        if (_objectBatchActive || _objectWriteIndex != 0)
+            throw new InvalidOperationException("Start one object upload batch before the frame's first draw.");
+        _objectBatchActive = true;
+        return new ObjectUploadBatch(this);
+    }
+
+    public readonly struct ObjectUploadBatch : IDisposable
+    {
+        private readonly BasicWorldRenderer _owner;
+        internal ObjectUploadBatch(BasicWorldRenderer owner) => _owner = owner;
+        public void Dispose() => _owner.EndObjectUploadBatch();
+    }
+
+    private void EndObjectUploadBatch()
+    {
+        if (!_objectBatchActive) return;
+        _objectBatchActive = false;
+        if (ObjectBatchUploadsEnabled && _objectWriteIndex > 0)
+        {
+            _gd.UpdateBuffer(_objectRingBuffer, 0, _objectData.AsSpan(0, (int)_objectWriteIndex));
+            ObjectUploadCount++;
+        }
+    }
+
+    private uint WriteObject(in ObjectData value)
+    {
+        uint slot = _objectWriteIndex++;
+        if (_objectBatchActive && ObjectBatchUploadsEnabled)
+            _objectData[slot].Value = value;
+        else
+        {
+            _gd.UpdateBuffer(_objectRingBuffer, slot * _objectStride, value);
+            ObjectUploadCount++;
+        }
+        return slot;
     }
 
     public void UpdatePointLights(IEnumerable<WorldPointLight> lights, Vector3 cameraPosition)
     {
         Array.Clear(_lightingData);
         int count = 0;
-        foreach (var light in lights
+        _activeLights = lights
             .Where(l => l.Intensity > 0f && l.Range > 0f && float.IsFinite(l.Range) && float.IsFinite(l.Intensity))
-            .OrderBy(l => MathF.Max(0f, Vector3.Distance(l.Position, cameraPosition) - l.Range))
+            .OrderByDescending(l => l.Priority)
+            .ThenBy(l => MathF.Max(0f, Vector3.Distance(l.Position, cameraPosition) - l.Range))
             .ThenBy(l => Vector3.DistanceSquared(l.Position, cameraPosition))
-            .Take(MaxPointLights))
+            .Take(MaxPointLights).ToArray();
+        foreach (var light in _activeLights)
         {
-            _lightingData[1 + count * 2] = new Vector4(light.Position, light.Range);
-            _lightingData[2 + count * 2] = new Vector4(Vector3.Max(light.Color, Vector3.Zero), light.Intensity);
+            _lightingData[1 + count * 4] = new Vector4(light.Position, light.Range);
+            _lightingData[2 + count * 4] = new Vector4(Vector3.Max(light.Color, Vector3.Zero), light.Intensity);
+            bool spot = light.SpotAngleDegrees > 0 && light.Direction.LengthSquared() > .001f;
+            float angle = Math.Clamp(light.SpotAngleDegrees, 5, 150) * MathF.PI / 360;
+            _lightingData[3 + count * 4] = new Vector4(spot ? Vector3.Normalize(light.Direction) : Vector3.UnitZ, spot ? MathF.Cos(angle) : -1);
+            _lightingData[4 + count * 4] = new Vector4(MathF.Cos(angle * .8f), -1, spot ? 0 : 1, 0);
             count++;
         }
-        _lightingData[0] = new Vector4(count, 0f, 0f, 0f);
+        _lightingData[0] = new Vector4(count, Math.Clamp(AmbientStrength, 0, 2), Math.Clamp(DirectionalStrength, 0, 4), 0);
         _gd.UpdateBuffer(_lightingBuffer, 0, _lightingData);
     }
 
     public void UpdateCamera(Matrix4x4 viewProj, Vector3 cameraPosition = default)
     {
+        _viewFrustum = new ShadowFrustum(viewProj);
+        _hasView = true;
         CameraData camera = new()
         {
             ViewProj = viewProj,
@@ -268,19 +360,45 @@ public sealed class BasicWorldRenderer : IDisposable
     }
 
     public void DrawBox(CommandList cl, Matrix4x4 model, Vector4 color)
-        => DrawMesh(cl, model, color, _vb, _ib, _indexCount);
+    { if (ShouldDraw(new(-.5f), new(.5f), model)) DrawMesh(cl, model, color, _vb, _ib, _indexCount); }
 
     public void DrawCylinder(CommandList cl, Matrix4x4 model, Vector4 color)
-        => DrawMesh(cl, model, color, _cylinderVb, _cylinderIb, _cylinderIndexCount);
+    { if (ShouldDraw(new(-.5f), new(.5f), model)) DrawMesh(cl, model, color, _cylinderVb, _cylinderIb, _cylinderIndexCount); }
 
     public void DrawSphere(CommandList cl, Matrix4x4 model, Vector4 color)
-        => DrawMesh(cl, model, color, _sphereVb, _sphereIb, _sphereIndexCount);
+    { if (ShouldDraw(new(-.5f), new(.5f), model)) DrawMesh(cl, model, color, _sphereVb, _sphereIb, _sphereIndexCount); }
 
     public RenderModel LoadGlbModel(string path)
-        => new(_gd, GlbModelLoader.Load(path), _textureLayout, _modelSampler);
+        => CreateRenderModel(TextureCooker.LoadForRendering(path));
 
     public RenderModel CreateRenderModel(LoadedModel model, bool loadTextures = true)
-        => new(_gd, model, _textureLayout, _modelSampler, loadTextures);
+        => new(_gd, model, _textureLayout, _modelSampler, _textures, loadTextures);
+
+    public bool TryCreateRenderModel(LoadedModel source, out RenderModel? model)
+    {
+        model = null;
+        if (_uploadMilliseconds >= UploadBudgetMilliseconds) return false;
+        if (!_pendingUploads.TryGetValue(source, out var pending))
+            _pendingUploads[source] = pending = new(_gd, source, _textureLayout, _modelSampler, _textures, deferred: true);
+        long start = System.Diagnostics.Stopwatch.GetTimestamp();
+        try
+        {
+            while (!pending.IsReady)
+            {
+                pending.UploadNext(_gd, _textureLayout, _modelSampler, _textures);
+                if (_uploadMilliseconds + System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds >= UploadBudgetMilliseconds) break;
+            }
+            if (!pending.IsReady) return false;
+            _pendingUploads.Remove(source); model = pending; return true;
+        }
+        catch { _pendingUploads.Remove(source); pending.Dispose(); throw; }
+        finally { _uploadMilliseconds += System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds; }
+    }
+
+    public void RetirePendingModel(LoadedModel source, Renderer renderer)
+    {
+        if (_pendingUploads.Remove(source, out var pending)) renderer.RetireAfterFrame(pending);
+    }
 
     public void DrawModel(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 tint)
         => DrawModel(cl, model, transform, tint, hiddenPartKeys: null);
@@ -297,6 +415,8 @@ public sealed class BasicWorldRenderer : IDisposable
             if (IsModelPartHidden(part, hiddenPartKeys))
                 continue;
 
+            if (!ShouldDraw(part.BoundsMin, part.BoundsMax, transform)) continue;
+
             DrawMesh(cl, transform, color, part.VertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat);
         }
     }
@@ -309,6 +429,8 @@ public sealed class BasicWorldRenderer : IDisposable
             RenderModelPart part = parts[i];
             if (IsModelPartHidden(part, hiddenPartKeys))
                 continue;
+
+            if (!ShouldDraw(part.BoundsMin, part.BoundsMax, transform)) continue;
 
             Vector4 color = new(
                 part.Color.X * tint.X,
@@ -352,16 +474,14 @@ public sealed class BasicWorldRenderer : IDisposable
             NormalMatrix = Matrix4x4.Transpose(inverse)
         };
 
-        uint slot = _objectWriteIndex++;
-        uint offset = slot * _objectStride;
-
-        _gd.UpdateBuffer(_objectRingBuffer, offset, ref obj);
+        uint slot = WriteObject(obj);
 
         cl.SetPipeline(_texturedPipeline);
         cl.SetGraphicsResourceSet(0, _cameraSet);
         cl.SetGraphicsResourceSet(1, _objectSets[slot]);
         cl.SetGraphicsResourceSet(2, textureSet);
         cl.SetGraphicsResourceSet(3, _lightingSet);
+        cl.SetGraphicsResourceSet(4, _shadowSet);
         cl.SetVertexBuffer(0, vertexBuffer);
         cl.SetIndexBuffer(indexBuffer, indexFormat);
         cl.DrawIndexed(indexCount, 1, 0, 0, 0);
@@ -381,10 +501,7 @@ public sealed class BasicWorldRenderer : IDisposable
 
         ObjectData obj = new ObjectData { Model = model, Color = color, Material = new Vector4(0f, 1f, 0f, 0f) };
 
-        uint slot = _objectWriteIndex++;
-        uint offset = slot * _objectStride;
-
-        _gd.UpdateBuffer(_objectRingBuffer, offset, ref obj);
+        uint slot = WriteObject(obj);
 
         cl.SetPipeline(_pipeline);
 
@@ -398,6 +515,10 @@ public sealed class BasicWorldRenderer : IDisposable
 
     public void Dispose()
     {
+        foreach (var pending in _pendingUploads.Values) pending.Dispose();
+        _pendingUploads.Clear();
+        DisposeShadows();
+        _textures.Dispose();
         _texturedPipeline.Dispose();
         _pipeline.Dispose();
         foreach (var s in _texturedShaders) s.Dispose();

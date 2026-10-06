@@ -12,8 +12,10 @@ public static class GlbModelLoader
     private const uint BinChunkType = 0x004E4942;
 
     public static LoadedModel Load(string path)
+        => Load(File.ReadAllBytes(path));
+
+    internal static LoadedModel Load(byte[] bytes)
     {
-        byte[] bytes = File.ReadAllBytes(path);
         if (bytes.Length < 20)
             throw new InvalidDataException("GLB file is too small.");
 
@@ -192,7 +194,7 @@ public static class GlbModelLoader
                 meshName,
                 nodeIndex,
                 meshIndex,
-                i));
+                i) { NormalPng = ReadMaterialImageBytes(root, primitive, binBytes, "normalTexture") });
         }
     }
 
@@ -359,8 +361,10 @@ public static class GlbModelLoader
         }
 
         JsonElement material = materials[materialElement.GetInt32()];
-        if (!material.TryGetProperty("pbrMetallicRoughness", out JsonElement pbr) ||
-            !pbr.TryGetProperty(texturePropertyName, out JsonElement textureElement) ||
+        JsonElement container = material;
+        if (texturePropertyName != "normalTexture" && !material.TryGetProperty("pbrMetallicRoughness", out container))
+            return null;
+        if (!container.TryGetProperty(texturePropertyName, out JsonElement textureElement) ||
             !textureElement.TryGetProperty("index", out JsonElement textureIndexElement) ||
             !root.TryGetProperty("textures", out JsonElement textures) ||
             !root.TryGetProperty("images", out JsonElement images))

@@ -125,6 +125,7 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
 
     public void Update(float dt, InputSnapshot input)
     {
+        _lightingPreviewSeconds += dt;
         _input.Update(input);
 
         bool sceneMouse = IsMouseInsideSceneViewport(_input.MousePosition);

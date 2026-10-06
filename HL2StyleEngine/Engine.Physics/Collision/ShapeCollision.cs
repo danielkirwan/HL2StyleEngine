@@ -117,6 +117,7 @@ public static class ShapeCollision
     }
 
     private delegate bool TriangleResolve(WorldCollider primitive, MeshCollisionTriangle triangle, float collisionSkin, out ContactManifold manifold);
+    [ThreadStatic] private static List<int>? _meshCandidates;
 
     private static bool TryResolvePrimitiveMesh(
         WorldCollider primitive,
@@ -128,9 +129,11 @@ public static class ShapeCollision
         ContactManifold best = default;
         bool found = false;
 
-        for (int i = 0; i < mesh.Triangles.Count; i++)
+        List<int> candidates = _meshCandidates ??= new List<int>();
+        mesh.Query(primitiveAabb, candidates);
+        for (int i = 0; i < candidates.Count; i++)
         {
-            MeshCollisionTriangle triangle = mesh.Triangles[i];
+            MeshCollisionTriangle triangle = mesh.Triangles[candidates[i]];
             if (!primitiveAabb.Overlaps(ExpandAabb(triangle.Bounds, mesh.CollisionSkin)))
                 continue;
 

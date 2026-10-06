@@ -235,7 +235,7 @@ internal static class SixRoomTest
         return level;
     }
 
-    internal static void Validate(string root, string path)
+    internal static void Validate(string root, string path, bool flashlightOnly = false)
     {
         var level = LevelIO.Load(path);
         void Require(bool condition, string message)
@@ -246,7 +246,10 @@ internal static class SixRoomTest
         Require(level.Entities.Select(e => e.Name).Distinct().Count() == level.Entities.Count, "Duplicate entity names.");
         Require(level.Entities.Count(e => e.Type == EntityTypes.PlayerSpawn) == 1, "Expected one player spawn.");
         Require(level.Entities.All(e => e.Scripts.Count == 0), "Unexpected script in six-room test.");
-        Require(level.UsePointLights, "Scene lighting must be enabled.");
+        Require(level.UsePointLights != flashlightOnly, "Unexpected scene lighting mode.");
+        if (flashlightOnly)
+            Require(level.AmbientLight == SixRoomFlashlightTest.AmbientLight && level.DirectionalLight == 0 && level.EnableShadows &&
+                level.Entities.All(e => e.Type != EntityTypes.PointLight), "Flashlight test contains other lighting.");
         var editor = new LevelEditorController();
         editor.LoadFromMemory(path, level);
         Require(editor.DrawBoxes.Count == level.Entities.Count, "Editor lost scene entities.");
@@ -256,7 +259,9 @@ internal static class SixRoomTest
             Require(Vector3.Distance(position, level.Entities[i].LocalPosition) < 0.001f, "Editor changed an authored position.");
         }
         var roundTrip = System.Text.Json.JsonSerializer.Deserialize<LevelFile>(System.Text.Json.JsonSerializer.Serialize(level));
-        Require(roundTrip?.UsePointLights == true && roundTrip.Entities.Count == level.Entities.Count, "Level settings did not survive serialization.");
+        Require(roundTrip != null && roundTrip.UsePointLights == level.UsePointLights &&
+            roundTrip.AmbientLight == level.AmbientLight && roundTrip.DirectionalLight == level.DirectionalLight &&
+            roundTrip.Entities.Count == level.Entities.Count, "Level settings did not survive serialization.");
 
         int parts = 0;
         foreach (string mesh in level.Entities.Select(e => e.MeshPath).Where(p => p.Length > 0).Distinct())

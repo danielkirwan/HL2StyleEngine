@@ -543,6 +543,7 @@ public sealed class LevelEditorController
             entities.Add(copy);
         }
 
+        RemapLightSwitchTargets(entities, sceneIdToPrefabId);
         prefab = new PrefabFile
         {
             Name = string.IsNullOrWhiteSpace(prefabName) ? LevelFile.Entities[rootIndex].Name ?? "Prefab" : prefabName,
@@ -602,6 +603,7 @@ public sealed class LevelEditorController
             LevelFile.Entities.Add(copy);
         }
 
+        RemapLightSwitchTargets(LevelFile.Entities.Skip(firstInsertedIndex), idMap);
         SelectedEntityIndex = Math.Clamp(selectedRootIndex, firstInsertedIndex, LevelFile.Entities.Count - 1);
         Dirty = true;
         RebuildRuntimeFromLevel();
@@ -609,9 +611,21 @@ public sealed class LevelEditorController
         return true;
     }
 
+    private static void RemapLightSwitchTargets(IEnumerable<LevelEntityDef> entities, IReadOnlyDictionary<string, string> ids)
+    {
+        foreach (var entity in entities)
+        {
+            if (entity.Interaction == null || !string.Equals(entity.Interaction.Kind, "LightSwitch", StringComparison.OrdinalIgnoreCase)) continue;
+            var targets = entity.Interaction.Targets ?? [];
+            for (int i = 0; i < targets.Count; i++)
+                if (ids.TryGetValue(targets[i], out string? mapped)) targets[i] = mapped;
+        }
+    }
+
     private static void MakePlacedPrefabInteractionStateUnique(LevelEntityDef entity, string instanceId)
     {
-        if (entity.Interaction == null || string.IsNullOrWhiteSpace(entity.Interaction.Kind))
+        if (entity.Interaction == null || string.IsNullOrWhiteSpace(entity.Interaction.Kind) ||
+            string.Equals(entity.Interaction.Kind, "LightSwitch", StringComparison.OrdinalIgnoreCase))
             return;
 
         string suffix = string.IsNullOrWhiteSpace(instanceId)
@@ -688,11 +702,15 @@ public sealed class LevelEditorController
         var idMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var newEntities = new List<LevelEntityDef>(ordered.Count);
         int newRootOffset = 0;
+        var existingIds = oldIndices.Select(i => LevelFile.Entities[i])
+            .Where(e => !string.IsNullOrWhiteSpace(e.PrefabSourceEntityId))
+            .GroupBy(e => e.PrefabSourceEntityId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 
         foreach (LevelEntityDef source in ordered)
         {
             LevelEntityDef copy = CloneEntityExact(source);
-            string newId = Guid.NewGuid().ToString("N");
+            string newId = existingIds.GetValueOrDefault(source.Id) ?? Guid.NewGuid().ToString("N");
             idMap[source.Id] = newId;
 
             copy.Id = newId;
@@ -717,6 +735,7 @@ public sealed class LevelEditorController
             newEntities.Add(copy);
         }
 
+        RemapLightSwitchTargets(newEntities, idMap);
         BeginEdit();
         foreach (int index in oldIndices.OrderByDescending(static index => index))
             LevelFile.Entities.RemoveAt(index);
@@ -914,6 +933,43 @@ public sealed class LevelEditorController
 
         ImGui.Separator();
         ImGui.Text("Debug Draw");
+        if (ImGui.TreeNode("Lighting"))
+        {
+            bool shadows = LevelFile.EnableShadows;
+            float exposure = LevelFile.Exposure, ambient = LevelFile.AmbientLight, directional = LevelFile.DirectionalLight;
+            bool changed = ImGui.Checkbox("Shadows", ref shadows);
+            changed |= ImGui.SliderFloat("Exposure", ref exposure, .05f, 8f);
+            changed |= ImGui.SliderFloat("Ambient", ref ambient, 0, 2);
+            changed |= ImGui.SliderFloat("Directional", ref directional, 0, 4);
+            if (changed)
+            {
+                BeginEdit();
+                LevelFile.EnableShadows = shadows; LevelFile.Exposure = exposure;
+                LevelFile.AmbientLight = ambient; LevelFile.DirectionalLight = directional;
+                Dirty = true; EndEditIfAny();
+            }
+            ImGui.TreePop();
+        }
+        if (ImGui.TreeNode("Asset Streaming"))
+        {
+            var settings = LevelFile.Streaming ?? new LevelStreamingSettings();
+            bool enabled = settings.Enabled;
+            float size = settings.ZoneSize, retain = settings.RetainSeconds;
+            int neighbours = settings.PreloadNeighbours, budget = settings.BudgetMiB;
+            bool changed = ImGui.Checkbox("Enabled", ref enabled);
+            changed |= ImGui.SliderFloat("Zone Size (m)", ref size, 8, 128);
+            changed |= ImGui.SliderInt("Neighbour Rings", ref neighbours, 1, 4);
+            changed |= ImGui.SliderInt("Soft Budget (MiB)", ref budget, 64, 2048);
+            changed |= ImGui.SliderFloat("Retain (seconds)", ref retain, 2, 60);
+            if (changed)
+            {
+                BeginEdit();
+                LevelFile.Streaming = new LevelStreamingSettings { Enabled = enabled, ZoneSize = size,
+                    PreloadNeighbours = neighbours, BudgetMiB = budget, RetainSeconds = retain };
+                Dirty = true; EndEditIfAny();
+            }
+            ImGui.TreePop();
+        }
         ImGui.Checkbox("Show Colliders (OBB)", ref ShowColliders);
         ImGui.SameLine();
         ImGui.Checkbox("Corners", ref ShowColliderCorners);
@@ -1399,13 +1455,15 @@ public sealed class LevelEditorController
                 SetDefaultInteraction(ent, "PressurePlate");
             if (ImGui.Button("Add Puzzle Indicator", new Vector2(-1f, 0f)))
                 SetDefaultInteraction(ent, "PuzzleIndicator");
+            if (ImGui.Button("Add Light Switch", new Vector2(-1f, 0f)))
+                SetDefaultInteraction(ent, "LightSwitch");
             return;
         }
 
         LevelInteractionDef interaction = ent.Interaction!;
         EnsureInteractionDefaults(ent, interaction);
 
-        string[] kinds = ["LockedDoor", "LockedChest", "PuzzleSlot", "PuzzleLever", "PuzzleDoor", "PressurePlate", "PuzzleIndicator", "None"];
+        string[] kinds = ["LockedDoor", "LockedChest", "PuzzleSlot", "PuzzleLever", "PuzzleDoor", "PressurePlate", "PuzzleIndicator", "LightSwitch", "None"];
         _interactionKindPickerIndex = Array.FindIndex(kinds, kind => string.Equals(kind, interaction.Kind, StringComparison.OrdinalIgnoreCase));
         if (_interactionKindPickerIndex < 0)
             _interactionKindPickerIndex = 0;
@@ -1443,20 +1501,39 @@ public sealed class LevelEditorController
 
         ImGui.Spacing();
 
-        string stateId = interaction.StateId ?? "";
-        if (DrawInteractionInputText("State Id", ref stateId, 128))
+        bool lightSwitch = IsInteractionKind(interaction, "LightSwitch");
+        if (!lightSwitch)
         {
-            BeginEdit();
-            interaction.StateId = stateId;
-            CommitInteractionEdit();
+            string stateId = interaction.StateId ?? "";
+            if (DrawInteractionInputText("State Id", ref stateId, 128))
+            {
+                BeginEdit();
+                interaction.StateId = stateId;
+                CommitInteractionEdit();
+            }
+            if (string.IsNullOrWhiteSpace(interaction.StateId))
+                ImGui.TextColored(new Vector4(1f, 0.72f, 0.18f, 1f), "State Id should be unique for save/load persistence.");
         }
-        if (string.IsNullOrWhiteSpace(interaction.StateId))
-            ImGui.TextColored(new Vector4(1f, 0.72f, 0.18f, 1f), "State Id should be unique for save/load persistence.");
 
-        DrawInteractionRequiredItemField(interaction);
+        if (lightSwitch)
+        {
+            DrawInteractionTextField("Light Group", value => interaction.LightGroup = value, interaction.LightGroup ?? "", 128);
+            string[] groups = LevelFile.Entities.Where(e => e.Type == EntityTypes.PointLight && !string.IsNullOrWhiteSpace(e.LightGroup))
+                .Select(e => e.LightGroup.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Order().ToArray();
+            if (ImGui.BeginCombo("##lightGroups", "Select light group"))
+            {
+                foreach (string group in groups)
+                    if (ImGui.Selectable(group))
+                    {
+                        BeginEdit(); interaction.LightGroup = group; CommitInteractionEdit();
+                    }
+                ImGui.EndCombo();
+            }
+        }
+        else DrawInteractionRequiredItemField(interaction);
 
         bool consumesItem = interaction.ConsumesItem;
-        if (ImGui.Checkbox("Consumes Item", ref consumesItem))
+        if (!lightSwitch && ImGui.Checkbox("Consumes Item", ref consumesItem))
         {
             BeginEdit();
             interaction.ConsumesItem = consumesItem;
@@ -1479,7 +1556,7 @@ public sealed class LevelEditorController
             DrawPuzzleFloat("Settle Seconds", interaction.PressurePlateSettleSeconds, 0f, value => interaction.PressurePlateSettleSeconds = value);
         }
 
-        if (IsInteractionKind(interaction, "PuzzleLever") || IsInteractionKind(interaction, "PuzzleIndicator"))
+        if (IsInteractionKind(interaction, "PuzzleLever") || IsInteractionKind(interaction, "PuzzleIndicator") || lightSwitch)
             DrawInteractionRequiredStates(interaction);
 
         if (InteractionUsesTargets(interaction))
@@ -1554,6 +1631,7 @@ public sealed class LevelEditorController
 
     private static string GetDefaultRequiredItemForInteraction(LevelEntityDef ent, string kind)
     {
+        if (kind == "LightSwitch") return "";
         string name = ent.Name ?? "";
         if (name.Contains("RustedKey", StringComparison.OrdinalIgnoreCase) || name.Contains("Rusted", StringComparison.OrdinalIgnoreCase))
             return "RustedKey";
@@ -1571,6 +1649,7 @@ public sealed class LevelEditorController
 
     private static string MakeDefaultInteractionSuccessMessage(string kind, string requiredItem)
     {
+        if (kind == "LightSwitch") return "";
         if (kind == "PuzzleDoor")
             return "";
         if (kind == "PuzzleSlot")
@@ -1583,7 +1662,7 @@ public sealed class LevelEditorController
     }
 
     private static bool InteractionUsesTargets(LevelInteractionDef interaction)
-        => IsInteractionKind(interaction, "PuzzleSlot") || IsInteractionKind(interaction, "PuzzleLever");
+        => IsInteractionKind(interaction, "PuzzleSlot") || IsInteractionKind(interaction, "PuzzleLever") || IsInteractionKind(interaction, "LightSwitch");
 
     private static bool IsInteractionKind(LevelInteractionDef interaction, string kind)
         => string.Equals(interaction.Kind, kind, StringComparison.OrdinalIgnoreCase);
@@ -1674,10 +1753,10 @@ public sealed class LevelEditorController
     {
         interaction.RequiredStates ??= new List<string>();
         ImGui.SeparatorText("Required States");
-        ImGui.TextWrapped("Puzzle levers only activate when all required interaction state ids have been solved.");
+        if (!IsInteractionKind(interaction, "LightSwitch")) ImGui.TextWrapped("Puzzle levers only activate when all required interaction state ids have been solved.");
 
         string[] states = LevelFile.Entities
-            .Where(entity => entity.Interaction != null && !string.IsNullOrWhiteSpace(GetInteractionStateIdForEditor(entity)))
+            .Where(entity => entity.Interaction != null && !IsInteractionKind(entity.Interaction, "LightSwitch") && !string.IsNullOrWhiteSpace(GetInteractionStateIdForEditor(entity)))
             .Select(GetInteractionStateIdForEditor)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(static state => state, StringComparer.OrdinalIgnoreCase)
@@ -1765,13 +1844,13 @@ public sealed class LevelEditorController
     {
         interaction.Targets ??= new List<string>();
         ImGui.SeparatorText("Targets");
-        ImGui.TextWrapped("Targets are other named entities affected by this interaction. Use these for puzzle slots and levers that open puzzle doors or move reveal pieces.");
+        bool lightSwitch = IsInteractionKind(interaction, "LightSwitch");
+        if (!lightSwitch) ImGui.TextWrapped("Targets are other named entities affected by this interaction. Use these for puzzle slots and levers that open puzzle doors or move reveal pieces.");
 
-        string[] names = LevelFile.Entities
-            .Where(entity => !string.IsNullOrWhiteSpace(entity.Name))
-            .Select(entity => entity.Name!)
-            .OrderBy(static name => name, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var targetEntities = LevelFile.Entities
+            .Where(entity => !string.IsNullOrWhiteSpace(entity.Name) && (!lightSwitch || entity.Type == EntityTypes.PointLight))
+            .OrderBy(entity => entity.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+        string[] names = targetEntities.Select(e => e.Name!).ToArray();
 
         if (names.Length > 0)
         {
@@ -1779,7 +1858,7 @@ public sealed class LevelEditorController
             DrawInteractionCombo("Target Entity", ref _interactionTargetPickerIndex, names);
             if (ImGui.Button("Add Target", new Vector2(-1f, 0f)))
             {
-                string target = names[_interactionTargetPickerIndex];
+                string target = lightSwitch ? targetEntities[_interactionTargetPickerIndex].Id : names[_interactionTargetPickerIndex];
                 if (!interaction.Targets.Contains(target, StringComparer.OrdinalIgnoreCase))
                 {
                     BeginEdit();
@@ -1811,6 +1890,12 @@ public sealed class LevelEditorController
         {
             ImGui.PushID($"target{i}");
             string target = interaction.Targets[i] ?? "";
+            if (lightSwitch)
+            {
+                var light = targetEntities.FirstOrDefault(e => string.Equals(e.Id, target, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(e.Name, target, StringComparison.OrdinalIgnoreCase));
+                ImGui.TextWrapped(light?.Name ?? "Unknown light target");
+            }
             if (DrawInteractionInputText($"Target {i + 1}", ref target, 128))
             {
                 BeginEdit();
@@ -2343,6 +2428,30 @@ public sealed class LevelEditorController
         }
         else if (ent.Type == EntityTypes.PointLight)
         {
+            DrawInteractionTextField("Light Group", value => ent.LightGroup = value, ent.LightGroup ?? "", 128);
+            float flickerAmount = ent.FlickerAmount, flickerSpeed = ent.FlickerSpeed;
+            ImGui.TextUnformatted("Flicker Amount");
+            ImGui.SetNextItemWidth(-1f);
+            bool flickerChanged = ImGui.SliderFloat("##flickerAmount", ref flickerAmount, 0, 1);
+            ImGui.TextUnformatted("Flicker Speed (Hz)");
+            ImGui.SetNextItemWidth(-1f);
+            flickerChanged |= ImGui.SliderFloat("##flickerSpeed", ref flickerSpeed, .1f, 20);
+            if (flickerChanged)
+            {
+                BeginEdit(); ent.FlickerAmount = flickerAmount; ent.FlickerSpeed = flickerSpeed;
+                Dirty = true; EndEditIfAny();
+            }
+            bool enabled = ent.LightEnabled, shadows = ent.CastShadows, spot = ent.IsSpotLight;
+            float angle = ent.SpotAngleDeg;
+            bool changed = ImGui.Checkbox("Enabled", ref enabled);
+            changed |= ImGui.Checkbox("Cast Shadows", ref shadows);
+            changed |= ImGui.Checkbox("Spotlight", ref spot);
+            if (spot) changed |= ImGui.SliderFloat("Cone Angle", ref angle, 5, 150);
+            if (changed)
+            {
+                BeginEdit(); ent.LightEnabled = enabled; ent.CastShadows = shadows;
+                ent.IsSpotLight = spot; ent.SpotAngleDeg = angle; Dirty = true; EndEditIfAny();
+            }
             Vector4 lc = ent.LightColor;
             if (ImGui.ColorEdit4("LightColor", ref lc))
             {

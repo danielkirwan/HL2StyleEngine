@@ -180,8 +180,11 @@ internal sealed partial class HS2EditorModule
         renderer.CommandList.SetScissorRect(0, (uint)viewportX, (uint)viewportY, (uint)viewportWidth, (uint)viewportHeight);
 
         _world.BeginFrame();
+        using var objectUploads = _world.BatchObjectUploads();
         _world.UpdateCamera(viewProj, _cameraPosition);
-        LevelLighting.Apply(_world, _editor, _cameraPosition);
+        renderer.Exposure = _editor.LevelFile.Exposure;
+        LevelLighting.Apply(_world, _editor, _cameraPosition, seconds: _lightingPreviewSeconds);
+        DrawSceneShadows(renderer, new Viewport(viewportX, viewportY, viewportWidth, viewportHeight, 0, 1));
 
         DrawGrid(renderer);
 
@@ -237,6 +240,31 @@ internal sealed partial class HS2EditorModule
         }
         renderer.CommandList.SetViewport(0, new Viewport(0f, 0f, windowWidth, windowHeight, 0f, 1f));
         renderer.CommandList.SetScissorRect(0, 0, 0, (uint)windowWidth, (uint)windowHeight);
+    }
+
+    private readonly List<ShadowCaster> _shadowCasters = new();
+    private double _lightingPreviewSeconds;
+
+    private void DrawSceneShadows(Renderer renderer, Viewport viewport)
+    {
+        _shadowCasters.Clear();
+        if (_world.NeedsShadowCasters)
+            for (int i = 0; i < _editor.DrawBoxes.Count; i++)
+            {
+                var def = _editor.LevelFile.Entities[i];
+                if (def.Type == EntityTypes.PointLight || def.Type == EntityTypes.PlayerSpawn || def.Type == EntityTypes.TriggerVolume) continue;
+                var draw = _editor.DrawBoxes[i];
+                RenderModel? model = null;
+                var transform = Matrix4x4.CreateScale(draw.Size) * Matrix4x4.CreateFromQuaternion(draw.Rotation) * Matrix4x4.CreateTranslation(draw.Position);
+                if (_drawSceneGlbModels && IsGlbAssetPath(def.MeshPath) && TryGetEditorSceneModel(def.MeshPath, out var entry) && entry.RenderModel != null)
+                {
+                    model = entry.RenderModel;
+                    transform = CreateBoundsFitTransform(entry.Min, entry.Max, draw.Position, draw.Size, draw.Rotation);
+                }
+                if (model == null && draw.Color.W <= .01f) continue;
+                _shadowCasters.Add(new ShadowCaster(model, transform, draw.Position, draw.Size.Length() * .5f, Primitive: draw.IsSphere ? 2 : 0));
+            }
+        _world.RenderShadows(renderer, _shadowCasters, viewport);
     }
 
     private bool TryDrawEntityModel(Renderer renderer, int entityIndex, EditorDrawBox draw, bool selected, bool selectedHierarchy)
@@ -324,7 +352,8 @@ internal sealed partial class HS2EditorModule
                         LoadedModel loaded = task.Result;
                         ComputeModelBounds(loaded, out Vector3 min, out Vector3 max);
                         entry.LoadedModel = loaded;
-                        entry.RenderModel = _world.CreateRenderModel(loaded, loadTextures: true);
+                        if (!_world.TryCreateRenderModel(loaded, out var ready)) return false;
+                        entry.RenderModel = ready;
                         entry.Min = min;
                         entry.Max = max;
                         entry.LoadTask = null;
@@ -357,7 +386,7 @@ internal sealed partial class HS2EditorModule
             return false;
         }
 
-        entry.LoadTask = Task.Run(() => GlbModelLoader.Load(absolutePath));
+        entry.LoadTask = Task.Run(() => TextureCooker.LoadForRendering(absolutePath));
         _sceneModelCache[absolutePath] = entry;
         return false;
     }

@@ -40,6 +40,52 @@ internal sealed class AssetImporterForm : Form
             "Tip: animation import preserves armatures, skins, actions, and clips where Blender exposes them. Runtime playback still needs the engine animation/skinning system."));
 
         Controls.Add(tabs);
+        tabs.TabPages.Add(BuildCompressionTab());
+    }
+
+    private TabPage BuildCompressionTab()
+    {
+        var page = new TabPage("Compression");
+        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(12), ColumnCount = 3, RowCount = 3 };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        var folder = new TextBox { Text = FindDefaultModelDestinationFolder() };
+        AddPathRow(layout, 0, "Model folder", folder, "Browse...", (_, _) =>
+        {
+            using var picker = new FolderBrowserDialog { SelectedPath = folder.Text };
+            if (picker.ShowDialog(this) == DialogResult.OK) folder.Text = picker.SelectedPath;
+        });
+        var button = new Button { Text = "Cook models and textures", AutoSize = true };
+        var log = new TextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Both };
+        layout.Controls.Add(button, 1, 1);
+        layout.Controls.Add(log, 0, 2); layout.SetColumnSpan(log, 3);
+        button.Click += async (_, _) =>
+        {
+            if (!Directory.Exists(folder.Text)) { log.Text = "Model folder does not exist."; return; }
+            button.Enabled = false;
+            string path = folder.Text;
+            var progress = new Progress<string>(message => log.AppendText(message + Environment.NewLine));
+            try
+            {
+                await Task.Run(() =>
+                {
+                    foreach (string file in Directory.EnumerateFiles(path, "*.glb", SearchOption.AllDirectories).Order())
+                    {
+                        try { Engine.Render.TextureCooker.CookModel(file); ((IProgress<string>)progress).Report(Path.GetFileName(file)); }
+                        catch (Exception ex) { ((IProgress<string>)progress).Report($"Failed {Path.GetFileName(file)}: {ex.Message}"); }
+                    }
+                });
+                log.AppendText("Finished. Source GLBs unchanged. Restart running previews to load cooked models and textures." + Environment.NewLine);
+            }
+            catch (Exception ex) { log.AppendText(ex.Message + Environment.NewLine); }
+            finally { button.Enabled = true; }
+        };
+        page.Controls.Add(layout);
+        return page;
     }
 
     private TabPage BuildImportTab(

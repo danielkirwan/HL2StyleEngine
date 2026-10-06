@@ -290,7 +290,7 @@ public sealed partial class HL2GameModule
             return false;
 
         if (!TryGetReadyModel(entity.Render.ModelAssetPath, "world model", out WeaponModelCacheEntry? entry) || entry?.Model == null)
-            return false;
+            return AssetStreamingEnabled && entry is { Failed: false };
 
         Matrix4x4 transform = CreateBoundsFitTransform(entry.Bounds, position, size, rotation);
         IReadOnlySet<string>? hiddenPartKeys = BuildHiddenModelPartKeys(entity, entry.LoadedModel);
@@ -315,63 +315,36 @@ public sealed partial class HL2GameModule
 
         string path = ResolveModelAssetPath(modelAssetPath);
 
-        if (_weaponModelCache.TryGetValue(path, out entry))
+        if (!_weaponModelCache.TryGetValue(path, out entry))
         {
-            if (entry.Model != null)
-                return true;
-
-            if (entry.Failed)
-                return false;
-
-            if (entry.LoadTask is { IsCompleted: true } task)
+            PreloadModelAsset(path);
+            entry = _weaponModelCache[path];
+        }
+        entry.LastWanted = _assetClock.Elapsed.TotalSeconds;
+        if (entry.Model != null) return true;
+        if (entry.Failed) return false;
+        StartModelLoad(path, entry);
+        try
+        {
+            if (entry.LoadedModel == null)
             {
-                if (task.IsCompletedSuccessfully)
-                {
-                    try
-                    {
-                        LoadedModel loaded = task.Result;
-                        entry.LoadedModel = loaded;
-                        entry.Bounds = CalculateModelBounds(loaded);
-                        entry.Model = _world.CreateRenderModel(loaded);
-                        entry.LoadTask = null;
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        entry.Failed = true;
-                        entry.Error = ex.Message;
-                        entry.LoadTask = null;
-                        ShowGameMessage($"Could not prepare {modelKind}: {Path.GetFileName(modelAssetPath)} ({ex.Message})", 2.5f);
-                    }
-                }
-                else
-                {
-                    entry.Failed = true;
-                    entry.Error = task.Exception?.GetBaseException().Message ?? "model load failed";
-                    entry.LoadTask = null;
-                    ShowGameMessage($"Could not load {modelKind}: {Path.GetFileName(modelAssetPath)} ({entry.Error})", 2.5f);
-                }
+                if (entry.LoadTask is not { IsCompleted: true } task) return false;
+                entry.LoadedModel = task.GetAwaiter().GetResult();
+                entry.Bounds = CalculateModelBounds(entry.LoadedModel);
+                entry.LoadTask = null;
             }
-
-            return false;
+            if (!_world.TryCreateRenderModel(entry.LoadedModel, out var ready)) return false;
+            entry.Model = ready;
+            entry.LoadTask = null;
+            return true;
         }
-
-        if (!File.Exists(path))
+        catch (Exception ex)
         {
-            entry = new WeaponModelCacheEntry
-            {
-                Failed = true,
-                Error = "file not found"
-            };
-            _weaponModelCache[path] = entry;
-            return false;
+            entry.Failed = true;
+            entry.Error = ex.Message;
+            entry.LoadTask = null;
+            ShowGameMessage($"Could not prepare {modelKind}: {Path.GetFileName(modelAssetPath)} ({ex.Message})", 2.5f);
         }
-
-        entry = new WeaponModelCacheEntry
-        {
-            LoadTask = Task.Run(() => GlbModelLoader.Load(path))
-        };
-        _weaponModelCache[path] = entry;
         return false;
     }
 
@@ -424,8 +397,12 @@ public sealed partial class HL2GameModule
         => !string.IsNullOrWhiteSpace(modelAssetPath) &&
            string.Equals(Path.GetExtension(modelAssetPath), ".glb", StringComparison.OrdinalIgnoreCase);
 
-    private static string ResolveModelAssetPath(string modelAssetPath)
-        => Path.IsPathRooted(modelAssetPath)
-            ? modelAssetPath
-            : Path.Combine(AppContext.BaseDirectory, modelAssetPath.Replace('/', Path.DirectorySeparatorChar));
+    private string ResolveModelAssetPath(string modelAssetPath)
+    {
+        if (_resolvedModelPaths.TryGetValue(modelAssetPath, out var path)) return path;
+        path = Path.GetFullPath(Path.IsPathRooted(modelAssetPath) ? modelAssetPath :
+            Path.Combine(AppContext.BaseDirectory, modelAssetPath.Replace('/', Path.DirectorySeparatorChar)));
+        _resolvedModelPaths[modelAssetPath] = path;
+        return path;
+    }
 }

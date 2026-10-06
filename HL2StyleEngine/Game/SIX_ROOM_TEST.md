@@ -17,6 +17,32 @@ The reference floor is 18 x 28 m (504 square metres). The six new rooms total 2,
 - An explicit `--level` launch starts at the authored spawn with the default loadout. It no longer automatically restores an unrelated save's position and inventory. Ordinary launches without `--level` retain existing automatic save loading.
 - Make future changes in the editor and save the source JSON. The generator records the initial design; it does not run at game startup or overwrite editor changes automatically.
 
+## Flashlight-Only Variant (2026-10-06)
+
+Run root `LaunchSixRoomFlashlightTest.bat` to play `Content/Levels/sixRoomFlashlightTest.json`. Press **F** to toggle the flashlight; it starts **off**, with faint ambient visibility. The original `sixRoomTest.json`, its launcher, Visual Studio profile and project startup selection are unchanged.
+
+The flashlight launcher now explicitly builds and runs **Release** for playtesting. Close the previous game instance before launching it again. No asset recook, level reset or save deletion is needed. Debug remains available in Visual Studio but has substantially higher physics cost on this level.
+
+Baseline confirmed: the user reports the flashlight test is much smoother. `LaunchGame.bat`, `LaunchSixRoomTest.bat` and HS2Editor Play Selected Level now use Release too; their level targets are unchanged. Keep batched scene/shadow uploads as the default. Visual Studio still uses the chosen solution configuration, so select Release for like-for-like playtests. This does not change the original level's authored lighting or force the editor to open the flashlight copy.
+
+This separate copy removes all 51 PointLight entities, sets directional lighting to zero and disables scene point lights. Following the darkness playtest, Ambient Light is now **0.025** (initially zero), enough to faintly reveal room shapes without powering fixtures. The 51 unlit white fixture diffuser strips are black so they do not look powered. Fixture meshes, geometry, collision, weapons, items, five shutter puzzles and all other entity transforms/settings are preserved. There are 707 entities, including all 27 breakable crates and 13 puzzle indicators.
+
+Puzzle indicators remain visible red/green without the flashlight. They are self-visible unlit status markers, not extra lights illuminating the walls. The normal shadowed flashlight is the only direct light source. HUD/crosshair and menus remain available. In HS2Editor, Toolbar > Lighting > Ambient controls the faint fill; keep Directional at zero and Scene Point Lights off for this test. Ambient fill is uniform, not baked indirect lighting.
+
+Moving-flashlight follow-up: shadow object transforms are now uploaded in one padded batch rather than hundreds of separate graphics-driver calls per moving frame. No change to walking speed, flashlight range/cone, shadow resolution or filtering. `benchmark-flashlight` compares stationary/moving camera routes with the torch off, unshadowed and shadowed, including the old upload reference. See `ENGINE_UPGRADE_VALIDATION.md` for results and measurement limits.
+
+The next full-game check found the main scene still performed 762 individual object uploads each frame. Those are now batched as well. `benchmark-gameplay-flashlight on|off` includes real player movement, fixed physics, HUD and presentation; add `--individual-uploads` for the old main-scene reference. Normal desktop Release captures averaged 60 FPS with the flashlight both on and off (41.8 FPS in the old on/reference path). This is a short walking/turning check, not a guarantee for all rooms or debris bursts. The 0.025 ambient fill is unchanged.
+
+`Tools/LevelAuthoring` commands: `build-six-room-flashlight-test` creates the initial copy only if absent; `validate-six-room-flashlight-test` checks the initial copy against the lit source (except the specified lighting changes), player routes/settling, all five puzzles and actual GPU captures. The launcher does not regenerate the level or overwrite editor changes. After intentional layout edits, update the fixture comparison before expecting it to pass.
+
+## Visibility And Streaming Check (2026-10-06)
+
+The existing launchers now use default-on main-camera culling and visual asset streaming. No level geometry, puzzle wiring, ambient fill or player movement values changed. The renderer rejects offscreen bounds while preserving off-camera shadow casters and weapon/UI rendering. Runtime prefetches nearby spatial-zone dependencies and retains gameplay entities/colliders even when distant render assets are released. Toolbar > Asset Streaming controls the saved settings; see [STREAMING_GUIDE.md](STREAMING_GUIDE.md).
+
+Normal-desktop Release walking tests remain at 60 FPS with the flashlight on/off and no streaming waits. Main draws average about 368 instead of 762, and measured world CPU time is 2.12 instead of 3.72 ms with the light on. The combined automated stress test opens shutters, breaks six crates (120 peak fragments), holds/releases a prop and opens/closes inventory. It averaged 59.8 FPS with one frame above 33.3 ms and none above 100 ms. These short samples are not a universal performance guarantee.
+
+This nearby-room route shares all 32 models and still owns about 99.7 MiB of model geometry/shared textures; no memory reduction is claimed for it. A separate deliberately distant-area fixture verifies actual eviction/reload, unchanged gameplay state and held-object ownership. Add `--reference-visibility` or `--stress` to `benchmark-gameplay-flashlight on` for repeatable comparisons. The full conditions and remaining manual/cold-start checks are in [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md).
+
 ## Layout
 
 North is positive Z. Spawn is at (0, 0.06, -12), facing north.
@@ -127,7 +153,11 @@ After building the solution and `Tools/LevelAuthoring`, run `.\.dotnet\dotnet.ex
 
 The Toolbar's Scene Point Lights checkbox is saved with the level and supports undo. Select an individual PointLight to tune position, colour, intensity and range in the Inspector. Intensity zero disables that light. Existing levels default to point lights off until explicitly enabled.
 
-Lighting is currently unshadowed and can pass through walls. Light groups, switches, spotlights, shadows and emission maps are future work. Non-uniformly scaled model normals now use the inverse-transpose matrix.
+Update (2026-10-06): HDR/exposure, normal maps, spotlights and budgeted point/spot shadows are implemented. This authored level's existing lights remain unshadowed by default and can still illuminate through walls; opt fixtures into Cast Shadows in the Inspector. At most two spotlights and one point light cast shadows concurrently. F toggles the gameplay flashlight. Toolbar > Lighting tunes scene exposure, ambient, directional strength and shadow enablement. Light groups, reusable switch interactions, flicker and saved enabled overrides are now available; see `LIGHTING_GUIDE.md`. Shadow faces cull irrelevant casters and reuse unchanged depth. Emission maps and baked indirect lighting remain future work. Non-uniformly scaled model normals use the inverse-transpose matrix. No layout, puzzle wiring or light-placement data was changed by these engine passes; switches must be authored explicitly.
+
+Follow-up verification samples the flashlight from all six rooms, comparing cached/culled rendering with the reference path within one RGB channel value out of 255. At the spawn view, culling reduced submitted depth draws from 291 to 75; stationary views reuse the map with zero depth draws. This is not a full moving/debris gameplay stress profile. See `ENGINE_UPGRADE_VALIDATION.md`.
+
+Models now use cooked/shared compressed textures and mesh contacts/rays use BVH acceleration. Current asset-stage timings, stationary frame captures and GPU validation are recorded in [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md). Older performance figures below are historical, not measurements of this renderer.
 
 ## Validation And Follow-Up
 

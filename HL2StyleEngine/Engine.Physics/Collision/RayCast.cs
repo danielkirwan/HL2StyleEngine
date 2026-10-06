@@ -17,6 +17,7 @@ namespace Engine.Physics.Collision
 
     public static class Raycast
     {
+        [ThreadStatic] private static List<int>? _meshCandidates;
         public static bool RayIntersectsObb(in Ray ray, Vector3 center, Vector3 halfExtents, Quaternion rotation, float tMin, float tMax, out float hitT)
         {
             Quaternion inv = Quaternion.Conjugate(rotation);
@@ -174,9 +175,11 @@ namespace Engine.Physics.Collision
             float bestT = tMax;
             bool found = false;
 
-            for (int i = 0; i < mesh.Triangles.Count; i++)
+            List<int> candidates = _meshCandidates ??= new List<int>();
+            mesh.QueryRay(ray, tMin, tMax, candidates);
+            for (int i = 0; i < candidates.Count; i++)
             {
-                MeshCollisionTriangle tri = mesh.Triangles[i];
+                MeshCollisionTriangle tri = mesh.Triangles[candidates[i]];
                 if (!RayIntersectsAabb(ray, tri.Bounds, tMin, bestT, out _))
                     continue;
 

@@ -11,6 +11,29 @@ public sealed class Renderer : IDisposable
     public GraphicsDevice GraphicsDevice { get; }
     public ResourceFactory Factory => GraphicsDevice.ResourceFactory;
     public CommandList CommandList { get; }
+    private readonly List<IDisposable> _retireNext = new();
+    private readonly Queue<(Fence Fence, IDisposable[] Resources)> _retiring = new();
+    public int PendingRetirementBatches => _retiring.Count;
+
+    public void RetireAfterFrame(IDisposable resource) => _retireNext.Add(resource);
+
+    private void CollectRetired()
+    {
+        while (_retiring.TryPeek(out var batch) && batch.Fence.Signaled)
+        {
+            _retiring.Dequeue();
+            foreach (var resource in batch.Resources) resource.Dispose();
+            batch.Fence.Dispose();
+        }
+    }
+
+    public void DrainRetiredResources()
+    {
+        GraphicsDevice.WaitForIdle();
+        CollectRetired();
+        foreach (var resource in _retireNext) resource.Dispose();
+        _retireNext.Clear();
+    }
 
     private Framebuffer _worldFramebuffer = null!;
     private Texture _msaaColor = null!;
@@ -27,6 +50,9 @@ public sealed class Renderer : IDisposable
     private Shader[] _presentShaders = null!;
     private DeviceBuffer _presentIB = null!;
     private uint _presentIndexCount;
+    private DeviceBuffer? _exposureBuffer;
+    public float Exposure { get; set; } = 1f;
+    public Framebuffer WorldFramebuffer => _worldFramebuffer;
 
 
     private uint _w, _h;
@@ -72,7 +98,7 @@ public sealed class Renderer : IDisposable
         var scFb = GraphicsDevice.MainSwapchain.Framebuffer;
         Texture swapchainColor = scFb.ColorTargets[0].Target;
 
-        PixelFormat colorFormat = swapchainColor.Format;
+        PixelFormat colorFormat = PixelFormat.R16_G16_B16_A16_Float;
 
         var scOut = scFb.OutputDescription;
         PixelFormat depthFormat = scOut.DepthAttachment?.Format ?? PixelFormat.R32_Float;
@@ -119,6 +145,7 @@ public sealed class Renderer : IDisposable
         _presentSampler?.Dispose();
         _presentVB?.Dispose();
         _presentIB?.Dispose();
+        _exposureBuffer?.Dispose();
 
 
         if (_presentShaders != null)
@@ -165,10 +192,13 @@ public sealed class Renderer : IDisposable
 
         _presentLayout = Factory.CreateResourceLayout(new ResourceLayoutDescription(
             new ResourceLayoutElementDescription("SourceTex", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
-            new ResourceLayoutElementDescription("SourceSamp", ResourceKind.Sampler, ShaderStages.Fragment)));
+            new ResourceLayoutElementDescription("SourceSamp", ResourceKind.Sampler, ShaderStages.Fragment),
+            new ResourceLayoutElementDescription("Presentation", ResourceKind.UniformBuffer, ShaderStages.Fragment)));
+
+        _exposureBuffer = Factory.CreateBuffer(new BufferDescription(16, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
 
         _presentSet = Factory.CreateResourceSet(new ResourceSetDescription(
-            _presentLayout, _resolveView, _presentSampler));
+            _presentLayout, _resolveView, _presentSampler, _exposureBuffer));
 
         // Load compiled shaders (D3D11 .cso)
         string baseDir = AppContext.BaseDirectory;
@@ -205,6 +235,7 @@ public sealed class Renderer : IDisposable
 
     public void BeginFrame()
     {
+        CollectRetired();
         CommandList.Begin();
 
         CommandList.SetFramebuffer(_worldFramebuffer);
@@ -212,11 +243,13 @@ public sealed class Renderer : IDisposable
         CommandList.ClearDepthStencil(1f);
     }
 
-    public void ResolveWorldToSwapchain()
+    public void ResolveWorldToSwapchain(Framebuffer? presentationTarget = null)
     {
+        Vector4 presentation = new(float.IsFinite(Exposure) ? Math.Clamp(Exposure, .05f, 8f) : 1f, 0, 0, 0);
+        GraphicsDevice.UpdateBuffer(_exposureBuffer!, 0, ref presentation);
         CommandList.ResolveTexture(_msaaColor, _resolveColor);
 
-        var scFb = GraphicsDevice.MainSwapchain.Framebuffer;
+        var scFb = presentationTarget ?? GraphicsDevice.MainSwapchain.Framebuffer;
         CommandList.SetFramebuffer(scFb);
 
         CommandList.SetPipeline(_presentPipeline);
@@ -229,13 +262,22 @@ public sealed class Renderer : IDisposable
     public void EndFrame()
     {
         CommandList.End();
-        GraphicsDevice.SubmitCommands(CommandList);
+        if (_retireNext.Count == 0) GraphicsDevice.SubmitCommands(CommandList);
+        else
+        {
+            var fence = Factory.CreateFence(false);
+            GraphicsDevice.SubmitCommands(CommandList, fence);
+            _retiring.Enqueue((fence, _retireNext.ToArray()));
+            _retireNext.Clear();
+        }
         GraphicsDevice.SwapBuffers(GraphicsDevice.MainSwapchain);
     }
 
     public void Dispose()
     {
+        DrainRetiredResources();
         _presentPipeline?.Dispose();
+        _exposureBuffer?.Dispose();
         _presentSet?.Dispose();
         _presentLayout?.Dispose();
         _presentSampler?.Dispose();

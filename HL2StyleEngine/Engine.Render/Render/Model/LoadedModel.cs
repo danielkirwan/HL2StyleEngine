@@ -58,6 +58,10 @@ public sealed class LoadedModelPart
     public Vector4 Color { get; }
     public byte[]? BaseColorPng { get; }
     public byte[]? MetallicRoughnessPng { get; }
+    public byte[]? NormalPng { get; init; }
+    public PreparedTexture? BaseColorTexture { get; set; }
+    public PreparedTexture? MaterialTexture { get; set; }
+    public PreparedTexture? NormalTexture { get; set; }
     public float MetallicFactor { get; }
     public float RoughnessFactor { get; }
     public string NodeName { get; }

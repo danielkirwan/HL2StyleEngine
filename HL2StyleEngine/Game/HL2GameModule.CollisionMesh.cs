@@ -68,6 +68,8 @@ public sealed partial class HL2GameModule
         if (entry == null)
             return false;
 
+        StartModelLoad(path, entry);
+
         if (entry.LoadedModel == null && entry.LoadTask is { } task)
         {
             try
@@ -75,8 +77,7 @@ public sealed partial class HL2GameModule
                 LoadedModel loaded = task.GetAwaiter().GetResult();
                 entry.LoadedModel = loaded;
                 entry.Bounds = CalculateModelBounds(loaded);
-                entry.Model = _world.CreateRenderModel(loaded);
-                entry.LoadTask = null;
+                // Collision only needs CPU geometry. GPU work is budgeted during rendering.
             }
             catch (Exception ex)
             {

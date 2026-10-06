@@ -352,8 +352,8 @@ internal sealed partial class HS2EditorModule
         }
 
         SaveCurrentLevelOnly();
-        StartDotnetProject(ToAbsolutePath(_project.GameProject), ["--", "--level", _editor.LevelPath]);
-        _status = $"Launching game from {MakeProjectRelative(_editor.LevelPath)}.";
+        StartDotnetProject(ToAbsolutePath(_project.GameProject), ["-c", "Release", "--", "--level", _editor.LevelPath]);
+        _status = $"Launching Release game from {MakeProjectRelative(_editor.LevelPath)}.";
     }
 
     private void StartDotnetProject(string projectPath, IReadOnlyList<string> extraArgs)
