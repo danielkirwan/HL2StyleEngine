@@ -53,7 +53,7 @@ internal static class ModelCookingChecks
             string textureDir = TextureCooker.CacheDirectory(modelPath);
             Directory.CreateDirectory(textureDir);
             LoadedModel original = TextureCooker.LoadForRendering(source);
-            var textures = original.Parts.SelectMany(p => new[] { p.BaseColorTexture, p.MaterialTexture, p.NormalTexture })
+            var textures = original.Parts.SelectMany(p => new[] { p.BaseColorTexture, p.MaterialTexture, p.NormalTexture, p.EmissiveTexture })
                 .OfType<PreparedTexture>().DistinctBy(t => t.Key).ToArray();
             foreach (var texture in textures)
                 File.Copy(Path.Combine(TextureCooker.CacheDirectory(source), texture.Key + ".hs2tex"), Path.Combine(textureDir, texture.Key + ".hs2tex"));
@@ -134,11 +134,12 @@ internal static class ModelCookingChecks
         Require(reference.Parts.Count == cooked.Parts.Count, "Part count changed.");
         foreach (var (a, b) in reference.Parts.Zip(cooked.Parts))
         {
-            Require(Same(a.Positions, b.Positions) && Same(a.Normals, b.Normals) && Same(a.TexCoords, b.TexCoords) && Same(a.Indices, b.Indices), "Geometry changed: " + a.PartKey);
+            Require(Same(a.Positions, b.Positions) && Same(a.Normals, b.Normals) && Same(a.PbrNormals, b.PbrNormals) && Same(a.TexCoords, b.TexCoords) && Same(a.Indices, b.Indices), "Geometry changed: " + a.PartKey);
             Require(a.PartKey == b.PartKey && a.NodeName == b.NodeName && a.MeshName == b.MeshName &&
                 a.NodeIndex == b.NodeIndex && a.MeshIndex == b.MeshIndex && a.PrimitiveIndex == b.PrimitiveIndex, "Part identity changed.");
             Require(a.Color == b.Color && a.MetallicFactor == b.MetallicFactor && a.RoughnessFactor == b.RoughnessFactor, "Material changed.");
-            foreach (var pair in new[] { (a.BaseColorTexture, b.BaseColorTexture), (a.MaterialTexture, b.MaterialTexture), (a.NormalTexture, b.NormalTexture) })
+            Require(a.EmissiveFactor == b.EmissiveFactor && Same(a.EmissiveTexCoords, b.EmissiveTexCoords), "Emission changed: " + a.PartKey);
+            foreach (var pair in new[] { (a.BaseColorTexture, b.BaseColorTexture), (a.MaterialTexture, b.MaterialTexture), (a.NormalTexture, b.NormalTexture), (a.EmissiveTexture, b.EmissiveTexture) })
             {
                 if (pair.Item1 == null || pair.Item2 == null) { Require(pair.Item1 == pair.Item2, "Texture presence changed."); continue; }
                 var (x, y) = (pair.Item1, pair.Item2);

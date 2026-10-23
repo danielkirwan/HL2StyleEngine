@@ -9,7 +9,8 @@ public sealed class RenderModel : IDisposable
     private readonly List<RenderModelPart> _parts = new();
     private readonly LoadedModel _source;
     public bool IsReady => _parts.Count == _source.Parts.Count;
-    public long GeometryBytes => _parts.Sum(p => (long)p.VertexBuffer.SizeInBytes + p.IndexBuffer.SizeInBytes + (p.TexturedVertexBuffer?.SizeInBytes ?? 0));
+    public long GeometryBytes => _parts.Sum(p => (long)p.VertexBuffer.SizeInBytes + p.IndexBuffer.SizeInBytes + (p.TexturedVertexBuffer?.SizeInBytes ?? 0) +
+        (ReferenceEquals(p.PbrVertexBuffer, p.TexturedVertexBuffer) ? 0 : p.PbrVertexBuffer?.SizeInBytes ?? 0) + (p.PbrIndexBuffer?.SizeInBytes ?? 0));
 
     internal RenderModel(GraphicsDevice graphicsDevice, LoadedModel source, ResourceLayout textureLayout, Sampler sampler,
         ModelTextureCache textures, bool loadTextures = true, bool deferred = false)
@@ -35,10 +36,11 @@ public sealed class RenderModel : IDisposable
     }
 }
 
-internal sealed class RenderModelPart : IDisposable
+internal sealed partial class RenderModelPart : IDisposable
 {
     private readonly ModelTextureCache _textures;
-    private ModelTextureCache.SharedTexture? _color, _material, _normal;
+    private ModelTextureCache.SharedTexture? _color, _material, _normal, _emissive;
+    private static readonly PreparedTexture DefaultWhite = new("default-white", 1, 1, TextureSemantic.Color, false, [[255, 255, 255, 255]]);
     private static readonly PreparedTexture DefaultMaterial = new("default-material", 1, 1, TextureSemantic.Material, false, [[0, 255, 0, 255]]);
     private static readonly PreparedTexture DefaultNormal = new("default-normal", 1, 1, TextureSemantic.Normal, false, [[128, 128, 255, 255]]);
 
@@ -57,7 +59,8 @@ internal sealed class RenderModelPart : IDisposable
                 BufferUsage.VertexBuffer));
             graphicsDevice.UpdateBuffer(VertexBuffer, 0, source.Positions);
 
-            if (source.TexCoords is { Length: > 0 } texCoords && texCoords.Length == source.Positions.Length)
+            Vector2[]? texCoords = source.TexCoords ?? source.EmissiveTexCoords;
+            if (texCoords is { Length: > 0 } && texCoords.Length == source.Positions.Length)
             {
                 TexturedVertex[] texturedVertices = new TexturedVertex[source.Positions.Length];
                 Vector3[]? normals = source.Normals != null && source.Normals.Length == source.Positions.Length
@@ -68,7 +71,8 @@ internal sealed class RenderModelPart : IDisposable
                     Vector3 normal = normals != null
                         ? normals[i]
                         : Vector3.UnitY;
-                    texturedVertices[i] = new TexturedVertex(source.Positions[i], normal, texCoords[i]);
+                    texturedVertices[i] = new TexturedVertex(source.Positions[i], normal, texCoords[i],
+                        source.EmissiveTexCoords is { } emissionUv ? emissionUv[i] : texCoords[i]);
                 }
 
                 TexturedVertexBuffer = graphicsDevice.ResourceFactory.CreateBuffer(new BufferDescription(
@@ -102,6 +106,7 @@ internal sealed class RenderModelPart : IDisposable
             NodeName = source.NodeName;
             MeshName = source.MeshName;
             Color = source.Color;
+            EmissiveFactor = source.EmissiveFactor;
             MaterialFactors = new Vector4(
                 Math.Clamp(source.MetallicFactor, 0f, 1f),
                 Math.Clamp(source.RoughnessFactor, 0.04f, 1f),
@@ -110,21 +115,27 @@ internal sealed class RenderModelPart : IDisposable
 
             if (loadTextures &&
                 TexturedVertexBuffer != null &&
-                (source.BaseColorTexture != null || source.BaseColorPng is { Length: > 0 }))
+                (source.BaseColorTexture != null || source.BaseColorPng is { Length: > 0 } ||
+                 source.EmissiveTexture != null || source.EmissivePng is { Length: > 0 } || source.EmissiveFactor != Vector3.Zero))
             {
-                _color = textures.Acquire(source.BaseColorTexture ?? TextureCooker.PrepareImage(source.BaseColorPng!, TextureSemantic.Color, null, false));
+                _color = textures.Acquire(source.BaseColorTexture ?? (source.BaseColorPng is { Length: > 0 } baseColor
+                    ? TextureCooker.PrepareImage(baseColor, TextureSemantic.Color, null, false) : DefaultWhite));
                 _material = textures.Acquire(source.MaterialTexture ?? (source.MetallicRoughnessPng is { Length: > 0 } mr
                     ? TextureCooker.PrepareImage(mr, TextureSemantic.Material, null, false) : DefaultMaterial));
                 _normal = textures.Acquire(source.NormalTexture ?? (source.NormalPng is { Length: > 0 } normal
                     ? TextureCooker.PrepareImage(normal, TextureSemantic.Normal, null, false) : DefaultNormal));
+                _emissive = textures.Acquire(source.EmissiveTexture ?? (source.EmissivePng is { Length: > 0 } emission
+                    ? TextureCooker.PrepareImage(emission, TextureSemantic.Color, null, false) : DefaultWhite));
                 TextureSet = graphicsDevice.ResourceFactory.CreateResourceSet(new ResourceSetDescription(
                     textureLayout,
                     _color.View,
                     sampler,
                     _material.View,
                     sampler,
-                    _normal.View));
+                    _normal.View,
+                    _emissive.View));
             }
+            if (loadTextures) CreatePbrResources(graphicsDevice, source, textureLayout, sampler, textures);
         }
         catch { Dispose(); throw; }
     }
@@ -141,12 +152,15 @@ internal sealed class RenderModelPart : IDisposable
     public string MeshName { get; }
     public Vector4 Color { get; }
     public Vector4 MaterialFactors { get; }
+    public Vector3 EmissiveFactor { get; }
     public ResourceSet? TextureSet { get; }
     public bool IsTextured => TexturedVertexBuffer != null && TextureSet != null;
 
     public void Dispose()
     {
+        DisposePbrResources();
         TextureSet?.Dispose();
+        _textures.Release(_emissive); _emissive = null;
         _textures.Release(_normal); _normal = null;
         _textures.Release(_material); _material = null;
         _textures.Release(_color); _color = null;
@@ -159,16 +173,20 @@ internal sealed class RenderModelPart : IDisposable
 [StructLayout(LayoutKind.Sequential)]
 internal readonly struct TexturedVertex
 {
-    public TexturedVertex(Vector3 position, Vector3 normal, Vector2 texCoord)
+    public TexturedVertex(Vector3 position, Vector3 normal, Vector2 texCoord, Vector2 emissiveTexCoord, Vector2 lightmapTexCoord = default)
     {
         Position = position;
         Normal = normal;
         TexCoord = texCoord;
+        EmissiveTexCoord = emissiveTexCoord;
+        LightmapTexCoord = lightmapTexCoord;
     }
 
     public readonly Vector3 Position;
     public readonly Vector3 Normal;
     public readonly Vector2 TexCoord;
+    public readonly Vector2 EmissiveTexCoord;
+    public readonly Vector2 LightmapTexCoord;
 
-    public static uint SizeInBytes => (uint)((3 + 3 + 2) * sizeof(float));
+    public static uint SizeInBytes => (uint)((3 + 3 + 2 + 2 + 2) * sizeof(float));
 }

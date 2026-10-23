@@ -2,7 +2,13 @@
 
 This file tracks completed gameplay-facing systems and the current implementation shape.
 
+Room capture milestone (2026-10-23): `LaunchRoomReflectionTest.bat` opens a separate two-room fixture with saved actual-room HDR reflections. F2/HS2Editor share probe placement, capture/rebuild/cancel, reload and preview controls. Existing levels remain unchanged; one selected probe currently previews across the scene. Automatic room blending/projection and switched presets are next. Latest local torch on/off runs average 60 FPS. See [room capture guide](ROOM_REFLECTION_GUIDE.md).
+
+PBR/reflection milestone (2026-10-23): run `LaunchPbrMaterialTest.bat` for the separate material/lighting fixture, now with a controlled GGX-filtered HDR environment. C# remains the runtime and old levels stay Legacy. Game, F2 and HS2Editor share lighting-model and **Specular Environment** settings. Tests average about 60 FPS with torch on/off; reflection GPU payload is 1.063 MiB. Contracts, model-cache v3 and remaining work: [PBR guide](PBR_MATERIAL_GUIDE.md), [reflection guide](REFLECTION_LIGHTING_GUIDE.md). Authored room captures are available in the separate fixture above; this synthetic test is not a reflection of the actual room.
+
 ## Current Gameplay Project
+
+PBR fixture follow-up (2026-10-23): the movable crate now uses a separate corrected wood material, fixing its almost invisible flashlight response. The source crate, geometry/textures, gameplay settings and older levels are unchanged. Restart `LaunchPbrMaterialTest.bat` and press F to compare. Six-face and actual-game tests pass; torch on/off still averages 60 FPS locally. Details: [crate material correction](PBR_MATERIAL_GUIDE.md#crate-material-correction-2026-10-23).
 
 The playable prototype lives in `Game` and is driven by `HL2GameModule`.
 
@@ -11,6 +17,32 @@ When the game is launched without `--level`, it now looks for the root `HS2Proje
 A matching primitive/blockout version is generated as `Content/Levels/interaction_test_blockout.json`. The default template comes from `SimpleLevel.BuildInteractionTestBlockoutFile`, and the Debug window's `Load Blockout Practice` button also clones the currently loaded level in memory before stripping mesh/material paths and break-replacement model paths. This keeps the same layout and gameplay entities while rendering as editor-style blocks. The Debug window has a Practice Level Switcher with buttons for `Load Meshed Practice` and `Load Blockout Practice`; switching resets transient prototype state, respawns the player, and keeps the current level path active for F5 reload and F6 reset. In blockout presentation mode, runtime weapon viewmodels stay visible but force their primitive fallback geometry instead of imported GLBs, so the showcase can compare boxed layout/weapons vs imported/meshed presentation.
 
 ## Completed Systems
+
+### 2026-10-22 Light Probes And Preview Views
+
+Moving textured models, gravity-held crates, debris and weapons can now receive fixed-light bounced illumination from optional directional probe grids. Shared HS2Editor/F2 controls offer Full / Direct Only / Indirect Only, probe-only preview, green/red markers and bake validity. Sampling rejects neighbours across baked walls, reuses stationary results and fits the existing 256-byte object upload slot. Old static-only bakes still load unchanged.
+
+Run **`LaunchLightProbeTest.bat`** for the separate 196-probe room, carry crates between its warm and shaded sides, and use F2 > Toolbar > Indirect Lighting to compare. F toggles the torch; F3 opens the existing FPS/debug display. Latest local Release tests averaged about 60 FPS with the torch off/on, including 120 fragments, with no measured frames over 33.3 ms; this is not a locked-60 guarantee. Original levels/launch settings and accepted lighting quality remain unchanged. See [BAKED_LIGHTING_GUIDE.md](BAKED_LIGHTING_GUIDE.md) and [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md) for authoring, costs and limits.
+
+### 2026-10-22 Static Indirect Lighting
+
+Opt-in fixed architecture receives one baked diffuse bounce from permanent point/spot lights. HS2Editor and F2 share Inspector opt-ins and **Toolbar > Indirect Lighting** settings, save/bake, progress/cancel, stale status and preview. Padded per-triangle UVs stay separate from source material UVs; validated HDR/LZ4 `.hs2lightmap` files load in editors and Game. Missing/stale data falls back to realtime lighting. Eligible opt-in static objects retain their authored quaternion for matching render/collision poses; unmarked legacy objects are unchanged.
+
+Run root `LaunchIndirectLightingTest.bat` for the separate 8 x 8 m room. E operates the realtime console-light switch; F toggles the torch. Existing levels/launch profiles are unchanged. The 17-instance bake uses 8.19 MiB additional GPU resources. Switchable scenarios, multi-room atlases and bloom remain pending. Workflow/limits: [BAKED_LIGHTING_GUIDE.md](BAKED_LIGHTING_GUIDE.md). Measurements: [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md). Earlier milestone notes below describe their state at delivery; static baking/probes are subsequent additions.
+
+### 2026-10-22 Emissive Fixtures
+
+Imported GLB emissive maps/colour/strength now render through compressed model/texture caches and HDR. HS2Editor and F2 share an **Emission** Inspector section for intensity, optional colour/part override and a stable-ID **Linked Light**. Linked fixtures follow saved light on/off state and flicker; prefab placement/apply/revert remaps internal links. Lights no longer draw their editor helper boxes in gameplay. Static indirect/probes are described above; bloom remains pending.
+
+Run root `LaunchSixRoomEmissionTest.bat`: the separate dim six-room copy has a console/arcade ahead of spawn and an E-operated power lever to the right. F still controls the torch. The original levels and launch profiles are unchanged. Workflow, cache-v2 recooking and remaining work: [LIGHTING_GUIDE.md](LIGHTING_GUIDE.md). Regression/performance results: [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md).
+
+### 2026-10-21 Static Collision Cache
+
+Static mesh colliders now restore lossless triangles/BVH data from validated LZ4 placement caches. Source content, world position/size/rotation, collision skin and build/version identity guard against stale wall/door colliders. Missing or invalid caches rebuild through the existing path, and unwritable caches do not prevent play. Moving mesh-door poses bypass disk caching. No authored levels, meshes, collision shapes or solver settings changed. Automatic first-load cooking and optional `cook-level-collisions` are documented in [COLLISION_CACHE_GUIDE.md](COLLISION_CACHE_GUIDE.md).
+
+The six-room collision stage measured 31.020 ms source versus 13.939 ms cached (three warm-filesystem Release pairs), but total host/game initialization improved only modestly, from 1067.538 to 1054.602 ms. This is not a first-playable or FPS multiplier. Native C++ services remain a profiling-led option; no language rewrite was made. Lighting status and remaining bake/probe requirements are in [LIGHTING_GUIDE.md](LIGHTING_GUIDE.md).
+
+The GLB catalogue was rechecked: 376 models plus 16 animations. A dedicated ammo pack is not currently identified; the user will import one before the six-room crate-placeholder ammo meshes are changed. Pickup counts and behaviour are untouched.
 
 ### 2026-10-06 Confirmed Performance Standard
 
@@ -44,7 +76,7 @@ Shadow faces cull irrelevant casters and cache unchanged depth. Moving doors/lig
 
 The importer now has a Compression tab and `CookAssets.bat` cooks source GLB textures to shared BC7/BC5 mip chains with LZ4 disk compression. All 376 current GLBs were processed without failures. Cached textures are source-hash/version/checksum validated; missing/corrupt caches fall back to RGBA. Source models and authored levels are unchanged. Game/editor prepare images on workers and budget model-part GPU uploads. Object replacement now queues until the replacement is ready and retains the original on failure. Do not hide/destroy first and hope the next object loads in time.
 
-World rendering now uses HDR, exposure/tone mapping, correct sRGB/linear texture handling and normal maps. F toggles a shadowed gameplay flashlight. Toolbar > Lighting exposes scene exposure/ambient/directional/shadows; PointLight Inspector adds Enabled, Cast Shadows, Spotlight and Cone Angle. Existing fixtures default to unshadowed, with at most two spots and one point light shadowed concurrently. The follow-ups above add groups/switches and visual streaming; baked GI and full entity/physics streaming remain future work. Primitive blockout geometry remains unlit.
+World rendering now uses HDR, exposure/tone mapping, correct sRGB/linear texture handling and normal maps. F toggles a shadowed gameplay flashlight. Toolbar > Lighting exposes scene exposure/ambient/directional/shadows; PointLight Inspector adds Enabled, Cast Shadows, Spotlight and Cone Angle. Existing fixtures default to unshadowed, with at most two spots and one point light shadowed concurrently. The follow-ups above add groups/switches, visual streaming and opt-in indirect/probes; full entity/physics streaming remains future work. Primitive blockout geometry remains unlit.
 
 Mesh contacts/rays use a per-mesh BVH while retaining original triangle order, collider shapes and the existing C# solver. Tests compare accelerated and linear results. RE:Dox, inventory, weapon UI and gameplay persistence stay in place; no native rewrite was needed.
 
@@ -198,7 +230,7 @@ Gameplay/light-switch direction:
 - Implemented: authored starts-on state, reusable toggles, prompt text and saved changed light states. One-shot switches and sound/VFX hooks remain future additions.
 - Switches are authored through the Interaction inspector, not a separate script document. Level saves retain defaults; player saves retain runtime overrides.
 
-Next lighting priorities: baked indirect light/probes, emission, light gizmos and representative moving/debris performance profiles. See `LIGHTING_GUIDE.md` for current controls and limitations.
+Next lighting priorities: explicit switchable-light scenarios, broader bake/streaming budgets and longer moving/debris profiles. Emission with linked fixture controls, bounded static indirect baking and movable-object probes are implemented. See `LIGHTING_GUIDE.md` and `BAKED_LIGHTING_GUIDE.md` for controls and limitations.
 
 
 ## Debug UI
@@ -315,7 +347,7 @@ The first pass still uses path-based asset references because the current level 
 - Add impact damage for launched physics props, so Gravity Gun-thrown crates can damage or break when they hit walls/objects hard enough.
 - Add debris spawning from `BreakDebrisModelPaths`, plus folders/search in the model picker once the model library grows.
 - Add crate break VFX such as dust/splinters to support the fracture collapse and make impacts feel better.
-- Continue the implemented HDR/normal-map/shadow/switch lighting with baked indirect light, emission, environment reflection and fuller PBR support. Keep measured shadow budgets and editor/runtime parity.
+- Continue the implemented HDR/normal-map/shadow/switch/emission/static-indirect/probe lighting with switchable bake scenarios, larger bake budgets, environment reflection and fuller PBR support. Keep measured shadow budgets and editor/runtime parity.
 - Add simple damageable targets/enemies so bullet, melee, impact, and explosion damage have more gameplay consequences.
 - Add gravity gun polish: hold beam effects, blocked pickup checks, mass-based throw tuning, and sound/VFX hooks.
 - Replace placeholder health/suit values with a real player damage and armor system.
@@ -364,7 +396,7 @@ Current limitation:
 - GLB geometry, indices, node transforms, and material base-color factors are supported.
 - Embedded GLB base-color textures are supported by the first-pass textured model renderer.
 - Imported normals plus metallic/roughness texture data are used by the first material-lighting pass.
-- Normal-map perturbation, emission, environment reflections, skeletal skinning, animation clips, and fuller PBR behavior are still pending.
+- Normal-map perturbation, emission, opt-in direct PBR and a synthetic specular environment are implemented. Authored room reflection probes, skeletal skinning, animation clips and additional PBR material extensions remain pending.
 
 
 

@@ -7,7 +7,7 @@ using Veldrid;
 
 internal static class RenderPipelineChecks
 {
-    public static void Run()
+    public static void Run(bool pbr = false)
     {
         using var host = new EngineHost(640, 480, "Rendering QA");
         var renderer = host.Context.Renderer;
@@ -16,6 +16,7 @@ internal static class RenderPipelineChecks
         using var nativeDevice = new Vortice.Direct3D11.ID3D11Device(device.GetD3D11Info().Device);
         using var messages = nativeDevice.QueryInterface<Vortice.Direct3D11.Debug.ID3D11InfoQueue>();
         using var world = new BasicWorldRenderer(device, renderer.WorldOutputDescription, "Shaders");
+        world.LightingModel = pbr ? SurfaceLightingModel.Pbr : SurfaceLightingModel.Legacy;
         world.AmbientStrength = .015f; world.DirectionalStrength = 0;
         var source = new LoadedModel([new LoadedModelPart(
             [new(-5, -2, -4), new(5, -2, -4), new(5, 4, -4), new(-5, 4, -4)],
@@ -24,7 +25,7 @@ internal static class RenderPipelineChecks
         { BaseColorTexture = new PreparedTexture("qa-white", 1, 1, TextureSemantic.Color, false, [[255,255,255,255]]) }]);
         using var model = world.CreateRenderModel(source);
         using var second = world.CreateRenderModel(source);
-        Require(world.ResidentTextureCount == 3 && world.TextureResidentBytes == 12, "Shared texture resources were duplicated.");
+        Require(world.ResidentTextureCount == 5 && world.TextureResidentBytes == 20, "Shared textures (including distinct neutral PBR MR) were duplicated.");
         Require(world.TryCreateRenderModel(new LoadedModel([]), out var empty) && empty!.IsReady, "Empty model upload did not complete.");
         empty!.Dispose();
         double originalBudget = world.UploadBudgetMilliseconds;
@@ -35,7 +36,7 @@ internal static class RenderPipelineChecks
         world.BeginFrame();
         Require(world.TryCreateRenderModel(stagedSource, out staged) && staged!.IsReady, "Budgeted upload did not resume next frame.");
         staged!.Dispose();
-        Require(world.ResidentTextureCount == 3, "Disposing shared model textures removed live resources.");
+        Require(world.ResidentTextureCount == 5, "Disposing shared model textures removed live resources.");
         world.UploadBudgetMilliseconds = originalBudget;
         world.BeginFrame();
         using (world.BatchObjectUploads()) { }

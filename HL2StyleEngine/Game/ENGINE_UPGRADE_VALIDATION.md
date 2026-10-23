@@ -1,5 +1,155 @@
 # Compression, Lighting And Physics Validation
 
+## Authored Room Captures (2026-10-23)
+
+Unit D's first pass is implemented in a new `roomReflectionTest.json`; launch with `LaunchRoomReflectionTest.bat`. Two authored 128-square HDR captures persist beside the level, with shared F2/HS2Editor authoring, source-key validation, cancellation and frame-safe replacement. Only one explicitly selected whole-scene preview is active; box projection, automatic transitions and on/off preset variants remain unit E. Original levels and accepted shaders are unchanged. Full workflow, exclusions, budgets and reproduction: [ROOM_REFLECTION_GUIDE.md](ROOM_REFLECTION_GUIDE.md).
+
+50 room assertions pass in Release/Debug (polling may vary the count), including six-face asymmetric orientation, baked diffuse integration, source/transform/light/resolution staleness, prefab IDs/undo/JSON, corrupt/truncated/versioned caches, cancelled atomic writes, restart, zero upload budget, fixed-light override fallback and cancelled submitted GPU work. Main-view camera/shadow output remains bit-identical after capture/cancellation. Existing 97 synthetic reflection, 282 diffuse/probe and GPU shadow/moving-door checks pass; all 15 Legacy reference images stay within 1/255. Game/F2/standalone scene captures were inspected, not manually mouse/controller playtested.
+
+Full-host Release on RTX 3060, 1920x1009, RGBA16F/4xMSAA, D3D11 debug layer on, 120 warmup/300 measured: torch on mean/P95 **16.661/17.844 ms**, off **16.661/17.878 ms**; about 60 FPS, zero >33.3 ms frames or streaming waits, one main upload/frame and no runtime capture passes. Ready environment + fallback is **1,114,180 bytes**; capture-only tracked GPU scratch/geometry peaks about **43-44 MiB**. Repeated 1920x1061 GPU preview increment mean/P95: -.183/-.189 ms off, +.226/+.057 ms on. Negative deltas are noise, not speedup. Budgets are unchanged; long soak, cold first-playable and native UI acceptance remain open.
+
+Final room recheck: full-host on/off wall mean/P95 **16.667/17.887** and **16.663/17.963 ms**, still zero >33.3 ms frames or streaming waits. Reverse-order steady GPU increments **-.131/-.707 ms off**, **-.243/-.237 ms on** pass, with CPU increments below +.02 ms. All three direct-PBR and three synthetic-reflection reference images pass within 1/255; the corrected-crate flashlight suite also passes. Both build configurations are clean. Source and Game/HS2Editor Release level/capture copies have matching SHA-256 hashes. Full publish and native interaction acceptance remain untested. Probe helpers no longer cast shadows, and the refreshed standalone scene image was inspected. Final room regression: 50 checks passed.
+
+## PBR Crate Flashlight Fix (2026-10-23, Historical)
+
+The original crate GLB's roughness 0 / default metallic 1 caused a tiny mirror-like highlight instead of broad wood illumination. The PBR fixture alone now uses a derived metallic 0 / roughness 0.85 asset, retaining source geometry/textures and all 22 fracture part keys. Original asset and existing levels are unchanged. Reproduction and historical-reference handling: [PBR material guide](PBR_MATERIAL_GUIDE.md#crate-material-correction-2026-10-23).
+
+`validate-pbr-crate` passes deterministic regeneration, unchanged binary chunks, source/cooked geometry/normal/UV/key equality, retained wood texture, corrected cooked scalars, six-face flashlight tests, shadows on/off, rotated crate and light off restoration. GPU images show broad illumination rather than the original tiny highlight. In the actual game renderer with reflections/shadows enabled, 3,600/3,600 central face pixels brighten with the real flashlight. This is scripted render validation, not a manual input playtest.
+
+Final crate checks pass in both Debug and Release; switch-off's central face matches exactly (0/255 difference). Release solution and Debug/Release authoring-tool builds pass with zero warnings/errors. Source, Game Release and HS2Editor Release copies of the corrected GLB have matching SHA-256 hashes. The original source GLB is not modified.
+
+All 15 Legacy references plus three direct-PBR and three reflection references pass within 1/255; historical reference fixtures explicitly retain the old crate in memory, while the dedicated new tests exercise the corrected asset. References are not regenerated. No shaders or runtime rendering algorithms changed.
+
+Corrected-fixture Release full-host route on RTX 3060, 1920x1009, RGBA16F/4xMSAA, D3D11 debug layer on, VSync, 120 warmup + 300 measured frames: torch **on mean/P95 16.667/18.010 ms**, **off 16.666/18.008 ms**. Both average about 60 FPS; zero frames >33.3 ms or >100 ms, zero streaming waits, one main upload/frame. Model payload stays about 49.4 MiB, reflection payload 1,114,180 bytes, no pending reflection CPU payload. These meet the existing local regression gate, not a locked-60 minimum guarantee. Unit D (authored room captures/cache) remains next, not delivered by this fix.
+
+## Controlled Reflections (2026-10-23)
+
+Unit C passes its local automated gates. [REFLECTION_LIGHTING_GUIDE.md](REFLECTION_LIGHTING_GUIDE.md) records the implementation, budgets and exact reproduction route. Added one 128-square GGX-filtered synthetic HDR environment, split-sum LUT, separate bindings and worker/shared-budget uploads. Only `pbrMaterialTest.json` opts in. Existing direct/diffuse/emission and authored levels remain compatible; no room capture, native rewrite or bloom is included.
+
+97 Release / 98 Debug reflection assertions pass (readiness polling can add a checked frame), including independent numerical integration, white-furnace energy, six-face GPU rendering/sampling, asymmetric directions, roughness, back-face guards, fallback/readiness, JSON/RE:Dox/undo and diffuse-cache independence. Existing 126 HDR, 282 bake/probe and GPU shadow/moving-door/batching checks pass. All 15 old images and three reflection-off PBR images match within 1/255. Three new reflection game/F2/standalone scene captures were visually inspected and stored separately in `References/PbrReflections`; these are not a manual editor/input test. Full solution/tool Debug and Release builds pass without warnings/errors.
+
+Full-host 1920x1009, RTX 3060, Release, RGBA16F/4xMSAA, D3D11 debug layer on, VSync: torch on wall mean/P95 **16.661/17.892 ms**, off **16.661/17.844 ms**, about 60 FPS, zero >33.3 ms or >100 ms frames and zero streaming waits in both 300-frame routes. One main upload/frame, 6.476 m/s scripted movement. Model payload stays 49.38 MiB; reflections add **1,114,180 bytes** including fallback/metadata, with no pending CPU payload after upload.
+
+Repeated 1920x1061 render-only on/off GPU increment: torch off +.278/+.290 ms, on +.482/+.213 ms (mean/P95); CPU -0.008/-0.015 and -0.004/-0.007 ms. Counterbalanced order also passes: GPU +.050/-.259 off, -.217/-.595 on. Negative differences are clock/system-load noise, not a speedup claim. Both orders meet the unchanged <=1 ms increment budget; measured host frame limits also pass. Cold first-playable timing, long soak and human editor/input acceptance remain open. Next: unit D's authored captures/cache; steps 3-9 remain pending.
+
+Final back-face correction recheck: geometric-hemisphere guard avoids extra light on rear-facing surfaces without a perturbed-normal grazing cutoff. New unit C references were re-reviewed for that intentional change and now reproduce; Legacy/direct-only references remain untouched and pass. Final host torch on/off mean/P95 **16.667/18.079** and **16.667/17.932 ms**; no >33.3 ms frames or streaming waits. Counterbalanced GPU deltas +.013/-.012 ms off and -.162/+.097 ms on pass. Earlier measurements above are retained, not silently replaced.
+
+## Opt-In Direct PBR (2026-10-22, Historical A/B Results)
+
+Units A/B of `ENGINE_UPGRADE_PLAN.md` are implemented and validated sequentially. See [PBR_MATERIAL_GUIDE.md](PBR_MATERIAL_GUIDE.md) for the full material contract, baseline-before-change methodology, exact measurements, commands and limitations. New launcher: `LaunchPbrMaterialTest.bat`; all original level/launch defaults remain unchanged. Runtime stays C#.
+
+Latest results: 15 material and 126 numerical HDR GPU assertions; all 15 pre-change game/F2/standalone scene captures within 1/255; 387 GLBs/639 parts bit-exact source/cache validation; Legacy and PBR shadow/moving-door/batching checks; existing 282 bake/probe, 298 lighting, 41 emission, level-rendering/F2 and visibility/eviction suites pass. Debug/Release full solution/tool builds pass without warnings/errors; the new material/HDR and existing bake/probe assertions also pass in Debug. Model caches are now v3 for optional corrected normals; texture formats and authored collision geometry are unchanged.
+
+1920x1009 full-host PBR torch on/off averages 60.0 FPS, wall mean/P95 16.668/16.900 and 16.666/16.883 ms, no >33.3 ms frames or streaming waits in either 300-frame run. Legacy six-room torch-on stress: 16.667/17.959 ms with 120 fragments, doors, gravity hold and inventory. 1920x1061 steady paired GPU PBR cost is +0.119/+0.071 ms off and +0.019/-0.015 ms on (mean/P95). The profile explicitly reports startup/order effects and tests repeated/reversed pairs rather than hiding them. Model residency +2.47%, still one main upload/frame. Local gates pass; this does not certify an absolute 60 FPS minimum, long-duration stability or other hardware. Manual editor/input and cold first-playable acceptance remain open. Reflection environments/probes and bloom are not included.
+
+The PBR final HDR-guard recheck also passes: full-host on/off mean/P95 16.666/17.899 and 16.667/17.983 ms; zero >33.3 ms frames or streaming waits. Reversed steady GPU increments +0.188/+0.241 ms off and -0.049/-0.056 ms on stay within budget. Collision-cache round-trip, rays/contacts and all 387 model comparisons pass after the final build. Earlier same-day measurements above/below are retained rather than replaced.
+
+## Light Probes And Lighting Views (2026-10-22)
+
+Delivered after the static-indirect milestone below: optional regular-grid directional probes, visibility-aware interpolation for moving textured models/debris/weapons, cached stationary queries, and shared editor Full/Direct Only/Indirect Only, probe preview and marker controls. `LaunchLightProbeTest.bat` opens a separate already-baked fixture. Original levels/launch selections are unchanged. See [BAKED_LIGHTING_GUIDE.md](BAKED_LIGHTING_GUIDE.md) for setup, bounds and limitations.
+
+### Correctness And Compatibility
+
+- Full Debug/Release solution and authoring-tool builds pass with zero warnings/errors. **282 bake/probe assertions pass in both configurations**, including numerical six-axis packing, GPU sampling, no contribution leaking into subsequent unbaked draws, and Indirect Only suppressing direct/ambient/emission. The object buffer remains exactly **256 bytes**.
+- A deterministic sealed-compartment bake produces 50 usable fixture probes, with indirect in the lit compartment and none in the sealed dark one. Analytic trilinear movement, both sides of a thin wall, invalid-probe rejection, out-of-volume sampling, non-finite/negative data, persisted settings and file round trips pass. File load constructs the visibility BVH on a worker.
+- Actual `lightProbeTest.json`: 196/196 usable probes; all 17 static model bindings ready. Moving the actual crate between the warm and partitioned sides changes upward sample magnitude from **0.1265 to 0.0144** (test irradiance magnitude, not lux). Central crate pixels brighten with probes enabled while the static lightmap stays unchanged. Full/Indirect Only restores correctly; fixed-light overrides, Direct Only and stale edits suppress probes. Stationary queries reuse their cached result. F2 markers appear and disappear without contaminating normal rendering.
+- The original version-1 `indirectLightingRoom.hs2lightmap` still loads without modification/rebaking. All 17 bindings, runtime switch, fixed-light override, F2, stale-edit and reference captures pass. It now reports 44,792 brighter spawn pixels; earlier counts below are historical shader-image measurements.
+- Release regressions pass: `validate-rendering`, `validate-level-rendering`, `validate-emission` (41), `validate-lighting-state` (298), `validate-visibility-streaming`, `validate-collision-cache`, and `validate-six-room-flashlight-test`. This covers textured game/F2 images, moving doors, batched/reference images, failed/CPU-only replacements, all five puzzles, settling, eviction and persistent state.
+- The separate room's source, Game Release and HS2Editor Release bake copies have identical SHA-256 hashes. Source GLBs, existing level layouts, docking settings, movement/physics tuning and weapon HUD are unchanged by this milestone.
+
+### Measured Performance
+
+Sequential fresh-process Release runs, Windows/D3D11, **1920 x 1009 actual client area**, desktop VSync/presentation included, 120 warmup plus 300 measured frames each. The requested window was 1920 x 1080 but the desktop constrained its client size. Production HUD/input/physics run; scripted W/S and mouse movement exercise gameplay. Stress toggles a light (or six-room shutters), breaks six crates (120 peak pieces), gravity-holds/releases a prop and opens/closes inventory. Probes and the atlas were verified resident. No concurrent bake/build ran during measurement.
+
+| Route | Torch | Probes | Wall mean / P95 | Frames >33.3 ms | Probe CPU mean / max |
+| --- | --- | --- | --- | --- | --- |
+| Probe room walk | Off | On | 16.667 / 18.201 ms | 0 | 0.0136 / 0.0805 ms |
+| Probe room walk | On | On | 16.668 / 18.513 ms | 0 | 0.0173 / 0.0446 ms |
+| Probe room stress | Off | On | 16.668 / 18.298 ms | 0 | 0.4926 / 6.5145 ms |
+| Probe room stress reference | On | Off; atlas on | 16.665 / 18.632 ms | 0 | 0 / 0 ms |
+| Probe room stress | On | On | 16.667 / 18.514 ms | 0 | 0.3712 / 6.6048 ms |
+| Existing six-room stress | On | No probe volume | 16.666 / 18.129 ms | 0 | No sampling |
+| Existing six-room stress | Off | No probe volume | 16.660 / 18.313 ms | 0 | No sampling |
+
+The engine's profile reports **60.1 FPS** for these runs; wall intervals correspond to approximately **60.0 FPS**. This meets the local average target, **not a promise that every frame stays below 16.67 ms or that every machine/level is locked at 60**. Approximately half the measured intervals exceeded 16.7 ms in these presentation-paced runs; P95 is reported above rather than hidden. No measured frame crossed the 100 ms simulation clamp. There was still one main-scene upload per frame.
+
+All table runs had zero streaming-wait frames. An earlier first probe stress run had five streaming-wait frames, 16.668 ms wall mean, 17.329 ms P95 and no >33.3 ms frames; sampling averaged 0.4971 ms with a 6.7074 ms peak. That first run loaded an additional drop dependency (11 resident models/53.3 MiB versus 10/47.8 MiB in later runs). This variability is retained; no universal no-stall claim is made. The final probe-on/off stress comparison recorded 1.12/0.73 ms World CPU, but routes include collisions/random drops and are not deterministic isolated GPU timings. Original six-room stress travelled 5.024 m/s with both torch settings. Player speed/timestep settings were not changed.
+
+### Bake, Memory And Reproduction
+
+The new room uses the same 17 fixed instances/1,308 triangles, a 1024-square atlas (8 MiB), 0.19 MiB full instance buffers and a 1.25 m probe grid. Its offline bake took **24.51 seconds** and the complete file is **1,543,502 bytes**. Probe coefficients use 14,112 bytes and occluder positions 47,088 bytes, plus validity/grid/BVH/cache overhead. This is additional CPU memory, not an extra GPU texture or enlarged upload stride. Data stays resident for the level outside the model streaming budget. Invalid/stale files fall back to existing realtime lighting.
+
+```powershell
+.\.dotnet\dotnet.exe build Tools/LevelAuthoring/LevelAuthoring.csproj -c Release
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll validate-indirect-bake
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll validate-probe-room
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll validate-indirect-room
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll benchmark-gameplay-probes off
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll benchmark-gameplay-probes on
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll benchmark-gameplay-probes off --stress
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll benchmark-gameplay-probes on --stress --no-probes
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll benchmark-gameplay-probes on --stress
+```
+
+`on/off` means flashlight state; `--no-probes` disables only probe contribution for comparison. `build-probe-room` refuses to overwrite an existing level. `bake-level Game/Content/Levels/lightProbeTest.json` regenerates only its derived bake. Captures in the tool output `qa/` include `probe-crate-warm-on/off/indirect.png`, shaded equivalents and `probe-room-markers.png`. Warm on/off and marker images were visually inspected.
+
+Remaining acceptance: subjective gravity-carry lighting transitions, full standalone-editor mouse/docking workflow, longer multi-room and memory-soak runs, and total GPU timestamp profiling. Probes currently sample once per object and account for fixed baked occluders only; moving doors do not dynamically block indirect light. Untextured/blockout draws remain unlit. No general dynamic GI, switchable bake scenarios or guaranteed locked-60 claim is made. Preserve the accepted batching, upload budget, texture appearance and torch settings in later work.
+
+## Static Indirect Milestone (2026-10-22)
+
+Delivered: opt-in static geometry/fixed lights, shared editor bake/settings/progress/cancel/preview/stale UI, one diffuse bounce through the existing triangle BVH, padded per-triangle UVs, linear RGBA16F atlas sampling, validated lossless LZ4 bake files, render-thread uploads and fence-safe retirement. `LaunchIndirectLightingTest.bat` launches a separate room using existing assets. Original levels, source GLBs, project launch profiles, weapon HUD and saves are unchanged. Probes, switchable bake scenarios and bloom are not included. Workflow and limits: [BAKED_LIGHTING_GUIDE.md](BAKED_LIGHTING_GUIDE.md).
+
+### Correctness
+
+- Full Debug and Release solution builds pass with zero warnings/errors. Authoring tools build in both configurations; all **234 indirect-bake assertions pass in both**.
+- A sealed two-compartment fixture has lit-floor indirect energy 6.98987 versus 0.00000 on the dark floor. This is summed test irradiance, not a physical lux measurement. Repeated bakes match exactly; original positions/material UVs remain unchanged; padded charts do not overlap.
+- HDR/LZ4 round-trip, dependency invalidation, malformed/truncated/checksum failure, pre-write and active cancellation, saved-file preservation, metadata and undo/redo pass. Actual headless ImGui mouse clicks test Bake, Cancel, busy/disabled protection and save failure. This is not a manual docking/standalone-editor playtest.
+- Numeric real-GPU checks verify linear lightmap sampling before albedo/tone mapping, no lightmap leakage into unbaked draws and independent instances sharing a source model.
+- The actual test room loads all 17 bake bindings. Preview comparison yields 45,694 brighter spawn pixels; the partition's shaded side also has a measurable indirect contribution. Game and F2 captures preserve textured geometry. The reachable E-operated switch controls only its realtime screen/light. A forced runtime fixed-light-off override suppresses the whole bake, avoiding ghost indirect illumination. Editing architecture invalidates the active bake immediately.
+- Four rotated walls exposed an existing quaternion/Euler round-trip sign inversion. Eligible **Static Lighting** models now use their exact authored quaternion for rendering and collision, making all 17 fitted transforms match the bake. Unmarked legacy objects retain the existing path; this is not a general transform rewrite.
+- Existing Release suites pass again: `validate-emission` (41), `validate-lighting-state` (298), `validate-rendering`, `validate-level-rendering`, `validate-visibility-streaming`, `validate-collision-cache`, and `validate-six-room-flashlight-test`. Coverage includes shadow reference images, moving doors, all five puzzle routes, pickup/crate settling, shared-resource eviction/reload, and ready-before-replacement with failed/CPU-only assets.
+
+### Bake And Memory
+
+The new 8 x 8 m room has 17 fixed architecture instances and 1,308 triangles. Texels Per Triangle 16, Samples 64, Ray Distance 25 m produce one 1024-square atlas. The final warm-source Release bake took **20.08 seconds**, using two CPU workers; an earlier run took 23.17 seconds. This is offline baking time, not startup time.
+
+The file is **1,488,314 bytes**, including compressed metadata/pixels. The atlas is **8.00 MiB** uncompressed GPU memory, with **8.19 MiB** total atlas plus all instance buffers. CPU pixels remain resident too. The moving test kept seven visible instance bindings for **8.09 MiB** additional GPU memory; model geometry/shared textures separately used **47.8 MiB**. A single atlas stays resident per level; unused instance buffers retire after 120 frames. These resources are additional to the existing model streaming budget, not included in its counter. Model/lightmap uploads share a soft 2 ms budget, but an individual atlas/part upload is not preemptible.
+
+GPU vertex stride increased from 40 to 48 bytes for the extra lightmap coordinates, including unbaked models. The original six-room route now reports **107.9 MiB** of model geometry/shared texture payload; its 32 shared models remain resident. Updated forced-eviction checks measured **88.0 -> 32.4 MiB** with 36 evictions, preserving gameplay state. Historical numbers later in this report describe earlier layouts/materials; do not present them as current totals or the new bake's memory usage.
+
+### Moving Frame Measurements
+
+Release, normal Windows/D3D11 desktop, 1920 x 1009 actual client area, VSync/presentation included. Each row is one sequential fresh-process run, 120 warmup plus 300 measured frames, scripted W/S/mouse movement, production HUD/physics. The room's valid bake was explicitly verified resident. These are frame intervals, not isolated GPU timings, cold-load measurements or a hardware-independent guarantee.
+
+| Route | Torch | Mean frame | P95 | Frames >33.3 ms | Movement m/s |
+| --- | --- | --- | --- | --- | --- |
+| New baked room | Off | 16.665 ms | 17.316 ms | 0 | 4.993 |
+| New baked room | On | 16.668 ms | 17.037 ms | 0 | 4.907 |
+| Existing six-room walk | Off | 16.665 ms | 17.149 ms | 0 | 6.476 |
+| Existing six-room walk | On | 16.668 ms | 17.088 ms | 0 | 6.469 |
+| Existing six-room stress | Off | 16.720 ms | 17.222 ms | 1 | 5.047 |
+| Existing six-room stress | On | 16.667 ms | 17.011 ms | 0 | 5.040 |
+
+All six runs had zero streaming-wait frames and zero frames exceeding the 100 ms simulation clamp. Stress opened shutters, broke six crates (120 peak fragments), held/released a prop and opened/closed inventory. Small movement differences include acceleration/reversals, collision and input timing; no movement settings changed. The small room and six-room route are different layouts, so their travelled speeds are not a before/after comparison. The one off-stress spike is retained here; this is near-60 behaviour, not a locked-60 claim.
+
+### Reproduce And Remaining Checks
+
+Build `Tools/LevelAuthoring/LevelAuthoring.csproj` in Release, then use its output DLL:
+
+```powershell
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll validate-indirect-bake
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll validate-indirect-room
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll bake-level Game/Content/Levels/indirectLightingRoom.json
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll benchmark-gameplay-indirect off
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll benchmark-gameplay-indirect on
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll benchmark-gameplay-flashlight off --stress
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll benchmark-gameplay-flashlight on --stress
+```
+
+`build-indirect-room` refuses to overwrite an existing level; `bake-level` only regenerates its derived bake. Source and Release-output bake copies have matching SHA-256 hashes. GPU captures under the tool output `qa/` include `indirect-linear-gpu.png`, `indirect-room-on/off.png`, `indirect-room-shaded-on/off.png`, and `indirect-room-editor.png`. Game and shaded-side comparisons were visually inspected. F2 still contains existing helper boxes, not missing materials. Standalone docking/mouse workflows, subjective torch feel, a longer playthrough, multiple-room baking and memory soak remain manual/future checks. No production-ready general GI claim is made.
+
+## Earlier Milestones
+
 Date: 2026-10-06. Current Windows/D3D11 machine and project-local .NET 10. Source GLBs, authored level JSON and player saves were not rewritten by this pass. Earlier inventory visibility changes remain intact.
 
 ## Reproduce
@@ -245,12 +395,67 @@ Final builds: the solution and authoring tool build in both Debug and Release wi
 
 Reproduction commands are in [STREAMING_GUIDE.md](STREAMING_GUIDE.md). The bounded stress test is automated, not a manual controller/door/interactions playthrough. Cold OS-cache loading, complete game GPU timing, standalone-editor mouse/docking validation and a long memory soak remain unverified. No authored model, level layout, lighting values, source art or player saves were edited for this milestone.
 
+## Collision Cache Milestone (2026-10-21)
+
+Static mesh placements now use checksum-validated, lossless LZ4 caches of transformed triangles, index ordering and BVH nodes. The source-content/pose/skin/build key protects edited architecture; moving mesh-door poses explicitly bypass the disk cache. Missing/invalid/unwritable cache files retain the original construction path. No authored level, model, solver, movement, lighting or ammo pickup was changed. The user is sourcing a dedicated ammo model; the crate placeholder remains intentional until then. See [COLLISION_CACHE_GUIDE.md](COLLISION_CACHE_GUIDE.md).
+
+Three fresh-process Release source/cached pairs, warm filesystem and normal-desktop permissions:
+
+| Sample | Source collision stage | Cached collision stage | Source host/game init | Cached host/game init |
+| --- | --- | --- | --- | --- |
+| 1 | 31.313 ms | 13.939 ms | 1085.396 ms | 1049.831 ms |
+| 2 | 30.407 ms | 14.135 ms | 1067.538 ms | 1054.602 ms |
+| 3 | 31.020 ms | 13.771 ms | 1061.827 ms | 1055.769 ms |
+| Median | 31.020 ms | 13.939 ms | 1067.538 ms | 1054.602 ms |
+
+Each cached run hits all five six-room static mesh colliders with zero builds/writes. Source GLB hashing remains part of the cached stage. The current level uses mostly primitive colliders, so total initialization gains are modest. These figures exclude GPU-ready/first-playable time and true OS-cold loading. First-time cache generation costs extra and was not included in the cached timing column.
+
+Synthetic 20,000-triangle tests (seven measured warm samples after two warmups) recorded 49.690 ms build / 3.950 ms validated read initially, then 23.306 / 5.373 ms on the final Release rerun. The file is 400,969 bytes. The variation prevents a single reliable synthetic speedup claim; neither run represents whole-game loading.
+
+Verification:
+
+- Solution and authoring-tool builds pass in Debug and Release with zero warnings/errors.
+- `validate-collision-cache` passes in both configurations: exact triangle/bounds/skin comparison, 400 contacts/rays, moved/rotated/non-uniform placements, stale/version/key/corrupt/truncated/oversized payload rejection, checksum-valid bad index/tree rejection, repair and unwritable fallback. Production colliders match the original path, and moving-pose calls do not touch disk caches.
+- Release `validate-six-room-test`, `validate-six-room-flashlight-test`, `validate-level-rendering`, `validate-visibility-streaming` and `validate-collider-bounds` pass. This covers player routes, shutter blocking/opening, puzzle state, pickup/crate settling, textured Game/F2 output, replacement readiness and streaming ownership/state preservation.
+- Normal desktop Release full-host profiles (1920x1009, 120 warmup + 300 measured frames) retain approximately 60 FPS: torch on mean 16.53 ms / P95 17.33 ms, off 16.64 / 18.16 ms, combined stress 16.70 / 17.25 ms. Wall-frame means were 16.662, 16.662 and 16.717 ms. No measured frame exceeded 33.3 ms or the 100 ms clamp; streaming waits were zero. Stress produced 120 peak fragment bodies and completed shutter/crate/gravity-hold/inventory event groups. These are short regression samples, not a new universal performance guarantee or manual input-latency test.
+- Restricted execution denied atomic file replacement; normal desktop tests verified successful writes. The cache correctly fell back rather than removing collision in the unwritable case. No source art or player save was edited.
+
 ## Remaining Work
+
+See the October 22 emission milestone below for the latest material/lighting validation.
 
 - Cold and warm end-to-end first-playable startup, full-game/per-pass GPU timings, input-to-display latency and longer heterogeneous-asset/debris memory-soak routes. Short full-host walking and combined door/crate/gravity/inventory stress are covered above.
 - Full logical/physics room streaming, portal-aware dependencies and behind-wall occlusion. Automatic spatial visual dependencies, neighbour prefetch, shared-resource eviction and state retention are implemented.
-- Cooked collision/BVH acceleration, vertex/index optimization and packaged dependency metadata. Imported model geometry/material caching with lossless LZ4 is complete; source GLBs remain authoritative.
-- Baked indirect lighting/probes, emission and further shadow-budget improvements. Main-view frustum culling, switches/groups/flicker, saved enabled state and shadow caching/culling are complete.
+- Shared local-space collision instances, disk-cache pruning, vertex/index optimization and packaged dependency metadata. Static-placement collision/BVH and imported model caches are implemented; source GLBs remain authoritative.
+- Probes, larger/multi-room bake budgets, bloom and further shadow-budget improvements. The bounded static-indirect milestone above, imported emission/fixture controls, main-view frustum culling, switches/groups/flicker, saved enabled state and shadow caching/culling are complete within their documented scope.
 - Full physics-solver evaluation only if representative profiles justify it; no language rewrite is part of this pass.
 
 Keep existing visuals/colliders alive until replacements are ready. Missing/corrupt texture caches may use a compatible RGBA path, but a failed model replacement must retain the original object.
+
+## Emissive Fixtures (2026-10-22)
+
+Implemented GLB emissive maps/factors/strength, emissive UV selection/transform, BC7/sRGB preparation, model-cache v2, linear HDR emission, per-instance intensity/optional part-colour overrides, and stable-ID links to authored lights. Game, F2 and HS2Editor use the same emission-state calculation. Light editor markers no longer become opaque runtime boxes/shadow casters. Source GLBs and the existing lit/dim levels are unchanged. The new `sixRoomEmissionTest.json` preserves all 707 baseline entities and adds five test entities, with a separate Release launcher. Ammo remains deferred.
+
+Final solution and authoring-tool builds pass in Debug and Release with zero warnings/errors. All 41 emission checks pass in both configurations, including a numeric sRGB decode/linear radiance/tone-map check. The existing collision-cache regression also passes after these changes.
+
+Verification:
+
+- `validate-emission`: synthetic embedded GLB emission without a base-colour image, emissive-strength extension, secondary UV channel/texture transform, v2 metadata round-trip, v1/truncated cache fallback and emissive texture repair. GPU readbacks check source versus BC7, emission with no lights, switch-off restoration, per-part override isolation, two differently configured instances of a shared model, factor-only/no-UV fallback and exposure. State tests cover disabled/zero/missing links, independent editor defaults, deterministic flicker, RE:Dox level/state round-trips, prefab placement/apply/revert and undo/redo.
+- `validate-lighting-state`: 298 checks including the runtime light-helper fix. `validate-model-cache`: all 376 GLBs / 628 parts preserve geometry, UVs, identities, material/emission fields and prepared texture mips; fresh-process failure cases pass. Cooking took 54.1 seconds with existing texture caches, producing 374 unique v2 model caches and seven new image caches, no failures. This is offline cooking, not level loading time.
+- `validate-rendering`, `validate-level-rendering`, `validate-six-room-flashlight-test` and `validate-visibility-streaming` pass. They cover real spot/point shadows, textured F2 output, normal materials, culling/reference agreement, ready-before-replacement, traversable shutters, pickup/crate settling, puzzles, GPU-ready eviction/reload and persistent state. The updated residency fixture measured 87.3 -> 31.8 MiB of owned buffers/shared textures; figures exclude total process/driver memory.
+- `validate-six-room-emission-test`: gameplay interaction reaches the power lever from spawn, turns the actual light and screen emission off, and restores the image on repeated use. An emission-only frame isolates glow from the paired light. On/off screen captures were visually inspected; fixture facing and light-marker visibility were corrected before the final capture.
+
+Normal-desktop Release gameplay tests, 1920x1009 client area, VSync requested, warm assets, 120 warmup + 300 measured frames:
+
+| Route | Mean frame | P95 frame | World CPU | Frames >33.3 ms | Streaming waits |
+| --- | --- | --- | --- | --- | --- |
+| Original dim level, torch off | 16.65 ms | 16.83 ms | 2.17 ms | 0 | 0 |
+| Original dim level, torch on | 16.65 ms | 16.80 ms | 2.40 ms | 0 | 0 |
+| Original dim level, torch on + stress | 16.71 ms | 17.94 ms | 2.72 ms | 1 | 0 |
+| Emission test, fixture and torch on | 16.65 ms | 16.89 ms | 2.81 ms | 0 | 0 |
+
+Walking on/off both travelled 32.382 m over 5.000 simulated seconds with 300 fixed ticks, including acceleration/reversals. The stress run completed all shutter/crate/gravity/inventory groups with 120 peak fragments. The new test's scripted path hits its console stand, so its 23.382 m movement is not a speed comparison. All runs used one main-object upload/frame and no frame crossed the 100 ms simulation clamp. These short local runs remain near the accepted 60 FPS cap, not a universal zero-stutter guarantee or input-latency measurement.
+
+Owned geometry plus shared texture payload on the normal route is now 107.1 MiB versus the previous 99.7 MiB: newly supported emissive images and the additional UV channel have a real memory cost. It still retains 32 models with ten zones and no route evictions. Standalone editor docking/mouse interaction, long memory soaks, true cold startup and full-game GPU timings remain manual/future checks. Restricted execution blocks atomic replacement in temporary-file tests; those checks were rerun successfully with normal desktop permissions.
+
+Reproduce with `Tools/LevelAuthoring` in Release: `validate-emission`, `validate-lighting-state`, `validate-model-cache`, `validate-rendering`, `validate-six-room-emission-test`, `benchmark-gameplay-flashlight on`, `benchmark-gameplay-flashlight off`, `benchmark-gameplay-flashlight on --stress`, and `benchmark-gameplay-emission on`. Disposable captures are under `Tools/LevelAuthoring/bin/Release/net10.0/qa/` (`emission-*.png` and `six-room-emission-*.png`). No baked GI, probes, bloom, new solver or C++ migration is implemented in this milestone.

@@ -71,6 +71,8 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
     private Matrix4x4 _proj = Matrix4x4.Identity;
 
     public InputState InputState => _input;
+    private readonly LevelBakeSession _bakedLighting = new();
+    private readonly ReflectionProbeSession _roomReflections = new();
 
     public void Initialize(EngineContext context)
     {
@@ -110,6 +112,11 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
         _scripts.Register<MovingPlatformParams>("MovingPlatform", entity => new MovingPlatform(entity));
         _editor.SetScriptRegistry(_scripts);
         _editor.SaveActionOverride = SaveActiveDocument;
+        _editor.LightingBake = _bakedLighting;
+        _editor.RoomReflections = _roomReflections;
+        _editor.BakeAssetResolver = ResolveContentAssetPath;
+        _editor.ModelPartNames = path => TryGetEditorSceneModel(path, out var entry) && entry.LoadedModel != null
+            ? entry.LoadedModel.Parts.Select(p => p.PartKey).Distinct().ToArray() : [];
 
         _world = new BasicWorldRenderer(
             _context.Renderer.GraphicsDevice,
@@ -177,6 +184,9 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
 
     public void Dispose()
     {
+        _bakedLighting.Dispose();
+        _context?.Renderer.DrainRetiredResources();
+        _roomReflections.Dispose();
         DisposeEditorSceneModelCache();
         _world?.Dispose();
     }

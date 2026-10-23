@@ -11,7 +11,7 @@ using System.Text.Json;
 
 namespace Engine.Editor.Editor;
 
-public sealed class LevelEditorController
+public sealed partial class LevelEditorController
 {
     private const string GlbAssetDragDropPayload = "HS2_GLB_ASSET_PATH";
 
@@ -21,6 +21,10 @@ public sealed class LevelEditorController
     public bool Dirty { get; private set; }
     public int SelectedEntityIndex { get; private set; } = -1;
     public Action? SaveActionOverride { get; set; }
+    public Func<string, IReadOnlyList<string>>? ModelPartNames { get; set; }
+    public long Revision { get; private set; }
+    public LevelBakeSession? LightingBake { get; set; }
+    public Func<string, string>? BakeAssetResolver { get; set; }
 
     public readonly List<EditorDrawBox> DrawBoxes = new();
     public readonly List<EditorDrawBox> VertexSnapMarkers = new();
@@ -615,6 +619,7 @@ public sealed class LevelEditorController
     {
         foreach (var entity in entities)
         {
+            if (ids.TryGetValue(entity.EmissionLightId ?? "", out string? lightId)) entity.EmissionLightId = lightId;
             if (entity.Interaction == null || !string.Equals(entity.Interaction.Kind, "LightSwitch", StringComparison.OrdinalIgnoreCase)) continue;
             var targets = entity.Interaction.Targets ?? [];
             for (int i = 0; i < targets.Count; i++)
@@ -938,6 +943,16 @@ public sealed class LevelEditorController
             bool shadows = LevelFile.EnableShadows;
             float exposure = LevelFile.Exposure, ambient = LevelFile.AmbientLight, directional = LevelFile.DirectionalLight;
             bool changed = ImGui.Checkbox("Shadows", ref shadows);
+            int lightingModel = LevelFile.LightingModel == Engine.Render.SurfaceLightingModel.Pbr ? 1 : 0;
+            ImGui.TextUnformatted("Lighting Model"); ImGui.SetNextItemWidth(-1);
+            changed |= ImGui.Combo("##lightingModel", ref lightingModel, "Legacy\0PBR\0");
+            int reflection = LevelFile.ReflectionEnvironment == Engine.Render.ReflectionPreset.SyntheticStudio ? 1 : 0;
+            if (lightingModel == 1)
+            {
+                ImGui.TextUnformatted("Specular Environment"); ImGui.SetNextItemWidth(-1);
+                changed |= ImGui.Combo("##reflectionEnvironment", ref reflection, "Off\0Synthetic Test Studio\0");
+                if (reflection == 1) ImGui.TextWrapped(ReflectionStatus);
+            }
             changed |= ImGui.SliderFloat("Exposure", ref exposure, .05f, 8f);
             changed |= ImGui.SliderFloat("Ambient", ref ambient, 0, 2);
             changed |= ImGui.SliderFloat("Directional", ref directional, 0, 4);
@@ -945,6 +960,8 @@ public sealed class LevelEditorController
             {
                 BeginEdit();
                 LevelFile.EnableShadows = shadows; LevelFile.Exposure = exposure;
+                LevelFile.LightingModel = (Engine.Render.SurfaceLightingModel)lightingModel;
+                LevelFile.ReflectionEnvironment = (Engine.Render.ReflectionPreset)reflection;
                 LevelFile.AmbientLight = ambient; LevelFile.DirectionalLight = directional;
                 Dirty = true; EndEditIfAny();
             }
@@ -970,6 +987,8 @@ public sealed class LevelEditorController
             }
             ImGui.TreePop();
         }
+        DrawBakeToolbar();
+        DrawReflectionToolbar();
         ImGui.Checkbox("Show Colliders (OBB)", ref ShowColliders);
         ImGui.SameLine();
         ImGui.Checkbox("Corners", ref ShowColliderCorners);
@@ -1389,6 +1408,9 @@ public sealed class LevelEditorController
         ImGui.Separator();
         DrawTypeSpecificInspector(ent);
 
+        DrawEmissionInspector(ent);
+        DrawBakeEntityInspector(ent);
+        DrawReflectionInspector(ent);
         DrawInteractionInspector(ent);
 
         DrawDamageableInspector(ent);
@@ -1428,6 +1450,55 @@ public sealed class LevelEditorController
                 EndEditIfAny();
             }
             ImGui.EndDragDropTarget();
+        }
+    }
+
+    private void DrawEmissionInspector(LevelEntityDef ent)
+    {
+        if (string.IsNullOrWhiteSpace(ent.MeshPath) || !ImGui.CollapsingHeader("Emission")) return;
+        bool replace = ent.EmissionOverride;
+        if (ImGui.Checkbox("Override Imported Emission", ref replace))
+        {
+            BeginEdit(); ent.EmissionOverride = replace; Dirty = true; EndEditIfAny();
+        }
+        if (replace)
+        {
+            Vector3 color = ent.EmissionColor;
+            ImGui.TextUnformatted("Emission Colour (Linear)");
+            ImGui.SetNextItemWidth(-1f);
+            if (ImGui.ColorEdit3("##emissionColor", ref color))
+            {
+                BeginEdit(); ent.EmissionColor = color; Dirty = true; EndEditIfAny();
+            }
+            ImGui.TextUnformatted("Model Part");
+            ImGui.SetNextItemWidth(-1f);
+            if (ImGui.BeginCombo("##emissionPart", string.IsNullOrEmpty(ent.EmissionPart) ? "All Parts" : ent.EmissionPart))
+            {
+                foreach (string part in new[] { "" }.Concat(ModelPartNames?.Invoke(ent.MeshPath) ?? []).Distinct())
+                    if (ImGui.Selectable(part.Length == 0 ? "All Parts" : part, part == ent.EmissionPart))
+                    { BeginEdit(); ent.EmissionPart = part; Dirty = true; EndEditIfAny(); }
+                ImGui.EndCombo();
+            }
+        }
+        float intensity = ent.EmissionIntensity;
+        ImGui.TextUnformatted("Emission Intensity");
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.DragFloat("##emissionIntensity", ref intensity, .05f, 0, 100))
+        {
+            BeginEdit(); ent.EmissionIntensity = float.IsFinite(intensity) ? Math.Clamp(intensity, 0, 100) : 0;
+            Dirty = true; EndEditIfAny();
+        }
+        var linked = LevelFile.Entities.Find(e => e.Type == EntityTypes.PointLight && e.Id == ent.EmissionLightId);
+        ImGui.TextUnformatted("Linked Light");
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.BeginCombo("##emissionLight", string.IsNullOrEmpty(ent.EmissionLightId) ? "None" : linked?.Name ?? "Missing Light"))
+        {
+            if (ImGui.Selectable("None", string.IsNullOrEmpty(ent.EmissionLightId)))
+            { BeginEdit(); ent.EmissionLightId = ""; Dirty = true; EndEditIfAny(); }
+            foreach (var light in LevelFile.Entities.Where(e => e.Type == EntityTypes.PointLight))
+                if (ImGui.Selectable($"{light.Name ?? "Light"}##{light.Id}", light.Id == ent.EmissionLightId))
+                { BeginEdit(); ent.EmissionLightId = light.Id; Dirty = true; EndEditIfAny(); }
+            ImGui.EndCombo();
         }
     }
 
@@ -3129,6 +3200,7 @@ public sealed class LevelEditorController
 
     public void RebuildRuntimeFromLevel()
     {
+        Revision++;
         DrawBoxes.Clear();
         SolidColliders.Clear();
         Triggers.Clear();
@@ -3163,6 +3235,10 @@ public sealed class LevelEditorController
                 Vector3 half = ((Vector3)e.TriggerSize * 0.5f);
                 var aabb = new Aabb(wt - half, wt + half);
                 Triggers.Add((e.TriggerEvent ?? "", aabb, false));
+            }
+            else if (e.Type == EntityTypes.ReflectionProbe)
+            {
+                DrawBoxes.Add(EditorDrawBox.AxisAligned(wt, markerSmall, new Vector4(.2f,.8f,1,1)));
             }
             else if (e.Type == EntityTypes.PointLight)
             {
@@ -3317,6 +3393,7 @@ public sealed class LevelEditorController
 
         if (_editStartSnapshot != Snapshot())
         {
+            Revision++;
             _undoStack.Push(_editStartSnapshot);
             _redoStack.Clear();
         }

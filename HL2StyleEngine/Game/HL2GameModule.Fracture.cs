@@ -25,6 +25,7 @@ public sealed partial class HL2GameModule
     private sealed class FractureDebrisPiece
     {
         public string ModelAssetPath = "";
+        public Engine.Editor.Level.LevelEntityDef? Definition;
         public readonly HashSet<string> HiddenPartKeys = new(StringComparer.OrdinalIgnoreCase);
         public Vector3 Position;
         public Vector3 LocalCenter;
@@ -235,7 +236,9 @@ public sealed partial class HL2GameModule
             Matrix4x4 transform = CreateModelPartCenterTransform(entry.Bounds, piece.LocalCenter, piece.Position, piece.Size, piece.Rotation);
             Vector4 tint = piece.Tint;
             tint.W = Math.Clamp(tint.W, 0f, 1f) * alpha;
-            _world.DrawModel(renderer.CommandList, entry.Model, transform, tint, piece.HiddenPartKeys);
+            _world.DrawModel(renderer.CommandList, entry.Model, transform, tint, piece.HiddenPartKeys,
+                Engine.Editor.Editor.LevelLighting.GetEmission(_editor.LevelFile, piece.Definition, _lightState, _playTimeSeconds),
+                probe: _bakedLighting.SampleProbe(piece, piece.Position));
         }
     }
 
@@ -278,6 +281,7 @@ public sealed partial class HL2GameModule
             FractureDebrisPiece piece = new()
             {
                 ModelAssetPath = entity.Render.ModelAssetPath,
+                Definition = FindLevelEntityDef(entity),
                 Position = worldCenter,
                 LocalCenter = localCenter,
                 Size = entity.Render.Size,

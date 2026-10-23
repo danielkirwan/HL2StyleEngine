@@ -194,7 +194,7 @@ namespace Engine.Physics.Collision
             return found;
         }
 
-        private static bool RayIntersectsTriangle(in Ray ray, Vector3 a, Vector3 b, Vector3 c, float tMin, float tMax, out float hitT)
+        public static bool RayIntersectsTriangle(in Ray ray, Vector3 a, Vector3 b, Vector3 c, float tMin, float tMax, out float hitT)
         {
             hitT = 0f;
 

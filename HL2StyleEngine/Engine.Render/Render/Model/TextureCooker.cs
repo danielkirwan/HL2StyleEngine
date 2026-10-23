@@ -68,6 +68,8 @@ public static class TextureCooker
                 part.MaterialTexture = PrepareImage(material, TextureSemantic.Material, cacheDirectory, cook);
             if (part.NormalPng is { Length: > 0 } normal)
                 part.NormalTexture = PrepareImage(normal, TextureSemantic.Normal, cacheDirectory, cook);
+            if (part.EmissivePng is { Length: > 0 } emissive)
+                part.EmissiveTexture = PrepareImage(emissive, TextureSemantic.Color, cacheDirectory, cook);
         }
     }
 

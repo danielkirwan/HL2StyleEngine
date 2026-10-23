@@ -180,10 +180,12 @@ internal sealed partial class HS2EditorModule
         renderer.CommandList.SetScissorRect(0, (uint)viewportX, (uint)viewportY, (uint)viewportWidth, (uint)viewportHeight);
 
         _world.BeginFrame();
+        _bakedLighting.Update(_editor, ResolveContentAssetPath, _world, renderer);
         using var objectUploads = _world.BatchObjectUploads();
         _world.UpdateCamera(viewProj, _cameraPosition);
         renderer.Exposure = _editor.LevelFile.Exposure;
         LevelLighting.Apply(_world, _editor, _cameraPosition, seconds: _lightingPreviewSeconds);
+        _roomReflections.Update(_editor, ResolveContentAssetPath, _world, renderer);
         DrawSceneShadows(renderer, new Viewport(viewportX, viewportY, viewportWidth, viewportHeight, 0, 1));
 
         DrawGrid(renderer);
@@ -238,6 +240,8 @@ internal sealed partial class HS2EditorModule
             EditorDrawBox marker = _editor.VertexSnapMarkers[i];
             DrawBox(renderer, marker.Position, marker.Size, marker.Rotation, marker.Color);
         }
+        _bakedLighting.DrawProbeMarkers(_world, renderer);
+        _editor.DrawReflectionBounds(_world, renderer);
         renderer.CommandList.SetViewport(0, new Viewport(0f, 0f, windowWidth, windowHeight, 0f, 1f));
         renderer.CommandList.SetScissorRect(0, 0, 0, (uint)windowWidth, (uint)windowHeight);
     }
@@ -252,7 +256,7 @@ internal sealed partial class HS2EditorModule
             for (int i = 0; i < _editor.DrawBoxes.Count; i++)
             {
                 var def = _editor.LevelFile.Entities[i];
-                if (def.Type == EntityTypes.PointLight || def.Type == EntityTypes.PlayerSpawn || def.Type == EntityTypes.TriggerVolume) continue;
+                if (def.Type is EntityTypes.PointLight or EntityTypes.PlayerSpawn or EntityTypes.TriggerVolume or EntityTypes.ReflectionProbe) continue;
                 var draw = _editor.DrawBoxes[i];
                 RenderModel? model = null;
                 var transform = Matrix4x4.CreateScale(draw.Size) * Matrix4x4.CreateFromQuaternion(draw.Rotation) * Matrix4x4.CreateTranslation(draw.Position);
@@ -285,7 +289,10 @@ internal sealed partial class HS2EditorModule
         try
         {
             Matrix4x4 transform = CreateBoundsFitTransform(entry.Min, entry.Max, draw.Position, draw.Size, draw.Rotation);
-            _world.DrawModel(renderer.CommandList, entry.RenderModel, transform, Vector4.One);
+            _world.DrawModel(renderer.CommandList, entry.RenderModel, transform, entity.StaticLighting ? (Vector4)entity.Color : Vector4.One, null,
+                LevelLighting.GetEmission(_editor.LevelFile, entity, seconds: _lightingPreviewSeconds),
+                _bakedLighting.GetBinding(entity, entry.LoadedModel, transform, _editor.LevelFile, _world, renderer),
+                _bakedLighting.SampleProbe(entity, draw.Position, entity));
             return true;
         }
         catch (Exception ex)

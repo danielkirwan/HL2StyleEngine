@@ -7,6 +7,9 @@ cbuffer Object : register(b1)
 {
     float4x4 Model;
     float4 Color;
+    float4 Material;
+    float4x4 NormalMatrix;
+    float4 Emission;
 };
 
 struct VSInput
@@ -34,5 +37,5 @@ VSOutput VSMain(VSInput input)
 float4 PSMain(VSOutput input) : SV_TARGET
 {
     float3 radiance = lerp(input.Color.rgb / 12.92, pow(max(0, (input.Color.rgb + .055) / 1.055), 2.4), step(.04045, input.Color.rgb));
-    return float4(radiance, input.Color.a);
+    return float4(radiance + Emission.rgb, input.Color.a);
 }

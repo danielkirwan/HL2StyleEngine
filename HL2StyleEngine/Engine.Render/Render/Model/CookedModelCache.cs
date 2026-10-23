@@ -10,7 +10,7 @@ namespace Engine.Render;
 public static class CookedModelCache
 {
     private const uint Magic = 0x4D324853;
-    private const int Version = 1, MaxPayload = 512 * 1024 * 1024, MaxParts = 65536, MaxStringBytes = 4096;
+    private const int Version = 3, MaxPayload = 512 * 1024 * 1024, MaxParts = 65536, MaxStringBytes = 4096;
     public static bool Enabled { get; set; } = Environment.GetEnvironmentVariable("HS2_MODEL_CACHE") != "0";
     public static long CacheHits, FallbackLoads, CookedModels;
 
@@ -79,18 +79,29 @@ public static class CookedModelCache
                 int nodeIndex = reader.ReadInt32(), meshIndex = reader.ReadInt32(), primitiveIndex = reader.ReadInt32();
                 var color = new Vector4(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
                 float metallic = reader.ReadSingle(), roughness = reader.ReadSingle();
+                var emissive = new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+                if (!float.IsFinite(emissive.X) || !float.IsFinite(emissive.Y) || !float.IsFinite(emissive.Z) ||
+                    Vector3.Min(emissive, Vector3.Zero) != Vector3.Zero) return false;
                 var positions = ReadArray<Vector3>(reader);
                 var normals = ReadOptionalArray<Vector3>(reader);
+                var pbrNormals = ReadOptionalArray<Vector3>(reader);
                 var uv = ReadOptionalArray<Vector2>(reader);
+                var emissiveUv = ReadOptionalArray<Vector2>(reader);
                 var indices = ReadArray<uint>(reader);
                 if (positions.Length == 0 || indices.Length % 3 != 0 || indices.Any(v => v >= positions.Length) ||
-                    normals != null && normals.Length != positions.Length || uv != null && uv.Length != positions.Length) return false;
+                    normals != null && normals.Length != positions.Length || uv != null && uv.Length != positions.Length ||
+                    emissiveUv != null && emissiveUv.Length != positions.Length ||
+                    pbrNormals != null && (pbrNormals.Length != positions.Length || pbrNormals.Any(n => !float.IsFinite(n.LengthSquared()) || n.LengthSquared() < 1e-12f))) return false;
                 var part = new LoadedModelPart(positions, normals, uv, indices, color, null, null, metallic, roughness,
                     node, mesh, nodeIndex, meshIndex, primitiveIndex)
                 {
                     BaseColorTexture = ReadTexture(reader, TextureSemantic.Color),
                     MaterialTexture = ReadTexture(reader, TextureSemantic.Material),
-                    NormalTexture = ReadTexture(reader, TextureSemantic.Normal)
+                    NormalTexture = ReadTexture(reader, TextureSemantic.Normal),
+                    EmissiveTexture = ReadTexture(reader, TextureSemantic.Color),
+                    EmissiveFactor = emissive,
+                    EmissiveTexCoords = emissiveUv,
+                    PbrNormals = pbrNormals
                 };
                 parts.Add(part);
             }
@@ -148,12 +159,15 @@ public static class CookedModelCache
                 writer.Write(part.NodeIndex); writer.Write(part.MeshIndex); writer.Write(part.PrimitiveIndex);
                 writer.Write(part.Color.X); writer.Write(part.Color.Y); writer.Write(part.Color.Z); writer.Write(part.Color.W);
                 writer.Write(part.MetallicFactor); writer.Write(part.RoughnessFactor);
+                writer.Write(part.EmissiveFactor.X); writer.Write(part.EmissiveFactor.Y); writer.Write(part.EmissiveFactor.Z);
                 WriteArray(writer, part.Positions);
-                WriteOptionalArray(writer, part.Normals); WriteOptionalArray(writer, part.TexCoords);
+                WriteOptionalArray(writer, part.Normals); WriteOptionalArray(writer, part.PbrNormals); WriteOptionalArray(writer, part.TexCoords);
+                WriteOptionalArray(writer, part.EmissiveTexCoords);
                 WriteArray(writer, part.Indices);
                 WriteString(writer, part.BaseColorTexture?.Key ?? "");
                 WriteString(writer, part.MaterialTexture?.Key ?? "");
                 WriteString(writer, part.NormalTexture?.Key ?? "");
+                WriteString(writer, part.EmissiveTexture?.Key ?? "");
                 if (stream.Length > MaxPayload) throw new InvalidDataException("Cooked model exceeds payload budget.");
             }
         }

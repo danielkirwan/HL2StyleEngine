@@ -10,5 +10,6 @@
     <ProjectReference Include="../../Engine.Editor/Engine.Editor.csproj" />
     <ProjectReference Include="../../Game/Game.csproj" />
     <ProjectReference Include="../../Engine.UI/Engine.UI.csproj" />
+    <ProjectReference Include="../../HS2Editor/HS2Editor.csproj" />
   </ItemGroup>
 </Project>

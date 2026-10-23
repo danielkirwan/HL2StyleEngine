@@ -53,15 +53,21 @@ public sealed class LoadedModelPart
 
     public Vector3[] Positions { get; }
     public Vector3[]? Normals { get; }
+    // Corrected node-space inverse-transpose normals for opt-in PBR. Null shares the legacy array.
+    public Vector3[]? PbrNormals { get; init; }
     public Vector2[]? TexCoords { get; }
     public uint[] Indices { get; }
     public Vector4 Color { get; }
     public byte[]? BaseColorPng { get; }
     public byte[]? MetallicRoughnessPng { get; }
     public byte[]? NormalPng { get; init; }
+    public byte[]? EmissivePng { get; init; }
+    public Vector3 EmissiveFactor { get; init; }
+    public Vector2[]? EmissiveTexCoords { get; init; }
     public PreparedTexture? BaseColorTexture { get; set; }
     public PreparedTexture? MaterialTexture { get; set; }
     public PreparedTexture? NormalTexture { get; set; }
+    public PreparedTexture? EmissiveTexture { get; set; }
     public float MetallicFactor { get; }
     public float RoughnessFactor { get; }
     public string NodeName { get; }

@@ -294,7 +294,10 @@ public sealed partial class HL2GameModule
 
         Matrix4x4 transform = CreateBoundsFitTransform(entry.Bounds, position, size, rotation);
         IReadOnlySet<string>? hiddenPartKeys = BuildHiddenModelPartKeys(entity, entry.LoadedModel);
-        _world.DrawModel(renderer.CommandList, entry.Model, transform, tint, hiddenPartKeys);
+        _world.DrawModel(renderer.CommandList, entry.Model, transform, tint, hiddenPartKeys,
+            Engine.Editor.Editor.LevelLighting.GetEmission(_editor.LevelFile, FindLevelEntityDef(entity), _lightState, _playTimeSeconds),
+            _bakedLighting.GetBinding(FindLevelEntityDef(entity), entry.LoadedModel!, transform, _editor.LevelFile, _world, renderer, _lightState),
+            _bakedLighting.SampleProbe(entity, position, FindLevelEntityDef(entity)));
         return true;
     }
 
@@ -303,7 +306,8 @@ public sealed partial class HL2GameModule
         if (!TryGetReadyModel(modelAssetPath, modelKind, out WeaponModelCacheEntry? entry) || entry?.Model == null)
             return false;
 
-        _world.DrawModel(renderer.CommandList, entry.Model, transform, tint);
+        _world.DrawModel(renderer.CommandList, entry.Model, transform, tint, null,
+            probe: _bakedLighting.SampleProbe(modelAssetPath, _camera.Position));
         return true;
     }
 

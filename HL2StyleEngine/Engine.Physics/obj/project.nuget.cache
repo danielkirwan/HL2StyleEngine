@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "WtO53EYhHVI=",
+  "dgSpecHash": "9Oqk2okHdLo=",
   "success": true,
   "projectFilePath": "F:\\Tools\\HL2StyleEngine\\HL2StyleEngine\\Engine.Physics\\Engine.Physics.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\danie\\.nuget\\packages\\k4os.compression.lz4\\1.3.8\\k4os.compression.lz4.1.3.8.nupkg.sha512"
+  ],
   "logs": []
 }

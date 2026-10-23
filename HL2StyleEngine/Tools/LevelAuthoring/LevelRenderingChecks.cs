@@ -8,12 +8,12 @@ using Veldrid;
 
 internal static class LevelRenderingChecks
 {
-    public static void Run(string root, bool benchmarkOnly = false, bool flashlightOnly = false, bool profileFlashlight = false)
+    public static void Run(string root, bool benchmarkOnly = false, bool flashlightOnly = false, bool profileFlashlight = false, bool emissionTest = false, bool indirectTest = false, bool probeTest = false)
     {
         var readyTimer = System.Diagnostics.Stopwatch.StartNew();
         using var host = new EngineHost(profileFlashlight ? 1920 : 1280, profileFlashlight ? 1080 : 720, "Level Rendering QA");
         using var game = new Game.HL2GameModule(Path.Combine(root, "Game/Content/Levels",
-            flashlightOnly ? SixRoomFlashlightTest.FileName : "sixRoomTest.json"));
+            probeTest ? ProbeLightingRoom.FileName : indirectTest ? IndirectLightingRoom.FileName : emissionTest ? SixRoomEmissionTest.FileName : flashlightOnly ? SixRoomFlashlightTest.FileName : "sixRoomTest.json"));
         game.AssetStreamingEnabled = false;
         game.Initialize(host.Context);
         double initializedMs = readyTimer.Elapsed.TotalMilliseconds;
@@ -48,12 +48,22 @@ internal static class LevelRenderingChecks
 
         string output = Path.Combine(AppContext.BaseDirectory, "qa");
         Directory.CreateDirectory(output);
+        if (indirectTest)
+        {
+            CheckIndirectRoom(); device.WaitForIdle(); return;
+        }
         if (profileFlashlight)
         {
             FlashlightPerformanceChecks.Run(game, host, framebuffer);
             return;
         }
         uint[] normal = Frame(true)!;
+        if (emissionTest)
+        {
+            CheckEmissionRoom(normal);
+            device.WaitForIdle();
+            return;
+        }
         world.ViewCullingEnabled = false;
         if (!EquivalentPixels(normal, Frame(true)!)) throw new InvalidDataException("Main-view culling changed visible level geometry.");
         uint referenceDraws = world.ObjectDrawCount;
@@ -89,6 +99,162 @@ internal static class LevelRenderingChecks
         RenderPipelineChecks.SavePng(editor, width, height, Path.Combine(output, "six-room-editor-cooked.png"));
         CheckReplacementReadiness();
         device.WaitForIdle();
+
+        void CheckIndirectRoom()
+        {
+            string capturePrefix = probeTest ? "probe-room" : "indirect-room";
+            var bake = (Engine.Editor.Editor.LevelBakeSession)typeof(Game.HL2GameModule).GetField("_bakedLighting",flags)!.GetValue(game)!;
+            var editor = (Engine.Editor.Editor.LevelEditorController)typeof(Game.HL2GameModule).GetField("_editor",flags)!.GetValue(game)!;
+            var state = (Engine.Editor.Level.LevelLightState)typeof(Game.HL2GameModule).GetField("_lightState",flags)!.GetValue(game)!;
+            int expected = editor.LevelFile.Entities.Count(e=>e.StaticLighting);
+            world.ViewCullingEnabled = false;
+            while (!bake.Ready || bake.ReadyModels != expected)
+            {
+                Frame(false); Thread.Sleep(10);
+                if (timer.Elapsed > TimeSpan.FromSeconds(15)) throw new InvalidDataException($"Bake readiness failed: {bake.Status}; {bake.ReadyModels}/{expected}; {bake.LastBindingIssue}");
+            }
+            world.ViewCullingEnabled = true;
+            long bakeBytes = bake.ResidentBytes;
+            uint[] on = Frame(true)!;
+            bake.PreviewEnabled=false; uint[] off=Frame(true)!; bake.PreviewEnabled=true;
+            int Brighter(uint[] a,uint[] b) => a.Zip(b).Count(p=>Sum(p.First)>Sum(p.Second)+6);
+            int Sum(uint p)=>(int)((p&255)+((p>>8)&255)+((p>>16)&255));
+            int delta=Brighter(on,off);
+            RenderPipelineChecks.SavePng(on,width,height,Path.Combine(output,capturePrefix+"-on.png"));
+            RenderPipelineChecks.SavePng(off,width,height,Path.Combine(output,capturePrefix+"-off.png"));
+            if(delta<1000) throw new InvalidDataException($"Baked bounce not visible: {delta} brighter pixels.");
+            if(!EquivalentPixels(on,Frame(true)!)) throw new InvalidDataException("Bake preview toggle was not reversible.");
+            var lever=editor.LevelFile.Entities.Single(e=>e.Name=="RealtimeLightSwitch");
+            var camera=(Game.FpsCamera)typeof(Game.HL2GameModule).GetField("_camera",flags)!.GetValue(game)!;
+            float yaw=camera.Yaw,pitch=camera.Pitch;
+            Vector3 direction=Vector3.Normalize((Vector3)lever.LocalPosition-camera.Position);
+            camera.Yaw=MathF.Atan2(direction.X,direction.Z);camera.Pitch=MathF.Asin(direction.Y);
+            bool used=(bool)typeof(Game.HL2GameModule).GetMethod("TryUseFocusedInteractable",flags)!.Invoke(game,null)!;
+            camera.Yaw=yaw;camera.Pitch=pitch;
+            if(!used) throw new InvalidDataException("Realtime switch not reachable from test spawn.");
+            var blue=editor.LevelFile.Entities.Single(e=>e.Name=="RealtimeScreenLight");
+            uint[] switched=Frame(true)!;
+            bake.PreviewEnabled=false;var switchedNoBake=Frame(true)!;bake.PreviewEnabled=true;
+            if(state.IsEnabled(blue)||switched.SequenceEqual(on)||Brighter(switched,switchedNoBake)<1000)
+                throw new InvalidDataException("Realtime switch incorrectly controls the fixed bake.");
+            state.Clear();
+            var fixedLight=editor.LevelFile.Entities.Single(e=>e.BakeIndirect);
+            state.Restore([new(){EntityId=fixedLight.Id,Enabled=false}]);
+            var overrideOff=Frame(true)!;
+            if(bake.SampleProbe("override-check",new(-2.6f,.55f,1.1f)).HasEnergy)
+                throw new InvalidDataException("Disabled fixed light retained probe illumination.");
+            bake.PreviewEnabled=false;
+            if(!EquivalentPixels(overrideOff,Frame(true)!))throw new InvalidDataException("Runtime fixed-light override left ghost indirect light.");
+            bake.PreviewEnabled=true;state.Clear();
+            Vector3 spawnPosition = camera.Position;
+            camera.Position = new Vector3(2.7f,1.7f,-.3f); camera.Yaw=0; camera.Pitch=-.2f;
+            uint[] behind = Frame(true)!; bake.PreviewEnabled=false; uint[] behindOff=Frame(true)!; bake.PreviewEnabled=true;
+            if(Brighter(behind,behindOff)<1000) throw new InvalidDataException("Partition's shaded side has no visible indirect contribution.");
+            RenderPipelineChecks.SavePng(behind,width,height,Path.Combine(output,capturePrefix+"-shaded-on.png"));
+            RenderPipelineChecks.SavePng(behindOff,width,height,Path.Combine(output,capturePrefix+"-shaded-off.png"));
+            camera.Position=spawnPosition;camera.Yaw=yaw;camera.Pitch=pitch;
+            if(probeTest)
+            {
+                Frame(false);
+                if(bake.Probes is not { } probes || probes.Valid.Count(v=>v)==0)
+                    throw new InvalidDataException("Room has no valid probes.");
+                var entities=(List<Entity>)typeof(Game.HL2GameModule).GetField("_runtimeEntities",flags)!.GetValue(game)!;
+                var crate=entities.Single(e=>e.Name=="MovableCrate_0");
+                Vector3 original=crate.Transform.Position;
+                var energies=new List<float>();
+                // Move the actual rendered crate between the warm and partitioned sides, without advancing physics.
+                foreach(var position in new[]{new Vector3(-2.6f,.55f,1.1f),new Vector3(2.6f,.55f,1.1f)})
+                {
+                    crate.Transform.Position=position;
+                    camera.Position=position+new Vector3(0,.5f,-2);camera.Yaw=0;camera.Pitch=-.2f;
+                    Frame(false);
+                    var light=bake.SampleProbe(crate,position);
+                    energies.Add(light.Evaluate(Vector3.UnitY).Length());
+                    if(!light.HasEnergy)throw new InvalidDataException($"Crate has no probe lighting at {position}.");
+                    int queries=bake.ProbeQueries;
+                    bake.SampleProbe(crate,position);
+                    if(bake.ProbeQueries!=queries)throw new InvalidDataException("Stationary probe query was not reused.");
+                    var full=Frame(true)!;
+                    bake.PreviewProbes=false;var noProbes=Frame(true)!;bake.PreviewProbes=true;
+                    int changed=0;
+                    for(int y=height/2-64;y<height/2+64;y++)for(int x=width/2-64;x<width/2+64;x++)
+                        if(Sum(full[y*width+x])>Sum(noProbes[y*width+x])+2)changed++;
+                    if(changed<100)throw new InvalidDataException($"Crate's central image did not receive probes: {changed} pixels.");
+                    string side=position.X<0?"warm":"shaded";
+                    RenderPipelineChecks.SavePng(full,width,height,Path.Combine(output,$"probe-crate-{side}-on.png"));
+                    RenderPipelineChecks.SavePng(noProbes,width,height,Path.Combine(output,$"probe-crate-{side}-off.png"));
+                    bake.View=Engine.Editor.Editor.IndirectLightingView.IndirectOnly;
+                    var indirect=Frame(true)!;
+                    if(indirect.SequenceEqual(full))throw new InvalidDataException("Indirect Only did not remove direct lighting.");
+                    RenderPipelineChecks.SavePng(indirect,width,height,Path.Combine(output,$"probe-crate-{side}-indirect.png"));
+                    bake.View=Engine.Editor.Editor.IndirectLightingView.Full;
+                    if(!EquivalentPixels(full,Frame(true)!))throw new InvalidDataException("Indirect comparison did not restore Full lighting.");
+                }
+                if(MathF.Abs(energies[0]-energies[1])<.001f)throw new InvalidDataException("Moving crate did not change its sampled lighting.");
+                crate.Transform.Position=original;camera.Position=spawnPosition;camera.Yaw=yaw;camera.Pitch=pitch;
+                bake.View=Engine.Editor.Editor.IndirectLightingView.DirectOnly;Frame(false);
+                if(bake.SampleProbe(crate,original).HasEnergy)throw new InvalidDataException("Direct Only retained probe lighting.");
+                bake.View=Engine.Editor.Editor.IndirectLightingView.Full;
+                Console.WriteLine($"PASS: {probes.Valid.Count(v=>v)}/{probes.Valid.Length} valid probes; moving crate energies {energies[0]:F4}/{energies[1]:F4}; actual model pixels, stationary cache and comparison modes.");
+            }
+            typeof(Game.HL2GameModule).GetField("_editorEnabled",flags)!.SetValue(game,true);
+            editor.ShowPhysicsAabbs=false;editor.ShowColliders=false;editor.GizmoEnabled=false;
+            uint[] editOn=Frame(true)!;bake.PreviewEnabled=false;uint[] editOff=Frame(true)!;bake.PreviewEnabled=true;
+            if(Brighter(editOn,editOff)<1000)throw new InvalidDataException("Textured F2 view did not receive the lightmap.");
+            RenderPipelineChecks.SavePng(editOn,width,height,Path.Combine(output,capturePrefix+"-editor.png"));
+            if(probeTest)
+            {
+                bake.ShowProbes=true;var markers=Frame(true)!;bake.ShowProbes=false;
+                if(markers.Zip(editOn).Count(p=>p.First!=p.Second)<100)throw new InvalidDataException("Probe markers are missing from F2.");
+                RenderPipelineChecks.SavePng(markers,width,height,Path.Combine(output,"probe-room-markers.png"));
+                if(!EquivalentPixels(editOn,Frame(true)!))throw new InvalidDataException("Probe markers contaminated the normal preview.");
+            }
+            editor.LevelFile.Entities.First(e=>e.StaticLighting).LocalPosition=new(0,20,0);editor.RebuildRuntimeFromLevel();
+            Frame(false);
+            if(bake.Ready)throw new InvalidDataException("Editing a wall retained a stale lightmap.");
+            if(bake.SampleProbe("stale-check",new(-2.6f,.55f,1.1f)).HasEnergy)
+                throw new InvalidDataException("Editing a wall retained stale probes.");
+            Console.WriteLine($"PASS: {expected} baked models; {delta} brighter indirect pixels; {bakeBytes/1048576.0:F2} MiB bake resources; preview, reachable realtime switch, fixed-light override and F2 checks. Captures: {output}");
+        }
+
+        void CheckEmissionRoom(uint[] on)
+        {
+            var editor = (Engine.Editor.Editor.LevelEditorController)typeof(Game.HL2GameModule).GetField("_editor", flags)!.GetValue(game)!;
+            var camera = (Game.FpsCamera)typeof(Game.HL2GameModule).GetField("_camera", flags)!.GetValue(game)!;
+            var state = (Engine.Editor.Level.LevelLightState)typeof(Game.HL2GameModule).GetField("_lightState", flags)!.GetValue(game)!;
+            var light = editor.LevelFile.Entities.Single(e => e.Name == "EmissionTest_ScreenLight");
+            var lever = editor.LevelFile.Entities.Single(e => e.Name == "EmissionTest_PowerSwitch");
+            float yaw = camera.Yaw, pitch = camera.Pitch;
+            void UseLever()
+            {
+                Vector3 direction = Vector3.Normalize((Vector3)lever.LocalPosition - camera.Position);
+                camera.Yaw = MathF.Atan2(direction.X, direction.Z); camera.Pitch = MathF.Asin(direction.Y);
+                bool used = (bool)typeof(Game.HL2GameModule).GetMethod("TryUseFocusedInteractable", flags)!.Invoke(game, null)!;
+                camera.Yaw = yaw; camera.Pitch = pitch;
+                if (!used) throw new InvalidDataException("Test power lever cannot be reached from spawn using gameplay interaction.");
+            }
+            UseLever();
+            uint[] off = Frame(true)!;
+            if (state.IsEnabled(light) || on.Zip(off).Count(p => p.First != p.Second) < 5000)
+                throw new InvalidDataException("Test switch did not change the rendered scene.");
+            // Isolate emission from the paired light to prove both actually turn off.
+            light.LightEnabled = false;
+            state.Clear();
+            var fixtures = editor.LevelFile.Entities.Where(e => e.EmissionLightId == light.Id).ToArray();
+            foreach (var fixture in fixtures) fixture.EmissionLightId = "";
+            uint[] emissionOnly = Frame(true)!;
+            foreach (var fixture in fixtures) fixture.EmissionLightId = light.Id;
+            if (emissionOnly.Zip(off).Count(p => p.First != p.Second) < 100)
+                throw new InvalidDataException("Linked console/arcade emission was not visible separately from the light.");
+            light.LightEnabled = true;
+            if (!EquivalentPixels(on, Frame(true)!)) throw new InvalidDataException("Authored on state did not restore.");
+            UseLever(); UseLever();
+            if (!EquivalentPixels(on, Frame(true)!)) throw new InvalidDataException("Repeated switch did not restore fixture appearance.");
+            RenderPipelineChecks.SavePng(on, width, height, Path.Combine(output, "six-room-emission-on.png"));
+            RenderPipelineChecks.SavePng(off, width, height, Path.Combine(output, "six-room-emission-off.png"));
+            RenderPipelineChecks.SavePng(emissionOnly, width, height, Path.Combine(output, "six-room-emission-only.png"));
+            Console.WriteLine($"PASS: {cache.Count} ready models; reachable gameplay switch toggles actual lighting and imported screen emission; repeated use restores pixels. Captures: {output}");
+        }
 
         void CheckDarkRoom(uint[] off)
         {

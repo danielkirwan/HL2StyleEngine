@@ -161,10 +161,20 @@ public static class GlbModelLoader
             Vector3[]? normals = attributes.TryGetProperty("NORMAL", out JsonElement normalAccessorElement)
                 ? ReadVec3Accessor(root, normalAccessorElement.GetInt32(), binBytes)
                 : null;
+            Vector3[]? pbrNormals = null;
             if (normals != null)
             {
+                bool invertible = Matrix4x4.Invert(transform, out var inverse);
+                var normalTransform = invertible ? Matrix4x4.Transpose(inverse) : Matrix4x4.Identity;
+                pbrNormals = new Vector3[normals.Length];
                 for (int n = 0; n < normals.Length; n++)
+                {
+                    var corrected = Vector3.TransformNormal(normals[n], normalTransform);
+                    pbrNormals[n] = float.IsFinite(corrected.LengthSquared()) && corrected.LengthSquared() > 1e-12f
+                        ? Vector3.Normalize(corrected) : Vector3.UnitY;
                     normals[n] = Vector3.Normalize(Vector3.TransformNormal(normals[n], transform));
+                }
+                if (pbrNormals.Zip(normals).All(pair => Vector3.DistanceSquared(pair.First, pair.Second) < 1e-12f)) pbrNormals = null;
             }
 
             Vector2[]? texCoords = attributes.TryGetProperty("TEXCOORD_0", out JsonElement texCoordAccessorElement)
@@ -194,7 +204,14 @@ public static class GlbModelLoader
                 meshName,
                 nodeIndex,
                 meshIndex,
-                i) { NormalPng = ReadMaterialImageBytes(root, primitive, binBytes, "normalTexture") });
+                i)
+            {
+                PbrNormals = pbrNormals,
+                NormalPng = ReadMaterialImageBytes(root, primitive, binBytes, "normalTexture"),
+                EmissivePng = ReadMaterialImageBytes(root, primitive, binBytes, "emissiveTexture"),
+                EmissiveFactor = ReadEmissiveFactor(root, primitive),
+                EmissiveTexCoords = ReadEmissiveTexCoords(root, primitive, attributes, binBytes)
+            });
         }
     }
 
@@ -352,6 +369,54 @@ public static class GlbModelLoader
     private static byte[]? ReadBaseColorImageBytes(JsonElement root, JsonElement primitive, ReadOnlyMemory<byte> binBytes)
         => ReadMaterialImageBytes(root, primitive, binBytes, "baseColorTexture");
 
+    private static Vector3 ReadEmissiveFactor(JsonElement root, JsonElement primitive)
+    {
+        if (!primitive.TryGetProperty("material", out var index) || !root.TryGetProperty("materials", out var materials))
+            return Vector3.Zero;
+        var material = materials[index.GetInt32()];
+        Vector3 factor = Vector3.Zero;
+        if (material.TryGetProperty("emissiveFactor", out var rgb) && rgb.GetArrayLength() == 3)
+            factor = new(rgb[0].GetSingle(), rgb[1].GetSingle(), rgb[2].GetSingle());
+        float strength = 1;
+        if (material.TryGetProperty("extensions", out var extensions) &&
+            extensions.TryGetProperty("KHR_materials_emissive_strength", out var emission) &&
+            emission.TryGetProperty("emissiveStrength", out var value)) strength = value.GetSingle();
+        if (!float.IsFinite(strength) || strength < 0 || !float.IsFinite(factor.X) ||
+            !float.IsFinite(factor.Y) || !float.IsFinite(factor.Z) || Vector3.Min(factor, Vector3.Zero) != Vector3.Zero)
+            throw new InvalidDataException("Invalid emissive material factor.");
+        factor *= strength;
+        if (!float.IsFinite(factor.X) || !float.IsFinite(factor.Y) || !float.IsFinite(factor.Z))
+            throw new InvalidDataException("Emissive strength overflow.");
+        return factor;
+    }
+
+    private static Vector2[]? ReadEmissiveTexCoords(JsonElement root, JsonElement primitive,
+        JsonElement attributes, ReadOnlyMemory<byte> binBytes)
+    {
+        if (!primitive.TryGetProperty("material", out var index) || !root.TryGetProperty("materials", out var materials) ||
+            !materials[index.GetInt32()].TryGetProperty("emissiveTexture", out var texture)) return null;
+        int channel = texture.TryGetProperty("texCoord", out var uv) ? uv.GetInt32() : 0;
+        Vector2 offset = Vector2.Zero, scale = Vector2.One;
+        float rotation = 0;
+        if (texture.TryGetProperty("extensions", out var extensions) && extensions.TryGetProperty("KHR_texture_transform", out var transform))
+        {
+            if (transform.TryGetProperty("texCoord", out uv)) channel = uv.GetInt32();
+            if (transform.TryGetProperty("offset", out var v)) offset = new(v[0].GetSingle(), v[1].GetSingle());
+            if (transform.TryGetProperty("scale", out v)) scale = new(v[0].GetSingle(), v[1].GetSingle());
+            if (transform.TryGetProperty("rotation", out v)) rotation = v.GetSingle();
+        }
+        if (!attributes.TryGetProperty($"TEXCOORD_{channel}", out var accessor))
+            throw new InvalidDataException($"Emissive texture requires TEXCOORD_{channel}.");
+        var coords = ReadVec2Accessor(root, accessor.GetInt32(), binBytes);
+        float c = MathF.Cos(rotation), s = MathF.Sin(rotation);
+        for (int i = 0; i < coords.Length; i++)
+        {
+            Vector2 v = coords[i] * scale;
+            coords[i] = offset + new Vector2(c * v.X - s * v.Y, s * v.X + c * v.Y);
+        }
+        return coords;
+    }
+
     private static byte[]? ReadMaterialImageBytes(JsonElement root, JsonElement primitive, ReadOnlyMemory<byte> binBytes, string texturePropertyName)
     {
         if (!primitive.TryGetProperty("material", out JsonElement materialElement) ||
@@ -362,7 +427,7 @@ public static class GlbModelLoader
 
         JsonElement material = materials[materialElement.GetInt32()];
         JsonElement container = material;
-        if (texturePropertyName != "normalTexture" && !material.TryGetProperty("pbrMetallicRoughness", out container))
+        if (texturePropertyName is not ("normalTexture" or "emissiveTexture") && !material.TryGetProperty("pbrMetallicRoughness", out container))
             return null;
         if (!container.TryGetProperty(texturePropertyName, out JsonElement textureElement) ||
             !textureElement.TryGetProperty("index", out JsonElement textureIndexElement) ||

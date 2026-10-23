@@ -1,0 +1,2660 @@
+{
+  "Version": 2,
+  "UsePointLights": true,
+  "Exposure": 1,
+  "AmbientLight": 0.01,
+  "DirectionalLight": 0,
+  "EnableShadows": true,
+  "Streaming": {
+    "Enabled": true,
+    "ZoneSize": 32,
+    "PreloadNeighbours": 1,
+    "BudgetMiB": 256,
+    "RetainSeconds": 15
+  },
+  "Bake": {
+    "Enabled": true,
+    "TexelsPerTriangle": 16,
+    "Samples": 64,
+    "RayDistance": 25,
+    "Probes": {
+      "Spacing": 1.25
+    }
+  },
+  "Entities": [
+    {
+      "Id": "1b95a58ddd3ad7f34a4a1f3719e4da4f",
+      "Type": "RigidBody",
+      "Name": "Floor_-2_-2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2,
+        "Y": -0.08,
+        "Z": -2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 0.16,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_B_Floor_4x4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "bbfa7e7f5788056de74417537d006576",
+      "Type": "RigidBody",
+      "Name": "Ceiling_-2_-2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2,
+        "Y": 4.1,
+        "Z": -2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 0.2,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Ceiling_4x4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "85c5ef3493d8dcb10a1fb9ef4e6d94da",
+      "Type": "RigidBody",
+      "Name": "Floor_-2_2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2,
+        "Y": -0.08,
+        "Z": 2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 0.16,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_B_Floor_4x4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "ddc4e9216bd22ff3e32f46fe8e0624b9",
+      "Type": "RigidBody",
+      "Name": "Ceiling_-2_2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2,
+        "Y": 4.1,
+        "Z": 2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 0.2,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Ceiling_4x4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "ad9a4d6b73aaed44648e74a3e95ea3cf",
+      "Type": "RigidBody",
+      "Name": "Floor_2_-2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 2,
+        "Y": -0.08,
+        "Z": -2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 0.16,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_B_Floor_4x4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "d2193ea2be8f1b9996582022b5383ebf",
+      "Type": "RigidBody",
+      "Name": "Ceiling_2_-2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 2,
+        "Y": 4.1,
+        "Z": -2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 0.2,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Ceiling_4x4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "2b791e688832d955d69ec4a06171989f",
+      "Type": "RigidBody",
+      "Name": "Floor_2_2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 2,
+        "Y": -0.08,
+        "Z": 2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 0.16,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_B_Floor_4x4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "dae095285e1d40a34152976905769aa3",
+      "Type": "RigidBody",
+      "Name": "Ceiling_2_2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 2,
+        "Y": 4.1,
+        "Z": 2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 4,
+        "Y": 0.2,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Ceiling_4x4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "54b5c78e86c7ae2beaf2869ed94eba6a",
+      "Type": "RigidBody",
+      "Name": "NorthWall_-2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2,
+        "Y": 2,
+        "Z": 4.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 4,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_Sided_4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "36bb31eeb48cfd15e7b70095f5bee265",
+      "Type": "RigidBody",
+      "Name": "SouthWall_-2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2,
+        "Y": 2,
+        "Z": -4.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 4,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_Sided_4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "3b80d519827deb28181d5646e01c06c8",
+      "Type": "RigidBody",
+      "Name": "EastWall_-2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 4.1,
+        "Y": 2,
+        "Z": -2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 4,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_Sided_4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "5e7c354ed12f4f9f7fe54ae52ff44ff2",
+      "Type": "RigidBody",
+      "Name": "WestWall_-2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -4.1,
+        "Y": 2,
+        "Z": -2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 4,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_Sided_4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "558b287a13f05958ff636aad63a2f9ed",
+      "Type": "RigidBody",
+      "Name": "NorthWall_2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 2,
+        "Y": 2,
+        "Z": 4.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 4,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_Sided_4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "e5681d941cbf1bca9ef0127b6cce55ac",
+      "Type": "RigidBody",
+      "Name": "SouthWall_2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 2,
+        "Y": 2,
+        "Z": -4.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 90,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 4,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_Sided_4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "623e48e84538776aec1e0d1a11032eb0",
+      "Type": "RigidBody",
+      "Name": "EastWall_2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 4.1,
+        "Y": 2,
+        "Z": 2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 4,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_Sided_4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "06f451a1a2fc8ba11b3ff96a61575415",
+      "Type": "RigidBody",
+      "Name": "WestWall_2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -4.1,
+        "Y": 2,
+        "Z": 2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 4,
+        "Z": 4
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_Sided_4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "d92be9d891dfddbcf966ac618371af58",
+      "Type": "RigidBody",
+      "Name": "BouncePartition",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 0.6,
+        "Y": 1.5,
+        "Z": 1.7
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.2,
+        "Y": 3,
+        "Z": 4.6
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": true,
+      "MeshPath": "Content/Models/ViewModels/Basement_Corridor_A_Wall_Double_Sided_4m.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "5259fd71c712ac4e065f609731550b2b",
+      "Type": "PointLight",
+      "Name": "FixedWarmBounceLight",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2,
+        "Y": 2.8,
+        "Z": 2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 0.63,
+        "Z": 0.3,
+        "W": 1
+      },
+      "Intensity": 5,
+      "Range": 9,
+      "LightEnabled": true,
+      "CastShadows": true,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": true,
+      "StaticLighting": false,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "ce065d6c4f4b51a62f4f1d3a5635dd01",
+      "Type": "PointLight",
+      "Name": "RealtimeScreenLight",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -1,
+        "Y": 2.2,
+        "Z": -1.2
+      },
+      "LocalRotationEulerDeg": {
+        "X": -90,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 0.15,
+        "Y": 0.5,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 1.8,
+      "Range": 3,
+      "LightEnabled": true,
+      "CastShadows": true,
+      "IsSpotLight": true,
+      "SpotAngleDeg": 100,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "291a37a5ba5fbd72621bb0d8cea95e6c",
+      "Type": "RigidBody",
+      "Name": "ConsoleStand",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -1,
+        "Y": 0.45,
+        "Z": -0.8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.1,
+        "Y": 0.9,
+        "Z": 0.7
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "f6564572f3a05aee3db95ec6edbc3332",
+      "Type": "RigidBody",
+      "Name": "RealtimeConsole",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -1,
+        "Y": 1.25,
+        "Z": -0.8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 270,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1.2,
+        "Y": 0.7,
+        "Z": 0.9
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "Content/Models/ViewModels/Console 1.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 2,
+      "EmissionPart": "",
+      "EmissionLightId": "ce065d6c4f4b51a62f4f1d3a5635dd01",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "c4bbab926e3b54f6ddce4331d07ac8f1",
+      "Type": "Prop",
+      "Name": "RealtimeLightSwitch",
+      "Scripts": [],
+      "Interaction": {
+        "Kind": "LightSwitch",
+        "StateId": "",
+        "RequiredItem": "",
+        "ConsumesItem": false,
+        "Prompt": "",
+        "LockedPrompt": "",
+        "SuccessMessage": "",
+        "Targets": [
+          "ce065d6c4f4b51a62f4f1d3a5635dd01"
+        ],
+        "RequiredStates": [],
+        "LightGroup": "",
+        "Rewards": [],
+        "HingeLocalOffset": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "OpenAngleDeg": 90,
+        "LiftHeight": 3,
+        "PressurePlateMinMass": 8,
+        "PressurePlateSettleSeconds": 0.35
+      },
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2.1,
+        "Y": 1.1,
+        "Z": -0.8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 0.25,
+        "Y": 0.5,
+        "Z": 0.25
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "Content/Models/ViewModels/Lever04.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 0,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "eee29ba72287805ea69c4f561b593802",
+      "Type": "RigidBody",
+      "Name": "MovableCrate_0",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2.6,
+        "Y": 0.55,
+        "Z": 1.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": true,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "36a28905c5c9e20df3bd38018715798d",
+      "Type": "RigidBody",
+      "Name": "MovableCrate_1",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 2.2,
+        "Y": 0.55,
+        "Z": 2.2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": true,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "9ec79073d42f1476f8504e4938b67c1d",
+      "Type": "PlayerSpawn",
+      "Name": "Spawn",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -1.8,
+        "Y": 0,
+        "Z": -2.7
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": false,
+      "MotionType": 0,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 0.6,
+        "Y": 0.6,
+        "Z": 0.6,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 10,
+      "Friction": 0.8,
+      "Restitution": 0.05,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "probe-crate-0",
+      "Type": "RigidBody",
+      "Name": "ProbeStressCrate_0",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -2.5,
+        "Y": 0.55,
+        "Z": 2.7
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": true,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "probe-crate-1",
+      "Type": "RigidBody",
+      "Name": "ProbeStressCrate_1",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -0.8,
+        "Y": 0.55,
+        "Z": 2.8
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": true,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "probe-crate-2",
+      "Type": "RigidBody",
+      "Name": "ProbeStressCrate_2",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 3.1,
+        "Y": 0.55,
+        "Z": -2
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": true,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "probe-crate-3",
+      "Type": "RigidBody",
+      "Name": "ProbeStressCrate_3",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": 2.2,
+        "Y": 0.55,
+        "Z": 3.1
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": true,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    },
+    {
+      "Id": "probe-crate-4",
+      "Type": "RigidBody",
+      "Name": "ProbeCarryCrate",
+      "Scripts": [],
+      "Interaction": null,
+      "Parent": null,
+      "PrefabAssetPath": "",
+      "PrefabInstanceId": "",
+      "PrefabSourceEntityId": "",
+      "PrefabUnpacked": false,
+      "LocalPosition": {
+        "X": -3.3,
+        "Y": 0.45,
+        "Z": -1.6
+      },
+      "LocalRotationEulerDeg": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "LocalScale": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "CanPickUp": true,
+      "MotionType": 1,
+      "Size": {
+        "X": 0.8,
+        "Y": 0.8,
+        "Z": 0.8
+      },
+      "Color": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "YawDeg": 0,
+      "LightColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1,
+        "W": 1
+      },
+      "Intensity": 3,
+      "Range": 8,
+      "LightEnabled": true,
+      "CastShadows": false,
+      "IsSpotLight": false,
+      "SpotAngleDeg": 60,
+      "LightGroup": "",
+      "FlickerAmount": 0,
+      "FlickerSpeed": 4,
+      "BakeIndirect": false,
+      "StaticLighting": false,
+      "MeshPath": "Content/Models/ViewModels/Breakable_Wooden_Crate.glb",
+      "MaterialPath": "",
+      "EmissionOverride": false,
+      "EmissionColor": {
+        "X": 1,
+        "Y": 1,
+        "Z": 1
+      },
+      "EmissionIntensity": 1,
+      "EmissionPart": "",
+      "EmissionLightId": "",
+      "Damageable": false,
+      "MaxHealth": 100,
+      "BreakReplacementModelPaths": [],
+      "BreakReplacementKeepsPhysics": true,
+      "BreakDebrisModelPaths": [],
+      "TriggerSize": {
+        "X": 2,
+        "Y": 2,
+        "Z": 2
+      },
+      "TriggerEvent": "OnEnter",
+      "Shape": "Box",
+      "Mass": 12,
+      "Friction": 0.8,
+      "Restitution": 0,
+      "IsKinematic": false,
+      "Radius": 0.5,
+      "Height": 1
+    }
+  ],
+  "Boxes": null
+}

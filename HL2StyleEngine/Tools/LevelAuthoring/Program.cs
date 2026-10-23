@@ -3,6 +3,202 @@ using Engine.Render;
 using Engine.Editor.Level;
 
 string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+if(args is ["profile-room-reflections"] or ["profile-room-reflections", "--reverse"])
+{
+    try {PbrPerformanceChecks.Run(root,args.Contains("--reverse"),reflections:true,rooms:true);}
+    catch(Exception ex) {Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if (args is ["build-room-reflection-test"] or ["capture-room-reflections"] or ["capture-room-reflection-views"] or ["validate-room-reflections"] or ["benchmark-gameplay-room-reflections", "on" or "off"])
+{
+    try
+    {
+        if(args[0]=="build-room-reflection-test") RoomReflectionChecks.Build(root);
+        else if(args[0]=="capture-room-reflections") RoomReflectionChecks.CaptureFixture(root);
+        else if(args[0]=="validate-room-reflections") RoomReflectionChecks.Run(root);
+        else if(args[0]=="capture-room-reflection-views")
+        {
+            string output=Path.Combine(AppContext.BaseDirectory,"qa","room-views-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+            Directory.CreateDirectory(output);
+            PbrBaselineChecks.Capture(root,RoomReflectionChecks.FileName,output,false,forceLegacy:false);
+            Console.WriteLine(output);
+        }
+        else GameplayFrameChecks.Run(root,args[1]=="on",levelFile:RoomReflectionChecks.FileName);
+    }
+    catch(Exception ex) {Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if (args is ["prepare-pbr-crate"] or ["validate-pbr-crate"])
+{
+    try
+    {
+        if (args[0] == "prepare-pbr-crate") PbrCrateChecks.Prepare(root);
+        else PbrCrateChecks.Run(root);
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["cook-reflection-environment"])
+{
+    try { ReflectionCooker.Cook(root); }
+    catch(Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode=1; }
+    return;
+}
+if (args is ["validate-reflections"] or ["capture-reflection-room"] or ["validate-reflection-reference"] or ["profile-reflections"] or ["profile-reflections","--reverse"])
+{
+    try
+    {
+        if(args[0]=="validate-reflections") ReflectionChecks.Run(root);
+        else if(args[0]=="profile-reflections") PbrPerformanceChecks.Run(root,args.Contains("--reverse"),reflections:true);
+        else
+        {
+            string output=args[0]=="validate-reflection-reference" ? Path.Combine(root,"Tools/LevelAuthoring/References/PbrReflections") :
+                Path.Combine(AppContext.BaseDirectory,"qa","reflections-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+            Directory.CreateDirectory(output);
+            PbrBaselineChecks.Capture(root,PbrTestRoom.FileName,output,args[0]=="validate-reflection-reference",forceLegacy:false,reflections:true);
+            Console.WriteLine("Reflection captures: "+output);
+        }
+    }
+    catch(Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode=1; }
+    return;
+}
+if (args is ["validate-pbr-lighting"] or ["validate-pbr-shadows"] or ["capture-pbr-room"] or ["validate-pbr-reference"])
+{
+    try
+    {
+        if (args[0] == "validate-pbr-lighting") PbrLightingChecks.Run();
+        else if (args[0] == "validate-pbr-shadows") RenderPipelineChecks.Run(pbr:true);
+        else if (args[0] == "validate-pbr-reference")
+            PbrBaselineChecks.Capture(root,PbrTestRoom.FileName,Path.Combine(root,"Tools/LevelAuthoring/References/PbrDirect"),true,forceLegacy:false);
+        else
+        {
+            string output = Path.Combine(AppContext.BaseDirectory,"qa","pbr-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+            Directory.CreateDirectory(output);
+            PbrBaselineChecks.Capture(root,PbrTestRoom.FileName,output,false,forceLegacy:false);
+            Console.WriteLine("PBR captures: " + output);
+        }
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["refresh-pbr-normal-fixture"]) { PbrTestRoom.RefreshNormalFixture(root); return; }
+if (args is ["validate-pbr-materials"])
+{
+    try { PbrMaterialChecks.Run(); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["profile-pbr-room"] or ["profile-pbr-room", "--reverse"] or ["benchmark-gameplay-pbr", "on" or "off"])
+{
+    try
+    {
+        if (args[0] == "profile-pbr-room") PbrPerformanceChecks.Run(root,args.Contains("--reverse"));
+        else GameplayFrameChecks.Run(root, args[1] == "on", levelFile: PbrTestRoom.FileName);
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["pbr-baseline-one", var baselineFile, "capture" or "compare"])
+{
+    try { PbrBaselineChecks.Capture(root, baselineFile, Path.Combine(root, "Tools/LevelAuthoring/References/PbrStage0"), args[2] == "compare"); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["build-pbr-room"] or ["capture-pbr-baseline"] or ["validate-pbr-legacy"])
+{
+    try
+    {
+        if (args[0] == "build-pbr-room") PbrTestRoom.Build(root);
+        else PbrBaselineChecks.Run(root, compare: args[0] == "validate-pbr-legacy");
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["build-probe-room"] or ["validate-probe-room"])
+{
+    try
+    {
+        if(args[0]=="build-probe-room") ProbeLightingRoom.Build(root);
+        else LevelRenderingChecks.Run(root, indirectTest:true, probeTest:true);
+    }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if (args is ["benchmark-gameplay-probes", ..])
+{
+    try
+    {
+        if(args.Length<2 || args[1] is not ("on" or "off") || args.Skip(2).Any(a=>a is not ("--stress" or "--no-probes")))
+            throw new ArgumentException("Use benchmark-gameplay-probes on|off [--stress] [--no-probes].");
+        GameplayFrameChecks.Run(root,args[1]=="on",stress:args.Contains("--stress"),levelFile:ProbeLightingRoom.FileName,noProbes:args.Contains("--no-probes"));
+    }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if (args is ["validate-indirect-bake"])
+{
+    try { IndirectBakeChecks.Run(); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-indirect-room"])
+{
+    try { LevelRenderingChecks.Run(root, indirectTest: true); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["build-indirect-room"] or ["inspect-indirect-room"] or ["bake-level", _])
+{
+    try
+    {
+        if (args[0] == "build-indirect-room") IndirectLightingRoom.Build(root);
+        else if (args[0] == "inspect-indirect-room") IndirectLightingRoom.Inspect(root);
+        else IndirectLightingRoom.Bake(root, Path.GetFullPath(args[1]));
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["benchmark-gameplay-indirect", "on" or "off"])
+{
+    try { GameplayFrameChecks.Run(root, args[1] == "on", levelFile: IndirectLightingRoom.FileName); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["build-six-room-emission-test"])
+{
+    try { SixRoomEmissionTest.Build(root); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-emission"])
+{
+    try { EmissiveChecks.Run(root); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-six-room-emission-test"])
+{
+    try { LevelRenderingChecks.Run(root, emissionTest: true); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["benchmark-gameplay-emission", "on" or "off"])
+{
+    try { GameplayFrameChecks.Run(root, args[1] == "on", levelFile: SixRoomEmissionTest.FileName); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-collision-cache"] or ["benchmark-collision-load", "cached" or "source"] or ["cook-level-collisions", _])
+{
+    try
+    {
+        if (args[0] == "validate-collision-cache") CollisionCacheChecks.Run(root);
+        else CollisionCacheChecks.Profile(root, args[0] == "cook-level-collisions" || args[1] == "cached",
+            args[0] == "cook-level-collisions" ? Path.GetFullPath(args[1]) : null);
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
 if (args is ["validate-visibility-streaming"])
 {
     try { VisibilityStreamingChecks.Run(root); }

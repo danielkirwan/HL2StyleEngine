@@ -1,0 +1,66 @@
+# Baked Indirect Lighting And Probes
+
+PBR compatibility (2026-10-22): the optional lighting model participates in bake identity; changing Legacy/PBR requires a rebake. Legacy's omitted default preserves old v1/v2 bake keys. Atlas/probe values represent diffuse E/pi; the PBR shader applies receiver albedo/non-metal fraction once, with no extra pi or duplicated ambient. Atlas and probe receivers remain exclusive. Corrected PBR node normals also apply to bake surfaces/bindings. Unit C (2026-10-23) adds a separate specular environment, not extra diffuse light. Its preset is excluded from diffuse snapshot keys, so toggling reflections does not require rebaking. See [PBR guide](PBR_MATERIAL_GUIDE.md) and [reflection guide](REFLECTION_LIGHTING_GUIDE.md).
+
+First pass implemented 2026-10-22. This adds one offline diffuse bounce from explicitly fixed point/spot lights to opted-in static GLB architecture. Direct light and shadows stay realtime. Existing levels remain opt-out; there is no automatic relighting, source mesh rewrite, C++ migration or change to the accepted flashlight settings.
+
+The follow-up adds optional directional light probes for movable textured models, plus Full/Direct Only/Indirect Only preview modes and probe markers. These reuse the fixed-light bake; they are not realtime global illumination.
+
+## Play The Test
+
+Run root `LaunchIndirectLightingTest.bat`. It builds Release and opens the separate `Game/Content/Levels/indirectLightingRoom.json`. The included `.hs2lightmap` is already baked. Other launchers and project/Visual Studio startup selections are unchanged.
+
+- The contained 8 x 8 m room uses existing basement walls, floors, ceilings, a console, a lever and movable crates.
+- A fixed warm light supplies baked bounce. Walk around the central partition to compare lit and shaded surfaces.
+- Aim at the lever to the right of the console and press **E** to toggle the blue screen light and linked screen emission. That light is realtime-only and leaves no baked glow when off.
+- **F** toggles the existing realtime torch. **F2 > Toolbar > Indirect Lighting > Lighting View** selects **Full**, **Direct Only** or **Indirect Only** without changing the level or invalidating its bake. Direct Only retains ambient, realtime lights and emission. Indirect Only removes those contributions to isolate the bake.
+- Open `indirectLightingRoom.json` in HS2Editor to inspect or rebake it. The room contains 17 baked architecture instances and 1,308 triangles. Crates, console and switch are not bake receivers.
+
+For moving-object lighting, run **`LaunchLightProbeTest.bat`**. This opens separate `lightProbeTest.json` with its ready-made version-2 bake, 196 probes, six breakable crates and a non-breakable carry crate. The original room and launch profiles are untouched. Carry a crate between the warm side and the shaded side of the partition; **Preview Light Probes** compares its bounce contribution without turning off the static lightmap. **Show Probe Markers** displays green usable samples and red rejected samples in the editor. **F3** opens the existing FPS/debug display, which still starts closed. See the validation report for measured frame intervals, not just the instantaneous FPS display.
+
+## Author And Bake
+
+1. Assign GLB models to fixed architecture. In the shared Inspector enable **Static Lighting** for each receiver/occluder. It must be a static Box, Prop or RigidBody, with no pickup, damage, kinematic, interaction or script behaviour. Its ancestors must also be fixed and non-interactive. A model-less blockout box is not supported as a bake receiver.
+2. Enable **Scene Point Lights**. Select each permanent point/spot light and enable **Fixed Light: Bake Indirect**. Keep it enabled with positive intensity/range. Switch targets, flickering lights, scripted/movable lights and lights under moving parents are rejected. Keep all such lights realtime-only.
+3. Open **Toolbar > Indirect Lighting**, enable **Enable Baked Indirect**, and choose **Texels Per Triangle** (4-32), **Samples Per Texel** (8-256), and **Ray Distance** (1-200 m). Defaults are 12, 32 and 40 m. Start small; triangle count and sample count strongly affect cost. The test uses 16, 64 and 25 m.
+4. Press **Bake Lighting**. This saves the authored level through the existing save path, snapshots it, and starts CPU work on at most two workers. Progress, **Cancel Bake**, status/errors and bake GPU memory are displayed. A save failure prevents the bake from starting. The UI remains usable, although loading one source model is not interruptible mid-parse.
+5. A successful bake writes the sibling `levelName.hs2lightmap` atomically. The editor and game validate/load it automatically. Rebuild/relaunch the game after baking so deployment copies are refreshed. Game build/publish includes these files.
+6. Moving/scaling architecture, changing materials, changing lights or otherwise editing the level invalidates the bake. Stale/missing/corrupt/unsupported data uses realtime lighting, not missing/white geometry. Save and bake again. Preview alone does not dirty the level.
+
+To include movable-object lighting, enable **Bake Light Probes** before baking. **Probe Spacing (m)** ranges from 0.5 to 8 m; the new room uses 1.25 m. A regular grid covers the marked architecture's bounds, with at most 4,096 probes and 16,384 occluder triangles. Dense or oversized grids fail with an error; increase spacing or split the authoring scope. Manual probe placement and automatic adaptive refinement are not implemented. The toolbar reports VALID, PREPARING or UNAVAILABLE / STALE, valid/total probes and CPU sampling time.
+
+Opt-in flags and level settings round-trip through editable JSON, RE:Dox and normal entity/prefab serialization. A placed prefab uses its new instance IDs; it needs a new level bake, not a copied atlas entry. The derived file never replaces source JSON, source GLBs or player saves.
+
+## What Is Stored
+
+- Separate deterministic padded UV charts, one per triangle, generated in per-instance render buffers. Imported material/emission UVs, mesh parts and source indices remain untouched. This is a bounded prototype charting strategy, not optimized production island packing or texels-per-metre density.
+- One power-of-two atlas, up to 2048 x 2048, with linear RGBA16F values and bilinear clamp sampling. Two-pixel chart guards and no mip chain avoid cross-chart mip bleeding. Higher-quality chart packing and safe mip generation are future work.
+- Version-2 `.hs2lightmap` metadata plus lossless LZ4 pixel data and SHA-256 integrity/dependency checks. Version-1 static-only bakes and their dependency keys still load without rebaking. New probe metadata contains grid positions/validity, six RGB directional irradiance samples per probe and fixed occluder triangles. Metadata is capped at 4 MiB. Level content, model content, entity IDs, fitted transforms, settings and format identity determine validity. Loading rejects invalid dimensions, lengths, chart allocation, IDs, transforms and non-finite HDR/probe values.
+- Full authored-level content is currently hashed conservatively, so even an unrelated authored change can require rebaking. Source hashes are checked on load/bake; the running session also watches source size/timestamps every two seconds. Restart/reload after external asset edits, especially same-size/same-timestamp replacements; resident model hot-reload is not added here.
+
+The baker samples base colour and metallic maps, transformed normals and visibility through the existing triangle BVH. Back faces block rays without reflecting them. Direct lighting remains in the existing shader; baked diffuse light is added in linear HDR before exposure/tone mapping. Ambient, directional and emissive surfaces do not generate this first bounce; use fixed point/spot lights for it.
+
+Probes use the same one-bounce integrator along six directions (an ambient cube). At runtime, up to eight neighbouring probes are trilinearly blended. Visibility rays reject neighbours across baked walls and the remaining weights are renormalized. Stationary objects reuse their sample; moving objects query again. The shader evaluates the cube using the world-space normal and applies diffuse albedo/non-metal fraction. First-person weapons sample at the camera, not a possibly wall-penetrating weapon origin. Gameplay models, F2/HS2Editor models, imported characters and fracture pieces use the same sampling path. Packed probe values occupy the existing object's 256-byte upload slot; there is no extra per-object GPU upload or texture.
+
+## Lifetime And Safety
+
+CPU bake/hash/read work runs off-thread. GPU atlas creation and geometry uploads run on the render thread. Model and lightmap uploads share the existing soft 2 ms budget; a single atlas/part upload cannot be preempted and may exceed it. The atlas is retained for the level, with unused per-instance buffers retired after 120 rendered frames. GPU retirement waits for submission fences; normal frames do not call `WaitForIdle` for this feature.
+
+The test atlas uses 8 MiB GPU memory, with approximately 0.19 MiB of per-instance buffers when all 17 are ready. CPU pixel data is retained too. These allocations are additional to the visual-model streaming budget and its counters. Maximum atlas payload alone is 32 MiB. This is not multi-room lightmap streaming.
+
+The probe room's complete file is 1,543,502 bytes. Baking took 24.51 s locally, offline. Its 196 samples contain 14,112 bytes of RGB coefficients, plus validity/grid metadata, 47,088 bytes of occluder positions and the CPU BVH/runtime cache. These are payload counts, not total managed heap usage. Probe volume/BVH construction occurs on a loading/baking worker and the volume stays resident for its level, outside model streaming counters. The object-sample cache is bounded to 1,024 keys and retires unused entries. Typical measured sampling cost was 0.014-0.017 ms/frame; debris bursts averaged 0.37-0.50 ms with isolated sampling peaks around 6.7 ms. Keep testing worst-case rooms, not just stationary views.
+
+Changed input immediately disables the prior bake. Cancelled/failed same-input rebakes leave the previous valid file intact; stale data is never used just because its file still exists. Changing levels cancels pending work. A runtime override that disables any fixed baked light suppresses the whole atlas to avoid ghost illumination; it does not select a per-light on/off scenario.
+
+The room checks exposed a pre-existing quaternion/Euler round-trip sign error for some runtime static rotations. **Only eligible Static Lighting objects** now keep their exact authored world quaternion in rendering and collision. Unmarked legacy objects retain their existing path. This is not a broad transform-system migration; do not remove this guard without editor/game/collider parity tests.
+
+## Limits And Next Work
+
+- Textured moving models can receive probes in probe-enabled levels; they never receive the static atlas. Model-less primitives and the current untextured/no-UV draw path remain unlit. Levels without probes retain their existing lighting.
+- One world position samples lighting for an entire model. Very large objects spanning rooms need richer sampling later. Grid/visibility transitions can be abrupt at occlusion boundaries; there is no temporal filtering, specular reflection probe or manual placement tool. Outside the volume, or with no visible valid neighbour, indirect is zero.
+- Moving doors and props are excluded from bake occlusion. They still cast realtime shadows where supported, but cannot dynamically remove a precomputed indirect contribution. Do not bake a movable closed door into permanent geometry.
+- Switch/flicker lights remain realtime-only. No baked-light scenarios, emissive-source GI, directional bake, multiple bounces, denoising, reflection probes, bloom or volumetrics are implemented.
+- Only explicitly marked static geometry blocks bake rays. Include complete fixed walls, floors and ceilings; leaving walls unmarked can allow indirect light through them. Alpha-tested/translucent materials are treated as opaque.
+- The single-atlas triangle budget deliberately rejects large jobs. Larger areas need better charts, room/atlas partitioning and measured streaming budgets before rollout.
+
+The test keeps shaded areas dark; it is a comparison fixture rather than a finished horror-lighting art pass. Results, reproduction commands and remaining human checks are in [ENGINE_UPGRADE_VALIDATION.md](ENGINE_UPGRADE_VALIDATION.md). General lights/emission: [LIGHTING_GUIDE.md](LIGHTING_GUIDE.md). Design references: [PBRT surface light transport](https://pbr-book.org/4ed/Light_Transport_I_Surface_Reflection/A_Better_Path_Tracer), [lightmap UV requirements](https://docs.unity3d.com/Manual/LightingGiUvs.html), and [Valve's ambient-cube shading explanation](https://cdn.fastly.steamstatic.com/apps/valve/2006/SIGGRAPH06_Course_ShadingInValvesSourceEngine.pdf). The probe code is an original implementation using the existing engine BVH, not imported Source SDK code.

@@ -54,7 +54,7 @@ public sealed partial class HL2GameModule
                 for (int i = 0; i < _editor.DrawBoxes.Count; i++)
                 {
                     var def = _editor.LevelFile.Entities[i];
-                    if (def.Type == EntityTypes.PointLight || def.Type == EntityTypes.PlayerSpawn || def.Type == EntityTypes.TriggerVolume) continue;
+                    if (def.Type is EntityTypes.PointLight or EntityTypes.PlayerSpawn or EntityTypes.TriggerVolume or EntityTypes.ReflectionProbe) continue;
                     var draw = _editor.DrawBoxes[i];
                     Add(def.MeshPath, draw.Position, draw.Size, draw.Rotation, draw.Color, null);
                 }

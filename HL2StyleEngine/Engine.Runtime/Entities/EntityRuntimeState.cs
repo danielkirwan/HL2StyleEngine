@@ -56,6 +56,7 @@ public sealed class EntityColliderState
 
 public sealed class EntityPhysicsState
 {
+    public bool UseAuthoredStaticPose;
     public MotionType MotionType = MotionType.Static;
     public BoxBody? BoxBody;
     public SphereBody? SphereBody;

@@ -17,6 +17,8 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
     private readonly bool _torch;
     private readonly bool _individualUploads;
     private readonly bool _referenceVisibility, _stress;
+    private readonly bool _probeTest, _noProbes;
+    private double _probeMilliseconds, _maxProbeMilliseconds;
     private readonly List<double> _intervals = new();
     private SourcePlayerMotor _motor = null!;
     private BasicWorldRenderer _world = null!;
@@ -28,10 +30,12 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
     private Key? _held;
     private long _previousStamp;
     public InputState InputState => _game.InputState;
-    private GameplayFrameChecks(string level, bool torch, bool individualUploads, bool referenceVisibility, bool stress)
-    { _game = new(level); _torch = torch; _individualUploads = individualUploads; _referenceVisibility = referenceVisibility; _stress = stress; }
+    private GameplayFrameChecks(string level, bool torch, bool individualUploads, bool referenceVisibility, bool stress, bool noProbes)
+    { _game = new(level); _torch = torch; _individualUploads = individualUploads; _referenceVisibility = referenceVisibility; _stress = stress;
+        _probeTest=Path.GetFileName(level)==ProbeLightingRoom.FileName; _noProbes=noProbes; }
 
-    internal static void Run(string root, bool torch, bool individualUploads = false, bool referenceVisibility = false, bool stress = false)
+    internal static void Run(string root, bool torch, bool individualUploads = false, bool referenceVisibility = false, bool stress = false,
+        string? levelFile = null, bool noProbes = false)
     {
         string? prior = Environment.GetEnvironmentVariable("HS2_PROFILE_FRAMES");
         string? priorNative = Environment.GetEnvironmentVariable("HS2_RMLUI_NATIVE_PRESENTATION");
@@ -42,7 +46,9 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
         try
         {
             using var host = new EngineHost(1920, 1080, "Full gameplay flashlight profile");
-            using var probe = new GameplayFrameChecks(Path.Combine(root, "Game/Content/Levels", SixRoomFlashlightTest.FileName), torch, individualUploads, referenceVisibility, stress);
+            using var probe = new GameplayFrameChecks(Path.Combine(root, "Game/Content/Levels", levelFile ?? SixRoomFlashlightTest.FileName), torch, individualUploads, referenceVisibility, stress, noProbes);
+            Console.WriteLine($"[GameplayLevel] {levelFile ?? SixRoomFlashlightTest.FileName}");
+            if(probe._probeTest) Console.WriteLine($"[ProbePreview] {(noProbes ? "disabled reference" : "enabled")}; static lightmap remains enabled.");
             Console.WriteLine($"[GameplayProfile] torch={(torch ? "on" : "off")}; uploads={(individualUploads ? "individual reference" : "batched")}; actual host loop, scripted W/S and relative mouse, production HUD and launcher UI settings, physics and VSync/presentation; 120 warmup + 300 measured frames.");
             host.Run(probe);
             if (probe._intervals.Count != 300 || probe._distance < .1 || probe._ticks == 0)
@@ -51,10 +57,34 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
             Console.WriteLine($"[GameplayMovement] distance {probe._distance:F3}m / simulated {probe._simulationTime:F3}s = {probe._distance / probe._simulationTime:F3}m/s including acceleration/reversals; {probe._ticks} fixed ticks; wall frame mean {probe._intervals.Average():F3}ms p95 {probe._intervals[284]:F3}ms; >16.7ms {probe._intervals.Count(x => x > 16.7)}, >33.3ms {probe._intervals.Count(x => x > 33.3)} / 300.");
             Console.WriteLine($"[GameplayUploads] {probe._objectUploads / 300.0:F1} main-scene uploads/frame; {probe._intervals.Count(x => x > 100)} frames over the 100ms simulation clamp.");
             Console.WriteLine($"[VisibilityStreaming] reference={referenceVisibility}; draws/frame {probe._draws / 300.0:F1}; streaming wait frames {probe._streamWaitFrames}; resident {probe._game.StreamingResidentModels} models / {probe._game.StreamingResidentBytes / 1048576.0:F1} MiB; {probe._game.StreamingZoneCount} dependency zones; {probe._game.StreamingEvictions} evictions.");
+            if (levelFile is PbrTestRoom.FileName or RoomReflectionChecks.FileName)
+            {
+                if (!probe._world.ReflectionReady || probe._world.ReflectionPendingCpuBytes != 0)
+                    throw new InvalidDataException("PBR gameplay did not finish loading its reflection environment.");
+                Console.WriteLine($"[ReflectionResidency] {probe._world.ReflectionResidentBytes} GPU payload bytes, no pending CPU payload.");
+                if (levelFile == RoomReflectionChecks.FileName)
+                {
+                    var room = (ReflectionProbeSession)probe.Field("_roomReflections");
+                    if (!room.Ready || room.Busy || room.CaptureGpuBytes != 0) throw new InvalidDataException("Room capture not ready, or runtime capture work is active.");
+                    Console.WriteLine($"[RoomReflection] {room.Status}; {room.ResidentBytes} GPU bytes; no runtime capture passes.");
+                }
+                if (probe._intervals.Average() > 17 || probe._intervals[284] > 21 ||
+                    probe._intervals.Count(x=>x>33.3)>1 || probe._intervals.Any(x=>x>100) || probe._streamWaitFrames != 0)
+                    throw new InvalidDataException("PBR full-host regression budget exceeded.");
+                Console.WriteLine("[PbrGameplayBudget] PASS: recorded mean/P95/hitch/streaming-wait limits.");
+            }
+            if (((LevelEditorController)probe.Field("_editor")).LevelFile.Bake.Enabled)
+            {
+                var bake = (LevelBakeSession)probe.Field("_bakedLighting");
+                if (!bake.Ready || bake.ReadyModels == 0) throw new InvalidDataException("Gameplay profile did not load its bake.");
+                Console.WriteLine($"[IndirectLighting] {bake.ReadyModels} ready model bindings; {bake.ResidentBytes/1048576.0:F2} MiB additional bake GPU resources.");
+                Console.WriteLine($"[LightProbes] {bake.Probes?.Valid.Count(v=>v) ?? 0} valid probes; sample CPU mean {probe._probeMilliseconds/300:F4} ms, max {probe._maxProbeMilliseconds:F4} ms.");
+                if(probe._probeTest && bake.Probes == null)throw new InvalidDataException("Probe profile did not load its probe volume.");
+            }
             if (stress)
             {
                 if (probe._stressActions != 5 || probe._peakDebris == 0) throw new InvalidDataException("Stress actions did not exercise debris/doors/gravity holding/inventory.");
-                Console.WriteLine($"[GameplayStress] PASS: opened puzzle shutters, broke six crates, gravity-held/released a prop, opened/closed inventory; {probe._peakDebris} peak fragment bodies; {probe._stressActions} event groups.");
+                Console.WriteLine($"[GameplayStress] PASS: {(probe._probeTest ? "toggled realtime light" : "opened puzzle shutters")}, broke six crates, gravity-held/released a prop, opened/closed inventory; {probe._peakDebris} peak fragment bodies; {probe._stressActions} event groups.");
             }
         }
         finally
@@ -68,6 +98,7 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
     public void Initialize(EngineContext context)
     {
         _game.Initialize(context);
+        ((LevelBakeSession)Field("_bakedLighting")).PreviewProbes = !_noProbes;
         _motor = (SourcePlayerMotor)typeof(HL2GameModule).GetField("_motor", Flags)!.GetValue(_game)!;
         _world = (BasicWorldRenderer)typeof(HL2GameModule).GetField("_world", Flags)!.GetValue(_game)!;
         _world.ObjectBatchUploadsEnabled = !_individualUploads;
@@ -114,6 +145,8 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
         _game.RenderWorld(renderer);
         if (_frames >= 120)
         {
+            var bake=(LevelBakeSession)Field("_bakedLighting");
+            _probeMilliseconds+=bake.ProbeMilliseconds;_maxProbeMilliseconds=Math.Max(_maxProbeMilliseconds,bake.ProbeMilliseconds);
             _objectUploads += _world.ObjectUploadCount;
             _draws += _world.ObjectDrawCount;
             if (_game.StreamingWaiting) _streamWaitFrames++;
@@ -130,7 +163,15 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
         if (_frames == 130)
         {
             var editor = (LevelEditorController)Field("_editor");
-            ((HashSet<string>)Field("_solvedPuzzles")).UnionWith(editor.LevelFile.Entities.Where(e => e.Interaction != null).Select(e => e.Interaction!.StateId));
+            if(_probeTest)
+            {
+                var camera=(FpsCamera)Field("_camera");float yaw=camera.Yaw,pitch=camera.Pitch;
+                Vector3 direction=Vector3.Normalize((Vector3)editor.LevelFile.Entities.Single(e=>e.Name=="RealtimeLightSwitch").LocalPosition-camera.Position);
+                camera.Yaw=MathF.Atan2(direction.X,direction.Z);camera.Pitch=MathF.Asin(direction.Y);
+                bool used=(bool)Call("TryUseFocusedInteractable")!;camera.Yaw=yaw;camera.Pitch=pitch;
+                if(!used)throw new InvalidDataException("Probe stress switch was unreachable.");
+            }
+            else ((HashSet<string>)Field("_solvedPuzzles")).UnionWith(editor.LevelFile.Entities.Where(e => e.Interaction != null).Select(e => e.Interaction!.StateId));
             _stressActions++;
         }
         if (_frames == 150)

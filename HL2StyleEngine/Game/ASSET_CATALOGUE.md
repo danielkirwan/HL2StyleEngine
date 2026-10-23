@@ -4,6 +4,12 @@ Snapshot: 2026-09-08. This lists files in the source `Game/Content` tree, not ge
 
 ## Summary
 
+2026-10-23 material correction: `Content/Models/RenderingTests/WoodenCratePbr.glb` is a material-only derivative of `Breakable_Wooden_Crate.glb`, used by the PBR test room. Metallic 0 / roughness 0.85 restores wood's flashlight response; geometry, UVs, all 22 part keys and embedded texture bytes are preserved. Original asset/levels remain unchanged. Current disk count: **388 model GLBs**, **404 including 16 animations**, with 12 rendering-test fixtures. Reproduction: `prepare-pbr-crate` in the level-authoring tool. Earlier snapshot counts below are historical.
+
+2026-10-22 PBR test addition: `Content/Models/RenderingTests` contains ten generated scalar spheres (`Sphere_0_0.glb` through `Sphere_0_4.glb`, and `Sphere_1_0.glb` through `Sphere_1_4.glb`) plus `ScalarNoNormals.glb`. Total model GLBs are now **387**, or **403** including the unchanged 16 animation GLBs. These controlled rendering fixtures are separate from the 376 imported/derived game assets listed below. `Content/Levels/pbrMaterialTest.json` uses them alongside existing basement assets. See `PBR_MATERIAL_GUIDE.md`; older snapshot counts below remain historical.
+
+GLB names rechecked against disk on 2026-10-21: all 392 files (376 models and 16 animations) are present in the lists below, with no missing names. No explicitly named ammo/bullets pack was found; `low.glb` remains unclassified. The six-room ammo pickups still use crate placeholders while a dedicated ammo model is being sourced. The non-GLB counts below retain the original snapshot date.
+
 - 376 GLB model files: 374 original imports in `Game/Content/Models/ViewModels`, plus two derived rolling-door parts in `Game/Content/Models/Puzzles`.
 - 16 animation GLBs in `Game/Content/Animations`.
 - 5 level JSON files and 1 prefab JSON file.

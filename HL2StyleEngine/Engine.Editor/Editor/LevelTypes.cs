@@ -13,12 +13,34 @@ public sealed class LevelFile
     public float AmbientLight { get; set; } = .22f;
     public float DirectionalLight { get; set; } = 1f;
     public bool EnableShadows { get; set; } = true;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public Engine.Render.SurfaceLightingModel LightingModel { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingDefault)]
+    public Engine.Render.ReflectionPreset ReflectionEnvironment { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ReflectionProbeId { get; set; }
     public LevelStreamingSettings Streaming { get; set; } = new();
+    public LevelBakeSettings Bake { get; set; } = new();
 
     public List<LevelEntityDef> Entities { get; set; } = new();
 
     public List<BoxDef>? Boxes { get; set; }
     
+}
+
+public sealed class LevelBakeSettings
+{
+    public bool Enabled { get; set; }
+    public int TexelsPerTriangle { get; set; } = 12;
+    public int Samples { get; set; } = 32;
+    public float RayDistance { get; set; } = 40;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public LevelProbeSettings? Probes { get; set; }
+}
+
+public sealed class LevelProbeSettings
+{
+    public float Spacing { get; set; } = 1.5f;
 }
 
 public sealed class LevelStreamingSettings
@@ -43,6 +65,7 @@ public sealed class PrefabFile
 }
 public static class EntityTypes
 {
+    public const string ReflectionProbe = "ReflectionProbe";
     public const string Box = "Box";
     public const string PlayerSpawn = "PlayerSpawn";
     public const string PointLight = "PointLight";
@@ -86,6 +109,8 @@ public sealed class LevelInteractionDef
 
 public sealed class LevelEntityDef
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReflectionProbeSettings? ReflectionProbe { get; set; }
     public string Id { get; set; } = "";
     public string Type { get; set; } = "";
     public string? Name { get; set; }
@@ -130,9 +155,16 @@ public sealed class LevelEntityDef
     public string LightGroup { get; set; } = "";
     public float FlickerAmount { get; set; }
     public float FlickerSpeed { get; set; } = 4f;
+    public bool BakeIndirect { get; set; }
+    public bool StaticLighting { get; set; }
 
     public string MeshPath { get; set; } = "";
     public string MaterialPath { get; set; } = "";
+    public bool EmissionOverride { get; set; }
+    public SerVec3 EmissionColor { get; set; } = Vector3.One;
+    public float EmissionIntensity { get; set; } = 1f;
+    public string EmissionPart { get; set; } = "";
+    public string EmissionLightId { get; set; } = "";
 
     public bool Damageable { get; set; } = false;
     public float MaxHealth { get; set; } = 100f;

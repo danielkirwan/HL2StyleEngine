@@ -20,7 +20,7 @@ internal static class TextureLoadingBenchmark
         }
         timer.Stop();
         var textures = models.SelectMany(m => m.Parts)
-            .SelectMany(p => new[] { p.BaseColorTexture, p.MaterialTexture, p.NormalTexture })
+            .SelectMany(p => new[] { p.BaseColorTexture, p.MaterialTexture, p.NormalTexture, p.EmissiveTexture })
             .OfType<PreparedTexture>().DistinctBy(t => t.Key).ToArray();
         Console.WriteLine($"{(cooked ? "COOKED" : "RGBA")}: {paths.Length} source GLBs + CPU texture preparation = {timer.Elapsed.TotalMilliseconds:F2} ms; {textures.Length} unique textures; {textures.Sum(t => t.Bytes) / 1048576.0:F2} MiB mip payload; {TextureCooker.CacheHits} cache hits; {TextureCooker.FallbackDecodes} image decodes.");
         Console.WriteLine("Warm filesystem, fresh process, serial worker, no GPU upload or first-playable-frame measurement.");

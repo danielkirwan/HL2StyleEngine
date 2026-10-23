@@ -323,6 +323,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         BuildActions();
         _scriptRegistry.Register<MovingPlatformParams>("MovingPlatform",e => new MovingPlatform(e));
         _editor.SetScriptRegistry(_scriptRegistry);
+        _editor.LightingBake = _bakedLighting;
+        _editor.RoomReflections = _roomReflections;
+        _editor.BakeAssetResolver = ResolveModelAssetPath;
+        _editor.ModelPartNames = path => TryGetReadyModel(path, "emission inspector", out var entry) && entry?.LoadedModel != null
+            ? entry.LoadedModel.Parts.Select(p => p.PartKey).Distinct().ToArray() : [];
         _ui = new UIModeController(_ctx.Window, _inputState, startInGameplay: true);
 
         _motor = new SourcePlayerMotor(_movement, startFeetPos: new Vector3(0, 0, -5f));
@@ -3387,7 +3392,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (def == null || !IsGlbModelPath(def.MeshPath))
             return;
 
-        if (TryCreateMeshCollider(def, door.Transform.Position, door.Render.Size, GetColliderRotation(door), out MeshCollisionMesh meshCollider))
+        if (TryCreateMeshCollider(def, door.Transform.Position, door.Render.Size, GetColliderRotation(door), out MeshCollisionMesh meshCollider, cacheStaticPose: false))
         {
             door.Collider.Mesh = meshCollider;
             door.Collider.Size = meshCollider.Bounds.Max - meshCollider.Bounds.Min;
@@ -3870,6 +3875,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private static Quaternion GetColliderRotation(Entity entity)
     {
+        // Baked static receivers must keep the exact editor pose, without an Euler round-trip.
+        if (entity.Physics.UseAuthoredStaticPose) return entity.Physics.RestRotation;
         RuntimeShapeKind shape = GetPhysicsBodyShape(entity);
         if ((shape == RuntimeShapeKind.Box || shape == RuntimeShapeKind.Capsule) && HasPhysicsBody(entity))
             return entity.Physics.Rotation;
@@ -5685,6 +5692,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     }
     private void RebuildRuntimeWorld()
     {
+        _collisionSourceHashes.Clear();
+        CollisionPreparationMilliseconds = 0;
+        CollisionCacheHits = CollisionMeshesBuilt = 0;
         _roomAssets = null;
         _streamingBlocked = false;
         _lightState.BindLevel(_editor.LevelPath);
@@ -5701,6 +5711,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         for (int entityIndex = 0; entityIndex < levelEntities.Count; entityIndex++)
         {
             var def = levelEntities[entityIndex];
+            if (def.Type == EntityTypes.ReflectionProbe) continue;
             LevelWorldTransform worldTransform = levelTransforms[entityIndex];
             var e = new Entity(def.Id, def.Type, def.Name ?? def.Type);
             _runtimeDefinitions.Add(e, def);
@@ -5710,6 +5721,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             e.Transform.RotationEulerDeg = QuatToEulerDeg(worldTransform.Rotation);
             e.Transform.Scale = worldTransform.Scale;
             e.Physics.RestRotation = worldTransform.Rotation;
+            e.Physics.UseAuthoredStaticPose = IndirectLightBaker.IsStaticGeometry(def);
             e.Physics.Rotation = worldTransform.Rotation;
             e.Physics.AngularVelocity = Vector3.Zero;
             e.Physics.AngularDamping = 2.5f;
@@ -5719,6 +5731,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             e.Render.Height = GetScaledCapsuleHeight(def, e.Transform.Scale, clampScale: false);
             e.Render.Color = (Vector4)def.Color;
             e.Render.ModelAssetPath = IsGlbModelPath(def.MeshPath) ? def.MeshPath : "";
+            // Light gizmos belong to authoring, not visible/shadow-casting runtime geometry.
+            if (def.Type == EntityTypes.PointLight) e.Render.Shape = RuntimeShapeKind.None;
 
             e.CanPickUp = def.CanPickUp;
             e.Damageable = def.Damageable;
@@ -6950,7 +6964,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         if (DrawImportedPlayerCharacterModel && TryGetReadyModel(PlayerCharacterModelPath, "player character", out WeaponModelCacheEntry? entry) && entry?.Model != null)
         {
             Matrix4x4 transform = CreateBoundsFitTransform(entry.Bounds, playerCenter, playerSize, rotation);
-            _world.DrawModel(renderer.CommandList, entry.Model, transform, PlayerCharacterTint);
+            _world.DrawModel(renderer.CommandList, entry.Model, transform, PlayerCharacterTint, null,
+                probe: _bakedLighting.SampleProbe(PlayerCharacterModelPath, playerCenter));
             return;
         }
 
@@ -6974,6 +6989,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         var viewProj = view * proj;
 
         _world.BeginFrame();
+        _bakedLighting.Update(_editor, ResolveModelAssetPath, _world, renderer, _editorEnabled ? null : _lightState);
         using var objectUploads = _world.BatchObjectUploads();
         _world.UpdateCamera(viewProj, _camera.Position);
         renderer.Exposure = _editor.LevelFile.Exposure;
@@ -6983,6 +6999,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         LevelLighting.Apply(_world, _editor, _camera.Position, flashlight, _editorEnabled ? null : _lightState,
             _editorEnabled ? _editorLightingSeconds : _playTimeSeconds);
         PlanModelResidency();
+        _roomReflections.Update(_editor, ResolveModelAssetPath, _world, renderer, _editorEnabled ? null : _lightState);
         PumpModelUploads();
         EvictDistantModels();
         DrawWorldShadows(renderer);
@@ -7110,6 +7127,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             }
 
             DrawPlayerCharacter(renderer, visible: true);
+            _bakedLighting.DrawProbeMarkers(_world, renderer);
+            _editor.DrawReflectionBounds(_world, renderer);
             return;
         }
 
@@ -7165,7 +7184,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             return false;
 
         Matrix4x4 transform = CreateBoundsFitTransform(entry.Bounds, draw.Position, draw.Size, draw.Rotation);
-        _world.DrawModel(renderer.CommandList, entry.Model, transform, Vector4.One);
+        _world.DrawModel(renderer.CommandList, entry.Model, transform, def.StaticLighting ? (Vector4)def.Color : Vector4.One, null,
+            LevelLighting.GetEmission(_editor.LevelFile, def, seconds: _editorLightingSeconds),
+            _bakedLighting.GetBinding(def, entry.LoadedModel!, transform, _editor.LevelFile, _world, renderer),
+            _bakedLighting.SampleProbe(def, draw.Position, def));
         return true;
     }
     public void RenderOverlay(Renderer renderer)
@@ -10001,7 +10023,9 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     public void Dispose()
     {
+        _bakedLighting.Dispose();
         _ctx?.Renderer.DrainRetiredResources();
+        _roomReflections.Dispose();
         foreach (WeaponModelCacheEntry entry in _weaponModelCache.Values)
             entry.Model?.Dispose();
 

@@ -115,6 +115,8 @@ internal static class LightingChecks
         editor.LoadFromMemory("lighting-qa.json", new() { Entities = [a, b, definition] });
         Call(module, "RebuildRuntimeWorld");
         var state = Field<LevelLightState>(module, "_lightState");
+        Check(Field<List<Entity>>(module, "_runtimeEntities").Where(e => e.Id == a.Id || e.Id == b.Id).All(e => !e.Render.Enabled),
+            "Light editor helpers became visible shadow casters in gameplay.");
         Entity entity = Field<List<Entity>>(module, "_runtimeEntities").Single(e => e.Id == definition.Id);
         var camera = Field<FpsCamera>(module, "_camera");
         camera.Position = new(0, 1.6f, 0); camera.Yaw = 0; camera.Pitch = 0;

@@ -2,17 +2,55 @@ using Engine.Editor.Level;
 using Engine.Physics.Collision;
 using Engine.Render;
 using System.Numerics;
+using System.Security.Cryptography;
 
 namespace Game;
 
 public sealed partial class HL2GameModule
 {
-    private bool TryCreateMeshCollider(LevelEntityDef def, Vector3 position, Vector3 size, Quaternion rotation, out MeshCollisionMesh mesh)
+    private readonly Dictionary<string, byte[]> _collisionSourceHashes = new(StringComparer.OrdinalIgnoreCase);
+    public double CollisionPreparationMilliseconds { get; private set; }
+    public int CollisionCacheHits { get; private set; }
+    public int CollisionMeshesBuilt { get; private set; }
+
+    private bool TryCreateMeshCollider(LevelEntityDef def, Vector3 position, Vector3 size, Quaternion rotation,
+        out MeshCollisionMesh mesh, bool cacheStaticPose = true)
+    {
+        long start = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { return CreateMeshCollider(def, position, size, rotation, out mesh, cacheStaticPose); }
+        finally { CollisionPreparationMilliseconds += System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds; }
+    }
+
+    private bool CreateMeshCollider(LevelEntityDef def, Vector3 position, Vector3 size, Quaternion rotation,
+        out MeshCollisionMesh mesh, bool cacheStaticPose)
     {
         mesh = null!;
+        if (!IsGlbModelPath(def.MeshPath)) return false;
+        byte[]? key = null;
+        string? directory = null;
+        if (cacheStaticPose && MeshCollisionCache.Enabled)
+        {
+            try
+            {
+                string path = ResolveModelAssetPath(def.MeshPath);
+                if (!_collisionSourceHashes.TryGetValue(path, out var hash))
+                {
+                    using var source = File.OpenRead(path);
+                    _collisionSourceHashes[path] = hash = SHA256.HashData(source);
+                }
+                key = CreateCollisionCacheKey(hash, position, size, rotation);
+                directory = Path.Combine(Path.GetDirectoryName(TextureCooker.CacheDirectory(path))!, "collision");
+                if (MeshCollisionCache.TryLoad(directory, key, out mesh))
+                {
+                    CollisionCacheHits++;
+                    return true;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            { key = null; directory = null; }
+        }
 
-        if (!IsGlbModelPath(def.MeshPath) ||
-            !TryGetLoadedModelForCollision(def.MeshPath, out LoadedModel model, out ModelBounds bounds))
+        if (!TryGetLoadedModelForCollision(def.MeshPath, out LoadedModel model, out ModelBounds bounds))
         {
             return false;
         }
@@ -47,7 +85,27 @@ public sealed partial class HL2GameModule
             return false;
 
         mesh = new MeshCollisionMesh(triangles);
+        CollisionMeshesBuilt++;
+        if (key != null && directory != null) MeshCollisionCache.TryStore(directory, key, mesh);
         return mesh.IsValid;
+    }
+
+    private static byte[] CreateCollisionCacheKey(byte[] sourceHash, Vector3 position, Vector3 size, Quaternion rotation)
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write(sourceHash);
+            writer.Write(MeshCollisionCache.Version);
+            // Importer and bounds-fit changes invalidate existing cooked placements on rebuild.
+            writer.Write(typeof(GlbModelLoader).Module.ModuleVersionId.ToByteArray());
+            writer.Write(typeof(HL2GameModule).Module.ModuleVersionId.ToByteArray());
+            writer.Write(position.X); writer.Write(position.Y); writer.Write(position.Z);
+            writer.Write(size.X); writer.Write(size.Y); writer.Write(size.Z);
+            writer.Write(rotation.X); writer.Write(rotation.Y); writer.Write(rotation.Z); writer.Write(rotation.W);
+            writer.Write(MeshCollisionMesh.DefaultCollisionSkin);
+        }
+        return SHA256.HashData(stream.ToArray());
     }
 
     private bool TryGetLoadedModelForCollision(string modelAssetPath, out LoadedModel model, out ModelBounds bounds)

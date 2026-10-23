@@ -111,9 +111,12 @@ public sealed partial class BasicWorldRenderer
     }
 
     public void RenderShadows(Renderer renderer, IReadOnlyList<ShadowCaster> casters, Viewport viewport)
+        => RenderShadows(renderer.CommandList, renderer.WorldFramebuffer, casters, viewport);
+
+    public void RenderShadows(CommandList commandList, Framebuffer target, IReadOnlyList<ShadowCaster> casters, Viewport viewport)
     {
         long start = MeasureShadowCpuTime ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
-        try { RenderShadowsCore(renderer, casters, viewport); }
+        try { RenderShadowsCore(commandList, target, casters, viewport); }
         finally
         {
             ShadowCpuMilliseconds = MeasureShadowCpuTime
@@ -121,7 +124,7 @@ public sealed partial class BasicWorldRenderer
         }
     }
 
-    private void RenderShadowsCore(Renderer renderer, IReadOnlyList<ShadowCaster> casters, Viewport viewport)
+    private void RenderShadowsCore(CommandList cl, Framebuffer target, IReadOnlyList<ShadowCaster> casters, Viewport viewport)
     {
         ShadowObjectUploadCount = 0;
         ShadowPassCount = ShadowDrawCount = ShadowCastersOmitted = 0;
@@ -164,7 +167,6 @@ public sealed partial class BasicWorldRenderer
                 .Take(MaxShadowCasters).ToArray();
             ShadowCastersOmitted = originalCount - casters.Count;
         }
-        var cl = renderer.CommandList;
         bool uploadedObjects = false;
         for (int pass = 0; pass < passes.Count; pass++)
         {
@@ -239,7 +241,7 @@ public sealed partial class BasicWorldRenderer
             ShadowRenderedPassCount++;
         }
         ShadowPassCount = passes.Count;
-        cl.SetFramebuffer(renderer.WorldFramebuffer);
+        cl.SetFramebuffer(target);
         cl.SetViewport(0, viewport);
 
         void Draw(DeviceBuffer vb, DeviceBuffer ib, uint count, IndexFormat format)

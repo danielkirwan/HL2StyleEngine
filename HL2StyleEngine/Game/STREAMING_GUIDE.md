@@ -30,6 +30,16 @@ The current six-room walking route shares its 32 models across nearby zones and 
 
 ## Testing
 
+### Baked Lighting Ownership (2026-10-22)
+
+Opt-in indirect baking retains one validated atlas for the current level, independently of zone/model residency. Per-instance baked geometry is created lazily and retired after 120 frames without use; atlas and buffer retirement is frame-fenced. Model and lightmap uploads share the soft 2 ms budget, but one atlas/part upload is not preemptible. Missing/stale bakes render through the existing realtime path. This does not add full atlas/probe streaming.
+
+Optional probe volumes are also retained for the current level. Their fixed-geometry visibility BVH is built on the loading/baking worker, not during render submission. Bounds cap volumes at 4,096 samples and 16,384 occluder triangles; runtime sampling caches at most 1,024 object keys and retires inactive entries. The 196-probe fixture has 14,112 bytes of coefficients and 47,088 bytes of occluder positions, plus CPU BVH/metadata/cache overhead, outside the model residency counter. Probes add no GPU texture or extra per-object upload: packed coefficients fit the existing 256-byte slot. Level changes/stale edits discard the probe contribution and cache. Future atlas/probe area streaming must retain these ownership guarantees.
+
+Bake allocations are additional to the model soft budget/counters: the test uses 8 MiB for its atlas plus about 0.19 MiB for all 17 instance buffers. CPU pixel storage is retained too. Model vertices now include a second generated lightmap coordinate (48-byte GPU stride), increasing geometry memory even for unbaked models; source/model cache geometry is unchanged. The latest six-room route reports 107.9 MiB of model geometry/shared textures, and the updated forced-eviction fixture reports 88.0 -> 32.4 MiB. Earlier measurements above are historical, not current totals. See [BAKED_LIGHTING_GUIDE.md](BAKED_LIGHTING_GUIDE.md).
+
+### Regression Commands
+
 Use `LaunchSixRoomFlashlightTest.bat` for the existing dim-ambient flashlight test; `LaunchSixRoomTest.bat` retains the lit version. Both use Release. Walk, turn, open doors, break crates and carry objects across areas, then return. Materials, collision and interaction state should remain unchanged. Large jumps into uncached areas can show loading; no zero-stall guarantee is made.
 
 After building the authoring tool in Release:

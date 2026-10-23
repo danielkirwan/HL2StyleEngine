@@ -48,7 +48,9 @@ public sealed partial class BasicWorldRenderer : IDisposable
     private readonly DeviceBuffer _lightingBuffer;
     private readonly ResourceLayout _lightingLayout;
     private readonly ResourceSet _lightingSet;
-    private readonly Vector4[] _lightingData = new Vector4[1 + MaxPointLights * 4];
+    private readonly Vector4[] _lightingData = new Vector4[2 + MaxPointLights * 4];
+    public SurfaceLightingModel LightingModel { get; set; }
+    public LightingDiagnostic Diagnostic { get; set; }
     private WorldPointLight[] _activeLights = [];
     public float AmbientStrength { get; set; } = .22f;
     public float DirectionalStrength { get; set; } = 1f;
@@ -84,6 +86,8 @@ public sealed partial class BasicWorldRenderer : IDisposable
         public Vector4 Color;
         public Vector4 Material;
         public Matrix4x4 NormalMatrix;
+        public Vector4 Emission;
+        public ProbeIrradiance Probe;
     }
 
     // Match the constant-buffer range alignment without changing the shader layout.
@@ -244,12 +248,15 @@ public sealed partial class BasicWorldRenderer : IDisposable
             new ResourceLayoutElementDescription("BaseColorSamp", ResourceKind.Sampler, ShaderStages.Fragment),
             new ResourceLayoutElementDescription("MetallicRoughnessTex", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
             new ResourceLayoutElementDescription("MetallicRoughnessSamp", ResourceKind.Sampler, ShaderStages.Fragment),
-            new ResourceLayoutElementDescription("NormalTex", ResourceKind.TextureReadOnly, ShaderStages.Fragment)));
+            new ResourceLayoutElementDescription("NormalTex", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
+            new ResourceLayoutElementDescription("EmissiveTex", ResourceKind.TextureReadOnly, ShaderStages.Fragment)));
 
         var texturedVertexLayout = new VertexLayoutDescription(
             new VertexElementDescription("Position", VertexElementSemantic.Position, VertexElementFormat.Float3),
             new VertexElementDescription("Normal", VertexElementSemantic.Normal, VertexElementFormat.Float3),
-            new VertexElementDescription("TexCoord", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2));
+            new VertexElementDescription("TexCoord", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
+            new VertexElementDescription("EmissiveTexCoord", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
+            new VertexElementDescription("LightmapTexCoord", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2));
 
         var texturedPipelineDescription = new GraphicsPipelineDescription
         {
@@ -265,7 +272,7 @@ public sealed partial class BasicWorldRenderer : IDisposable
                 depthClipEnabled: true,
                 scissorTestEnabled: false),
             PrimitiveTopology = PrimitiveTopology.TriangleList,
-            ResourceLayouts = new[] { _cameraLayout, _objectLayout, _textureLayout, _lightingLayout, CreateShadowResources(shaderDir) },
+            ResourceLayouts = new[] { _cameraLayout, _objectLayout, _textureLayout, _lightingLayout, CreateShadowResources(shaderDir), CreateLightmapResources(), CreateReflectionResources() },
             ShaderSet = new ShaderSetDescription(new[] { texturedVertexLayout }, _texturedShaders),
             Outputs = output
         };
@@ -325,6 +332,7 @@ public sealed partial class BasicWorldRenderer : IDisposable
 
     public void UpdatePointLights(IEnumerable<WorldPointLight> lights, Vector3 cameraPosition)
     {
+        UpdateReflectionResources();
         Array.Clear(_lightingData);
         int count = 0;
         _activeLights = lights
@@ -343,7 +351,8 @@ public sealed partial class BasicWorldRenderer : IDisposable
             _lightingData[4 + count * 4] = new Vector4(MathF.Cos(angle * .8f), -1, spot ? 0 : 1, 0);
             count++;
         }
-        _lightingData[0] = new Vector4(count, Math.Clamp(AmbientStrength, 0, 2), Math.Clamp(DirectionalStrength, 0, 4), 0);
+        _lightingData[0] = new Vector4(count, Math.Clamp(AmbientStrength, 0, 2), Math.Clamp(DirectionalStrength, 0, 4), IndirectOnly ? 1 : 0);
+        _lightingData[^1] = new Vector4(LightingModel == SurfaceLightingModel.Pbr ? 1 : 0, (int)Diagnostic, 0, 0);
         _gd.UpdateBuffer(_lightingBuffer, 0, _lightingData);
     }
 
@@ -421,7 +430,8 @@ public sealed partial class BasicWorldRenderer : IDisposable
         }
     }
 
-    public void DrawModel(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 tint, IReadOnlySet<string>? hiddenPartKeys)
+    public void DrawModel(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 tint, IReadOnlySet<string>? hiddenPartKeys,
+        ModelEmission? emission = null, LightmapBinding? lightmap = null, ProbeIrradiance probe = default)
     {
         IReadOnlyList<RenderModelPart> parts = model.Parts;
         for (int i = 0; i < parts.Count; i++)
@@ -437,10 +447,30 @@ public sealed partial class BasicWorldRenderer : IDisposable
                 part.Color.Y * tint.Y,
                 part.Color.Z * tint.Z,
                 part.Color.W * tint.W);
-            if (part.IsTextured && part.TexturedVertexBuffer != null && part.TextureSet != null)
-                DrawTexturedMesh(cl, transform, color, part.MaterialFactors, part.TexturedVertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat, part.TextureSet);
+            Vector3 glow = (emission ?? new ModelEmission(1)).Resolve(part.EmissiveFactor, part.PartKey, part.NodeName, part.MeshName);
+            bool pbr = LightingModel == SurfaceLightingModel.Pbr;
+            var textureSet = pbr ? part.PbrTextureSet : part.TextureSet;
+            Vector4 factors = pbr ? part.PbrMaterialFactors : part.MaterialFactors;
+            if (lightmap is { IsReady: true } && i < lightmap.Parts.Count)
+            {
+                var baked = lightmap.Parts[i];
+                Vector4 material = factors; material.W = 1;
+                DrawTexturedMesh(cl, transform, color, material, glow, baked.Vertices, baked.Indices, baked.Count,
+                    IndexFormat.UInt32, textureSet ?? _lightmapFallbackMaterial!, lightmap.Atlas.Set);
+            }
+            else if (pbr && part.PbrVertexBuffer != null && textureSet != null)
+            {
+                factors.W = probe.HasEnergy ? 2 : 0;
+                DrawTexturedMesh(cl, transform, color, factors, glow, part.PbrVertexBuffer, part.PbrIndexBuffer ?? part.IndexBuffer,
+                    part.PbrIndexCount, part.PbrIndexBuffer != null ? IndexFormat.UInt32 : part.IndexFormat, textureSet, probe: probe);
+            }
+            else if (part.IsTextured && part.TexturedVertexBuffer != null && part.TextureSet != null)
+            {
+                Vector4 material = part.MaterialFactors; material.W = probe.HasEnergy ? 2 : 0;
+                DrawTexturedMesh(cl, transform, color, material, glow, part.TexturedVertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat, part.TextureSet, probe: probe);
+            }
             else
-                DrawMesh(cl, transform, color, part.VertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat);
+                DrawMesh(cl, transform, color, part.VertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat, glow);
         }
     }
 
@@ -458,20 +488,22 @@ public sealed partial class BasicWorldRenderer : IDisposable
         Matrix4x4 model,
         Vector4 color,
         Vector4 material,
+        Vector3 emission,
         DeviceBuffer vertexBuffer,
         DeviceBuffer indexBuffer,
         uint indexCount,
         IndexFormat indexFormat,
-        ResourceSet textureSet)
+        ResourceSet textureSet, ResourceSet? lightmapSet = null, ProbeIrradiance probe = default)
     {
         if (_objectWriteIndex >= MaxObjectsPerFrame)
             return;
 
-        Matrix4x4.Invert(model, out Matrix4x4 inverse);
+        bool invertible = Matrix4x4.Invert(model, out Matrix4x4 inverse);
+        if (!invertible && LightingModel == SurfaceLightingModel.Pbr) inverse = Matrix4x4.Identity;
         ObjectData obj = new ObjectData
         {
             Model = model, Color = color, Material = material,
-            NormalMatrix = Matrix4x4.Transpose(inverse)
+            NormalMatrix = Matrix4x4.Transpose(inverse), Emission = new Vector4(emission, 0), Probe = probe
         };
 
         uint slot = WriteObject(obj);
@@ -482,6 +514,8 @@ public sealed partial class BasicWorldRenderer : IDisposable
         cl.SetGraphicsResourceSet(2, textureSet);
         cl.SetGraphicsResourceSet(3, _lightingSet);
         cl.SetGraphicsResourceSet(4, _shadowSet);
+        cl.SetGraphicsResourceSet(5, lightmapSet ?? _emptyLightmap!.Set);
+        cl.SetGraphicsResourceSet(6, (ReflectionPreviewEnabled ? ActiveReflection ?? _blackReflection : _blackReflection).Set);
         cl.SetVertexBuffer(0, vertexBuffer);
         cl.SetIndexBuffer(indexBuffer, indexFormat);
         cl.DrawIndexed(indexCount, 1, 0, 0, 0);
@@ -494,12 +528,14 @@ public sealed partial class BasicWorldRenderer : IDisposable
         DeviceBuffer vertexBuffer,
         DeviceBuffer indexBuffer,
         uint indexCount,
-        IndexFormat indexFormat = IndexFormat.UInt16)
+        IndexFormat indexFormat = IndexFormat.UInt16,
+        Vector3 emission = default)
     {
         if (_objectWriteIndex >= MaxObjectsPerFrame)
             return;
 
-        ObjectData obj = new ObjectData { Model = model, Color = color, Material = new Vector4(0f, 1f, 0f, 0f) };
+        ObjectData obj = new ObjectData { Model = model, Color = IndirectOnly ? new Vector4(0,0,0,color.W) : color,
+            Material = new Vector4(0f, 1f, 0f, 0f), Emission = new Vector4(IndirectOnly ? Vector3.Zero : emission, 0) };
 
         uint slot = WriteObject(obj);
 
@@ -515,9 +551,11 @@ public sealed partial class BasicWorldRenderer : IDisposable
 
     public void Dispose()
     {
+        DisposeReflections();
         foreach (var pending in _pendingUploads.Values) pending.Dispose();
         _pendingUploads.Clear();
         DisposeShadows();
+        DisposeLightmaps();
         _textures.Dispose();
         _texturedPipeline.Dispose();
         _pipeline.Dispose();

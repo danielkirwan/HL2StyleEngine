@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Assets\*.hs2env" />
     <None Update="CompressionNotices.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="Shaders\**\*.cso" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Shaders\**\*.hlsl" CopyToOutputDirectory="PreserveNewest" />

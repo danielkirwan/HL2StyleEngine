@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace Engine.Physics.Collision;
 
-public sealed class MeshCollisionMesh
+public sealed partial class MeshCollisionMesh
 {
     public const float DefaultCollisionSkin = 0.08f;
     private static readonly MeshCollisionTriangle[] EmptyTriangles = Array.Empty<MeshCollisionTriangle>();
