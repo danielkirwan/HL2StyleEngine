@@ -65,7 +65,7 @@ internal static class PbrBaselineChecks
             var camera = (Game.FpsCamera)Field(game, "_camera");
             position = camera.Position; yaw = camera.Yaw; pitch = camera.Pitch;
             if (file == PbrTestRoom.FileName) camera.Pitch = pitch = .04f;
-            Set(game, "_flashlightOn", file == "sixRoomFlashlightTest.json");
+            Set(game, "_flashlightOn", file is "sixRoomFlashlightTest.json" or ReflectionStreamingChecks.FileName);
             var editor = (LevelEditorController)Field(game, "_editor");
             editor.LevelFile.ReflectionEnvironment = reflections ? ReflectionPreset.SyntheticStudio : ReflectionPreset.None;
             var world = (BasicWorldRenderer)Field(game, "_world");
@@ -111,7 +111,7 @@ internal static class PbrBaselineChecks
             {
                 output.Frame(() => ((IWorldRenderer)module).RenderWorld(renderer), read: false);
                 bool ready = cache.Count > 0;
-                if (file is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName)
+                if (file is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName)
                 {
                     var room = (ReflectionProbeSession)Field(module, "_roomReflections");
                     ready &= room.Ready && !room.Busy;
@@ -122,7 +122,7 @@ internal static class PbrBaselineChecks
                     string field = entry.GetType().GetField("Model", Flags) != null ? "Model" : "RenderModel";
                     ready &= Field(entry, field) != null;
                 }
-                if (ready && (!reflections || world.ReflectionReady) && (!editor.LevelFile.Bake.Enabled || (bake.Ready && bake.ReadyModels == editor.LevelFile.Entities.Count(e => e.StaticLighting)))) break;
+                if (ready && (!reflections || world.ReflectionReady) && (!editor.LevelFile.Bake.Enabled || (bake.Ready && bake.ReadyModels == editor.LevelFile.Entities.Count(e => e.StaticLighting && !e.ExcludeFromDiffuseBake)))) break;
                 if (wait.Elapsed.TotalSeconds > 30) throw new TimeoutException($"Reference readiness: {file}; {bake.Status}");
                 Thread.Sleep(5);
             } while (true);

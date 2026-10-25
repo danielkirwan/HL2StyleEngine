@@ -1,5 +1,7 @@
 # PBR Lighting: Staged Implementation
 
+Current follow-up (2026-10-25): authored room capture, automatic transitions and bounded reflection residency are now available. LaunchSixRoomPbrTest.bat opens the isolated real-level copy; it uses the corrected wood variant and preserves its fracture behaviour. [Residency guide](REFLECTION_STREAMING_GUIDE.md). The baseline discussion below is historical; old levels/defaults remain unchanged.
+
 Started 2026-10-22 under [ENGINE_UPGRADE_PLAN.md](ENGINE_UPGRADE_PLAN.md), units A then B. Unit C followed on 2026-10-23: a controlled prefiltered HDR environment and BRDF LUT, documented in [REFLECTION_LIGHTING_GUIDE.md](REFLECTION_LIGHTING_GUIDE.md). C#/.NET 10 owns the runtime; this is not a native rewrite. Authored room captures, bloom and wider migration remain later work. The measurements below retain the original A/B baseline.
 
 ## Try It

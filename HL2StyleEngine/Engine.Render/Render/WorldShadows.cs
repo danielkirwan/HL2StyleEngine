@@ -35,6 +35,9 @@ public sealed partial class BasicWorldRenderer
     public bool ShadowCachingEnabled { get; set; } = true;
     public bool ShadowCullingEnabled { get; set; } = true;
     public bool ShadowsEnabled { get; set; } = true;
+    public float PointShadowHysteresis { get; set; }
+    private readonly PointShadowSelector _pointShadowSelector = new();
+    private int _pointShadowIndex = -1;
     public bool NeedsShadowCasters => ShadowsEnabled && _activeLights.Any(l => l.CastShadows);
     public bool IsShadowRelevant(Vector3 center, float radius)
     {
@@ -139,6 +142,7 @@ public sealed partial class BasicWorldRenderer
             var light = _activeLights[i];
             if (!ShadowsEnabled || !light.CastShadows) continue;
             bool spot = _lightingData[3 + i * 4].W >= 0;
+            if (!spot && i != _pointShadowIndex) continue;
             if ((spot && spots >= 2) || (!spot && points >= 1)) continue;
             _lightingData[4 + i * 4].Y = passes.Count;
             int faces = spot ? 1 : 6;

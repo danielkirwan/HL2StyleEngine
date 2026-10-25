@@ -23,7 +23,11 @@ public sealed class ReflectionSnapshot
 
     public static ReflectionSnapshot Create(LevelFile source, string levelPath, string probeId, Func<string,string> resolve)
     {
-        var level = StructuredData.ReadJson<LevelFile>(StructuredData.WriteJson(source));
+        return CreateOwned(StructuredData.ReadJson<LevelFile>(StructuredData.WriteJson(source)), levelPath, probeId, resolve);
+    }
+
+    internal static ReflectionSnapshot CreateOwned(LevelFile level, string levelPath, string probeId, Func<string,string> resolve)
+    {
         var probe = level.Entities.SingleOrDefault(e => e.Id == probeId && e.Type == EntityTypes.ReflectionProbe)
             ?? throw new InvalidDataException("Select a reflection probe.");
         var settings = probe.ReflectionProbe ?? throw new InvalidDataException("Probe settings missing.");
@@ -47,6 +51,7 @@ public sealed class ReflectionSnapshot
         // Clear preview-only choices; exposure/UI never enter the HDR capture.
         level.ReflectionProbeId = null; level.ReflectionEnvironment = ReflectionPreset.None; level.Exposure = 1;
         level.AutomaticRoomReflections = false;
+        level.ReflectionStreaming = null;
         // Sampling links do not contribute energy to the capture.
         foreach (var entity in level.Entities)
             if (entity.ReflectionProbe != null) entity.ReflectionProbe.Doorway = null;

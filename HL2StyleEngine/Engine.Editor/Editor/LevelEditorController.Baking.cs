@@ -20,6 +20,12 @@ public sealed partial class LevelEditorController
             bool bake = entity.StaticLighting;
             if (ImGui.Checkbox("Static Lighting", ref bake))
             { BeginEdit(); entity.StaticLighting = bake; Dirty = true; EndEditIfAny(); }
+            if (bake)
+            {
+                bool exclude=entity.ExcludeFromDiffuseBake;
+                if (ImGui.Checkbox("Reflection Only / Probe Lit",ref exclude))
+                { BeginEdit(); entity.ExcludeFromDiffuseBake=exclude; Dirty=true; EndEditIfAny(); }
+            }
             if (bake && !IndirectLightBaker.IsStaticGeometry(entity))
                 ImGui.TextColored(new Vector4(1,.6f,.3f,1), "Ineligible: movable or interactive model");
         }
@@ -28,6 +34,7 @@ public sealed partial class LevelEditorController
     private void DrawBakeToolbar()
     {
         if (!ImGui.TreeNode("Indirect Lighting")) return;
+        DrawLightingScenarios();
         var settings = LevelFile.Bake ?? new();
         bool enabled = settings.Enabled; int texels = settings.TexelsPerTriangle, samples = settings.Samples;
         float distance = settings.RayDistance;
@@ -94,6 +101,7 @@ public sealed partial class LevelEditorController
             if (ImGui.Button("Cancel Bake")) bake.Cancel();
         }
         ImGui.TextWrapped(bake.Status);
+        ImGui.TextWrapped(bake.ScenarioStatus);
         if (bake.ResidentBytes > 0) ImGui.TextUnformatted($"Bake GPU: {bake.ResidentBytes / 1048576.0:F2} MiB");
     }
 }

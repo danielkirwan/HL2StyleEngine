@@ -17,6 +17,9 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
     private readonly bool _torch;
     private readonly bool _individualUploads;
     private readonly bool _referenceVisibility, _stress;
+    private bool _residencyRoute;
+    private bool _lightingSwitches;
+    private int _switchActions;
     private readonly bool _probeTest, _noProbes;
     private double _probeMilliseconds, _maxProbeMilliseconds;
     private readonly List<double> _intervals = new();
@@ -35,7 +38,7 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
         _probeTest=Path.GetFileName(level)==ProbeLightingRoom.FileName; _noProbes=noProbes; }
 
     internal static void Run(string root, bool torch, bool individualUploads = false, bool referenceVisibility = false, bool stress = false,
-        string? levelFile = null, bool noProbes = false)
+        string? levelFile = null, bool noProbes = false, bool residencyRoute = false, bool lightingSwitches = false)
     {
         string? prior = Environment.GetEnvironmentVariable("HS2_PROFILE_FRAMES");
         string? priorNative = Environment.GetEnvironmentVariable("HS2_RMLUI_NATIVE_PRESENTATION");
@@ -47,6 +50,9 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
         {
             using var host = new EngineHost(1920, 1080, "Full gameplay flashlight profile");
             using var probe = new GameplayFrameChecks(Path.Combine(root, "Game/Content/Levels", levelFile ?? SixRoomFlashlightTest.FileName), torch, individualUploads, referenceVisibility, stress, noProbes);
+            probe._residencyRoute = residencyRoute;
+            probe._lightingSwitches = lightingSwitches;
+            if (residencyRoute) Console.WriteLine("[ResidencyRoute] Five test-only teleports during measured frames exercise loading/eviction with Update, physics and presentation active; not a walking-only benchmark.");
             Console.WriteLine($"[GameplayLevel] {levelFile ?? SixRoomFlashlightTest.FileName}");
             if(probe._probeTest) Console.WriteLine($"[ProbePreview] {(noProbes ? "disabled reference" : "enabled")}; static lightmap remains enabled.");
             Console.WriteLine($"[GameplayProfile] torch={(torch ? "on" : "off")}; uploads={(individualUploads ? "individual reference" : "batched")}; actual host loop, scripted W/S and relative mouse, production HUD and launcher UI settings, physics and VSync/presentation; 120 warmup + 300 measured frames.");
@@ -57,17 +63,24 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
             Console.WriteLine($"[GameplayMovement] distance {probe._distance:F3}m / simulated {probe._simulationTime:F3}s = {probe._distance / probe._simulationTime:F3}m/s including acceleration/reversals; {probe._ticks} fixed ticks; wall frame mean {probe._intervals.Average():F3}ms p95 {probe._intervals[284]:F3}ms; >16.7ms {probe._intervals.Count(x => x > 16.7)}, >33.3ms {probe._intervals.Count(x => x > 33.3)} / 300.");
             Console.WriteLine($"[GameplayUploads] {probe._objectUploads / 300.0:F1} main-scene uploads/frame; {probe._intervals.Count(x => x > 100)} frames over the 100ms simulation clamp.");
             Console.WriteLine($"[VisibilityStreaming] reference={referenceVisibility}; draws/frame {probe._draws / 300.0:F1}; streaming wait frames {probe._streamWaitFrames}; resident {probe._game.StreamingResidentModels} models / {probe._game.StreamingResidentBytes / 1048576.0:F1} MiB; {probe._game.StreamingZoneCount} dependency zones; {probe._game.StreamingEvictions} evictions.");
-            if (levelFile is PbrTestRoom.FileName or RoomReflectionChecks.FileName or RoomTransitionChecks.FileName)
+            if (levelFile is PbrTestRoom.FileName or RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName)
             {
                 if (!probe._world.ReflectionReady || probe._world.ReflectionPendingCpuBytes != 0)
                     throw new InvalidDataException("PBR gameplay did not finish loading its reflection environment.");
                 long reflectionBytes=probe._world.ReflectionResidentBytes;
-                if (levelFile is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName)
+                if (levelFile is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName)
                 {
                     var room = (ReflectionProbeSession)probe.Field("_roomReflections");
                     if (!room.Ready || room.Busy || room.CaptureGpuBytes != 0) throw new InvalidDataException("Room capture not ready, or runtime capture work is active.");
                     if(probe._world.Reflection==null)reflectionBytes+=room.ResidentBytes;
                     Console.WriteLine($"[RoomReflection] {room.Status}; {room.ResidentBytes} GPU bytes; no runtime capture passes.");
+                    if (levelFile is ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName &&
+                        (room.ResidentProbeCount + room.RetiringProbeCount > 3 || room.ResidentBytes > 3.3*1048576))
+                        throw new InvalidDataException("Reflection residency budget exceeded.");
+                    if (levelFile==LightingStabilityChecks.FileName && (room.ResidentProbeCount!=6 || room.ResidentBytes>(lightingSwitches?13:6.5)*1048576))
+                        throw new InvalidDataException("All-resident six-room budget exceeded.");
+                    if (residencyRoute && levelFile!=LightingStabilityChecks.FileName && (room.ProbeEvictions == 0 || room.ProbeLoads < 6))
+                        throw new InvalidDataException("Gameplay route did not exercise room streaming.");
                 }
                 Console.WriteLine($"[ReflectionResidency] {reflectionBytes} GPU payload bytes including retained room captures, no pending CPU payload.");
                 if (probe._intervals.Average() > 17 || probe._intervals[284] > 21 ||
@@ -87,6 +100,12 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
             {
                 if (probe._stressActions != 5 || probe._peakDebris == 0) throw new InvalidDataException("Stress actions did not exercise debris/doors/gravity holding/inventory.");
                 Console.WriteLine($"[GameplayStress] PASS: {(probe._probeTest ? "toggled realtime light" : "opened puzzle shutters")}, broke six crates, gravity-held/released a prop, opened/closed inventory; {probe._peakDebris} peak fragment bodies; {probe._stressActions} event groups.");
+            }
+            if (lightingSwitches)
+            {
+                if (probe._switchActions != 4 || !((ReflectionProbeSession)probe.Field("_roomReflections")).ScenarioStatus.EndsWith("on",StringComparison.Ordinal))
+                    throw new InvalidDataException("Lighting switch profile did not restore its starting state.");
+                Console.WriteLine("[LightingSwitches] PASS: cold off, retained on, retained off, retained on during presented gameplay.");
             }
         }
         finally
@@ -114,7 +133,17 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
         long stamp = Stopwatch.GetTimestamp();
         if (_frames >= 120 && _previousStamp != 0) _intervals.Add(Stopwatch.GetElapsedTime(_previousStamp, stamp).TotalMilliseconds);
         _previousStamp = stamp;
+        if (_residencyRoute && _frames >= 150 && (_frames - 150) % 50 == 0 && _frames <= 350)
+        {
+            Vector3[] stops = [new(-24,.1f,-11),new(24,.1f,11),new(0,.1f,26),new(-24,.1f,11),new(-24,.1f,-11)];
+            _motor.Position = stops[(_frames - 150) / 50]; _motor.Velocity = Vector3.Zero;
+        }
         if (_stress) StressActions();
+        if (_lightingSwitches && _frames is 160 or 230 or 300 or 370)
+        {
+            var lever=((List<Entity>)Field("_runtimeEntities")).Single(e=>e.Name=="Fixture Power Switch");
+            Call("UseLightSwitch",lever); _switchActions++;
+        }
         if (_frames >= 120) _time += dt;
         Key? next = _frames < 120 ? null : (int)(_time % 2) == 0 ? Key.W : Key.S;
         var keys = new List<KeyEvent>();

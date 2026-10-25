@@ -415,7 +415,8 @@ public sealed partial class HL2GameModule
             return false;
 
         string normalized = modelAssetPath.Replace('\\', '/');
-        return normalized.EndsWith(BreakableWoodenCrateModelPath, StringComparison.OrdinalIgnoreCase);
+        return normalized.EndsWith(BreakableWoodenCrateModelPath, StringComparison.OrdinalIgnoreCase) ||
+               normalized.EndsWith("Content/Models/RenderingTests/WoodenCratePbr.glb", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsBreakableCrateFracturePart(LoadedModelPart part)

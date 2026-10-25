@@ -1,5 +1,31 @@
 # Compression, Lighting And Physics Validation
 
+## Lighting Stability And Switched States (2026-10-25)
+
+Separate `LaunchSixRoomLightingStabilityTest.bat`: fourteen fixtures, zero ambient/directional, 532 baked architecture models, 766 valid probes, six resident captures, explicit on/off states and 2m point-shadow hysteresis. Original level/shader/reference files are preserved. 797 new checks plus actual GPU on/off/idle/authoring-undo tests pass; all 15 Legacy images, 282 diffuse/probe, 50 room capture, 106 transition and 747 original fixture checks pass. Game/F2/HS2Editor captures remain textured.
+
+GPU A/B found no asset-streaming pixel changes over 1/255 at three fixed positions; old reflection residency changed 154,839 / 5,160 / 0 pixels. New all-resident fixture removes those differences. This is a measured small-level remedy, not general visibility-aware streaming.
+
+Final verification: Release solution and Debug/Release authoring builds are clean; 797 checks also pass in Debug. Both app output folders pass 60 package hash/cache checks; 937 older streaming checks and GPU PBR shadow/moving-door regression pass. Exact BAT smoke build/run/automatic exit succeeds; its separate 60-frame stationary mean/P95 16.47/22.95ms is not counted as a pacing-gate pass.
+
+Six full-host 1920x1009 Release runs pass unchanged gates. Gameplay/room traversal mean 16.666-16.667ms, P95 17.229-17.292ms, zero >33.3ms frames; switching mean 16.721-16.779ms, P95 17.267-17.279ms, one >33.3ms frame per run. No streaming waits or runtime captures; no locked-60 claim. Matching inactive states stay warm: approximately 12.76 MiB reflections after both load, at most 37.15 MiB bake resources in the all-visible test. First off-state preparation remains asynchronous (~615ms); hot switches take ~15-16ms in the render harness. Full commands, state-authoring rules and remaining limitations: [LIGHTING_STABILITY_GUIDE.md](LIGHTING_STABILITY_GUIDE.md).
+
+## Fixture-Only Point Lighting (2026-10-25)
+
+Existing 15 rendering-reference images remain within 1/255. Exact batch-launch smoke passes build/run; its separate 60-frame stationary sample records 16.65ms mean / 23.75ms P95, so it is not counted as another pacing-gate pass or proof of locked 60 FPS.
+
+`LaunchSixRoomPointLightTest.bat` opens the separate zero-ambient/directional eight-fixture PBR level. 747 level/prefab/capture checks pass; actual game on/off/on GPU images verify illumination, dark fallback and restoration within 1/255. Game/F2/HS2Editor scene captures are textured. Release build has zero warnings/errors; each app's copied assets/caches pass 46 checks. Four 1920x1009 full-host runs average about 60 FPS, P95 18.052-18.108ms, zero >33.3ms and zero streaming waits. No shader or renderer changes. [Exact results, reproduction and limits](POINT_LIGHT_TEST_GUIDE.md).
+
+## Reflection Residency And Six-Room Rollout (2026-10-25)
+
+Unit F first pass: `LaunchSixRoomPbrTest.bat` opens an isolated copy of the six-room flashlight level. Six saved 128-square probes share three resident slots with active/doorway pinning, connected-neighbour prefetch, retention, worker validation and fenced eviction/reload. Existing source levels/launch defaults/shaders are unchanged. Shared F2/HS2Editor controls expose policy and status. Corrected wood crates are now recognized by the existing fracture path. [Full workflow, tests, metrics and limits](REFLECTION_STREAMING_GUIDE.md).
+
+Release full-host stress (torch on/off) mean/P95: **16.716/17.090 ms**, **16.661/16.939 ms**; loading/eviction route: **16.666/17.638 ms**, **16.661/17.027 ms**. All four runs have zero >33.3 ms frames, zero streaming waits and one main object upload/frame. Stress includes 120 peak fracture pieces, shutters, gravity holding and inventory. Loading route uses test-only teleports during real Update/physics/presentation. At most three captures plus eleven binding sets/fallback use **3,345,700 bytes**; observed retirement-inclusive peak about **3.193 MiB**. Runtime capture passes remain zero. The initial synchronous-validation route failed; worker snapshot preparation fixed the hitches without widening limits.
+
+The new GPU suite validates copied gameplay data, policy/undo/serialization, prefetch/retention/pinning, resource limits including fenced slots, zero upload budget, revisits, forced reload, cancellation and missing-cache recovery. Existing stage regressions and publish checks are recorded in the residency guide. New scene images were captured separately, with textured game/standalone views inspected. These are short local tests, not a locked-60 minimum, cold-start measurement or manual editor/controller acceptance. Historical results below describe their original stages.
+
+Final verification: Release/Debug builds clean; 945/957 new assertions pass (scheduling-dependent poll count), along with 106 transition, 50 capture, 282 diffuse/probe, corrected-crate flashlight checks and all 15 Legacy reference images. Game/HS2Editor Release and fresh Game publish each pass 45 packaged hash/capture-validity checks; the published game smoke run exits normally. Final torch-on loading route: **16.661/17.059 ms mean/P95**, zero >33.3 ms frames. No source level, shader or reference image was replaced to make these checks pass.
+
 ## Room Transitions (2026-10-25)
 
 Unit E's invariant-light first pass is implemented in separate `roomTransitionTest.json`, launched by `LaunchRoomTransitionTest.bat`. Automatic mode selects one room or an explicit pair per model part, with box-projected directions, strict pixel-space membership and linear-HDR doorway blending. Shared F2/HS2Editor controls author automatic mode, bounds and neighbor/offset/size/axis; linked prefab GUIDs remap. Missing/stale/incompatible captures use black without hiding scene geometry. No live captures, per-draw uniform uploads or routine WaitForIdle were added. All loaded probes remain in a bounded set of up to eight; residency/prefetch and explicit switched presets are still pending. [Full guide and commands](ROOM_TRANSITION_GUIDE.md).

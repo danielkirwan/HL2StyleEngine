@@ -30,7 +30,7 @@ This stage keeps all validated probes in the small bounded set resident. It is *
 
 ## Lighting And Cache Compatibility
 
-Captures remain **Invariant Only**. Switch-controlled/flickering lights and their linked emission remain excluded. Disabling a captured fixed light immediately substitutes black bindings; restoring the compatible state reuses the retained ready data. That protects puzzle lighting without inventing arbitrary on/off combinations. Explicit switched capture presets are still pending.
+This original fixture's captures remain **Invariant Only**. Switch-controlled/flickering lights and their linked emission remain excluded. Disabling a captured fixed light immediately substitutes black bindings; restoring the compatible state reuses the retained ready data. The separate [lighting-stability fixture](LIGHTING_STABILITY_GUIDE.md) now supports explicit bounded on/off scenarios with matching bakes/captures; arbitrary combinations still fall back safely.
 
 Automatic-mode and doorway-link edits do not change capture energy and are omitted from capture keys. Influence/projection/priority edits conservatively invalidate caches, along with the existing geometry, shader, material, resolution and light dependencies. Rebuild after those changes. Probe authoring and automatic mode do not contaminate diffuse bake keys. Caches remain versioned/checksummed `.hs2reflection` files next to their source level.
 
@@ -66,4 +66,4 @@ benchmark-gameplay-room-transitions on
 benchmark-gameplay-room-transitions off
 ```
 
-Next: unit F's bounded active/neighbor residency, forced unload/reload tests, packaging and one deliberately migrated real level. Explicit switched presets, cold first-playable instrumentation, longer soak and manual editor/input acceptance remain open. Do not broaden the rendering defaults before that validation.
+Follow-up: unit F's bounded active/neighbor residency and a separately migrated six-room copy are available in `LaunchSixRoomPbrTest.bat`; explicit switched presets are now available in the separate [lighting-stability test](LIGHTING_STABILITY_GUIDE.md). This two-room fixture retains its original all-resident mode. See [residency guide](REFLECTION_STREAMING_GUIDE.md) for forced unload/reload, budgets and packaging checks. Cold first-playable instrumentation, longer soak and manual editor/input acceptance remain open; do not broaden rendering defaults before acceptance.

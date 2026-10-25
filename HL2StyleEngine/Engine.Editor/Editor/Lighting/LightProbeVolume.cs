@@ -6,6 +6,7 @@ namespace Engine.Editor.Editor;
 
 public sealed class LightProbeVolume
 {
+    public const int MaxTriangles = 65536;
     public Vector3 Origin { get; set; }
     public float Spacing { get; set; }
     public int Width { get; set; }
@@ -22,7 +23,7 @@ public sealed class LightProbeVolume
             Width is < 1 or > 128 || Height is < 1 or > 128 || Depth is < 1 or > 128) return false;
         int count = Width*Height*Depth;
         return count <= 4096 && Valid != null && Valid.Length == count && Irradiance != null && Irradiance.Length == count*6 &&
-            OccluderVertices != null && OccluderVertices.Length is > 0 and <= 49152 && OccluderVertices.Length%3 == 0 &&
+            OccluderVertices != null && OccluderVertices.Length > 0 && OccluderVertices.Length <= MaxTriangles*3 && OccluderVertices.Length%3 == 0 &&
             OccluderVertices.All(Finite) && Irradiance.All(v=>Finite(v) && Vector3.Min(v,Vector3.Zero)==Vector3.Zero &&
                 Vector3.Max(v,new Vector3(60000))==new Vector3(60000));
     }

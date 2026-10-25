@@ -44,7 +44,7 @@ public sealed class RoomReflectionCapture : IDisposable
     private readonly ReflectionCaptureInput _input;
     private readonly LevelEditorController _editor = new();
     private readonly Dictionary<string,RenderModel> _models = new();
-    private readonly List<(LevelEntityDef Entity, RenderModel Model, Matrix4x4 Transform, LightmapBinding? Binding)> _draws = new();
+    private readonly List<(LevelEntityDef Entity, RenderModel Model, Matrix4x4 Transform, LightmapBinding? Binding, ProbeIrradiance Probe)> _draws = new();
     private readonly LightmapAtlas? _atlas;
     private bool _submitted, _prepared;
     private int _face;
@@ -104,13 +104,14 @@ public sealed class RoomReflectionCapture : IDisposable
                     var draw = _editor.DrawBoxes[i]; var model = _input.Models[entity.MeshPath];
                     var transform = IndirectLightBaker.BoundsFit(model, draw.Position, draw.Size, draw.Rotation);
                     LightmapBinding? binding = null;
-                    if (_input.Diffuse is { } diffuse && _atlas != null)
+                    if (_input.Diffuse is { } diffuse && _atlas != null && !entity.ExcludeFromDiffuseBake)
                     {
                         var record = diffuse.Records.Single(r => r.EntityId == entity.Id);
                         if (record.Transform != transform) throw new InvalidDataException("Reflection/diffuse transforms disagree.");
                         binding = new(model, _atlas, record.FirstTriangle, diffuse.Texels, diffuse.Size, true);
                     }
-                    _draws.Add((entity, _models[entity.MeshPath], transform, binding));
+                    var probe = entity.ExcludeFromDiffuseBake ? _input.Diffuse?.PreparedProbes?.Sample(draw.Position) ?? default : default;
+                    _draws.Add((entity, _models[entity.MeshPath], transform, binding, probe));
                 }
             foreach (var draw in _draws)
                 if (draw.Binding is { IsReady: false } binding) { _world.UploadLightmapPart(binding); if (!binding.IsReady) return; }
@@ -130,7 +131,7 @@ public sealed class RoomReflectionCapture : IDisposable
         using (_world.BatchObjectUploads())
             foreach (var draw in _draws)
                 _world.DrawModel(_commands, draw.Model, draw.Transform, draw.Entity.Color, null,
-                    LevelLighting.GetEmission(_editor.LevelFile, draw.Entity), draw.Binding);
+                    LevelLighting.GetEmission(_editor.LevelFile, draw.Entity), draw.Binding, draw.Probe);
         _commands.CopyTexture(_color, _staging); _commands.End();
         _device.SubmitCommands(_commands, _fence); _submitted = true;
     }

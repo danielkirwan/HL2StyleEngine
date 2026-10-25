@@ -14,6 +14,10 @@ public sealed class LevelFile
     public float DirectionalLight { get; set; } = 1f;
     public bool EnableShadows { get; set; } = true;
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public float PointShadowHysteresis { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<LightingScenarioDef>? LightingScenarios { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public Engine.Render.SurfaceLightingModel LightingModel { get; set; }
     [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingDefault)]
     public Engine.Render.ReflectionPreset ReflectionEnvironment { get; set; }
@@ -21,6 +25,8 @@ public sealed class LevelFile
     public string? ReflectionProbeId { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool AutomaticRoomReflections { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReflectionStreamingSettings? ReflectionStreaming { get; set; }
     public LevelStreamingSettings Streaming { get; set; } = new();
     public LevelBakeSettings Bake { get; set; } = new();
 
@@ -28,6 +34,19 @@ public sealed class LevelFile
 
     public List<BoxDef>? Boxes { get; set; }
     
+}
+
+public sealed class ReflectionStreamingSettings
+{
+    public int MaxResidentProbes { get; set; } = 3;
+    public float PrefetchDistance { get; set; } = 8;
+    public float RetainSeconds { get; set; } = 5;
+}
+
+public sealed class LightingScenarioDef
+{
+    public string Id { get; set; } = "";
+    public List<LightStateOverride> Lights { get; set; } = new();
 }
 
 public sealed class LevelBakeSettings
@@ -159,6 +178,8 @@ public sealed class LevelEntityDef
     public float FlickerSpeed { get; set; } = 4f;
     public bool BakeIndirect { get; set; }
     public bool StaticLighting { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ExcludeFromDiffuseBake { get; set; }
 
     public string MeshPath { get; set; } = "";
     public string MaterialPath { get; set; } = "";

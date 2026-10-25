@@ -89,6 +89,27 @@ public sealed partial class LevelEditorController
         if (!ImGui.TreeNode("Room Reflections")) return;
         bool automatic=LevelFile.AutomaticRoomReflections;
         if (ImGui.Checkbox("Automatic Room Reflections",ref automatic)) SetAutomaticRoomReflections(automatic);
+        if (automatic)
+        {
+            bool streaming = LevelFile.ReflectionStreaming != null;
+            if (ImGui.Checkbox("Stream Room Reflections", ref streaming))
+                SetReflectionStreaming(streaming ? new() : null);
+            if (LevelFile.ReflectionStreaming is { } settings)
+            {
+                int slots = settings.MaxResidentProbes;
+                float distance = settings.PrefetchDistance, retain = settings.RetainSeconds;
+                bool changed = false;
+                ImGui.TextUnformatted("Resident probe limit"); ImGui.SetNextItemWidth(-1);
+                changed |= ImGui.InputInt("##reflectionSlots", ref slots);
+                ImGui.TextUnformatted("Doorway prefetch distance (m)"); ImGui.SetNextItemWidth(-1);
+                changed |= ImGui.InputFloat("##reflectionPrefetch", ref distance);
+                ImGui.TextUnformatted("Retention (seconds)"); ImGui.SetNextItemWidth(-1);
+                changed |= ImGui.InputFloat("##reflectionRetention", ref retain);
+                if (changed) SetReflectionStreaming(new() { MaxResidentProbes = Math.Clamp(slots, 3, 8),
+                    PrefetchDistance = float.IsFinite(distance) ? Math.Clamp(distance, 0, 100) : 8,
+                    RetainSeconds = float.IsFinite(retain) ? Math.Clamp(retain, 0, 60) : 5 });
+            }
+        }
         if (ImGui.Button("Add Reflection Probe"))
         {
             Vector3 position = SelectedEntityIndex >= 0 && SelectedEntityIndex < DrawBoxes.Count ? DrawBoxes[SelectedEntityIndex].Position : new(0,1.8f,0);
@@ -116,7 +137,7 @@ public sealed partial class LevelEditorController
             }
             if (disabled) ImGui.EndDisabled();
             if (session.Busy && ImGui.Button("Cancel Capture")) session.Cancel();
-            if (ImGui.Button("Reload Capture")) session.Reload();
+            if (ImGui.Button(automatic ? "Unload / Reload Rooms" : "Reload Capture")) session.Reload();
             ImGui.TextWrapped(session.Status);
             ImGui.TextUnformatted($"Reflection GPU: {session.ResidentBytes/1048576.0:F2} MiB");
             if (session.CaptureGpuBytes > 0) ImGui.TextUnformatted($"Capture scratch: {session.CaptureGpuBytes/1048576.0:F2} MiB");
@@ -129,6 +150,13 @@ public sealed partial class LevelEditorController
         BeginEdit(); LevelFile.AutomaticRoomReflections=enabled;
         if (enabled) LevelFile.ReflectionEnvironment=ReflectionPreset.None;
         Dirty=true; EndEditIfAny();
+    }
+
+    public void SetReflectionStreaming(ReflectionStreamingSettings? settings)
+    {
+        if (settings != null) ReflectionResidency.Validate(settings);
+        BeginEdit(); LevelFile.ReflectionStreaming = settings;
+        Dirty = true; EndEditIfAny();
     }
 
     public void DrawReflectionBounds(BasicWorldRenderer world, Renderer renderer)

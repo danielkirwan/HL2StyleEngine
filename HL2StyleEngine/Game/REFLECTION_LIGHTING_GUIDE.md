@@ -1,5 +1,7 @@
 # Controlled Specular Environment (Unit C)
 
+Current follow-up (2026-10-25): the synthetic fixture remains unchanged. Authored capture, transitions and bounded residency now have a separate six-room PBR rollout, launched by LaunchSixRoomPbrTest.bat. [Residency guide](REFLECTION_STREAMING_GUIDE.md). The contracts below describe the original synthetic stage.
+
 Implemented 2026-10-23 under [the upgrade plan](ENGINE_UPGRADE_PLAN.md). This stage uses one synthetic distant lighting rig to validate specular environment math. It is **not a capture of the room**, a mirror, or a switch-aware room probe. C# remains the runtime. Existing levels default to no environment and retain their accepted images.
 
 ## Try It

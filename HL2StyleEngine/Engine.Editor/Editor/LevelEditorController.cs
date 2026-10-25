@@ -944,6 +944,9 @@ public sealed partial class LevelEditorController
             bool shadows = LevelFile.EnableShadows;
             float exposure = LevelFile.Exposure, ambient = LevelFile.AmbientLight, directional = LevelFile.DirectionalLight;
             bool changed = ImGui.Checkbox("Shadows", ref shadows);
+            float shadowMargin=LevelFile.PointShadowHysteresis;
+            ImGui.TextUnformatted("Point Shadow Selection Margin (m)"); ImGui.SetNextItemWidth(-1);
+            changed |= ImGui.SliderFloat("##pointShadowMargin",ref shadowMargin,0,10);
             int lightingModel = LevelFile.LightingModel == Engine.Render.SurfaceLightingModel.Pbr ? 1 : 0;
             ImGui.TextUnformatted("Lighting Model"); ImGui.SetNextItemWidth(-1);
             changed |= ImGui.Combo("##lightingModel", ref lightingModel, "Legacy\0PBR\0");
@@ -961,6 +964,7 @@ public sealed partial class LevelEditorController
             {
                 BeginEdit();
                 LevelFile.EnableShadows = shadows; LevelFile.Exposure = exposure;
+                LevelFile.PointShadowHysteresis = shadowMargin;
                 LevelFile.LightingModel = (Engine.Render.SurfaceLightingModel)lightingModel;
                 LevelFile.ReflectionEnvironment = (Engine.Render.ReflectionPreset)reflection;
                 LevelFile.AmbientLight = ambient; LevelFile.DirectionalLight = directional;

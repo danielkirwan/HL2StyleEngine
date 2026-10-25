@@ -341,6 +341,7 @@ public sealed partial class BasicWorldRenderer : IDisposable
             .ThenBy(l => MathF.Max(0f, Vector3.Distance(l.Position, cameraPosition) - l.Range))
             .ThenBy(l => Vector3.DistanceSquared(l.Position, cameraPosition))
             .Take(MaxPointLights).ToArray();
+        _pointShadowIndex = _pointShadowSelector.Select(_activeLights,cameraPosition,PointShadowHysteresis);
         foreach (var light in _activeLights)
         {
             _lightingData[1 + count * 4] = new Vector4(light.Position, light.Range);

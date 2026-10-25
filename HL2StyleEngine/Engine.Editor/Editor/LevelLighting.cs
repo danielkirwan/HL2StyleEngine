@@ -29,6 +29,7 @@ public static class LevelLighting
         renderer.AmbientStrength = editor.LevelFile.AmbientLight;
         renderer.DirectionalStrength = editor.LevelFile.DirectionalLight;
         renderer.ShadowsEnabled = editor.LevelFile.EnableShadows;
+        renderer.PointShadowHysteresis = editor.LevelFile.PointShadowHysteresis;
         renderer.LightingModel = editor.LevelFile.LightingModel == SurfaceLightingModel.Pbr ? SurfaceLightingModel.Pbr : SurfaceLightingModel.Legacy;
         renderer.EnvironmentPreset = editor.LevelFile.ReflectionEnvironment;
         var lights = GetLights(editor, state, seconds);

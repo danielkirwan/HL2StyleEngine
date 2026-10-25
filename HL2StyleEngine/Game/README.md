@@ -2,7 +2,13 @@
 
 This file tracks completed gameplay-facing systems and the current implementation shape.
 
-Room transitions (2026-10-25): `LaunchRoomTransitionTest.bat` opens a separate fixture with automatic room selection, box-projected reflections, one authored doorway blend and a carryable metal test object. F2/HS2Editor share automatic-mode and doorway-link controls. Local torch-on/off runs average about 60 FPS; two captures plus metadata/fallback use 2.126 MiB. Existing levels and launch defaults are unchanged. Residency/prefetch, explicit switched presets and real-level rollout remain next. See [room transition guide](ROOM_TRANSITION_GUIDE.md).
+Lighting stability (2026-10-25): run `LaunchSixRoomLightingStabilityTest.bat` for fourteen fixtures, zero ambient/directional fill, fixture-derived bounce/probes, six resident room reflections and an E-operated power lever near spawn. Explicit on/off lighting caches and retained states prevent stale glow and repeated reloads; point-shadow hysteresis reduces midpoint switching. Original levels remain unchanged. [Playtest, editor workflow, measured performance and limits](LIGHTING_STABILITY_GUIDE.md). Earlier entries below are historical.
+
+Fixture-only test (2026-10-25): run `LaunchSixRoomPointLightTest.bat` for eight visible ceiling fixtures with no ambient/directional fill and freshly cooked PBR room reflections. Flashlight starts off; F toggles it. `CeilingPointLight.prefab.json` is in the editor's Prefabs tab. Original levels are unchanged. [Authoring, measurements and remaining lighting work](POINT_LIGHT_TEST_GUIDE.md).
+
+Latest (2026-10-25): `LaunchSixRoomPbrTest.bat` opens `sixRoomPbrTest.json`, a separate six-room PBR copy with ready room captures, three-slot reflection streaming, doorway prefetch and forced reload controls. Original levels/defaults are unchanged. Gameplay and loading stress tests average about 60 FPS with flashlight on/off. See [residency guide](REFLECTION_STREAMING_GUIDE.md) for playtesting and remaining limits. The dated notes below describe earlier milestones.
+
+Room transitions (2026-10-25): `LaunchRoomTransitionTest.bat` remains the separate automatic two-room fixture with box projection, one doorway blend and a carryable metal object. Its original all-resident behaviour is retained. Shared F2/HS2Editor doorway controls and the 106 transition checks remain supported. Explicit switched presets are still pending. See [room transition guide](ROOM_TRANSITION_GUIDE.md).
 
 The earlier `LaunchRoomReflectionTest.bat` remains the manual whole-scene capture preview. Placement, capture/rebuild/cancel, reload and invalid-cache safety remain shared with automatic mode. See [room capture guide](ROOM_REFLECTION_GUIDE.md).
 

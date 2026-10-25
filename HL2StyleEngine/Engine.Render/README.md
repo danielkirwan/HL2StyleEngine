@@ -1,5 +1,13 @@
 # World Rendering
 
+## Lighting Stability (2026-10-25)
+
+Optional `PointShadowHysteresis` retains the previous eligible point-shadow owner until a competing light is meaningfully closer; default zero preserves earlier selection. The one-point/two-spot budget and accepted shaders remain unchanged. The shared lighting sessions now support explicit matching on/off caches and bounded inactive-state retention. The separate fourteen-fixture level uses all six room captures plus diffuse bounce/probes. [Validation and performance limits](../Game/LIGHTING_STABILITY_GUIDE.md).
+
+## Reflection Residency (2026-10-25)
+
+The shared editor/runtime session now optionally streams a bounded active/doorway/neighbour set. Missing environments bind the existing black fallback; shader layouts and compiled shaders are unchanged. Uploads retain the shared soft budget. Old room bindings retire before their referenced environments; fenced evictions count against admission slots, with payload accounting through retirement. Two workers validate immutable source/path snapshots. No runtime capture or routine GPU idle wait was added. See [residency guide](../Game/REFLECTION_STREAMING_GUIDE.md) for the isolated six-room fixture and measured limits.
+
 ## Room Transitions (2026-10-25)
 
 `ReflectionRooms` selects one room or an explicitly connected pair per transformed model-part bounds. Immutable sets use t6/t7/t8/s4/b4 with 224-byte reflection metadata, leaving the 256-byte object payload and batched upload unchanged. HLSL applies strict pixel membership, finite box projection and smoothstep linear-HDR blending only in authored doorway boxes. Missing/incompatible captures retain black weight rather than leaking a bright neighbor. Unit D's global preview still works when automatic mode is off. Updated VS/PS CSOs and original image regressions pass. See [transition guide](../Game/ROOM_TRANSITION_GUIDE.md) for limits and performance; the following dated notes describe earlier stages.

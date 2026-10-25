@@ -19,16 +19,17 @@ public sealed record BakeSnapshot(byte[] Json, Dictionary<string, string> ModelP
     {
         byte[] json = StructuredData.WriteJson(level);
         // The distant specular test rig is not a contributor to this diffuse bake.
-        if (level.ReflectionEnvironment != ReflectionPreset.None || level.ReflectionProbeId != null || level.AutomaticRoomReflections || level.Entities.Any(e => e.Type == EntityTypes.ReflectionProbe))
+        if (level.ReflectionEnvironment != ReflectionPreset.None || level.ReflectionProbeId != null || level.AutomaticRoomReflections || level.ReflectionStreaming != null || level.Entities.Any(e => e.Type == EntityTypes.ReflectionProbe))
         {
             var diffuse = StructuredData.ReadJson<LevelFile>(json);
             diffuse.ReflectionEnvironment = ReflectionPreset.None;
             diffuse.ReflectionProbeId = null;
             diffuse.AutomaticRoomReflections = false;
+            diffuse.ReflectionStreaming = null;
             diffuse.Entities.RemoveAll(e => e.Type == EntityTypes.ReflectionProbe);
             json = StructuredData.WriteJson(diffuse);
         }
-        return new(json, level.Entities.Where(e => e.StaticLighting && !string.IsNullOrWhiteSpace(e.MeshPath))
+        return new(json, level.Entities.Where(e => e.StaticLighting && !e.ExcludeFromDiffuseBake && !string.IsNullOrWhiteSpace(e.MeshPath))
             .Select(e => e.MeshPath).Distinct(StringComparer.OrdinalIgnoreCase).ToDictionary(p => p, resolve, StringComparer.OrdinalIgnoreCase), level.Bake?.Probes == null ? 1 : 2);
     }
 
@@ -120,7 +121,7 @@ public static partial class IndirectLightBaker
         for (int i = 0; i < level.Entities.Count; i++)
         {
             var entity = level.Entities[i];
-            if (!entity.StaticLighting) continue;
+            if (!entity.StaticLighting || entity.ExcludeFromDiffuseBake) continue;
             cancel.ThrowIfCancellationRequested(); ValidateParents(entity, level);
             if (!IsStaticGeometry(entity)) throw new InvalidDataException($"{entity.Name}: static lighting requires a fixed, non-interactive, non-destructible GLB model.");
             if (!models.TryGetValue(entity.MeshPath, out var model))

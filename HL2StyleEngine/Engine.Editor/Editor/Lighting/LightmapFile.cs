@@ -30,7 +30,7 @@ public sealed class LightmapData
 public static class LightmapFile
 {
     public const int Version = 2;
-    private const int MaxBytes = 40 * 1024 * 1024;
+    private const int MaxBytes = 64 * 1024 * 1024;
     private static readonly JsonSerializerOptions Options = new() { IncludeFields = true };
     public static string PathFor(string levelPath) => Path.ChangeExtension(Path.GetFullPath(levelPath), ".hs2lightmap");
 
@@ -49,7 +49,7 @@ public static class LightmapFile
             if (LZ4Codec.Decode(reader.ReadBytes(packed), data) != length || !SHA256.HashData(data).AsSpan().SequenceEqual(hash)) return null;
             using var payload = new MemoryStream(data); using var binary = new BinaryReader(payload);
             int metadataLength = binary.ReadInt32();
-            if (metadataLength < 1 || metadataLength > 4 * 1024 * 1024 || metadataLength > length - 4) return null;
+            if (metadataLength < 1 || metadataLength > 16 * 1024 * 1024 || metadataLength > length - 4) return null;
             var result = JsonSerializer.Deserialize<LightmapData>(binary.ReadBytes(metadataLength), Options);
             if (result == null || result.Key != key || result.Size < 32 || result.Size > 2048 ||
                 (result.Size & (result.Size - 1)) != 0 || result.Texels is < 4 or > 32 || result.Records == null ||
@@ -88,9 +88,9 @@ public static class LightmapFile
     {
         using var memory = new MemoryStream(); using var writer = new BinaryWriter(memory);
         byte[] metadata = JsonSerializer.SerializeToUtf8Bytes(data, Options);
-        if (metadata.Length > 4 * 1024 * 1024) throw new InvalidDataException("Bake metadata exceeds the 4 MiB budget.");
+        if (metadata.Length > 16 * 1024 * 1024) throw new InvalidDataException("Bake metadata exceeds the 16 MiB budget.");
         writer.Write(metadata.Length); writer.Write(metadata); writer.Write(data.Pixels);
-        if (memory.Length > MaxBytes) throw new InvalidDataException("Lightmap exceeds the 40 MiB file budget.");
+        if (memory.Length > MaxBytes) throw new InvalidDataException("Lightmap exceeds the 64 MiB file budget.");
         byte[] raw = memory.ToArray(), packed = new byte[LZ4Codec.MaximumOutputSize(raw.Length)];
         int count = LZ4Codec.Encode(raw, packed);
         if (count <= 0) throw new InvalidDataException("Lightmap compression failed.");

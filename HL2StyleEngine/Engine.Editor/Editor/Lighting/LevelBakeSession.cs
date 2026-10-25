@@ -10,6 +10,8 @@ public enum IndirectLightingView { Full, DirectOnly, IndirectOnly }
 // Owned by one editor/game instance. CPU preparation never touches GPU or mutable editor data.
 public sealed class LevelBakeSession : IDisposable
 {
+    private readonly LightingScenarioResolver _scenarios = new();
+    public string ScenarioStatus => _scenarios.Status;
     private sealed class Resources(LightmapAtlas atlas) : IDisposable
     {
         public LightmapAtlas Atlas = atlas;
@@ -17,6 +19,10 @@ public sealed class LevelBakeSession : IDisposable
         public void Dispose() { foreach (var entry in Bindings.Values) entry.Binding.Dispose(); Bindings.Clear(); Atlas.Dispose(); }
     }
     private Resources? _resources;
+    private sealed record RetainedBake(string Path, long Revision, Resources Resources, LightmapData Data,
+        Dictionary<string,LightmapRecord> Records, BakeSnapshot Snapshot, string Stamp);
+    private RetainedBake? _retained;
+    private string _scenarioSource = "";
     private LightmapData? _data;
     private Dictionary<string, LightmapRecord> _records = new(StringComparer.OrdinalIgnoreCase);
     private Task<LightmapData?>? _job;
@@ -48,10 +54,16 @@ public sealed class LevelBakeSession : IDisposable
     public bool Ready => _data != null;
     public int ReadyModels => _resources?.Bindings.Values.Count(v => v.Binding.IsReady) ?? 0;
     public string LastBindingIssue { get; private set; } = "";
-    public long ResidentBytes => (_resources?.Atlas.Bytes ?? 0) + (_resources?.Bindings.Values.Sum(v => v.Binding.Bytes) ?? 0);
+    public long ActiveResidentBytes => (_resources?.Atlas.Bytes ?? 0) + (_resources?.Bindings.Values.Sum(v => v.Binding.Bytes) ?? 0);
+    public long ResidentBytes => ActiveResidentBytes + (_retained?.Resources.Atlas.Bytes ?? 0) + (_retained?.Resources.Bindings.Values.Sum(v=>v.Binding.Bytes) ?? 0);
 
     public void Update(LevelEditorController editor, Func<string, string> resolve, BasicWorldRenderer world, Renderer renderer, LevelLightState? state = null)
     {
+        bool scenarios=editor.LevelFile.LightingScenarios is { Count: >0 };
+        bool sameScenarioSource=scenarios && _scenarioSource==editor.LevelPath;
+        _scenarioSource=scenarios?editor.LevelPath:"";
+        if (!sameScenarioSource && _retained!=null) { renderer.RetireAfterFrame(_retained.Resources);_retained=null; }
+        if (scenarios) { editor=_scenarios.Select(editor,state); state=null; }
         _frame++;
         ProbeQueries = 0; ProbeMilliseconds = 0;
         world.Diagnostic = editor.LevelFile.LightingModel == SurfaceLightingModel.Pbr ? Diagnostic : LightingDiagnostic.Full;
@@ -66,10 +78,25 @@ public sealed class LevelBakeSession : IDisposable
         }
         if (changed)
         {
+            RetainedBake? restore=_retained;
+            if(restore!=null && (restore.Path!=editor.LevelPath || restore.Revision!=editor.Revision || SourceStamp(restore.Snapshot)!=restore.Stamp)) restore=null;
+            if(restore!=null)_retained=null;
+            if (sameScenarioSource && _path!=editor.LevelPath && _revision==editor.Revision && _resources!=null && _data!=null && _snapshot!=null)
+            {
+                if(_retained!=null)renderer.RetireAfterFrame(_retained.Resources);
+                _retained=new(_path,_revision,_resources,_data,_records,_snapshot,_sourceStamp);_resources=null;
+            }
+            else if(_revision!=editor.Revision && _retained!=null) {renderer.RetireAfterFrame(_retained.Resources);_retained=null;}
             Cancel(); Retire(renderer); _revision = editor.Revision; _path = editor.LevelPath;
-            _data = null; _records.Clear(); _snapshot = null;
+            _data = null; _records = new(StringComparer.OrdinalIgnoreCase); _snapshot = null;
             _probeCache.Clear();
-            if (editor.LevelFile.Bake?.Enabled == true)
+            if(restore!=null)
+            {
+                _resources=restore.Resources;_data=restore.Data;_records=restore.Records;_snapshot=restore.Snapshot;_sourceStamp=restore.Stamp;
+                foreach(var key in _resources.Bindings.Keys.ToArray())_resources.Bindings[key]=(_resources.Bindings[key].Binding,_frame);
+                Status="Ready: retained lighting-state bake";
+            }
+            else if (editor.LevelFile.Bake?.Enabled == true)
             {
                 try
                 {
@@ -118,6 +145,7 @@ public sealed class LevelBakeSession : IDisposable
 
     public void BeginBake(LevelEditorController editor, Func<string, string> resolve)
     {
+        if (editor.LevelFile.LightingScenarios is { Count: > 0 }) editor=_scenarios.Select(editor,null);
         if (Busy) return;
         try
         {
@@ -164,7 +192,7 @@ public sealed class LevelBakeSession : IDisposable
         LevelFile level, BasicWorldRenderer world, Renderer renderer, LevelLightState? state = null)
     {
         if (!_contributionEnabled || entity == null || _data == null || _resources == null || !level.UsePointLights ||
-            !IndirectLightBaker.IsStaticGeometry(entity) || !_records.TryGetValue(entity.Id, out var record)) return null;
+            !IndirectLightBaker.IsStaticGeometry(entity) || entity.ExcludeFromDiffuseBake || !_records.TryGetValue(entity.Id, out var record)) return null;
         if (!Near(record.Transform, transform))
         { LastBindingIssue = $"{entity.Name}: model transform differs from the bake. Expected {record.Transform}; actual {transform}"; return null; }
         if (record.PartTriangles.Length != source.Parts.Count || source.Parts.Where((p, i) => p.Indices.Length / 3 != record.PartTriangles[i]).Any())
@@ -201,12 +229,12 @@ public sealed class LevelBakeSession : IDisposable
     private void Retire(Renderer renderer)
     { if (_resources != null) renderer.RetireAfterFrame(_resources); _resources = null; }
     public void Dispose()
-    { Cancel(); _resources?.Dispose(); _resources = null; _data = null; _probeCache.Clear(); }
+    { Cancel(); _resources?.Dispose(); _retained?.Resources.Dispose(); _retained=null; _resources = null; _data = null; _probeCache.Clear(); }
 
     public ProbeIrradiance SampleProbe(object key, Vector3 position, LevelEntityDef? entity = null)
     {
         if (!PreviewProbes || !_contributionEnabled || _data?.PreparedProbes is not { } sampler ||
-            (entity != null && IndirectLightBaker.IsStaticGeometry(entity))) return default;
+            (entity != null && IndirectLightBaker.IsStaticGeometry(entity) && !entity.ExcludeFromDiffuseBake)) return default;
         if (_probeCache.TryGetValue(key, out var entry) && entry.Position == position)
         { _probeCache[key] = (position,entry.Light,_frame); return entry.Light; }
         long start=Stopwatch.GetTimestamp();

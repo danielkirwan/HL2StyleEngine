@@ -6999,7 +6999,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         LevelLighting.Apply(_world, _editor, _camera.Position, flashlight, _editorEnabled ? null : _lightState,
             _editorEnabled ? _editorLightingSeconds : _playTimeSeconds);
         PlanModelResidency();
-        _roomReflections.Update(_editor, ResolveModelAssetPath, _world, renderer, _editorEnabled ? null : _lightState);
+        _roomReflections.Update(_editor, ResolveModelAssetPath, _world, renderer, _editorEnabled ? null : _lightState, position: _camera.Position);
         PumpModelUploads();
         EvictDistantModels();
         DrawWorldShadows(renderer);

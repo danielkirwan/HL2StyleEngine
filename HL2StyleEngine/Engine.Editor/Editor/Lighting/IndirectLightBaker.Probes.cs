@@ -13,8 +13,8 @@ public static partial class IndirectLightBaker
         List<WorldPointLight> lights, Action<float>? progress, CancellationToken cancel)
     {
         float spacing=settings.Probes!.Spacing;
-        if(!float.IsFinite(spacing) || spacing is < .5f or > 8 || surfaces.Count>16384)
-            throw new InvalidDataException("Probes require spacing 0.5-8 m and at most 16,384 static triangles.");
+        if(!float.IsFinite(spacing) || spacing is < .5f or > 8 || surfaces.Count>LightProbeVolume.MaxTriangles)
+            throw new InvalidDataException("Probes require spacing 0.5-8 m and at most 65,536 static triangles.");
         Vector3 extent=mesh.Bounds.Max-mesh.Bounds.Min;
         Vector3 counts=Vector3.Max(Vector3.One,new(MathF.Ceiling(extent.X/spacing),MathF.Ceiling(extent.Y/spacing),MathF.Ceiling(extent.Z/spacing)));
         if(!float.IsFinite(counts.LengthSquared()) || counts.X>128 || counts.Y>128 || counts.Z>128 || counts.X*counts.Y*counts.Z>4096)

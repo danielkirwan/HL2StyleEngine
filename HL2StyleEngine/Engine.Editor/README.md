@@ -1,5 +1,9 @@
 # HS2Editor
 
+Lighting stability (2026-10-25): `LightingScenarioResolver` validates explicit fixed-light states and constructs immutable cache views without editing live runtime overrides. `LevelBakeSession`/`ReflectionProbeSession` select matching on/off data and retain one inactive state with fenced retirement. Author edits invalidate retained banks. Shared state authoring, undo, partial-state fallback, idle restoration and scene captures are tested. [Workflow and bounds](../Game/LIGHTING_STABILITY_GUIDE.md).
+
+Reflection residency follow-up (2026-10-25): optional Stream Room Reflections, slot limit, doorway prefetch and retention are shared by both editor hosts, with undo/save. Unload / Reload Rooms forces a fenced reload without changing gameplay data; status includes loads, evictions and retiring slots. Immutable source/path snapshots feed two bounded validation workers; editor recapture remains explicit. Open sixRoomPbrTest.json for the isolated six-room rollout. [Workflow and limits](../Game/REFLECTION_STREAMING_GUIDE.md).
+
 HS2Editor is the standalone project and level editor for the engine. It is separate from the runtime game and separate from the asset importer.
 
 Room transitions (2026-10-25): **Toolbar > Room Reflections > Automatic Room Reflections** now enables per-part room selection, box projection and authored doorway blending. Probe Inspector fields add Neighbor, Offset, Size and Travel Axis; green doorway bounds complement cyan influence/orange projection bounds. `ReflectionRoomLayout` validates the links; `ReflectionRoomSession` coordinates up to eight existing capture sessions and immutable fenced renderer bindings. Undo/save/prefab remapping are covered. See [transition guide](../Game/ROOM_TRANSITION_GUIDE.md); the dated capture notes below describe the original manual mode. Native docking/input acceptance remains manual.

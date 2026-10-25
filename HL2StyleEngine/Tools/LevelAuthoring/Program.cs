@@ -3,6 +3,94 @@ using Engine.Render;
 using Engine.Editor.Level;
 
 string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+if (args is ["build-lighting-stability"] or ["cook-lighting-state", "on" or "off"] or ["validate-lighting-stability"] or
+    ["capture-lighting-stability"] or ["diagnose-updated-lighting"] or ["benchmark-lighting-stability", "on" or "off"] or
+    ["benchmark-lighting-stability-route", "on" or "off"] or ["benchmark-lighting-switches", "on" or "off"] or ["check-lighting-switch-pixels"])
+{
+    try
+    {
+        if(args[0]=="build-lighting-stability")LightingStabilityChecks.Build(root);
+        else if(args[0]=="cook-lighting-state")LightingStabilityChecks.Cook(root,args[1]);
+        else if(args[0]=="validate-lighting-stability")LightingStabilityChecks.Validate(root);
+        else if(args[0]=="check-lighting-switch-pixels")LightingStabilityChecks.SwitchPixels(root);
+        else if(args[0]=="diagnose-updated-lighting")LightingStabilityChecks.Diagnose(root,LightingStabilityChecks.FileName);
+        else if(args[0]=="capture-lighting-stability")
+        {
+            string output=Path.Combine(AppContext.BaseDirectory,"qa","lighting-stability-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+            Directory.CreateDirectory(output);PbrBaselineChecks.Capture(root,LightingStabilityChecks.FileName,output,false,forceLegacy:false);Console.WriteLine(output);
+        }
+        else GameplayFrameChecks.Run(root,args[1]=="on",levelFile:LightingStabilityChecks.FileName,
+            stress:args[0]=="benchmark-lighting-stability",residencyRoute:args[0]=="benchmark-lighting-stability-route",lightingSwitches:args[0]=="benchmark-lighting-switches");
+    }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if (args is ["validate-stability-package", var stabilityPackage])
+{
+    try { ReflectionStreamingChecks.Package(root,stabilityPackage,LightingStabilityChecks.FileName); }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if (args is ["diagnose-lighting-stability"])
+{
+    try { LightingStabilityChecks.Diagnose(root); }
+    catch(Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode=1; }
+    return;
+}
+if (args is ["build-point-light-test"] or ["capture-point-light-test"] or ["validate-point-light-test"] or
+    ["check-point-light-pixels"] or ["capture-point-light-views"] or ["benchmark-point-lights", "on" or "off"] or
+    ["benchmark-point-light-route", "on" or "off"])
+{
+    try
+    {
+        if (args[0] == "build-point-light-test") PointLightOnlyChecks.Build(root);
+        else if (args[0] == "capture-point-light-test") RoomReflectionChecks.CaptureFixture(root,PointLightOnlyChecks.FileName);
+        else if (args[0] == "validate-point-light-test") PointLightOnlyChecks.Validate(root);
+        else if (args[0] == "check-point-light-pixels") PointLightOnlyChecks.CheckGpu(root);
+        else if (args[0] == "capture-point-light-views")
+        {
+            string output = Path.Combine(AppContext.BaseDirectory,"qa","point-light-views-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+            Directory.CreateDirectory(output); PbrBaselineChecks.Capture(root,PointLightOnlyChecks.FileName,output,false,forceLegacy:false);
+            Console.WriteLine(output);
+        }
+        else GameplayFrameChecks.Run(root,args[1]=="on",levelFile:PointLightOnlyChecks.FileName,
+            stress:args[0]=="benchmark-point-lights",residencyRoute:args[0]=="benchmark-point-light-route");
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode=1; }
+    return;
+}
+if (args is ["validate-reflection-package", var packageDirectory])
+{
+    try { ReflectionStreamingChecks.Package(root, packageDirectory); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode=1; }
+    return;
+}
+if (args is ["validate-point-light-package", var pointLightPackage])
+{
+    try { ReflectionStreamingChecks.Package(root, pointLightPackage, PointLightOnlyChecks.FileName); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode=1; }
+    return;
+}
+if (args is ["build-six-room-pbr-test"] or ["capture-six-room-pbr"] or ["validate-reflection-streaming"] or
+    ["capture-six-room-pbr-views"] or ["benchmark-six-room-pbr", "on" or "off"] or ["benchmark-six-room-pbr-route", "on" or "off"])
+{
+    try
+    {
+        if (args[0] == "build-six-room-pbr-test") ReflectionStreamingChecks.Build(root);
+        else if (args[0] == "capture-six-room-pbr") RoomReflectionChecks.CaptureFixture(root, ReflectionStreamingChecks.FileName);
+        else if (args[0] == "validate-reflection-streaming") ReflectionStreamingChecks.Run(root);
+        else if (args[0] == "capture-six-room-pbr-views")
+        {
+            string output = Path.Combine(AppContext.BaseDirectory,"qa","six-room-pbr-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+            Directory.CreateDirectory(output); PbrBaselineChecks.Capture(root,ReflectionStreamingChecks.FileName,output,false,forceLegacy:false);
+            Console.WriteLine(output);
+        }
+        else GameplayFrameChecks.Run(root,args[1]=="on",levelFile:ReflectionStreamingChecks.FileName,
+            stress:args[0]=="benchmark-six-room-pbr",residencyRoute:args[0]=="benchmark-six-room-pbr-route");
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode=1; }
+    return;
+}
 if (args is ["build-room-transition-test"] or ["capture-room-transitions"] or ["validate-room-transitions"] or ["capture-room-transition-views"] or
     ["profile-room-transitions"] or ["profile-room-transitions", "--reverse"] or ["benchmark-gameplay-room-transitions", "on" or "off"])
 {
