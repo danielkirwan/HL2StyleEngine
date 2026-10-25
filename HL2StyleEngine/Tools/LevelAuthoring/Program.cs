@@ -3,6 +3,26 @@ using Engine.Render;
 using Engine.Editor.Level;
 
 string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+if (args is ["build-room-transition-test"] or ["capture-room-transitions"] or ["validate-room-transitions"] or ["capture-room-transition-views"] or
+    ["profile-room-transitions"] or ["profile-room-transitions", "--reverse"] or ["benchmark-gameplay-room-transitions", "on" or "off"])
+{
+    try
+    {
+        if(args[0]=="build-room-transition-test")RoomTransitionChecks.Build(root);
+        else if(args[0]=="capture-room-transitions")RoomReflectionChecks.CaptureFixture(root,RoomTransitionChecks.FileName);
+        else if(args[0]=="validate-room-transitions")RoomTransitionChecks.Run(root);
+        else if(args[0]=="profile-room-transitions")PbrPerformanceChecks.Run(root,args.Contains("--reverse"),reflections:true,rooms:true,transitions:true);
+        else if(args[0]=="capture-room-transition-views")
+        {
+            string output=Path.Combine(AppContext.BaseDirectory,"qa","room-transitions-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+            Directory.CreateDirectory(output);PbrBaselineChecks.Capture(root,RoomTransitionChecks.FileName,output,false,forceLegacy:false);
+            Console.WriteLine(output);
+        }
+        else GameplayFrameChecks.Run(root,args[1]=="on",levelFile:RoomTransitionChecks.FileName);
+    }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
 if(args is ["profile-room-reflections"] or ["profile-room-reflections", "--reverse"])
 {
     try {PbrPerformanceChecks.Run(root,args.Contains("--reverse"),reflections:true,rooms:true);}

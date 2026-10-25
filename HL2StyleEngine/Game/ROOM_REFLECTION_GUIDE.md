@@ -1,5 +1,7 @@
 # Authored Room Captures (Unit D)
 
+Update, 25 October 2026: automatic selection, box projection and authored doorway blending are now available in a separate fixture; see [ROOM_TRANSITION_GUIDE.md](ROOM_TRANSITION_GUIDE.md) and `LaunchRoomTransitionTest.bat`. The original launcher below still uses global manual preview. GPU metadata is now 224 bytes per environment/set, rather than the 16-byte unit D payload measured below. Historical implementation and test notes follow.
+
 Implemented 2026-10-23 after the controlled synthetic environment. C# remains the runtime. This is the first editor-owned capture/cache stage, not automatic multi-room blending or a live mirror. Original levels, the accepted PBR fixture, source art, physics and startup selections are unchanged.
 
 ## Try It
@@ -65,4 +67,4 @@ benchmark-gameplay-room-reflections on
 benchmark-gameplay-room-reflections off
 ```
 
-Next is **unit E**: box projection, bounded room-aware selection/blending and explicit switched-light presets. Unit F adds residency/prefetch and controlled rollout to one real level. Keep the synthetic and Legacy references unchanged.
+Follow-up: **unit E's first pass** now provides box projection and bounded room-aware selection/blending; see [ROOM_TRANSITION_GUIDE.md](ROOM_TRANSITION_GUIDE.md). Explicit switched-light presets remain pending. Next is unit F residency/prefetch and controlled rollout to one real level. Keep the synthetic and Legacy references unchanged.

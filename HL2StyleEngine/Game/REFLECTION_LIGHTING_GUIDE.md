@@ -57,6 +57,6 @@ Authoring-tool commands: `validate-reflections`, `capture-reflection-room`, `val
 
 The reflection harness covers deterministic recooking, binary rejection, an independently integrated BRDF, white-furnace energy bounds, all six GPU face targets, axis and asymmetric off-axis reflected directions, dielectric F0, roughness broadening, incomplete/disabled fallback, contribution sum, legacy isolation, shared upload budget and embedded resource readiness. Numeric checks use pre-tonemap HDR readbacks. Rendering captures exercise game/F2/standalone scene paths, not manual mouse/controller input.
 
-Follow-up delivered: **unit D** now adds authored captures/cache in a separate fixture; see [ROOM_REFLECTION_GUIDE.md](ROOM_REFLECTION_GUIDE.md). Next is unit E: box projection, room transitions and switched-state selection. Residency and real-level rollout remain later. The synthetic test still is not a capture of its room.
+Follow-ups delivered: **unit D** adds authored captures/cache ([guide](ROOM_REFLECTION_GUIDE.md)); **unit E's first pass** adds automatic room selection, box projection and doorway blending with invariant-light fallback ([guide](ROOM_TRANSITION_GUIDE.md)). Explicit switched presets, residency and real-level rollout remain later. The synthetic test still is not a capture of its room.
 
 Math reference: [Filament's image-based lighting and integration discussion](https://google.github.io/filament/main/filament.html). Implementation is local; no external engine code was copied.

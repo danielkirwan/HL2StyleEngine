@@ -19,6 +19,8 @@ public sealed class LevelFile
     public Engine.Render.ReflectionPreset ReflectionEnvironment { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ReflectionProbeId { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AutomaticRoomReflections { get; set; }
     public LevelStreamingSettings Streaming { get; set; } = new();
     public LevelBakeSettings Bake { get; set; } = new();
 

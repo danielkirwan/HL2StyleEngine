@@ -10,11 +10,11 @@ using Vortice.Direct3D11;
 
 internal static class PbrPerformanceChecks
 {
-    public static unsafe void Run(string root, bool reverse = false, bool reflections = false, bool rooms = false)
+    public static unsafe void Run(string root, bool reverse = false, bool reflections = false, bool rooms = false, bool transitions = false)
     {
         var startup = Stopwatch.StartNew();
         using var host = new EngineHost(1920, 1080, "Material GPU profile");
-        using var game = new Game.HL2GameModule(Path.Combine(root, "Game/Content/Levels", rooms ? RoomReflectionChecks.FileName : PbrTestRoom.FileName));
+        using var game = new Game.HL2GameModule(Path.Combine(root, "Game/Content/Levels", transitions ? RoomTransitionChecks.FileName : rooms ? RoomReflectionChecks.FileName : PbrTestRoom.FileName));
         game.AssetStreamingEnabled = false; game.Initialize(host.Context);
         var renderer = host.Context.Renderer;
         var device = renderer.GraphicsDevice;
@@ -29,7 +29,7 @@ internal static class PbrPerformanceChecks
         do
         {
             target.Frame(() => game.RenderWorld(renderer));
-            if ((!reflections || world.ReflectionReady) && cache.Count > 0 && cache.Values.Cast<object>().All(e => PbrBaselineChecks.Field(e, "Model") != null)) break;
+            if ((!reflections || (world.ReflectionReady && (!rooms || roomSession.Ready))) && cache.Count > 0 && cache.Values.Cast<object>().All(e => PbrBaselineChecks.Field(e, "Model") != null)) break;
             if (startup.Elapsed.TotalSeconds > 30) throw new TimeoutException("Material fixture assets not ready.");
             Thread.Sleep(5);
         } while (true);
@@ -61,6 +61,7 @@ internal static class PbrPerformanceChecks
                 float t = Math.Max(0, frame) / 60f;
                 camera.Position = new(MathF.Sin(t * 1.1f) * .7f, 1.65f, -2.7f + .25f * MathF.Sin(t));
                 camera.Yaw = MathF.Sin(t) * .1f; camera.Pitch = .04f;
+                if(transitions) {camera.Position=new(0,1.65f,-2.7f+t*4.5f);camera.Yaw=0;}
                 long allocated = GC.GetAllocatedBytesForCurrentThread(), stamp = Stopwatch.GetTimestamp();
                 renderer.BeginFrame(); game.RenderWorld(renderer); renderer.ResolveWorldToSwapchain(target.Framebuffer); renderer.CommandList.End();
                 double ms = Stopwatch.GetElapsedTime(stamp).TotalMilliseconds;
@@ -85,7 +86,7 @@ internal static class PbrPerformanceChecks
             if (uploads != 180 || game.StreamingResidentBytes > 48.19*1048576*1.05)
                 throw new InvalidDataException("PBR upload/memory baseline budget exceeded.");
             long reflectionBytes = world.ReflectionResidentBytes + (rooms && world.Reflection == null ? roomSession.ResidentBytes : 0);
-            if (reflectionBytes > 1.1*1048576 || world.ReflectionPendingCpuBytes != 0)
+            if (reflectionBytes > (transitions ? 2.2 : 1.1)*1048576 || world.ReflectionPendingCpuBytes != 0 || (rooms && roomSession.PendingCpuBytes!=0))
                 throw new InvalidDataException("Reflection memory budget exceeded or upload incomplete.");
             if (reflections) Console.WriteLine($"[Reflection] enabled={mode==1}; GPU payload {reflectionBytes} bytes including fallback/metadata and retained preview; pending CPU {world.ReflectionPendingCpuBytes} bytes.");
             Console.WriteLine($"[PbrGPU] mode={mode} torch={torch}: CPU mean/P95 {cpu.Average():F3}/{cpu[170]:F3}ms, shadow CPU {shadowCpu/180:F3}ms, GPU command mean/P95 {gpu.Average():F3}/{gpu[170]:F3}ms; {allocations/180/1024:F2}KiB allocations/frame; GC {string.Join('/', Enumerable.Range(0,3).Select(g=>GC.CollectionCount(g)-gcStart[g]))}; draws {draws/180.0:F1}, uploads {uploads/180.0:F1}; resident models {game.StreamingResidentBytes/1048576.0:F2}MiB, peak managed/working {peakManaged/1048576.0:F1}/{peakWorking/1048576.0:F1}MiB.");

@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json.Serialization;
 using Engine.Core.Serialization;
 
 namespace Engine.Editor.Level;
@@ -15,4 +16,14 @@ public sealed class ReflectionProbeSettings
     public int Priority { get; set; }
     public ReflectionCaptureMask CaptureMask { get; set; } = ReflectionCaptureMask.All;
     public ReflectionLightPreset LightingPreset { get; set; } = ReflectionLightPreset.InvariantOnly;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReflectionDoorwaySettings? Doorway { get; set; }
+}
+
+public sealed class ReflectionDoorwaySettings
+{
+    public string NeighborId { get; set; } = "";
+    public SerVec3 Offset { get; set; } = new Vector3(0,0,4);
+    public SerVec3 Size { get; set; } = new Vector3(2,3,2);
+    public int Axis { get; set; } = 2;
 }

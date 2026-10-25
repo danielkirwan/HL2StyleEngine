@@ -46,6 +46,10 @@ public sealed class ReflectionSnapshot
             ? BakeSnapshot.Capture(level, resolve) : null;
         // Clear preview-only choices; exposure/UI never enter the HDR capture.
         level.ReflectionProbeId = null; level.ReflectionEnvironment = ReflectionPreset.None; level.Exposure = 1;
+        level.AutomaticRoomReflections = false;
+        // Sampling links do not contribute energy to the capture.
+        foreach (var entity in level.Entities)
+            if (entity.ReflectionProbe != null) entity.ReflectionProbe.Doorway = null;
         var controlled = level.Entities.Where(e => e.Interaction != null)
             .SelectMany(e => LevelLightState.Targets(level, e.Interaction!)).Select(e => e.Id).ToHashSet();
         var fixedLights = level.Entities.Where(e => e.Type == EntityTypes.PointLight && e.BakeIndirect &&

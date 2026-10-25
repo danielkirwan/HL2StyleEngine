@@ -47,7 +47,50 @@ SamplerState LightmapSampler : register(s3);
 TextureCube<float4> EnvironmentTex : register(t6);
 Texture2D<float2> EnvironmentBrdf : register(t7);
 SamplerState EnvironmentSampler : register(s4);
-cbuffer ReflectionSettings : register(b4) { float4 EnvironmentInfo; };
+TextureCube<float4> EnvironmentTexB : register(t8);
+cbuffer ReflectionSettings : register(b4)
+{
+    float4 EnvironmentInfo;
+    float4 CaptureA, RoomMinA, RoomMaxA, ProjectionMinA, ProjectionMaxA;
+    float4 CaptureB, RoomMinB, RoomMaxB, ProjectionMinB, ProjectionMaxB;
+    float4 DoorMin, DoorMax, DoorDirection;
+};
+
+bool InReflectionBox(float3 p, float3 lo, float3 hi) { return all(p >= lo) && all(p <= hi); }
+
+float3 BoxReflection(float3 p, float3 ray, float3 capture, float3 lo, float3 hi)
+{
+    if (!InReflectionBox(p,lo,hi) || any(hi <= lo)) return ray;
+    float3 far = float3(ray.x >= 0 ? hi.x : lo.x, ray.y >= 0 ? hi.y : lo.y, ray.z >= 0 ? hi.z : lo.z);
+    // Parallel axes do not constrain the exit distance, including rays on a box face.
+    float3 safeRay = float3(abs(ray.x)>1e-6 ? ray.x : 1, abs(ray.y)>1e-6 ? ray.y : 1, abs(ray.z)>1e-6 ? ray.z : 1);
+    float3 distance = (far-p)/safeRay;
+    distance = float3(abs(ray.x)>1e-6 ? distance.x : 1e20, abs(ray.y)>1e-6 ? distance.y : 1e20, abs(ray.z)>1e-6 ? distance.z : 1e20);
+    float3 corrected = p + ray*max(0,min(distance.x,min(distance.y,distance.z))) - capture;
+    return all(isfinite(corrected)) && dot(corrected,corrected)>1e-12 ? corrected : ray;
+}
+
+float3 RoomRadiance(float3 p, float3 ray, float roughness)
+{
+    bool a = InReflectionBox(p,RoomMinA.xyz,RoomMaxA.xyz);
+    bool b = EnvironmentInfo.w > 1.5 && InReflectionBox(p,RoomMinB.xyz,RoomMaxB.xyz);
+    float weight = b && (!a || RoomMinB.w > RoomMinA.w) ? 1 : 0;
+    bool doorway = EnvironmentInfo.w > 1.5 && InReflectionBox(p,DoorMin.xyz,DoorMax.xyz);
+    if (doorway)
+    {
+        float3 t = (p-DoorMin.xyz)/max(float3(1e-6,1e-6,1e-6),DoorMax.xyz-DoorMin.xyz);
+        weight = dot(t,abs(DoorDirection.xyz));
+        if (dot(DoorDirection.xyz,float3(1,1,1)) < 0) weight = 1-weight;
+        weight = smoothstep(0,1,weight);
+    }
+    if (!a && !b && !doorway) return 0;
+    float3 first = 0, second = 0;
+    [branch] if (weight < 1)
+        first = EnvironmentTex.SampleLevel(EnvironmentSampler,BoxReflection(p,ray,CaptureA.xyz,ProjectionMinA.xyz,ProjectionMaxA.xyz),roughness*CaptureA.w).rgb;
+    [branch] if (weight > 0)
+        second = EnvironmentTexB.SampleLevel(EnvironmentSampler,BoxReflection(p,ray,CaptureB.xyz,ProjectionMinB.xyz,ProjectionMaxB.xyz),roughness*CaptureB.w).rgb;
+    return lerp(first,second,weight);
+}
 
 float ShadowVisibility(PointLight light, float3 world, float3 normal, float3 toLight)
 {
@@ -197,7 +240,10 @@ float4 ShadePbr(VSOutput input, float4 base, float metal, float roughness)
     {
         float nv = saturate(dot(n,v));
         float3 reflected = reflect(-v,n);
-        float3 radiance = EnvironmentTex.SampleLevel(EnvironmentSampler,reflected,roughness*EnvironmentInfo.x).rgb;
+        float3 radiance = 0;
+        [branch] if (EnvironmentInfo.w < .5)
+            radiance = EnvironmentTex.SampleLevel(EnvironmentSampler,reflected,roughness*EnvironmentInfo.x).rgb;
+        else radiance = RoomRadiance(input.WorldPosition,reflected,roughness);
         // LUT texel centres represent (x+.5)/size; clamp sampler handles both endpoints.
         float2 brdf = EnvironmentBrdf.SampleLevel(EnvironmentSampler,float2(nv,roughness),0);
         float3 f0 = lerp(float3(.04,.04,.04),base.rgb,metal);

@@ -44,10 +44,37 @@ public sealed partial class LevelEditorController
         if (changed)
         {
             BeginEdit(); entity.ReflectionProbe = new() { Resolution = new[]{32,64,128}[resolution], InfluenceSize = influence,
-                ProjectionSize = projection, Priority = priority, CaptureMask = mask | ReflectionCaptureMask.FixedGeometry };
+                ProjectionSize = projection, Priority = priority, CaptureMask = mask | ReflectionCaptureMask.FixedGeometry, Doorway=settings.Doorway };
             Dirty = true; RebuildRuntimeFromLevel(); EndEditIfAny();
         }
         if (ImGui.Button("Preview This Probe")) SelectReflectionProbe(entity.Id);
+        var doorway=entity.ReflectionProbe?.Doorway;
+        ImGui.TextUnformatted("Doorway Neighbor"); ImGui.SetNextItemWidth(-1);
+        var neighbor=LevelFile.Entities.Find(e=>e.Id==doorway?.NeighborId);
+        if (ImGui.BeginCombo("##reflectionNeighbor",neighbor?.Name ?? (doorway==null ? "None" : "Missing Probe")))
+        {
+            if (ImGui.Selectable("None",doorway==null)) SetDoorway(null);
+            foreach(var candidate in LevelFile.Entities.Where(e=>e.Type==EntityTypes.ReflectionProbe && e.Id!=entity.Id))
+                if (ImGui.Selectable((candidate.Name??"Probe")+"##"+candidate.Id,candidate==neighbor))
+                    SetDoorway(new() { NeighborId=candidate.Id, Offset=doorway?.Offset ?? new(0,0,4), Size=doorway?.Size ?? new(2,3,2), Axis=doorway?.Axis ?? 2 });
+            ImGui.EndCombo();
+        }
+        if (doorway != null)
+        {
+            Vector3 offset=doorway.Offset,size=doorway.Size; int axis=doorway.Axis;
+            ImGui.TextUnformatted("Doorway Offset"); ImGui.SetNextItemWidth(-1);
+            bool edited=ImGui.DragFloat3("##doorwayOffset",ref offset,.05f);
+            ImGui.TextUnformatted("Doorway Size"); ImGui.SetNextItemWidth(-1);
+            edited|=ImGui.DragFloat3("##doorwaySize",ref size,.05f,.05f,500);
+            ImGui.TextUnformatted("Travel Axis"); ImGui.SetNextItemWidth(-1);
+            edited|=ImGui.Combo("##doorwayAxis",ref axis,"X\0Y\0Z\0");
+            if (edited) SetDoorway(new(){NeighborId=doorway.NeighborId,Offset=offset,Size=size,Axis=axis});
+        }
+        void SetDoorway(ReflectionDoorwaySettings? value)
+        {
+            BeginEdit(); entity.ReflectionProbe ??= new(); entity.ReflectionProbe.Doorway=value;
+            Dirty=true; RebuildRuntimeFromLevel(); EndEditIfAny();
+        }
     }
 
     private void SelectReflectionProbe(string? id)
@@ -60,13 +87,15 @@ public sealed partial class LevelEditorController
     private void DrawReflectionToolbar()
     {
         if (!ImGui.TreeNode("Room Reflections")) return;
+        bool automatic=LevelFile.AutomaticRoomReflections;
+        if (ImGui.Checkbox("Automatic Room Reflections",ref automatic)) SetAutomaticRoomReflections(automatic);
         if (ImGui.Button("Add Reflection Probe"))
         {
             Vector3 position = SelectedEntityIndex >= 0 && SelectedEntityIndex < DrawBoxes.Count ? DrawBoxes[SelectedEntityIndex].Position : new(0,1.8f,0);
             AddReflectionProbe(position);
         }
         var selected = LevelFile.Entities.Find(e => e.Id == LevelFile.ReflectionProbeId);
-        ImGui.TextUnformatted("Preview Probe"); ImGui.SetNextItemWidth(-1);
+        ImGui.TextUnformatted(automatic ? "Capture Probe" : "Preview Probe"); ImGui.SetNextItemWidth(-1);
         if (ImGui.BeginCombo("##roomReflection", selected?.Name ?? "None"))
         {
             if (ImGui.Selectable("None", selected == null)) SelectReflectionProbe(null);
@@ -95,6 +124,13 @@ public sealed partial class LevelEditorController
         ImGui.TreePop();
     }
 
+    public void SetAutomaticRoomReflections(bool enabled)
+    {
+        BeginEdit(); LevelFile.AutomaticRoomReflections=enabled;
+        if (enabled) LevelFile.ReflectionEnvironment=ReflectionPreset.None;
+        Dirty=true; EndEditIfAny();
+    }
+
     public void DrawReflectionBounds(BasicWorldRenderer world, Renderer renderer)
     {
         if (RoomReflections?.ShowBounds != true) return;
@@ -104,6 +140,11 @@ public sealed partial class LevelEditorController
             if (entity.ReflectionProbe is not { } settings || !TryGetEntityWorldTRS(i,out var position,out _,out var scale)) continue;
             DrawBounds((Vector3)settings.InfluenceSize * Vector3.Abs(scale),new(.2f,.8f,1,1));
             DrawBounds((Vector3)settings.ProjectionSize * Vector3.Abs(scale),new(1,.6f,.15f,1));
+            if (settings.Doorway is { } doorway)
+            {
+                position+=(Vector3)doorway.Offset*scale;
+                DrawBounds((Vector3)doorway.Size*Vector3.Abs(scale),new(.3f,1,.4f,1));
+            }
             void DrawBounds(Vector3 size, Vector4 colour)
             {
                 for(int axis=0;axis<3;axis++) for(int a=-1;a<=1;a+=2) for(int b=-1;b<=1;b+=2)

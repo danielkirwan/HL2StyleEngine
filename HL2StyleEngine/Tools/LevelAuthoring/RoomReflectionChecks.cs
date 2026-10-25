@@ -31,7 +31,7 @@ internal static class RoomReflectionChecks
         LevelIO.Save(path,level); Console.WriteLine("Created "+path);
     }
 
-    public static void CaptureFixture(string root)
+    public static void CaptureFixture(string root, string fileName = FileName)
     {
         using var host=new EngineHost(640,480,"Room reflection cooking");
         var renderer=host.Context.Renderer;
@@ -39,8 +39,9 @@ internal static class RoomReflectionChecks
         using var world=new BasicWorldRenderer(renderer.GraphicsDevice,renderer.WorldOutputDescription,"Shaders");
         using var session=new ReflectionProbeSession();
         var editor=new LevelEditorController();
-        string path=Path.Combine(root,"Game/Content/Levels",FileName);
+        string path=Path.Combine(root,"Game/Content/Levels",fileName);
         editor.LoadOrCreate(path,()=>throw new FileNotFoundException(path));
+        editor.LevelFile.AutomaticRoomReflections=false;
         foreach(var probe in editor.LevelFile.Entities.Where(e=>e.Type==EntityTypes.ReflectionProbe))
         {
             editor.LevelFile.ReflectionProbeId=probe.Id;

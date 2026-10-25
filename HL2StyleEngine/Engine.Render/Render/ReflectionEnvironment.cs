@@ -15,18 +15,23 @@ public sealed class ReflectionEnvironment : IDisposable
     public bool IsReady => _data == null;
     public long ResidentBytes { get; }
     public long PendingCpuBytes => _data?.PayloadBytes ?? 0;
+    internal TextureView CubeView => _cubeView;
+    internal TextureView LutView => _lutView;
+    internal int LastMip { get; }
+    internal int LutSize { get; }
 
     internal ReflectionEnvironment(GraphicsDevice device, ResourceLayout layout, Sampler sampler, ReflectionEnvironmentData data, bool enabled=true)
     {
-        data.Validate(); _device=device; _data=data; ResidentBytes=data.PayloadBytes+16;
+        data.Validate(); _device=device; _data=data; ResidentBytes=data.PayloadBytes+ReflectionMetadata.Bytes;
+        LastMip=data.MipCount-1; LutSize=data.LutSize;
         var factory=device.ResourceFactory;
         _cube=factory.CreateTexture(TextureDescription.Texture2D((uint)data.Size,(uint)data.Size,(uint)data.MipCount,1,
             PixelFormat.R16_G16_B16_A16_Float,TextureUsage.Sampled|TextureUsage.Cubemap));
         _lut=factory.CreateTexture(TextureDescription.Texture2D((uint)data.LutSize,(uint)data.LutSize,1,1,PixelFormat.R16_G16_Float,TextureUsage.Sampled));
         _cubeView=factory.CreateTextureView(_cube); _lutView=factory.CreateTextureView(_lut);
-        _metadata=factory.CreateBuffer(new BufferDescription(16,BufferUsage.UniformBuffer));
-        device.UpdateBuffer(_metadata,0,new Vector4(data.MipCount-1,data.LutSize,enabled?1:0,0));
-        Set=factory.CreateResourceSet(new ResourceSetDescription(layout,_cubeView,_lutView,sampler,_metadata));
+        _metadata=factory.CreateBuffer(new BufferDescription(ReflectionMetadata.Bytes,BufferUsage.UniformBuffer));
+        device.UpdateBuffer(_metadata,0,new ReflectionMetadata { Info=new Vector4(data.MipCount-1,data.LutSize,enabled?1:0,0) });
+        Set=factory.CreateResourceSet(new ResourceSetDescription(layout,_cubeView,_lutView,sampler,_metadata,_cubeView));
     }
 
     public void UploadNext()

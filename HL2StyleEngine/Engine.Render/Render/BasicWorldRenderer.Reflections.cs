@@ -16,8 +16,9 @@ public sealed partial class BasicWorldRenderer
     public bool ReflectionPreviewEnabled { get; set; } = true;
     // Explicit resources are caller-owned; the built-in test preset is owned by this renderer.
     public ReflectionEnvironment? Reflection { get; set; }
+    public ReflectionRooms? RoomReflections { get; set; }
     public string ReflectionStatus { get; private set; } = "Off";
-    public bool ReflectionReady => ActiveReflection != null;
+    public bool ReflectionReady => RoomReflections != null || ActiveReflection != null;
     public long ReflectionResidentBytes => _blackReflection.ResidentBytes+(_studioReflection?.ResidentBytes??0)+(Reflection?.ResidentBytes??0);
     public long ReflectionPendingCpuBytes => _studioReflection?.PendingCpuBytes ?? 0;
     private ReflectionEnvironment? ActiveReflection => Reflection is {IsReady:true} ? Reflection :
@@ -29,7 +30,8 @@ public sealed partial class BasicWorldRenderer
             new ResourceLayoutElementDescription("EnvironmentTex",ResourceKind.TextureReadOnly,ShaderStages.Fragment),
             new ResourceLayoutElementDescription("EnvironmentBrdf",ResourceKind.TextureReadOnly,ShaderStages.Fragment),
             new ResourceLayoutElementDescription("EnvironmentSampler",ResourceKind.Sampler,ShaderStages.Fragment),
-            new ResourceLayoutElementDescription("ReflectionSettings",ResourceKind.UniformBuffer,ShaderStages.Fragment)));
+            new ResourceLayoutElementDescription("ReflectionSettings",ResourceKind.UniformBuffer,ShaderStages.Fragment),
+            new ResourceLayoutElementDescription("EnvironmentTexB",ResourceKind.TextureReadOnly,ShaderStages.Fragment)));
         _reflectionSampler=_factory.CreateSampler(new SamplerDescription(SamplerAddressMode.Clamp,SamplerAddressMode.Clamp,SamplerAddressMode.Clamp,
             SamplerFilter.MinLinear_MagLinear_MipLinear,null,1,0,uint.MaxValue,0,SamplerBorderColor.TransparentBlack));
         _blackReflection=new(_gd,_reflectionLayout,_reflectionSampler,new(1,1,1,Enumerable.Range(0,6).Select(_=>new byte[8]).ToArray(),new byte[4]),enabled:false);
@@ -38,6 +40,9 @@ public sealed partial class BasicWorldRenderer
     }
 
     public ReflectionEnvironment CreateReflectionEnvironment(ReflectionEnvironmentData data) => new(_gd,_reflectionLayout,_reflectionSampler,data);
+
+    public ReflectionRooms CreateReflectionRooms(ReflectionRoom[] rooms, ReflectionDoorway[] doors, ReflectionEnvironment?[] environments)
+        => new(_gd,_reflectionLayout,_reflectionSampler,_blackReflection,rooms,doors,environments);
 
     public bool UploadReflection(ReflectionEnvironmentData data, ref ReflectionEnvironment? resource)
     {

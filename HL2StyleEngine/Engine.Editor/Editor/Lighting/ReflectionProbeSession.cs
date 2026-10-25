@@ -17,22 +17,34 @@ public sealed class ReflectionProbeSession : IDisposable
     private readonly List<IDisposable> _retire = new();
     private string _key = "", _pendingKey = "", _path = "", _id = "", _stamp = "";
     private long _revision = -1, _nextCheck;
-    public string Status { get; private set; } = "No room probe selected";
-    public bool Busy => _work != null || _capture != null || _data != null;
-    public bool Ready => _ready != null;
+    private ReflectionRoomSession? _rooms;
+    private string _status = "No room probe selected";
+    private bool _compatible = true;
+    public string Status { get => _rooms?.Status ?? _status; private set => _status=value; }
+    public bool Busy => _rooms?.Busy ?? (_work != null || _capture != null || _data != null);
+    public bool Ready => _rooms?.Ready ?? (_ready != null);
+    internal ReflectionEnvironment? CompatibleEnvironment => _compatible ? _ready : null;
     public bool ShowBounds;
     public bool PreviewEnabled = true;
-    public int CompletedFaces => _capture?.CompletedFaces ?? 0;
-    public long ResidentBytes => (_ready?.ResidentBytes ?? 0) + (_pending?.ResidentBytes ?? 0);
-    public long PendingCpuBytes => _data?.PayloadBytes ?? 0;
-    public long CaptureGpuBytes => _capture?.GpuBytes ?? 0;
+    public int CompletedFaces => _rooms?.CompletedFaces ?? _capture?.CompletedFaces ?? 0;
+    public long ResidentBytes => _rooms?.ResidentBytes ?? ((_ready?.ResidentBytes ?? 0) + (_pending?.ResidentBytes ?? 0));
+    public long PendingCpuBytes => _rooms?.PendingCpuBytes ?? _data?.PayloadBytes ?? 0;
+    public long CaptureGpuBytes => _rooms?.CaptureGpuBytes ?? _capture?.GpuBytes ?? 0;
     public long PeakGpuBytes { get; private set; }
 
-    public void Update(LevelEditorController editor, Func<string,string> resolve, BasicWorldRenderer world, Renderer renderer, LevelLightState? state = null)
+    public void Update(LevelEditorController editor, Func<string,string> resolve, BasicWorldRenderer world, Renderer renderer, LevelLightState? state = null, string? probeOverride = null)
     {
         foreach (var resource in _retire) renderer.RetireAfterFrame(resource);
         _retire.Clear();
-        string id = editor.LevelFile.ReflectionProbeId ?? "";
+        if (editor.LevelFile.AutomaticRoomReflections && probeOverride == null)
+        {
+            if (_rooms == null) { Cancel(); DropReady(); _rooms=new(); }
+            _rooms.Update(editor,resolve,world,renderer,state,PreviewEnabled);
+            PeakGpuBytes=Math.Max(PeakGpuBytes,_rooms.PeakGpuBytes); return;
+        }
+        if (_rooms != null) { _retire.Add(_rooms); _rooms=null; _revision=-1; }
+        world.RoomReflections=null;
+        string id = probeOverride ?? editor.LevelFile.ReflectionProbeId ?? "";
         bool changed = _revision != editor.Revision || _path != editor.LevelPath || _id != id;
         if (!changed && _snapshot != null && Stopwatch.GetTimestamp() > _nextCheck)
         {
@@ -101,25 +113,31 @@ public sealed class ReflectionProbeSession : IDisposable
         PeakGpuBytes = Math.Max(PeakGpuBytes, ResidentBytes + CaptureGpuBytes);
         bool validLights = _snapshot == null || _snapshot.FixedLightIds.All(lightId =>
             editor.LevelFile.UsePointLights && editor.LevelFile.Entities.Find(e => e.Id == lightId) is { } light && (state?.IsEnabled(light) ?? light.LightEnabled));
+        _compatible=validLights;
         world.Reflection = id.Length > 0 && PreviewEnabled && validLights && editor.LevelFile.LightingModel == SurfaceLightingModel.Pbr ? _ready : null;
         if (id.Length > 0) world.EnvironmentPreset = ReflectionPreset.None;
         if (!validLights && _ready != null) Status = "Fixed light state changed; black fallback";
         else if (validLights && _ready != null && !Busy) Status = "Room capture ready";
     }
 
-    public void BeginCapture(LevelEditorController editor, Func<string,string> resolve)
+    public void BeginCapture(LevelEditorController editor, Func<string,string> resolve, string? probeOverride = null)
     {
+        if (editor.LevelFile.AutomaticRoomReflections && probeOverride == null)
+        {
+            if (_rooms == null) { Cancel(); DropReady(); _rooms=new(); }
+            _rooms.BeginCapture(editor,resolve); return;
+        }
         Cancel();
         try
         {
-            var snapshot = ReflectionSnapshot.Create(editor.LevelFile, editor.LevelPath, editor.LevelFile.ReflectionProbeId ?? "", resolve);
+            var snapshot = ReflectionSnapshot.Create(editor.LevelFile, editor.LevelPath, probeOverride ?? editor.LevelFile.ReflectionProbeId ?? "", resolve);
             if (_snapshot == null || !_snapshot.Json.AsSpan().SequenceEqual(snapshot.Json) || _stamp != snapshot.Stamp()) DropReady();
             _snapshot = snapshot; _stamp = snapshot.Stamp(); _path = editor.LevelPath; _id = snapshot.Probe.Id; _revision = editor.Revision;
             Start(token => ReflectionCaptureInput.Prepare(snapshot, token)); Status = "Preparing fixed capture dependencies";
         }
         catch (Exception ex) { Status = "Cannot capture: " + ex.Message; }
     }
-    public void Reload() => _revision = -1;
+    public void Reload() { _revision = -1; _rooms?.Reload(); }
     private void Start(Func<CancellationToken, object?> action)
     {
         _cancel?.Dispose(); _cancel = new(); var token = _cancel.Token;
@@ -128,6 +146,7 @@ public sealed class ReflectionProbeSession : IDisposable
     private void DropReady() { if (_ready != null) _retire.Add(_ready); _ready = null; _key = ""; }
     public void Cancel()
     {
+        _rooms?.Cancel();
         _cancel?.Cancel(); var cancel = _cancel; var work = _work;
         if (work != null) _ = work.ContinueWith(t => { _ = t.Exception; cancel?.Dispose(); }, TaskScheduler.Default);
         else cancel?.Dispose();
@@ -136,9 +155,9 @@ public sealed class ReflectionProbeSession : IDisposable
         if (_pending != null) _retire.Add(_pending);
         _capture = null; _pending = null; Status = "Capture cancelled";
     }
-    public void ReportError(string message) => Status = message;
+    public void ReportError(string message) { Status=message; _rooms?.ReportError(message); }
     public void Dispose()
     {
-        Cancel(); DropReady(); foreach (var resource in _retire) resource.Dispose(); _retire.Clear();
+        Cancel(); _rooms?.Dispose(); _rooms=null; DropReady(); foreach (var resource in _retire) resource.Dispose(); _retire.Clear();
     }
 }

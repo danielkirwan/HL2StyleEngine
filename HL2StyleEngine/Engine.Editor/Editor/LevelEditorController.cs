@@ -620,6 +620,7 @@ public sealed partial class LevelEditorController
         foreach (var entity in entities)
         {
             if (ids.TryGetValue(entity.EmissionLightId ?? "", out string? lightId)) entity.EmissionLightId = lightId;
+            if (entity.ReflectionProbe?.Doorway is { } doorway && ids.TryGetValue(doorway.NeighborId, out string? neighborId)) doorway.NeighborId=neighborId;
             if (entity.Interaction == null || !string.Equals(entity.Interaction.Kind, "LightSwitch", StringComparison.OrdinalIgnoreCase)) continue;
             var targets = entity.Interaction.Targets ?? [];
             for (int i = 0; i < targets.Count; i++)

@@ -2,7 +2,9 @@
 
 This file tracks completed gameplay-facing systems and the current implementation shape.
 
-Room capture milestone (2026-10-23): `LaunchRoomReflectionTest.bat` opens a separate two-room fixture with saved actual-room HDR reflections. F2/HS2Editor share probe placement, capture/rebuild/cancel, reload and preview controls. Existing levels remain unchanged; one selected probe currently previews across the scene. Automatic room blending/projection and switched presets are next. Latest local torch on/off runs average 60 FPS. See [room capture guide](ROOM_REFLECTION_GUIDE.md).
+Room transitions (2026-10-25): `LaunchRoomTransitionTest.bat` opens a separate fixture with automatic room selection, box-projected reflections, one authored doorway blend and a carryable metal test object. F2/HS2Editor share automatic-mode and doorway-link controls. Local torch-on/off runs average about 60 FPS; two captures plus metadata/fallback use 2.126 MiB. Existing levels and launch defaults are unchanged. Residency/prefetch, explicit switched presets and real-level rollout remain next. See [room transition guide](ROOM_TRANSITION_GUIDE.md).
+
+The earlier `LaunchRoomReflectionTest.bat` remains the manual whole-scene capture preview. Placement, capture/rebuild/cancel, reload and invalid-cache safety remain shared with automatic mode. See [room capture guide](ROOM_REFLECTION_GUIDE.md).
 
 PBR/reflection milestone (2026-10-23): run `LaunchPbrMaterialTest.bat` for the separate material/lighting fixture, now with a controlled GGX-filtered HDR environment. C# remains the runtime and old levels stay Legacy. Game, F2 and HS2Editor share lighting-model and **Specular Environment** settings. Tests average about 60 FPS with torch on/off; reflection GPU payload is 1.063 MiB. Contracts, model-cache v3 and remaining work: [PBR guide](PBR_MATERIAL_GUIDE.md), [reflection guide](REFLECTION_LIGHTING_GUIDE.md). Authored room captures are available in the separate fixture above; this synthetic test is not a reflection of the actual room.
 

@@ -19,11 +19,12 @@ public sealed record BakeSnapshot(byte[] Json, Dictionary<string, string> ModelP
     {
         byte[] json = StructuredData.WriteJson(level);
         // The distant specular test rig is not a contributor to this diffuse bake.
-        if (level.ReflectionEnvironment != ReflectionPreset.None || level.ReflectionProbeId != null || level.Entities.Any(e => e.Type == EntityTypes.ReflectionProbe))
+        if (level.ReflectionEnvironment != ReflectionPreset.None || level.ReflectionProbeId != null || level.AutomaticRoomReflections || level.Entities.Any(e => e.Type == EntityTypes.ReflectionProbe))
         {
             var diffuse = StructuredData.ReadJson<LevelFile>(json);
             diffuse.ReflectionEnvironment = ReflectionPreset.None;
             diffuse.ReflectionProbeId = null;
+            diffuse.AutomaticRoomReflections = false;
             diffuse.Entities.RemoveAll(e => e.Type == EntityTypes.ReflectionProbe);
             json = StructuredData.WriteJson(diffuse);
         }

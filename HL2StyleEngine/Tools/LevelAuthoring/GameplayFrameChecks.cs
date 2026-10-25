@@ -57,17 +57,19 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
             Console.WriteLine($"[GameplayMovement] distance {probe._distance:F3}m / simulated {probe._simulationTime:F3}s = {probe._distance / probe._simulationTime:F3}m/s including acceleration/reversals; {probe._ticks} fixed ticks; wall frame mean {probe._intervals.Average():F3}ms p95 {probe._intervals[284]:F3}ms; >16.7ms {probe._intervals.Count(x => x > 16.7)}, >33.3ms {probe._intervals.Count(x => x > 33.3)} / 300.");
             Console.WriteLine($"[GameplayUploads] {probe._objectUploads / 300.0:F1} main-scene uploads/frame; {probe._intervals.Count(x => x > 100)} frames over the 100ms simulation clamp.");
             Console.WriteLine($"[VisibilityStreaming] reference={referenceVisibility}; draws/frame {probe._draws / 300.0:F1}; streaming wait frames {probe._streamWaitFrames}; resident {probe._game.StreamingResidentModels} models / {probe._game.StreamingResidentBytes / 1048576.0:F1} MiB; {probe._game.StreamingZoneCount} dependency zones; {probe._game.StreamingEvictions} evictions.");
-            if (levelFile is PbrTestRoom.FileName or RoomReflectionChecks.FileName)
+            if (levelFile is PbrTestRoom.FileName or RoomReflectionChecks.FileName or RoomTransitionChecks.FileName)
             {
                 if (!probe._world.ReflectionReady || probe._world.ReflectionPendingCpuBytes != 0)
                     throw new InvalidDataException("PBR gameplay did not finish loading its reflection environment.");
-                Console.WriteLine($"[ReflectionResidency] {probe._world.ReflectionResidentBytes} GPU payload bytes, no pending CPU payload.");
-                if (levelFile == RoomReflectionChecks.FileName)
+                long reflectionBytes=probe._world.ReflectionResidentBytes;
+                if (levelFile is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName)
                 {
                     var room = (ReflectionProbeSession)probe.Field("_roomReflections");
                     if (!room.Ready || room.Busy || room.CaptureGpuBytes != 0) throw new InvalidDataException("Room capture not ready, or runtime capture work is active.");
+                    if(probe._world.Reflection==null)reflectionBytes+=room.ResidentBytes;
                     Console.WriteLine($"[RoomReflection] {room.Status}; {room.ResidentBytes} GPU bytes; no runtime capture passes.");
                 }
+                Console.WriteLine($"[ReflectionResidency] {reflectionBytes} GPU payload bytes including retained room captures, no pending CPU payload.");
                 if (probe._intervals.Average() > 17 || probe._intervals[284] > 21 ||
                     probe._intervals.Count(x=>x>33.3)>1 || probe._intervals.Any(x=>x>100) || probe._streamWaitFrames != 0)
                     throw new InvalidDataException("PBR full-host regression budget exceeded.");

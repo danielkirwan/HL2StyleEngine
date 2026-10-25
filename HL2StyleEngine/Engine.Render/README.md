@@ -1,5 +1,9 @@
 # World Rendering
 
+## Room Transitions (2026-10-25)
+
+`ReflectionRooms` selects one room or an explicitly connected pair per transformed model-part bounds. Immutable sets use t6/t7/t8/s4/b4 with 224-byte reflection metadata, leaving the 256-byte object payload and batched upload unchanged. HLSL applies strict pixel membership, finite box projection and smoothstep linear-HDR blending only in authored doorway boxes. Missing/incompatible captures retain black weight rather than leaking a bright neighbor. Unit D's global preview still works when automatic mode is off. Updated VS/PS CSOs and original image regressions pass. See [transition guide](../Game/ROOM_TRANSITION_GUIDE.md) for limits and performance; the following dated notes describe earlier stages.
+
 ## Room Captures (2026-10-23)
 
 Unit D's first pass adds shared cancellable `ReflectionFilter` cooking, budgeted caller-owned reflection uploads and a shadow-rendering overload for capture-owned command lists/targets. Editor-owned captures isolate camera/object/shadow state, poll fences, read linear HDR before presentation and never sample reflections recursively. Gameplay samples validated saved files, not live captures. One selected preview applies globally; box projection/blending remain next. Shader payloads and existing images are unchanged. See [room capture guide](../Game/ROOM_REFLECTION_GUIDE.md) for eligibility, cache contracts, memory/performance and tests.
@@ -8,7 +12,7 @@ Unit D's first pass adds shared cancellable `ReflectionFilter` cooking, budgeted
 
 Unit C adds `ReflectionEnvironmentData` (versioned/checksummed bounded RGBA16F cubemap + RG16F LUT), `ReflectionEnvironment` (staged GPU transfers) and a separate renderer resource set 6 (t6/t7/s4/b4). One deterministic synthetic preset is cooked offline and embedded in this assembly. Worker read/validation and shared 2 ms soft upload budget keep incomplete data hidden behind a black fallback. No runtime capture/filtering, routine `WaitForIdle`, object-slot expansion or added per-draw uniform upload. The loaded preset stays resident until renderer shutdown; callers must frame-fence retirement of explicitly supplied resources. Legacy and reflection-off references remain unchanged.
 
-Only the PBR test level opts into the synthetic environment. GPU payload including fallback/metadata is 1.063 MiB; local full-host torch on/off averages about 60 FPS and paired GPU increments pass <=1 ms. See [reflection guide](../Game/REFLECTION_LIGHTING_GUIDE.md) for the GGX/LUT convention, tests and limitations. Unit D's separate room captures are described above; projection and room transitions remain pending.
+Only the PBR test level opts into the synthetic environment. GPU payload including fallback/metadata is approximately 1.063 MiB; local full-host torch on/off averages about 60 FPS and paired GPU increments pass <=1 ms. See [reflection guide](../Game/REFLECTION_LIGHTING_GUIDE.md) for the GGX/LUT convention, tests and limitations. Unit D's separate captures and unit E's projection/transitions are described above.
 
 ## Opt-In Direct PBR (2026-10-22)
 
@@ -76,7 +80,7 @@ Main-scene object uniforms are also batched: after `BeginFrame`, Game/F2 and HS2
 
 The world renders to RGBA16F HDR targets, then applies exposure, Reinhard tone mapping and linear-to-sRGB presentation. UI is drawn afterwards and does not receive scene exposure. Basic primitives remain unlit, but convert authored sRGB colours to linear before presentation.
 
-Textured rendering accepts up to 32 nearby `WorldPointLight` entries, including spotlight direction/cone data. `LevelLighting` applies the same saved controls in game and editor. Colour textures, normals, metallic/roughness maps, derivative tangent-space normals, opt-in direct PBR, synthetic specular and one selected authored room capture are supported. glTF normal-scale overrides, automatic room selection and box projection remain pending.
+Textured rendering accepts up to 32 nearby `WorldPointLight` entries, including spotlight direction/cone data. `LevelLighting` applies the same saved controls in game and editor. Colour textures, normals, metallic/roughness maps, derivative tangent-space normals, opt-in direct PBR, synthetic specular, authored room captures, box projection and doorway-linked selection/blending are supported. glTF normal-scale overrides, explicit switched reflection presets and probe eviction/prefetch remain pending.
 
 `WorldShadows` supports up to two spotlights and one six-face point light in eight 1024-square depth slices with 3-by-3 PCF. Lights opt into shadows; existing lights default to unshadowed. Priority and distance decide active lights. The gameplay flashlight uses high priority. Excess lights still illuminate without shadows. Up to 2,048 nearby casters are retained; overflow is counted, not a crash. Hidden crate parts are excluded.
 
@@ -90,7 +94,7 @@ Moving-light optimization: when depth must be redrawn, caster matrices now use o
 
 The lighting buffer at b2 contains a float4 header, 32 four-float4 light records and the appended ShadingSettings float4. b3 contains eight shadow matrices. The object buffer at b1 contains Model, Color, Material, the inverse-transpose normal matrix, Emission and five packed probe float4s; its aligned upload stride remains 256 bytes. Texture slots t0/t1/t2/t3 are base colour/material/normal/emission; shadow maps use t4 and lightmaps t5. Keep C# and HLSL layouts aligned. Shadow camera/object uniforms have independent storage so passes cannot overwrite each other's transforms.
 
-Light groups, switches, flicker and persistent on/off overrides are provided by the shared level-lighting/gameplay layers; see `Game/LIGHTING_GUIDE.md`. Static indirect/probes are opt-in as described above. Limitations: no reflection probes, directional shadows, alpha-tested shadow materials, bloom or volumetrics. Shadow receivers are textured models; unlit blockout primitives can cast shadows but do not receive lighting. Light poses use editor hierarchy transforms; animated runtime light attachments remain pending. Point-light editor helpers are not runtime renderables/shadow casters.
+Light groups, switches, flicker and persistent on/off overrides are provided by the shared level-lighting/gameplay layers; see `Game/LIGHTING_GUIDE.md`. Static indirect/probes and room reflections are opt-in as described above. Limitations: no live reflection captures, directional shadows, alpha-tested shadow materials, bloom or volumetrics. Shadow receivers are textured models; unlit blockout primitives can cast shadows but do not receive lighting. Light poses use editor hierarchy transforms; animated runtime light attachments remain pending. Point-light editor helpers are not runtime renderables/shadow casters.
 
 To rebuild shaders with an installed Windows SDK, run its x64 `fxc.exe` from the project root:
 

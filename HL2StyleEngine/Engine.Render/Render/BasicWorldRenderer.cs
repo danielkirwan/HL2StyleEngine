@@ -449,6 +449,8 @@ public sealed partial class BasicWorldRenderer : IDisposable
                 part.Color.W * tint.W);
             Vector3 glow = (emission ?? new ModelEmission(1)).Resolve(part.EmissiveFactor, part.PartKey, part.NodeName, part.MeshName);
             bool pbr = LightingModel == SurfaceLightingModel.Pbr;
+            ResourceSet? reflectionSet = pbr && ReflectionPreviewEnabled && RoomReflections != null
+                ? RoomReflections.Select(part.BoundsMin, part.BoundsMax, transform) ?? _blackReflection.Set : null;
             var textureSet = pbr ? part.PbrTextureSet : part.TextureSet;
             Vector4 factors = pbr ? part.PbrMaterialFactors : part.MaterialFactors;
             if (lightmap is { IsReady: true } && i < lightmap.Parts.Count)
@@ -456,18 +458,18 @@ public sealed partial class BasicWorldRenderer : IDisposable
                 var baked = lightmap.Parts[i];
                 Vector4 material = factors; material.W = 1;
                 DrawTexturedMesh(cl, transform, color, material, glow, baked.Vertices, baked.Indices, baked.Count,
-                    IndexFormat.UInt32, textureSet ?? _lightmapFallbackMaterial!, lightmap.Atlas.Set);
+                    IndexFormat.UInt32, textureSet ?? _lightmapFallbackMaterial!, lightmap.Atlas.Set, reflectionSet: reflectionSet);
             }
             else if (pbr && part.PbrVertexBuffer != null && textureSet != null)
             {
                 factors.W = probe.HasEnergy ? 2 : 0;
                 DrawTexturedMesh(cl, transform, color, factors, glow, part.PbrVertexBuffer, part.PbrIndexBuffer ?? part.IndexBuffer,
-                    part.PbrIndexCount, part.PbrIndexBuffer != null ? IndexFormat.UInt32 : part.IndexFormat, textureSet, probe: probe);
+                    part.PbrIndexCount, part.PbrIndexBuffer != null ? IndexFormat.UInt32 : part.IndexFormat, textureSet, probe: probe, reflectionSet: reflectionSet);
             }
             else if (part.IsTextured && part.TexturedVertexBuffer != null && part.TextureSet != null)
             {
                 Vector4 material = part.MaterialFactors; material.W = probe.HasEnergy ? 2 : 0;
-                DrawTexturedMesh(cl, transform, color, material, glow, part.TexturedVertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat, part.TextureSet, probe: probe);
+                DrawTexturedMesh(cl, transform, color, material, glow, part.TexturedVertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat, part.TextureSet, probe: probe, reflectionSet: reflectionSet);
             }
             else
                 DrawMesh(cl, transform, color, part.VertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat, glow);
@@ -493,7 +495,7 @@ public sealed partial class BasicWorldRenderer : IDisposable
         DeviceBuffer indexBuffer,
         uint indexCount,
         IndexFormat indexFormat,
-        ResourceSet textureSet, ResourceSet? lightmapSet = null, ProbeIrradiance probe = default)
+        ResourceSet textureSet, ResourceSet? lightmapSet = null, ProbeIrradiance probe = default, ResourceSet? reflectionSet = null)
     {
         if (_objectWriteIndex >= MaxObjectsPerFrame)
             return;
@@ -515,7 +517,7 @@ public sealed partial class BasicWorldRenderer : IDisposable
         cl.SetGraphicsResourceSet(3, _lightingSet);
         cl.SetGraphicsResourceSet(4, _shadowSet);
         cl.SetGraphicsResourceSet(5, lightmapSet ?? _emptyLightmap!.Set);
-        cl.SetGraphicsResourceSet(6, (ReflectionPreviewEnabled ? ActiveReflection ?? _blackReflection : _blackReflection).Set);
+        cl.SetGraphicsResourceSet(6, reflectionSet ?? (ReflectionPreviewEnabled ? ActiveReflection ?? _blackReflection : _blackReflection).Set);
         cl.SetVertexBuffer(0, vertexBuffer);
         cl.SetIndexBuffer(indexBuffer, indexFormat);
         cl.DrawIndexed(indexCount, 1, 0, 0, 0);
