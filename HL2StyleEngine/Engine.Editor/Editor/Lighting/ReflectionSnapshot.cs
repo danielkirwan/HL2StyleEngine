@@ -52,6 +52,7 @@ public sealed class ReflectionSnapshot
         level.ReflectionProbeId = null; level.ReflectionEnvironment = ReflectionPreset.None; level.Exposure = 1;
         level.AutomaticRoomReflections = false;
         level.ReflectionStreaming = null;
+        level.RoomVisibility = null;
         // Sampling links do not contribute energy to the capture.
         foreach (var entity in level.Entities)
             if (entity.ReflectionProbe != null) entity.ReflectionProbe.Doorway = null;
@@ -74,7 +75,7 @@ public sealed class ReflectionSnapshot
         var paths = geometry.Select(e => e.MeshPath).Distinct(StringComparer.OrdinalIgnoreCase)
             .ToDictionary(p => p, resolve, StringComparer.OrdinalIgnoreCase);
         var dependencies = new Dictionary<string,string>(paths, StringComparer.OrdinalIgnoreCase);
-        foreach (string shader in new[] { "TexturedModelVS.cso", "TexturedModelPS.cso", "ShadowVS.cso" })
+        foreach (string shader in new[] { "TexturedModelVS.cso", level.PointShadowLimit > 1 ? "TexturedModelMultiShadowPS.cso" : "TexturedModelPS.cso", "ShadowVS.cso" })
             dependencies["shader/" + shader] = Path.Combine(AppContext.BaseDirectory, "Shaders", shader);
         if (diffuse != null) dependencies["diffuse"] = LightmapFile.PathFor(levelPath);
         return new() { Level = level, LevelPath = levelPath, Probe = probe, Position = position,

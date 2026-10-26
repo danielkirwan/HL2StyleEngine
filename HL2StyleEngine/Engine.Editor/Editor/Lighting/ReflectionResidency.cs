@@ -16,7 +16,7 @@ public sealed class ReflectionResidency
     }
 
     public int[] Select(ReflectionRoomLayout layout, ReflectionStreamingSettings settings, Vector3 position,
-        double seconds, IReadOnlySet<int> resident, int capture = -1)
+        double seconds, IReadOnlySet<int> resident, int capture = -1, IReadOnlyList<string>? prefetch = null)
     {
         Validate(settings);
         if (!float.IsFinite(position.X + position.Y + position.Z)) return [];
@@ -31,6 +31,8 @@ public sealed class ReflectionResidency
             .OrderByDescending(i => layout.Rooms[i].Priority).ThenBy(i => layout.Rooms[i].Id, StringComparer.Ordinal).DefaultIfEmpty(-1).First());
         Add(capture);
         var active = wanted.ToHashSet();
+        if (prefetch != null)
+            foreach (string id in prefetch) Add(Array.FindIndex(layout.Rooms, r => r.Id == id));
         var neighbours = layout.Doors.Where(d => active.Contains(d.A) || active.Contains(d.B))
             .Select(d => (Door: d, Distance: Vector3.Distance(position, Vector3.Clamp(position, d.Min, d.Max))))
             .Where(d => d.Distance <= settings.PrefetchDistance)

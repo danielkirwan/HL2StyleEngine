@@ -1,5 +1,9 @@
 # Visibility And Asset Streaming
 
+Render extraction follow-up (2026-10-26): gameplay snapshots are built after model pumping/eviction and borrow the existing fenced handles for one frame. Shared main/shadow transforms do not change loading, pinning, replacement warm-up, entity ownership or save state. `renderStress12Room.json` also opts into room visibility; its larger area exercises repeated geometry, not a larger unique-asset memory budget. Three to six paired-room reflection captures reside during the tested route. No cold-load improvement or model-eviction result is claimed. [Measurements and architecture](RENDER_SUBMISSION_GUIDE.md).
+
+Optional room-aware extension (2026-10-26): `RoomVisibility` adds explicit main-view room/aperture traversal and connected dependency prefetch. Missing/invalid/disabled graphs keep the XZ-zone path below. Models, replacement/debris dependencies, existing upload/fence budgets and shadow/held owners retain their contracts. Bake instance bindings are prepared in bounded batches; the whole atlas stays resident. Reflection hints follow active/doorway/capture pins under the existing slot budget. `sixRoomVisibilityTest.json` was the initial opt-in fixture; the twelve-room fixture above also uses it. [Workflow, A/B measurements and limits](ROOM_VISIBILITY_GUIDE.md).
+
 Implemented first pass: 2026-10-06. Enabled by default for existing levels; no level conversion or new launch command is needed.
 
 ## What Changes

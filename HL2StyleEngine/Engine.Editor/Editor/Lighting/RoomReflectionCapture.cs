@@ -45,6 +45,8 @@ public sealed class RoomReflectionCapture : IDisposable
     private readonly LevelEditorController _editor = new();
     private readonly Dictionary<string,RenderModel> _models = new();
     private readonly List<(LevelEntityDef Entity, RenderModel Model, Matrix4x4 Transform, LightmapBinding? Binding, ProbeIrradiance Probe)> _draws = new();
+    private readonly RenderScene _scene = new();
+    private readonly List<ShadowCaster> _casters = new();
     private readonly LightmapAtlas? _atlas;
     private bool _submitted, _prepared;
     private int _face;
@@ -52,7 +54,7 @@ public sealed class RoomReflectionCapture : IDisposable
     public int CompletedFaces => _face;
     public bool Complete => _face == 6;
     public long GpuBytes => _world.TextureResidentBytes + _models.Values.Sum(m => m.GeometryBytes) + (_atlas?.Bytes ?? 0) +
-        _draws.Sum(d => d.Binding?.Bytes ?? 0) + _input.Snapshot.Settings.Resolution * _input.Snapshot.Settings.Resolution * 20L + 8L * 1024 * 1024 * 4;
+        _draws.Sum(d => d.Binding?.Bytes ?? 0) + _input.Snapshot.Settings.Resolution * _input.Snapshot.Settings.Resolution * 20L + _world.ShadowGpuBytes + _world.InstanceBufferBytes;
 
     public RoomReflectionCapture(GraphicsDevice device, ReflectionCaptureInput input)
     {
@@ -115,6 +117,15 @@ public sealed class RoomReflectionCapture : IDisposable
                 }
             foreach (var draw in _draws)
                 if (draw.Binding is { IsReady: false } binding) { _world.UploadLightmapPart(binding); if (!binding.IsReady) return; }
+            _scene.Begin();
+            foreach (var draw in _draws)
+            {
+                var instance = new RenderInstance(draw.Entity.Id, draw.Model, draw.Transform, draw.Entity.Color,
+                    Vector3.Transform(Vector3.Zero, draw.Transform), 500, Emission: LevelLighting.GetEmission(_editor.LevelFile, draw.Entity),
+                    Lightmap: draw.Binding, Probe: draw.Probe, AllowInstancing: true);
+                _scene.Add(instance); _casters.Add(instance.Shadow);
+            }
+            _scene.Seal();
             _prepared = true;
         }
         Vector3 direction = ReflectionFilter.Direction(_face,0,0);
@@ -125,13 +136,10 @@ public sealed class RoomReflectionCapture : IDisposable
         if (!_input.Snapshot.Settings.CaptureMask.HasFlag(ReflectionCaptureMask.FixedLights)) _world.UpdatePointLights([], eye);
         _commands.Begin(); _commands.SetFramebuffer(_frame); _commands.SetFullViewports();
         _commands.ClearColorTarget(0, RgbaFloat.Black); _commands.ClearDepthStencil(1);
-        var casters = _draws.Select(d => new ShadowCaster(d.Model, d.Transform, Vector3.Transform(Vector3.Zero,d.Transform), 500)).ToArray();
         // Conservative casters avoid losing geometry outside the active cube face.
-        _world.RenderShadows(_commands, _frame, casters, new(0,0,size,size,0,1));
+        _world.RenderShadows(_commands, _frame, _casters, new(0,0,size,size,0,1));
         using (_world.BatchObjectUploads())
-            foreach (var draw in _draws)
-                _world.DrawModel(_commands, draw.Model, draw.Transform, draw.Entity.Color, null,
-                    LevelLighting.GetEmission(_editor.LevelFile, draw.Entity), draw.Binding, draw.Probe);
+            _scene.Draw(_world, _commands);
         _commands.CopyTexture(_color, _staging); _commands.End();
         _device.SubmitCommands(_commands, _fence); _submitted = true;
     }

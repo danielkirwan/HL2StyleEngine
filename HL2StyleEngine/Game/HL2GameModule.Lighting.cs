@@ -13,6 +13,33 @@ public sealed partial class HL2GameModule
     private readonly LevelLightState _lightState = new();
     private readonly List<ShadowCaster> _shadowCasters = new();
 
+    private WorldPointLight CreateFlashlight()
+    {
+        Vector3 origin = _camera.Position, direction = _camera.Forward;
+        if (_editor.LevelFile.OffsetFlashlight)
+        {
+            Vector3 right = _camera.Right;
+            Vector3 viewUp = Vector3.Normalize(Vector3.Cross(right, direction));
+            Vector3 offset = right * .04f - viewUp * .02f;
+            float distance = offset.Length();
+            const float wallClearance = .005f;
+            Vector3 rayDirection = offset / distance;
+            var ray = new Engine.Physics.Collision.Ray(origin,rayDirection);
+            foreach (var entity in _runtimeEntities)
+            {
+                if (!entity.Collider.Enabled || !entity.Collider.IsSolid ||
+                    entity.Type is EntityTypes.TriggerVolume or EntityTypes.PointLight or EntityTypes.PlayerSpawn) continue;
+                // Include the clearance in the query so the source retracts continuously at the boundary.
+                float reach = distance + wallClearance;
+                if (!Engine.Physics.Collision.Raycast.RayIntersectsAabb(ray,CreateWorldCollider(entity).GetAabb(),0,reach,out _)) continue;
+                if (RayIntersectsEntityCollider(ray,entity,0,reach,out float hit)) distance = MathF.Min(distance,MathF.Max(0,hit-wallClearance));
+            }
+            origin += rayDirection * distance;
+            direction = Vector3.Normalize(_camera.Position + _camera.Forward * 8 - origin);
+        }
+        return new(origin,new Vector3(1f,.95f,.85f),7,22,direction,55,true,100,"player-flashlight");
+    }
+
     private bool IsLightSwitch(Entity entity) => IsInteractionKind(entity, "LightSwitch");
 
     private string GetLightSwitchPrompt(Entity entity)
@@ -58,6 +85,10 @@ public sealed partial class HL2GameModule
                     var draw = _editor.DrawBoxes[i];
                     Add(def.MeshPath, draw.Position, draw.Size, draw.Rotation, draw.Color, null);
                 }
+            }
+            else if (RenderPreparationEnabled)
+            {
+                _shadowCasters.AddRange(_preparedShadows);
             }
             else
             {

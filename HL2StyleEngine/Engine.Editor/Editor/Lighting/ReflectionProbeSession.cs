@@ -28,20 +28,23 @@ public sealed class ReflectionProbeSession : IDisposable
     private long _scenarioRevision=-1;
     private string _status = "No room probe selected";
     private bool _compatible = true;
-    private long _retiringEnvironmentBytes, _retiringCaptureBytes;
+    private long _retiringEnvironmentBytes, _retiringCaptureBytes, _retiringRoomBytes;
     public string Status { get => _rooms?.Status ?? _status; private set => _status=value; }
     public bool Busy => _rooms?.Busy ?? (_work != null || _capture != null || _data != null);
     public bool Ready => _rooms?.Ready ?? (_ready != null);
     internal ReflectionEnvironment? CompatibleEnvironment => _compatible ? _ready : null;
     public bool ShowBounds;
     public bool PreviewEnabled = true;
+    public IReadOnlyList<string>? PrefetchProbeIds { get; set; }
     public int CompletedFaces => _rooms?.CompletedFaces ?? _capture?.CompletedFaces ?? 0;
-    public long ResidentBytes => (_retainedScenarioRooms?.ResidentBytes ?? 0) + (_rooms?.ResidentBytes ?? ((_ready?.ResidentBytes ?? 0) + (_pending?.ResidentBytes ?? 0) +
-        _retiringEnvironmentBytes + _retire.OfType<ReflectionEnvironment>().Sum(r => r.ResidentBytes)));
+    public long ResidentBytes => (_retainedScenarioRooms?.ResidentBytes ?? 0) + (_rooms?.ResidentBytes ?? ((_ready?.ResidentBytes ?? 0) + (_pending?.ResidentBytes ?? 0))) +
+        _retiringEnvironmentBytes + _retiringRoomBytes + _retire.OfType<ReflectionEnvironment>().Sum(r => r.ResidentBytes) +
+        _retire.OfType<ReflectionRoomSession>().Sum(r => r.ResidentBytes);
     public int RetainedScenarioProbes => _retainedScenarioRooms?.ResidentCount ?? 0;
-    public long PendingCpuBytes => _rooms?.PendingCpuBytes ?? _data?.PayloadBytes ?? 0;
-    public long CaptureGpuBytes => _rooms?.CaptureGpuBytes ?? ((_capture?.GpuBytes ?? 0) + _retiringCaptureBytes +
-        _retire.OfType<RoomReflectionCapture>().Sum(r => r.GpuBytes));
+    public bool AlternateStateReady => _retainedScenarioRooms is { Ready: true, Busy: false };
+    public long PendingCpuBytes => (_retainedScenarioRooms?.PendingCpuBytes ?? 0) + (_rooms?.PendingCpuBytes ?? _data?.PayloadBytes ?? 0);
+    public long CaptureGpuBytes => (_retainedScenarioRooms?.CaptureGpuBytes ?? 0) + (_rooms?.CaptureGpuBytes ?? 0) + (_capture?.GpuBytes ?? 0) +
+        _retiringCaptureBytes + _retire.OfType<RoomReflectionCapture>().Sum(r => r.GpuBytes) + _retire.OfType<ReflectionRoomSession>().Sum(r => r.CaptureGpuBytes);
     public long PeakGpuBytes { get; private set; }
     public int ResidentProbeCount => _rooms?.ResidentCount ?? (_ready == null ? 0 : 1);
     public int RetiringProbeCount => _rooms?.RetiringCount ?? 0;
@@ -50,6 +53,7 @@ public sealed class ReflectionProbeSession : IDisposable
 
     public void Update(LevelEditorController editor, Func<string,string> resolve, BasicWorldRenderer world, Renderer renderer, LevelLightState? state = null, string? probeOverride = null, Vector3? position = null, byte[]? sourceJson = null)
     {
+        var sourceEditor = editor;
         bool scenarios=editor.LevelFile.LightingScenarios is { Count: >0 };
         bool sourceChanged=_scenarioSource!=(scenarios?editor.LevelPath:"") || scenarios && _scenarioRevision!=editor.Revision;
         if(sourceChanged)
@@ -78,17 +82,27 @@ public sealed class ReflectionProbeSession : IDisposable
         foreach (var resource in _retire)
         {
             long environment = resource is ReflectionEnvironment env ? env.ResidentBytes : 0;
-            long capture = resource is RoomReflectionCapture cap ? cap.GpuBytes : 0;
-            _retiringEnvironmentBytes += environment; _retiringCaptureBytes += capture;
+            long roomBytes = resource is ReflectionRoomSession room ? room.ResidentBytes : 0;
+            long capture = resource is RoomReflectionCapture cap ? cap.GpuBytes : resource is ReflectionRoomSession rooms ? rooms.CaptureGpuBytes : 0;
+            _retiringEnvironmentBytes += environment; _retiringCaptureBytes += capture; _retiringRoomBytes += roomBytes;
             renderer.RetireAfterFrame(new Retirement(resource, () =>
-            { _retiringEnvironmentBytes -= environment; _retiringCaptureBytes -= capture; }));
+            { _retiringEnvironmentBytes -= environment; _retiringCaptureBytes -= capture; _retiringRoomBytes -= roomBytes; }));
         }
         _retire.Clear();
         if (editor.LevelFile.AutomaticRoomReflections && probeOverride == null)
         {
             if (_rooms == null) { Cancel(); DropReady(); _rooms=new(); }
-            _rooms.Update(editor,resolve,world,renderer,state,PreviewEnabled,position);
-            PeakGpuBytes=Math.Max(PeakGpuBytes,_rooms.PeakGpuBytes); return;
+            // Prepare only one alternate bank after the active bank is usable. It shares the upload budget.
+            // Updating the active bank last restores all visible bindings after the hidden prewarm pass.
+            if (scenarios && sourceEditor.LevelFile.PrewarmLightingStates && _rooms.Ready && !_rooms.Busy &&
+                _scenarios.Alternate(sourceEditor,editor) is { LevelFile.AutomaticRoomReflections: true } alternate)
+            {
+                _retainedScenarioRooms ??= new();
+                _retainedScenarioPath = alternate.LevelPath;
+                _retainedScenarioRooms.Update(alternate,resolve,world,renderer,null,false,position,PrefetchProbeIds);
+            }
+            _rooms.Update(editor,resolve,world,renderer,state,PreviewEnabled,position,PrefetchProbeIds);
+            PeakGpuBytes=Math.Max(PeakGpuBytes,ResidentBytes+CaptureGpuBytes); return;
         }
         if (_rooms != null) { _retire.Add(_rooms); _rooms=null; _revision=-1; }
         world.RoomReflections=null;

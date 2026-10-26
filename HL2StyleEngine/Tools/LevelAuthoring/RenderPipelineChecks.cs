@@ -7,7 +7,7 @@ using Veldrid;
 
 internal static class RenderPipelineChecks
 {
-    public static void Run(bool pbr = false)
+    public static void Run(bool pbr = false, bool multi = false)
     {
         using var host = new EngineHost(640, 480, "Rendering QA");
         var renderer = host.Context.Renderer;
@@ -17,6 +17,7 @@ internal static class RenderPipelineChecks
         using var messages = nativeDevice.QueryInterface<Vortice.Direct3D11.Debug.ID3D11InfoQueue>();
         using var world = new BasicWorldRenderer(device, renderer.WorldOutputDescription, "Shaders");
         world.LightingModel = pbr ? SurfaceLightingModel.Pbr : SurfaceLightingModel.Legacy;
+        world.PointShadowLimit = multi ? 4 : 1;
         world.AmbientStrength = .015f; world.DirectionalStrength = 0;
         var source = new LoadedModel([new LoadedModelPart(
             [new(-5, -2, -4), new(5, -2, -4), new(5, 4, -4), new(-5, 4, -4)],
@@ -68,6 +69,12 @@ internal static class RenderPipelineChecks
         try
         {
             uint[] unshadowed = Frame(light, cube);
+            if(multi)
+            {
+                world.PointShadowLimit=1;
+                Require(Frame(light,cube).SequenceEqual(unshadowed),"Multi-shadow shader changed unshadowed PBR material output.");
+                world.PointShadowLimit=4;
+            }
             Require(world.ObjectUploadCount == 1, "Main scene objects were not uploaded in one batch.");
             world.ObjectBatchUploadsEnabled = false;
             Require(Frame(light, cube).SequenceEqual(unshadowed) && world.ObjectUploadCount == 2,
@@ -116,6 +123,7 @@ internal static class RenderPipelineChecks
             Require(CountDarker(exposed, unshadowed) > 10000, "Exposure control did not reach the presentation pass.");
             renderer.Exposure = 1;
             CheckShadowInvalidation();
+            if (multi) CheckMultiShadows();
             BenchmarkShadows();
             string output = Path.Combine(AppContext.BaseDirectory, "qa");
             Directory.CreateDirectory(output);
@@ -215,6 +223,54 @@ internal static class RenderPipelineChecks
                 world.ViewCullingEnabled = true;
                 world.ShadowCachingEnabled = true; world.ShadowCullingEnabled = true;
             }
+        }
+
+        void CheckMultiShadows()
+        {
+            var lights = Enumerable.Range(0,4).Select(i => light with { Id = "point-"+i,
+                Position = new Vector3(i-2,2,1), SpotAngleDegrees=0, CastShadows=true }).Concat([
+                light with { Id="torch", CastShadows=true, Priority=100 },
+                light with { Id="spot", Position=new(2,3,1), CastShadows=true }]).ToArray();
+            var plain = Frame(light,cube,customLights:lights.Select(l=>l with { CastShadows=false }).ToArray());
+            var shadows = Frame(light,cube,customLights:lights);
+            Require(world.ShadowPointLightCount==4 && world.ShadowSpotLightCount==2 && world.ShadowPassCount==26,
+                "Four point + two independent spot slots were not assigned.");
+            Require(CountDarker(plain,shadows)>300,"Multi-shadow shader produced no visible shadows.");
+            Require(Frame(light,cube,customLights:lights.Reverse().ToArray()).SequenceEqual(shadows) && world.ShadowCacheHits==26,
+                "Reordering lights lost stable slots or changed cached pixels.");
+            Require(world.ShadowGpuBytes==104L*1048576,"Expanded atlas did not retire its old 32 MiB allocation.");
+            for(int step=0;step<12;step++)
+            {
+                var moving=lights.ToArray();moving[1]=moving[1] with { Position=moving[1].Position+new Vector3(step*.1f,0,0) };
+                var door=Matrix4x4.CreateRotationY(step*.1f)*cube;
+                var cachedPixels=Frame(light,door,customLights:moving);
+                world.ShadowCachingEnabled=false;world.ShadowCullingEnabled=false;
+                Require(Frame(light,door,customLights:moving).SequenceEqual(cachedPixels),"Multi-shadow moving-light/door cache mismatch.");
+                world.ShadowCachingEnabled=world.ShadowCullingEnabled=true;
+            }
+            Frame(light,cube,customLights:[]);
+            Require(world.ShadowPassCount==0,"Turning off all lights retained shadows.");
+            Frame(light,cube,customLights:lights);
+            Require(world.ShadowRenderedPassCount==26,"Re-enabled multi shadows used invalid cached depth.");
+            world.PointShadowLimit=16;
+            var full=Enumerable.Range(0,16).Select(i=>lights[0] with {Id="full-"+i,Position=new(i%4-2,2,i/4-2)}).Concat(lights.Skip(4)).ToArray();
+            Frame(light,cube,customLights:full);
+            Require(world.ShadowPointLightCount==16 && world.ShadowSpotLightCount==2 && world.ShadowPassCount==98,"Full tiled capacity missing.");
+            // Adjacent light faces share a physical depth layer. Moving/removing one must not erase the other.
+            for(int step=0;step<5;step++)
+            {
+                var changed=full.ToArray();changed[step]=changed[step] with {Position=changed[step].Position+new Vector3(.25f,0,0),CastShadows=step%2==0};
+                var actual=Frame(light,cube,customLights:changed);
+                world.ShadowCachingEnabled=false;
+                Require(Frame(light,cube,customLights:changed).SequenceEqual(actual),"Dirty tile erased a cached neighbour.");
+                world.ShadowCachingEnabled=true;
+            }
+            var beforeModeSwitch=Frame(light,cube,customLights:full);
+            world.PointShadowLimit=1;Frame(light,cube,customLights:full);
+            world.PointShadowLimit=16;
+            Require(Frame(light,cube,customLights:full).SequenceEqual(beforeModeSwitch),"Quality switch reused depth from the wrong tile layout.");
+            world.PointShadowLimit=4;
+            Console.WriteLine("PASS: 98 logical faces in 26 physical layers, independent torch, stable identities, bounded 104 MiB atlas, dirty-neighbour and quality-switch comparisons.");
         }
 
         unsafe void BenchmarkShadows()

@@ -139,6 +139,8 @@ public sealed partial class LevelEditorController
             if (session.Busy && ImGui.Button("Cancel Capture")) session.Cancel();
             if (ImGui.Button(automatic ? "Unload / Reload Rooms" : "Reload Capture")) session.Reload();
             ImGui.TextWrapped(session.Status);
+            if (LevelFile.PrewarmLightingStates)
+                ImGui.TextUnformatted(session.AlternateStateReady ? "Alternate reflections: ready" : "Alternate reflections: not ready");
             ImGui.TextUnformatted($"Reflection GPU: {session.ResidentBytes/1048576.0:F2} MiB");
             if (session.CaptureGpuBytes > 0) ImGui.TextUnformatted($"Capture scratch: {session.CaptureGpuBytes/1048576.0:F2} MiB");
         }
@@ -161,6 +163,7 @@ public sealed partial class LevelEditorController
 
     public void DrawReflectionBounds(BasicWorldRenderer world, Renderer renderer)
     {
+        DrawRoomBounds(world, renderer);
         if (RoomReflections?.ShowBounds != true) return;
         for (int i=0;i<LevelFile.Entities.Count;i++)
         {

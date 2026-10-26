@@ -6992,9 +6992,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _bakedLighting.Update(_editor, ResolveModelAssetPath, _world, renderer, _editorEnabled ? null : _lightState);
         using var objectUploads = _world.BatchObjectUploads();
         _world.UpdateCamera(viewProj, _camera.Position);
+        UpdateRoomVisibility(viewProj);
         renderer.Exposure = _editor.LevelFile.Exposure;
         WorldPointLight? flashlight = !_editorEnabled && _flashlightOn
-            ? new WorldPointLight(_camera.Position, new Vector3(1f, .95f, .85f), 7f, 22f, _camera.Forward, 55f, true, 100)
+            ? CreateFlashlight()
             : null;
         LevelLighting.Apply(_world, _editor, _camera.Position, flashlight, _editorEnabled ? null : _lightState,
             _editorEnabled ? _editorLightingSeconds : _playTimeSeconds);
@@ -7002,6 +7003,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _roomReflections.Update(_editor, ResolveModelAssetPath, _world, renderer, _editorEnabled ? null : _lightState, position: _camera.Position);
         PumpModelUploads();
         EvictDistantModels();
+        if (RenderPreparationEnabled && !_editorEnabled) PrepareRenderScene(renderer);
         DrawWorldShadows(renderer);
 
         // -----------------------------
@@ -7135,11 +7137,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         // -------------------------------------
         // GAME MODE: draw runtime entities view
         // -------------------------------------
+        if (RenderPreparationEnabled) DrawPreparedScene(renderer);
+        else
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var ent = _runtimeEntities[i];
             if (!ent.Render.Enabled) continue;
             RenderBounds(ent, out var min, out var max);
+            if (!ent.IsHeld && !RoomCanSee(min, max)) { RoomCulledEntities++; continue; }
             if (!_world.IntersectsView(min, max, Matrix4x4.Identity)) continue;
 
             // Position comes from runtime (MovingPlatform updates this)
@@ -7161,6 +7166,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
 
         DrawFractureDebris(renderer);
+        PrefetchRoomBakeBindings(renderer);
         DrawPlayerCharacter(renderer, visible: DrawLocalPlayerCharacterInFirstPerson);
         bool cullView = _world.ViewCullingEnabled;
         try

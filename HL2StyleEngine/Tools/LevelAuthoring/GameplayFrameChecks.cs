@@ -19,6 +19,12 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
     private readonly bool _referenceVisibility, _stress;
     private bool _residencyRoute;
     private bool _lightingSwitches;
+    private bool _referenceRooms;
+    private bool _referenceSubmission, _renderStress;
+    private long _hardwareDraws, _materialBindings, _instances, _renderAllocations;
+    private double _renderCpu, _prepareCpu;
+    private readonly Stopwatch _startup = new();
+    private double _resourcesReadyMs = -1;
     private int _switchActions;
     private readonly bool _probeTest, _noProbes;
     private double _probeMilliseconds, _maxProbeMilliseconds;
@@ -28,6 +34,10 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
     private int _frames, _ticks;
     private long _objectUploads;
     private long _draws;
+    private long _roomCulled;
+    private double _roomCpu;
+    private double _shadowCpuMilliseconds;
+    private long _shadowDraws, _shadowPasses;
     private int _streamWaitFrames, _stressActions, _peakDebris;
     private double _time, _simulationTime, _distance;
     private Key? _held;
@@ -38,7 +48,8 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
         _probeTest=Path.GetFileName(level)==ProbeLightingRoom.FileName; _noProbes=noProbes; }
 
     internal static void Run(string root, bool torch, bool individualUploads = false, bool referenceVisibility = false, bool stress = false,
-        string? levelFile = null, bool noProbes = false, bool residencyRoute = false, bool lightingSwitches = false)
+        string? levelFile = null, bool noProbes = false, bool residencyRoute = false, bool lightingSwitches = false, bool referenceRooms = false,
+        bool referenceSubmission = false)
     {
         string? prior = Environment.GetEnvironmentVariable("HS2_PROFILE_FRAMES");
         string? priorNative = Environment.GetEnvironmentVariable("HS2_RMLUI_NATIVE_PRESENTATION");
@@ -52,6 +63,9 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
             using var probe = new GameplayFrameChecks(Path.Combine(root, "Game/Content/Levels", levelFile ?? SixRoomFlashlightTest.FileName), torch, individualUploads, referenceVisibility, stress, noProbes);
             probe._residencyRoute = residencyRoute;
             probe._lightingSwitches = lightingSwitches;
+            probe._referenceRooms = referenceRooms;
+            probe._referenceSubmission = referenceSubmission;
+            probe._renderStress = levelFile == RenderStressTest.FileName;
             if (residencyRoute) Console.WriteLine("[ResidencyRoute] Five test-only teleports during measured frames exercise loading/eviction with Update, physics and presentation active; not a walking-only benchmark.");
             Console.WriteLine($"[GameplayLevel] {levelFile ?? SixRoomFlashlightTest.FileName}");
             if(probe._probeTest) Console.WriteLine($"[ProbePreview] {(noProbes ? "disabled reference" : "enabled")}; static lightmap remains enabled.");
@@ -62,13 +76,29 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
             probe._intervals.Sort();
             Console.WriteLine($"[GameplayMovement] distance {probe._distance:F3}m / simulated {probe._simulationTime:F3}s = {probe._distance / probe._simulationTime:F3}m/s including acceleration/reversals; {probe._ticks} fixed ticks; wall frame mean {probe._intervals.Average():F3}ms p95 {probe._intervals[284]:F3}ms; >16.7ms {probe._intervals.Count(x => x > 16.7)}, >33.3ms {probe._intervals.Count(x => x > 33.3)} / 300.");
             Console.WriteLine($"[GameplayUploads] {probe._objectUploads / 300.0:F1} main-scene uploads/frame; {probe._intervals.Count(x => x > 100)} frames over the 100ms simulation clamp.");
+            Console.WriteLine($"[ShadowWork] CPU {probe._shadowCpuMilliseconds/300:F3}ms/frame; {probe._shadowPasses/300.0:F1} rendered faces; {probe._shadowDraws/300.0:F1} draws/frame.");
             Console.WriteLine($"[VisibilityStreaming] reference={referenceVisibility}; draws/frame {probe._draws / 300.0:F1}; streaming wait frames {probe._streamWaitFrames}; resident {probe._game.StreamingResidentModels} models / {probe._game.StreamingResidentBytes / 1048576.0:F1} MiB; {probe._game.StreamingZoneCount} dependency zones; {probe._game.StreamingEvictions} evictions.");
-            if (levelFile is PbrTestRoom.FileName or RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName)
+            Console.WriteLine($"[RoomVisibility] {probe._game.RoomVisibilityStatus}; {probe._roomCulled/300.0:F1} skipped entities/frame; {probe._roomCpu/300:F3}ms CPU.");
+            Console.WriteLine($"[Submission] reference={referenceSubmission}; hardware draws {probe._hardwareDraws/300.0:F1}; material binds {probe._materialBindings/300.0:F1}; instanced objects {probe._instances/300.0:F1}; render CPU {probe._renderCpu/300:F3}ms; preparation {probe._prepareCpu/300:F3}ms; render-thread allocation {probe._renderAllocations/300.0:F0} bytes/frame; instance buffer {probe._world.InstanceBufferBytes} bytes.");
+            if (levelFile is RoomVisibilityChecks.FileName or RenderStressTest.FileName)
+                Console.WriteLine($"[RoomReadiness] resources ready {probe._resourcesReadyMs:F1}ms from module initialization; room-only reference={referenceRooms}; warm OS/cooked caches, not cold first-playable.");
+            if (probe._renderStress)
+            {
+                var room=(ReflectionProbeSession)probe.Field("_roomReflections");
+                Console.WriteLine($"[TwelveRoomResidency] {room.Status}; {room.ResidentProbeCount} resident probes / {room.ResidentBytes} bytes; capture {room.CaptureGpuBytes}; points {probe._world.ShadowPointLightCount}, spots {probe._world.ShadowSpotLightCount}.");
+                if(!room.Ready || room.Busy || room.CaptureGpuBytes!=0 || room.ResidentProbeCount is <1 or >6 || room.ResidentBytes>6.5*1048576 ||
+                    probe._world.ShadowPointLightCount!=12 || probe._world.ShadowSpotLightCount!=(torch?1:0) ||
+                    probe._intervals.Average()>17 || probe._intervals[284]>21 || probe._intervals.Count(x=>x>33.3)>1 ||
+                    probe._intervals.Any(x=>x>100) || probe._streamWaitFrames!=0)
+                    throw new InvalidDataException("Twelve-room residency/performance gate failed.");
+                Console.WriteLine($"[TwelveRoomBudget] PASS: mean <=17ms, P95 <=21ms, <=1 frame over 33.3ms, none over 100ms or waiting; reflections {room.ResidentBytes} bytes; shadows {probe._world.ShadowGpuBytes} bytes.");
+            }
+            if (levelFile is PbrTestRoom.FileName or RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName or ShadowStabilityChecks.FileName or RoomVisibilityChecks.FileName)
             {
                 if (!probe._world.ReflectionReady || probe._world.ReflectionPendingCpuBytes != 0)
                     throw new InvalidDataException("PBR gameplay did not finish loading its reflection environment.");
                 long reflectionBytes=probe._world.ReflectionResidentBytes;
-                if (levelFile is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName)
+                if (levelFile is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName or ShadowStabilityChecks.FileName or RoomVisibilityChecks.FileName)
                 {
                     var room = (ReflectionProbeSession)probe.Field("_roomReflections");
                     if (!room.Ready || room.Busy || room.CaptureGpuBytes != 0) throw new InvalidDataException("Room capture not ready, or runtime capture work is active.");
@@ -79,7 +109,14 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
                         throw new InvalidDataException("Reflection residency budget exceeded.");
                     if (levelFile==LightingStabilityChecks.FileName && (room.ResidentProbeCount!=6 || room.ResidentBytes>(lightingSwitches?13:6.5)*1048576))
                         throw new InvalidDataException("All-resident six-room budget exceeded.");
-                    if (residencyRoute && levelFile!=LightingStabilityChecks.FileName && (room.ProbeEvictions == 0 || room.ProbeLoads < 6))
+                    if(levelFile is ShadowStabilityChecks.FileName or RoomVisibilityChecks.FileName)
+                    {
+                        if(room.ResidentProbeCount!=6 || !room.AlternateStateReady || room.ResidentBytes>13*1048576 || room.PendingCpuBytes!=0 ||
+                            probe._world.ShadowPointLightCount!=14 || probe._world.ShadowSpotLightCount!=(torch?1:0) || probe._world.ShadowGpuBytes!=104L*1048576)
+                            throw new InvalidDataException("Shadow/prewarm residency budget or slot count violated.");
+                        Console.WriteLine($"[ShadowPool] {probe._world.ShadowPointLightCount} point + {probe._world.ShadowSpotLightCount} spot; {probe._world.ShadowGpuBytes/1048576} MiB atlas; alternate reflections ready.");
+                    }
+                    if (residencyRoute && levelFile is not (LightingStabilityChecks.FileName or ShadowStabilityChecks.FileName or RoomVisibilityChecks.FileName) && (room.ProbeEvictions == 0 || room.ProbeLoads < 6))
                         throw new InvalidDataException("Gameplay route did not exercise room streaming.");
                 }
                 Console.WriteLine($"[ReflectionResidency] {reflectionBytes} GPU payload bytes including retained room captures, no pending CPU payload.");
@@ -105,7 +142,7 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
             {
                 if (probe._switchActions != 4 || !((ReflectionProbeSession)probe.Field("_roomReflections")).ScenarioStatus.EndsWith("on",StringComparison.Ordinal))
                     throw new InvalidDataException("Lighting switch profile did not restore its starting state.");
-                Console.WriteLine("[LightingSwitches] PASS: cold off, retained on, retained off, retained on during presented gameplay.");
+                Console.WriteLine("[LightingSwitches] PASS: four off/on changes during presented gameplay; opt-in prewarm readiness checked before each switch.");
             }
         }
         finally
@@ -118,13 +155,18 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
 
     public void Initialize(EngineContext context)
     {
+        _startup.Start();
         _game.Initialize(context);
         ((LevelBakeSession)Field("_bakedLighting")).PreviewProbes = !_noProbes;
         _motor = (SourcePlayerMotor)typeof(HL2GameModule).GetField("_motor", Flags)!.GetValue(_game)!;
         _world = (BasicWorldRenderer)typeof(HL2GameModule).GetField("_world", Flags)!.GetValue(_game)!;
+        _world.MeasureShadowCpuTime=true;
         _world.ObjectBatchUploadsEnabled = !_individualUploads;
         _world.ViewCullingEnabled = !_referenceVisibility;
         _game.AssetStreamingEnabled = !_referenceVisibility;
+        _game.RoomVisibilityEnabled = !_referenceVisibility && !_referenceRooms;
+        _game.RenderPreparationEnabled = !_referenceSubmission;
+        _world.DrawGroupingEnabled = !_referenceSubmission;
         typeof(HL2GameModule).GetField("_flashlightOn", Flags)!.SetValue(_game, _torch);
     }
 
@@ -135,12 +177,18 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
         _previousStamp = stamp;
         if (_residencyRoute && _frames >= 150 && (_frames - 150) % 50 == 0 && _frames <= 350)
         {
-            Vector3[] stops = [new(-24,.1f,-11),new(24,.1f,11),new(0,.1f,26),new(-24,.1f,11),new(-24,.1f,-11)];
+            Vector3[] stops = _renderStress
+                ? [RenderStressTest.Center(3)+new Vector3(0,.1f,-5),RenderStressTest.Center(11)+new Vector3(0,.1f,-5),
+                   RenderStressTest.Center(8)+new Vector3(0,.1f,-5),RenderStressTest.Center(6)+new Vector3(0,.1f,-5),new(0,.1f,-5)]
+                : [new(-24,.1f,-11),new(24,.1f,11),new(0,.1f,26),new(-24,.1f,11),new(-24,.1f,-11)];
             _motor.Position = stops[(_frames - 150) / 50]; _motor.Velocity = Vector3.Zero;
         }
         if (_stress) StressActions();
         if (_lightingSwitches && _frames is 160 or 230 or 300 or 370)
         {
+            if(((LevelEditorController)Field("_editor")).LevelFile.PrewarmLightingStates &&
+                !((ReflectionProbeSession)Field("_roomReflections")).AlternateStateReady)
+                throw new InvalidDataException("Lighting switch occurred before the alternate reflection bank was ready.");
             var lever=((List<Entity>)Field("_runtimeEntities")).Single(e=>e.Name=="Fixture Power Switch");
             Call("UseLightSwitch",lever); _switchActions++;
         }
@@ -173,13 +221,25 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
     public void DrawImGui() => _game.DrawImGui();
     public void RenderWorld(Renderer renderer)
     {
+        long stamp=Stopwatch.GetTimestamp(), allocated=GC.GetAllocatedBytesForCurrentThread();
         _game.RenderWorld(renderer);
+        double cpu=Stopwatch.GetElapsedTime(stamp).TotalMilliseconds;
+        long bytes=GC.GetAllocatedBytesForCurrentThread()-allocated;
+        if (_resourcesReadyMs < 0 && _game.VisibilityGraph is { RoomCount: > 0 } && !_game.StreamingWaiting &&
+            Field("_roomReflections") is ReflectionProbeSession { Ready: true } ready && (_renderStress || ready.AlternateStateReady) &&
+            (_renderStress || Field("_bakedLighting") is LevelBakeSession { Ready: true, ReadyModels: > 0 }))
+            _resourcesReadyMs = _startup.Elapsed.TotalMilliseconds;
         if (_frames >= 120)
         {
             var bake=(LevelBakeSession)Field("_bakedLighting");
             _probeMilliseconds+=bake.ProbeMilliseconds;_maxProbeMilliseconds=Math.Max(_maxProbeMilliseconds,bake.ProbeMilliseconds);
             _objectUploads += _world.ObjectUploadCount;
             _draws += _world.ObjectDrawCount;
+            _hardwareDraws+=_world.MainDrawCalls;_materialBindings+=_world.MaterialBindings;_instances+=_world.InstancedObjects;
+            _renderCpu+=cpu;_prepareCpu+=_game.RenderPreparationEnabled?_game.RenderPreparationMilliseconds:0;_renderAllocations+=bytes;
+            _roomCulled += _game.RoomCulledEntities; _roomCpu += _game.RoomVisibilityMilliseconds;
+            _shadowCpuMilliseconds+=_world.ShadowCpuMilliseconds;
+            _shadowDraws+=_world.ShadowDrawCount;_shadowPasses+=_world.ShadowRenderedPassCount;
             if (_game.StreamingWaiting) _streamWaitFrames++;
         }
     }

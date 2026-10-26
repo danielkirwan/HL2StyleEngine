@@ -87,4 +87,10 @@ public sealed class LightingScenarioResolver
         if (!_views.TryGetValue(id,out var editor)) _views[id]=editor=new();
         return editor;
     }
+
+    public LevelEditorController? Alternate(LevelEditorController source, LevelEditorController active)
+    {
+        if (_error.Length != 0 || source.LevelFile.LightingScenarios is not { Count: 2 } states || active.LevelPath.EndsWith(".lighting-unmatched.json",StringComparison.Ordinal)) return null;
+        return states.Select(s=>View(s.Id)).FirstOrDefault(v=>v.LevelPath!=active.LevelPath);
+    }
 }

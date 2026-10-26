@@ -48,15 +48,21 @@ public sealed partial class HL2GameModule
         _wantedModels.Clear(); _requiredModels.Clear();
         _requiredModels.UnionWith(_residentPins);
         bool stream = AssetStreamingEnabled && settings.Enabled && !_editorEnabled;
-        if (stream) _roomAssets.Gather(_camera.Position, settings.PreloadNeighbours, _wantedModels);
-        else _wantedModels.UnionWith(_weaponModelCache.Keys);
+        bool rooms = stream && RoomVisibilityEnabled && _roomVisibility is { Active: true };
+        if (stream && !rooms) _roomAssets.Gather(_camera.Position, settings.PreloadNeighbours, _wantedModels);
+        else if (!stream) _wantedModels.UnionWith(_weaponModelCache.Keys);
 
         foreach (var entity in _runtimeEntities)
         {
             if (!entity.Render.Enabled) continue;
             RenderBounds(entity, out var min, out var max);
+            if (rooms && _roomVisibility!.IsPrefetched(min,max))
+            {
+                AddPath(entity.Render.ModelAssetPath, _wantedModels);
+                foreach (string path in entity.BreakReplacementModelPaths.Concat(entity.BreakDebrisModelPaths)) AddPath(path, _wantedModels);
+            }
             bool near = Vector3.DistanceSquared(Vector3.Clamp(_camera.Position, min, max), _camera.Position) < zoneSize * zoneSize;
-            bool needed = !stream || entity.IsHeld || near || _world.IntersectsView(min, max, Matrix4x4.Identity) ||
+            bool needed = !stream || entity.IsHeld || near || (RoomCanSee(min,max) && _world.IntersectsView(min, max, Matrix4x4.Identity)) ||
                 _world.IsShadowRelevant((min + max) * .5f, (max - min).Length() * .5f);
             if (!needed) continue;
             AddPath(entity.Render.ModelAssetPath, _requiredModels);

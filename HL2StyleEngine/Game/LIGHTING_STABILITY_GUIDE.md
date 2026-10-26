@@ -1,5 +1,7 @@
 # Six-Room Lighting Stability
 
+Follow-up (2026-10-26): [the separate shadow test](SHADOW_STABILITY_GUIDE.md) now covers all 14 fixtures with a 16-point packed shadow pool, corrected distance/contact bias, near-camera flashlight shadows and two-state reflection prewarming. Its initial four-slot pass was insufficient. The later mount correction uses 4cm right / 2cm camera-relative down instead of the large shoulder offset, preserving brightness and held-object shadows. This document retains the original October 25 fixture's one-point budget and historical cold-state timings; that earlier level is unchanged.
+
 Implemented 2026-10-25. Run root `LaunchSixRoomLightingStabilityTest.bat` for the separate `Content/Levels/sixRoomLightingStabilityTest.json`. It builds Release and explicitly opens the source level. Original levels, startup selections, imported materials, colliders, physics, HUD and accepted shaders are unchanged. Runtime remains C#.
 
 ## Playtest

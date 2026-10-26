@@ -111,10 +111,11 @@ internal static class PbrBaselineChecks
             {
                 output.Frame(() => ((IWorldRenderer)module).RenderWorld(renderer), read: false);
                 bool ready = cache.Count > 0;
-                if (file is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName)
+                if (file is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName or ShadowStabilityChecks.FileName or RoomVisibilityChecks.FileName)
                 {
                     var room = (ReflectionProbeSession)Field(module, "_roomReflections");
                     ready &= room.Ready && !room.Busy;
+                    if(file is ShadowStabilityChecks.FileName or RoomVisibilityChecks.FileName)ready &= room.AlternateStateReady;
                 }
                 foreach (object entry in cache.Values)
                 {

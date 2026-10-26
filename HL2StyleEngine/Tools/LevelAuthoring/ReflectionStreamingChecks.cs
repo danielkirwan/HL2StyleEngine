@@ -24,7 +24,7 @@ internal static class ReflectionStreamingChecks
             Check(SHA256.HashData(left).SequenceEqual(SHA256.HashData(right)), "Package differs: " + b);
         }
         Same(source, packaged);
-        foreach (string shader in new[] { "TexturedModelVS.cso", "TexturedModelPS.cso", "ShadowVS.cso" })
+        foreach (string shader in new[] { "TexturedModelVS.cso", "TexturedModelInstancedVS.cso", "TexturedModelPS.cso", "TexturedModelMultiShadowPS.cso", "ShadowVS.cso" })
             Same(Path.Combine(AppContext.BaseDirectory,"Shaders",shader),Path.Combine(directory,"Shaders",shader));
         var level = LevelIO.Load(packaged);
         foreach (string model in level.Entities.Select(e=>e.MeshPath).Where(p=>!string.IsNullOrWhiteSpace(p)).Distinct())

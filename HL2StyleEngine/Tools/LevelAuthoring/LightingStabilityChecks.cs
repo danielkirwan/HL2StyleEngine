@@ -36,9 +36,9 @@ internal static class LightingStabilityChecks
         Console.WriteLine("Created "+path+". Cook on/off states before launching.");
     }
 
-    internal static void Cook(string root,string id)
+    internal static void Cook(string root,string id,string fileName = FileName)
     {
-        string source=Path.Combine(root,"Game/Content/Levels",FileName);
+        string source=Path.Combine(root,"Game/Content/Levels",fileName);
         var level=LevelIO.Load(source);
         var scenario=level.LightingScenarios!.Single(s=>s.Id==id);
         var view=LightingScenarioResolver.CreateView(level,scenario);

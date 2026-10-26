@@ -58,7 +58,7 @@ internal sealed class ReflectionRoomSession : IDisposable
     }
 
     public void Update(LevelEditorController editor, Func<string, string> resolve, BasicWorldRenderer world,
-        Renderer renderer, LevelLightState? state, bool preview, Vector3? position)
+        Renderer renderer, LevelLightState? state, bool preview, Vector3? position, IReadOnlyList<string>? prefetch = null)
     {
         Synchronize(editor, resolve);
         if (_layout != null)
@@ -71,7 +71,7 @@ internal sealed class ReflectionRoomSession : IDisposable
                 var resident = Enumerable.Range(0, _layout.Rooms.Length).Where(i => _sessions.ContainsKey(_layout.Rooms[i].Id)).ToHashSet();
                 int capture = Array.FindIndex(_layout.Rooms, r => r.Id == _captureId);
                 wanted = _residency.Select(_layout, settings, position.Value,
-                    Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency, resident, capture);
+                    Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency, resident, capture, prefetch);
             }
             else wanted = Enumerable.Range(0, _layout.Rooms.Length).ToArray();
             _wanted = wanted.Select(i => _layout.Rooms[i].Id).ToArray();

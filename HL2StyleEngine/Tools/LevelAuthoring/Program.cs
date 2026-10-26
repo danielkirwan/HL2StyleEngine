@@ -3,6 +3,101 @@ using Engine.Render;
 using Engine.Editor.Level;
 
 string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+if(args.Length>0 && args[0] is "build-render-stress" or "validate-render-stress" or "cook-render-stress" or "check-render-stress-pixels" or "benchmark-submission" or "validate-submission-package" or "capture-render-stress-views")
+{
+    try
+    {
+        switch(args[0])
+        {
+            case "build-render-stress": RenderStressTest.Build(root); break;
+            case "validate-render-stress": RenderStressTest.Validate(root); break;
+            case "cook-render-stress": RoomReflectionChecks.CaptureFixture(root,RenderStressTest.FileName); break;
+            case "check-render-stress-pixels": RenderStressTest.Pixels(root); break;
+            case "validate-submission-package": ReflectionStreamingChecks.Package(root,args[1],RenderStressTest.FileName); break;
+            case "capture-render-stress-views":
+                string output=Path.Combine(AppContext.BaseDirectory,"qa","stress-editor-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+                Directory.CreateDirectory(output);PbrBaselineChecks.Capture(root,RenderStressTest.FileName,output,false,forceLegacy:false);Console.WriteLine(output);break;
+            default: GameplayFrameChecks.Run(root,!args.Contains("--torch-off"),levelFile:args.Contains("--six-room")?RoomVisibilityChecks.FileName:RenderStressTest.FileName,
+                residencyRoute:args.Contains("--route"),stress:args.Contains("--stress"),referenceSubmission:args.Contains("--reference")); break;
+        }
+    }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if(args is ["validate-submission"] or ["validate-submission-capture"])
+{
+    try { if(args[0]=="validate-submission")SubmissionChecks.Run();else SubmissionChecks.Capture(root); }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if(args is ["check-submission-pixels"])
+{
+    try { RoomVisibilityChecks.Pixels(root, submission:true); }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if (args.Length > 0 && args[0] is "build-room-visibility" or "validate-room-visibility" or "check-room-visibility-pixels" or "benchmark-room-visibility" or "validate-room-visibility-package" or "capture-room-visibility")
+{
+    try
+    {
+        switch (args[0])
+        {
+            case "build-room-visibility": RoomVisibilityChecks.Build(root); break;
+            case "validate-room-visibility": RoomVisibilityChecks.Validate(root); break;
+            case "check-room-visibility-pixels": RoomVisibilityChecks.Pixels(root); break;
+            case "validate-room-visibility-package": ReflectionStreamingChecks.Package(root,args[1],RoomVisibilityChecks.FileName); break;
+            case "capture-room-visibility":
+                string folder=Path.Combine(AppContext.BaseDirectory,"qa","room-editor-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+                Directory.CreateDirectory(folder); PbrBaselineChecks.Capture(root,RoomVisibilityChecks.FileName,folder,false,forceLegacy:false); Console.WriteLine(folder); break;
+            default:
+                if(args.Length<2 || args[1] is not ("on" or "off")) throw new ArgumentException("Specify on|off and optional --stress, --route, --switches, --reference-visibility, --reference-rooms.");
+                GameplayFrameChecks.Run(root,args[1]=="on",referenceVisibility:args.Contains("--reference-visibility"),stress:args.Contains("--stress"),
+                    levelFile:RoomVisibilityChecks.FileName,residencyRoute:args.Contains("--route"),lightingSwitches:args.Contains("--switches"),referenceRooms:args.Contains("--reference-rooms")); break;
+        }
+    }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if (args is ["diagnose-flashlight-mount"] or ["validate-flashlight-mount"])
+{
+    try { FlashlightMountChecks.Run(root, args[0] == "validate-flashlight-mount"); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if(args is ["diagnose-shadow-contact"] or ["validate-shadow-contact"])
+{
+    try{ShadowContactChecks.Run(args[0]=="validate-shadow-contact");}
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if (args is ["build-shadow-test"] or ["cook-shadow-state", "on" or "off"] or ["validate-shadow-test"] or
+    ["validate-multi-shadows"] or ["check-shadow-pixels"] or ["capture-shadow-test"] or
+    ["benchmark-shadow-test", "on" or "off"] or ["benchmark-shadow-route", "on" or "off"] or ["benchmark-shadow-switches", "on" or "off"])
+{
+    try
+    {
+        if(args[0]=="build-shadow-test")ShadowStabilityChecks.Build(root);
+        else if(args[0]=="cook-shadow-state")LightingStabilityChecks.Cook(root,args[1],ShadowStabilityChecks.FileName);
+        else if(args[0]=="validate-shadow-test")ShadowStabilityChecks.Validate(root);
+        else if(args[0]=="validate-multi-shadows")RenderPipelineChecks.Run(pbr:true,multi:true);
+        else if(args[0]=="check-shadow-pixels")ShadowStabilityChecks.Pixels(root);
+        else if(args[0]=="capture-shadow-test")
+        {
+            string output=Path.Combine(AppContext.BaseDirectory,"qa","shadow-views-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+            Directory.CreateDirectory(output);PbrBaselineChecks.Capture(root,ShadowStabilityChecks.FileName,output,false,forceLegacy:false);Console.WriteLine(output);
+        }
+        else GameplayFrameChecks.Run(root,args[1]=="on",levelFile:ShadowStabilityChecks.FileName,
+            stress:args[0]=="benchmark-shadow-test",residencyRoute:args[0]=="benchmark-shadow-route",lightingSwitches:args[0]=="benchmark-shadow-switches");
+    }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
+if (args is ["validate-shadow-package", var shadowPackage])
+{
+    try { ReflectionStreamingChecks.Package(root,shadowPackage,ShadowStabilityChecks.FileName); }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
 if (args is ["build-lighting-stability"] or ["cook-lighting-state", "on" or "off"] or ["validate-lighting-stability"] or
     ["capture-lighting-stability"] or ["diagnose-updated-lighting"] or ["benchmark-lighting-stability", "on" or "off"] or
     ["benchmark-lighting-stability-route", "on" or "off"] or ["benchmark-lighting-switches", "on" or "off"] or ["check-lighting-switch-pixels"])

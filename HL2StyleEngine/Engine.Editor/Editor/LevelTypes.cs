@@ -15,6 +15,12 @@ public sealed class LevelFile
     public bool EnableShadows { get; set; } = true;
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public float PointShadowHysteresis { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int PointShadowLimit { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool OffsetFlashlight { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool PrewarmLightingStates { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<LightingScenarioDef>? LightingScenarios { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -28,6 +34,8 @@ public sealed class LevelFile
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ReflectionStreamingSettings? ReflectionStreaming { get; set; }
     public LevelStreamingSettings Streaming { get; set; } = new();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RoomVisibilitySettings? RoomVisibility { get; set; }
     public LevelBakeSettings Bake { get; set; } = new();
 
     public List<LevelEntityDef> Entities { get; set; } = new();

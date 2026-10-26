@@ -1,5 +1,23 @@
 # World Rendering
 
+## Shared Submission (2026-10-26)
+
+`RenderScene` seals frame-local `RenderInstance` values with borrowed, fence-owned resource handles. Main visibility does not control shadows; reflection captures own separate scenes. `GroupModelDraws` preserves order, reuses consecutive bindings and flushes before primitives. Only explicitly eligible static instances with identical geometry, material/lightmap/reflection and pixel-uniform data merge. Dynamic/held/fractured/scripted gameplay objects remain individual. F2/HS2Editor authoring retains its direct draw path.
+
+`TexturedModelInstanced.hlsl` / `TexturedModelInstancedVS.cso` add a separate vertex variant using the existing pixel shaders and a lazy 0.5625 MiB instance vertex buffer. One instance upload per used frame; 4,096 object slots remain the bound. `MainDrawCalls`, material/pipeline bindings, instance counts and bytes distinguish hardware draws from `ObjectDrawCount` logical slots. No new routine GPU wait, global sort, worker extraction or backend rewrite. [Contract, compile command and validation](../Game/RENDER_SUBMISSION_GUIDE.md).
+
+Room visibility authoring (2026-10-26): main-view room rejection lives in Game's room graph, not shadow submission. `DrawBoundsOverlayBox` lazily creates an editor-only, no-depth-test/no-depth-write basic-colour pipeline for room/aperture wire boxes. Normal primitives/material pipelines, shader binaries and object upload batching remain unchanged. [Integration and tests](../Game/ROOM_VISIBILITY_GUIDE.md).
+
+## Shadow Pool (2026-10-26)
+
+Opt-in `PointShadowLimit` 2-16 selects `TexturedModelMultiShadowPS.cso`. Acceptance correction: 96 logical point faces are packed into 24 layers (four 512-square tiles each), with two independent 1024-square spot layers. The atlas remains 104 MiB, with 98 logical matrices. Default one-point/two-spot rendering retains the old shader/32 MiB atlas. Stable entity-ID slots preserve cached depth across camera sorting; all 14 fixtures in the shadow test now fit simultaneously. Hysteresis is not a guarantee against handoffs when over budget.
+
+Clearing a dirty physical layer must redraw **all occupied tiles** in it, including cached neighbours. Changing tiled/legacy mode invalidates every cached face. Resolve hidden fracture parts once per caster; object matrices remain batched. The shader uses world-space bias converted to perspective depth, geometric receiver-plane correction and tile-clamped bilinear PCF; fixed nonlinear bias had detached distant shadows. Full orbit/ray-reference and neighbour invalidation regressions cover these contracts.
+
+Atlas expansion retires old resources through the renderer frame fence (136 MiB temporary overlap); capture-owned renderers retain them until safe disposal. Smaller settings reuse the larger allocation until renderer disposal. Diagnostics report points/spots, owner IDs and bytes. No routine GPU idle wait was added. Point-map resolution is the explicit memory tradeoff; soft area lights and over-budget handoff blending remain future work.
+
+`TexturedModel.hlsl` uses `MULTI_POINT_SHADOWS=1` only for the new PS binary. Future shader edits must rebuild/test both variants; the existing VS/PS were not replaced in this milestone. [Compile command, GPU validation, compatibility and performance limits](../Game/SHADOW_STABILITY_GUIDE.md). The older dated budgets below describe their original stages.
+
 ## Lighting Stability (2026-10-25)
 
 Optional `PointShadowHysteresis` retains the previous eligible point-shadow owner until a competing light is meaningfully closer; default zero preserves earlier selection. The one-point/two-spot budget and accepted shaders remain unchanged. The shared lighting sessions now support explicit matching on/off caches and bounded inactive-state retention. The separate fourteen-fixture level uses all six room captures plus diffuse bounce/probes. [Validation and performance limits](../Game/LIGHTING_STABILITY_GUIDE.md).

@@ -30,6 +30,7 @@ public static class LevelLighting
         renderer.DirectionalStrength = editor.LevelFile.DirectionalLight;
         renderer.ShadowsEnabled = editor.LevelFile.EnableShadows;
         renderer.PointShadowHysteresis = editor.LevelFile.PointShadowHysteresis;
+        renderer.PointShadowLimit = Math.Clamp(editor.LevelFile.PointShadowLimit == 0 ? 1 : editor.LevelFile.PointShadowLimit,1,PointShadowPool.Capacity);
         renderer.LightingModel = editor.LevelFile.LightingModel == SurfaceLightingModel.Pbr ? SurfaceLightingModel.Pbr : SurfaceLightingModel.Legacy;
         renderer.EnvironmentPreset = editor.LevelFile.ReflectionEnvironment;
         var lights = GetLights(editor, state, seconds);
@@ -51,7 +52,7 @@ public static class LevelLighting
 
             Vector4 color = entity.LightColor;
             yield return new WorldPointLight(position, new Vector3(color.X, color.Y, color.Z), entity.Intensity * LevelLightState.Flicker(entity, seconds), entity.Range,
-                Vector3.Transform(-Vector3.UnitZ, rotation), entity.IsSpotLight ? entity.SpotAngleDeg : 0, entity.CastShadows);
+                Vector3.Transform(-Vector3.UnitZ, rotation), entity.IsSpotLight ? entity.SpotAngleDeg : 0, entity.CastShadows, Id: entity.Id);
         }
     }
 }

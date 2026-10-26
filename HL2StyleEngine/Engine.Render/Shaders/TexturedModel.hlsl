@@ -39,7 +39,11 @@ Texture2D MetallicRoughnessTex : register(t1);
 SamplerState MetallicRoughnessSamp : register(s1);
 Texture2D NormalTex : register(t2);
 Texture2D EmissiveTex : register(t3);
+#ifdef MULTI_POINT_SHADOWS
+cbuffer ShadowMatrices : register(b3) { float4x4 LightMatrices[98]; };
+#else
 cbuffer ShadowMatrices : register(b3) { float4x4 LightMatrices[8]; };
+#endif
 Texture2DArray<float> ShadowMap : register(t4);
 SamplerState ShadowSampler : register(s2);
 Texture2D LightmapTex : register(t5);
@@ -106,11 +110,45 @@ float ShadowVisibility(PointLight light, float3 world, float3 normal, float3 toL
     float3 ndc = projected.xyz / projected.w;
     float2 uv = float2(ndc.x * .5 + .5, .5 - ndc.y * .5);
     if (projected.w <= 0 || ndc.z < 0 || ndc.z > 1 || any(uv < 0) || any(uv > 1)) return 1;
+#ifdef MULTI_POINT_SHADOWS
+    // Perspective depth is nonlinear. A fixed depth bias detaches distant shadows by metres.
+    float nearPlane = .05, farPlane = max(.1,light.PositionRange.w);
+    float depthScale = nearPlane * farPlane / (farPlane - nearPlane);
+    float worldBias = .002;
+    float bias = max(0.00000012, depthScale * worldBias / (projected.w * max(nearPlane,projected.w-worldBias)));
+    float planeDistance = dot(normal, world-light.PositionRange.xyz);
+    float2 gradient = 0;
+    if (abs(planeDistance) > .0001)
+    {
+        float3 rowX = LightMatrices[slice][0].xyz, rowY = LightMatrices[slice][1].xyz;
+        gradient = float2(-2*dot(normal,rowX)/dot(rowX,rowX),2*dot(normal,rowY)/dot(rowY,rowY))*depthScale/planeDistance;
+    }
+    bool tiled = light.Shadow.z > .5;
+    int resolution = tiled ? 512 : 1024;
+    int layer = tiled ? slice >> 2 : 24 + slice - 96;
+    int2 tileOrigin = tiled ? int2(slice & 1,(slice >> 1) & 1)*512 : int2(0,0);
+    float2 texel = uv * resolution - .5;
+    int2 baseTexel = (int2)floor(texel);
+    float2 fraction = frac(texel);
+    float visible = 0;
+    // Bilinear percentage-closer filtering with receiver-plane correction at each texel centre.
+    [unroll] for (int y=0;y<2;y++) [unroll] for (int x=0;x<2;x++)
+    {
+        int2 sampleTexel = clamp(baseTexel+int2(x,y),0,resolution-1);
+        float2 sampleUv = (sampleTexel+.5)/resolution;
+        float reference = ndc.z + dot(gradient,sampleUv-uv) - bias;
+        float depth = ShadowMap.Load(int4(tileOrigin+sampleTexel,layer,0));
+        float2 weight = float2(x ? fraction.x : 1-fraction.x,y ? fraction.y : 1-fraction.y);
+        visible += (reference <= depth ? 1 : 0)*weight.x*weight.y;
+    }
+    return visible;
+#else
     float bias = max(.00025, .001 * (1 - saturate(dot(normal, toLight))));
     float visible = 0;
     [unroll] for (int y = -1; y <= 1; y++) [unroll] for (int x = -1; x <= 1; x++)
         visible += ndc.z - bias <= ShadowMap.SampleLevel(ShadowSampler, float3(uv + float2(x,y) / 1024.0, slice), 0) ? 1 : 0;
     return visible / 9;
+#endif
 }
 
 struct VSInput
@@ -226,7 +264,11 @@ float4 ShadePbr(VSOutput input, float4 base, float metal, float roughness)
             if (Lights[i].DirectionCone.w >= 0)
                 cone = smoothstep(Lights[i].DirectionCone.w,Lights[i].Shadow.x,dot(-l,Lights[i].DirectionCone.xyz));
             if (cone <= 0 || dot(n,l) <= 0) continue;
+#ifdef MULTI_POINT_SHADOWS
+            float visibility = ShadowVisibility(Lights[i],input.WorldPosition,normalize(input.Normal),l);
+#else
             float visibility = ShadowVisibility(Lights[i],input.WorldPosition,n,l);
+#endif
             lit += DirectPbr(base.rgb,metal,roughness,n,v,l)*Lights[i].ColorIntensity.rgb*Lights[i].ColorIntensity.w*falloff*falloff*cone*visibility;
         }
         // Authored fallback only. Do not add a second ambient term over an atlas/probe.
@@ -307,7 +349,11 @@ float4 PSMain(VSOutput input) : SV_TARGET
         float cone = 1;
         if (Lights[i].DirectionCone.w >= 0)
             cone = smoothstep(Lights[i].DirectionCone.w, Lights[i].Shadow.x, dot(-offset / max(.001, distanceToLight), Lights[i].DirectionCone.xyz));
+#ifdef MULTI_POINT_SHADOWS
+        float visibility = ShadowVisibility(Lights[i], input.WorldPosition, normalize(input.Normal), offset / max(.001, distanceToLight));
+#else
         float visibility = ShadowVisibility(Lights[i], input.WorldPosition, normal, offset / max(.001, distanceToLight));
+#endif
         lit += baseColor.rgb * energy * falloff * falloff * lambert * cone * visibility;
     }
     }

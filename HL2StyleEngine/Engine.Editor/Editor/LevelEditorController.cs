@@ -947,6 +947,13 @@ public sealed partial class LevelEditorController
             float shadowMargin=LevelFile.PointShadowHysteresis;
             ImGui.TextUnformatted("Point Shadow Selection Margin (m)"); ImGui.SetNextItemWidth(-1);
             changed |= ImGui.SliderFloat("##pointShadowMargin",ref shadowMargin,0,10);
+            int shadowLimit = Math.Clamp(LevelFile.PointShadowLimit == 0 ? 1 : LevelFile.PointShadowLimit,1,Engine.Render.PointShadowPool.Capacity);
+            ImGui.TextUnformatted("Point Shadow Slots"); ImGui.SetNextItemWidth(-1);
+            bool limitChanged = ImGui.SliderInt("##pointShadowSlots",ref shadowLimit,1,Engine.Render.PointShadowPool.Capacity);
+            changed |= limitChanged;
+            bool offsetTorch = LevelFile.OffsetFlashlight, prewarm = LevelFile.PrewarmLightingStates;
+            changed |= ImGui.Checkbox("Camera-Relative Flashlight",ref offsetTorch);
+            changed |= ImGui.Checkbox("Prewarm Alternate Reflections",ref prewarm);
             int lightingModel = LevelFile.LightingModel == Engine.Render.SurfaceLightingModel.Pbr ? 1 : 0;
             ImGui.TextUnformatted("Lighting Model"); ImGui.SetNextItemWidth(-1);
             changed |= ImGui.Combo("##lightingModel", ref lightingModel, "Legacy\0PBR\0");
@@ -965,6 +972,8 @@ public sealed partial class LevelEditorController
                 BeginEdit();
                 LevelFile.EnableShadows = shadows; LevelFile.Exposure = exposure;
                 LevelFile.PointShadowHysteresis = shadowMargin;
+                if (limitChanged) LevelFile.PointShadowLimit = shadowLimit;
+                LevelFile.OffsetFlashlight = offsetTorch; LevelFile.PrewarmLightingStates = prewarm;
                 LevelFile.LightingModel = (Engine.Render.SurfaceLightingModel)lightingModel;
                 LevelFile.ReflectionEnvironment = (Engine.Render.ReflectionPreset)reflection;
                 LevelFile.AmbientLight = ambient; LevelFile.DirectionalLight = directional;
@@ -994,6 +1003,7 @@ public sealed partial class LevelEditorController
         }
         DrawBakeToolbar();
         DrawReflectionToolbar();
+        DrawRoomToolbar();
         ImGui.Checkbox("Show Colliders (OBB)", ref ShowColliders);
         ImGui.SameLine();
         ImGui.Checkbox("Corners", ref ShowColliderCorners);

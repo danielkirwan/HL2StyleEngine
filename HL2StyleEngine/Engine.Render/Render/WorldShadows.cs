@@ -10,7 +10,12 @@ public readonly record struct ShadowCaster(RenderModel? Model, Matrix4x4 Transfo
 public sealed partial class BasicWorldRenderer
 {
     private const uint ShadowSize = 1024;
-    private const int ShadowSlices = 8, MaxShadowCasters = 2048;
+    private const int ShadowSlices = 26, MaxShadowCasters = 2048;
+    private const int PointShadowFaces = PointShadowPool.Capacity * 6, ShadowMatrices = PointShadowFaces + 2;
+    private int _allocatedShadowSlices = 8;
+    private bool _shadowTilesActive;
+    private readonly List<IDisposable> _retiredShadowAtlases = new();
+    private long _retiringShadowBytes;
     private Texture _shadowTexture = null!;
     private TextureView _shadowView = null!;
     private Framebuffer[] _shadowFrames = [];
@@ -36,8 +41,15 @@ public sealed partial class BasicWorldRenderer
     public bool ShadowCullingEnabled { get; set; } = true;
     public bool ShadowsEnabled { get; set; } = true;
     public float PointShadowHysteresis { get; set; }
+    public int PointShadowLimit { get; set; } = 1;
+    private readonly PointShadowPool _pointShadowPool = new();
+    public int ShadowPointLightCount { get; private set; }
+    public int ShadowSpotLightCount { get; private set; }
+    public long ShadowGpuBytes => _allocatedShadowSlices * (long)ShadowSize * ShadowSize * 4 + _retiringShadowBytes;
+    public IReadOnlyList<string> ShadowLightIds { get; private set; } = [];
     private readonly PointShadowSelector _pointShadowSelector = new();
     private int _pointShadowIndex = -1;
+    private Vector3 _shadowCameraPosition;
     public bool NeedsShadowCasters => ShadowsEnabled && _activeLights.Any(l => l.CastShadows);
     public bool IsShadowRelevant(Vector3 center, float radius)
     {
@@ -46,12 +58,14 @@ public sealed partial class BasicWorldRenderer
             if (light.CastShadows && Vector3.DistanceSquared(center, light.Position) <= MathF.Pow(light.Range + radius, 2)) return true;
         return false;
     }
-    private readonly Matrix4x4[] _shadowMatrixData = new Matrix4x4[ShadowSlices];
+    private readonly Matrix4x4[] _shadowMatrixData = new Matrix4x4[ShadowMatrices];
     [StructLayout(LayoutKind.Sequential, Size = 256)]
     private struct ShadowObjectData { public Matrix4x4 Model; }
     private readonly ShadowObjectData[] _shadowObjectData = new ShadowObjectData[MaxShadowCasters];
-    private readonly List<(int Light, int Face)> _shadowPasses = new(ShadowSlices);
-    private readonly ShadowPassState[] _shadowStates = Enumerable.Range(0, ShadowSlices).Select(_ => new ShadowPassState()).ToArray();
+    private readonly List<(int Light, int Face, int Slice)> _shadowPasses = new(ShadowMatrices);
+    private readonly ShadowPassState[] _shadowStates = Enumerable.Range(0, ShadowMatrices).Select(_ => new ShadowPassState()).ToArray();
+    private readonly List<ShadowDraw> _shadowGeometry = new();
+    private readonly (int Start, int Count)[] _shadowGeometryRanges = new (int, int)[MaxShadowCasters];
 
     private readonly record struct ShadowDraw(RenderModelPart? Part, int Primitive, Matrix4x4 Transform, int ObjectIndex)
     {
@@ -76,12 +90,12 @@ public sealed partial class BasicWorldRenderer
 
     private ResourceLayout CreateShadowResources(string shaderDir)
     {
-        _shadowTexture = _factory.CreateTexture(TextureDescription.Texture2D(ShadowSize, ShadowSize, 1, ShadowSlices,
+        _shadowTexture = _factory.CreateTexture(TextureDescription.Texture2D(ShadowSize, ShadowSize, 1, (uint)_allocatedShadowSlices,
             PixelFormat.R32_Float, TextureUsage.DepthStencil | TextureUsage.Sampled));
         _shadowView = _factory.CreateTextureView(_shadowTexture);
-        _shadowFrames = Enumerable.Range(0, ShadowSlices).Select(i => _factory.CreateFramebuffer(new FramebufferDescription(
+        _shadowFrames = Enumerable.Range(0, _allocatedShadowSlices).Select(i => _factory.CreateFramebuffer(new FramebufferDescription(
             new FramebufferAttachmentDescription(_shadowTexture, (uint)i), Array.Empty<FramebufferAttachmentDescription>()))).ToArray();
-        _shadowMatrices = _factory.CreateBuffer(new BufferDescription(64 * ShadowSlices, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
+        _shadowMatrices = _factory.CreateBuffer(new BufferDescription(64 * ShadowMatrices, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
         _shadowSampler = _factory.CreateSampler(new SamplerDescription(SamplerAddressMode.Clamp, SamplerAddressMode.Clamp,
             SamplerAddressMode.Clamp, SamplerFilter.MinPoint_MagPoint_MipPoint, null, 0, 0, 0, 0, SamplerBorderColor.OpaqueWhite));
         _shadowLayout = _factory.CreateResourceLayout(new ResourceLayoutDescription(
@@ -93,7 +107,7 @@ public sealed partial class BasicWorldRenderer
             new ResourceLayoutElementDescription("ShadowCamera", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
         _shadowObjectLayout = _factory.CreateResourceLayout(new ResourceLayoutDescription(
             new ResourceLayoutElementDescription("ShadowObject", ResourceKind.UniformBuffer, ShaderStages.Vertex)));
-        _shadowCameraBuffers = Enumerable.Range(0, ShadowSlices).Select(_ => _factory.CreateBuffer(new BufferDescription(64,
+        _shadowCameraBuffers = Enumerable.Range(0, ShadowMatrices).Select(_ => _factory.CreateBuffer(new BufferDescription(64,
             BufferUsage.UniformBuffer | BufferUsage.Dynamic))).ToArray();
         _shadowCameras = _shadowCameraBuffers.Select(buffer => _factory.CreateResourceSet(new ResourceSetDescription(_shadowCameraLayout, buffer))).ToArray();
         _shadowObjects = _factory.CreateBuffer(new BufferDescription(256 * MaxShadowCasters, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
@@ -114,7 +128,42 @@ public sealed partial class BasicWorldRenderer
     }
 
     public void RenderShadows(Renderer renderer, IReadOnlyList<ShadowCaster> casters, Viewport viewport)
-        => RenderShadows(renderer.CommandList, renderer.WorldFramebuffer, casters, viewport);
+    {
+        RenderShadows(renderer.CommandList, renderer.WorldFramebuffer, casters, viewport);
+        foreach (var resource in _retiredShadowAtlases) renderer.RetireAfterFrame(resource);
+        _retiredShadowAtlases.Clear();
+    }
+
+    private void EnsureMultiShadowResources()
+    {
+        if (_multiShadowPipeline == null)
+        {
+            _multiShadowShader = _factory.CreateShader(new ShaderDescription(ShaderStages.Fragment,
+                File.ReadAllBytes(Path.Combine(_shaderDirectory, "TexturedModelMultiShadowPS.cso")), "PSMain"));
+            var description = _texturedDescription;
+            description.ShaderSet = new ShaderSetDescription(description.ShaderSet.VertexLayouts, [_texturedShaders[0], _multiShadowShader]);
+            _multiShadowPipeline = _factory.CreateGraphicsPipeline(description);
+        }
+        if (_allocatedShadowSlices == ShadowSlices) return;
+        var oldTexture = _shadowTexture; var oldView = _shadowView; var oldFrames = _shadowFrames; var oldSet = _shadowSet;
+        long bytes = _allocatedShadowSlices * (long)ShadowSize * ShadowSize * 4;
+        _retiringShadowBytes += bytes;
+        _retiredShadowAtlases.Add(new ShadowRetirement(() =>
+        {
+            oldSet.Dispose(); foreach (var frame in oldFrames) frame.Dispose(); oldView.Dispose(); oldTexture.Dispose();
+            _retiringShadowBytes -= bytes;
+        }));
+        _allocatedShadowSlices = ShadowSlices;
+        _shadowTexture = _factory.CreateTexture(TextureDescription.Texture2D(ShadowSize, ShadowSize, 1, ShadowSlices,
+            PixelFormat.R32_Float, TextureUsage.DepthStencil | TextureUsage.Sampled));
+        _shadowView = _factory.CreateTextureView(_shadowTexture);
+        _shadowFrames = Enumerable.Range(0, ShadowSlices).Select(i => _factory.CreateFramebuffer(new FramebufferDescription(
+            new FramebufferAttachmentDescription(_shadowTexture, (uint)i), []))).ToArray();
+        _shadowSet = _factory.CreateResourceSet(new ResourceSetDescription(_shadowLayout, _shadowMatrices, _shadowView, _shadowSampler));
+        foreach (var state in _shadowStates) state.Valid = false;
+    }
+
+    private sealed class ShadowRetirement(Action release) : IDisposable { public void Dispose() => release(); }
 
     public void RenderShadows(CommandList commandList, Framebuffer target, IReadOnlyList<ShadowCaster> casters, Viewport viewport)
     {
@@ -129,6 +178,12 @@ public sealed partial class BasicWorldRenderer
 
     private void RenderShadowsCore(CommandList cl, Framebuffer target, IReadOnlyList<ShadowCaster> casters, Viewport viewport)
     {
+        bool tiled = PointShadowLimit > 1;
+        if (_shadowTilesActive != tiled)
+        {
+            foreach (var state in _shadowStates) state.Valid = false;
+            _shadowTilesActive = tiled;
+        }
         ShadowObjectUploadCount = 0;
         ShadowPassCount = ShadowDrawCount = ShadowCastersOmitted = 0;
         ShadowRenderedPassCount = ShadowCacheHits = ShadowCulledCasters = 0;
@@ -136,27 +191,36 @@ public sealed partial class BasicWorldRenderer
         var passes = _shadowPasses;
         passes.Clear();
         int points = 0, spots = 0;
+        var slots = PointShadowLimit > 1 ? _pointShadowPool.Select(_activeLights, _shadowCameraPosition,
+            PointShadowLimit, PointShadowHysteresis) : null;
+        var used = new bool[ShadowMatrices];
         for (int i = 0; i < _activeLights.Length; i++)
         {
             _lightingData[4 + i * 4].Y = -1;
             var light = _activeLights[i];
             if (!ShadowsEnabled || !light.CastShadows) continue;
             bool spot = _lightingData[3 + i * 4].W >= 0;
-            if (!spot && i != _pointShadowIndex) continue;
-            if ((spot && spots >= 2) || (!spot && points >= 1)) continue;
-            _lightingData[4 + i * 4].Y = passes.Count;
+            int slot = slots == null ? -1 : Enumerable.Range(0, slots.Count).FirstOrDefault(s => slots[s] == i, -1);
+            if (!spot && (slots == null ? i != _pointShadowIndex : slot < 0)) continue;
+            if (spot && spots >= 2) continue;
+            int first = slots == null ? passes.Count : spot ? PointShadowFaces + spots : slot * 6;
+            _lightingData[4 + i * 4].Y = first;
             int faces = spot ? 1 : 6;
             for (int face = 0; face < faces; face++)
             {
-                matrices[passes.Count] = LightMatrix(light, spot ? -1 : face);
-                passes.Add((i, face));
+                matrices[first + face] = LightMatrix(light, spot ? -1 : face);
+                used[first + face] = true;
+                passes.Add((i, face, first + face));
             }
             if (spot) spots++; else points++;
         }
         _gd.UpdateBuffer(_lightingBuffer, 0, _lightingData);
         _gd.UpdateBuffer(_shadowMatrices, 0, matrices);
-        for (int i = passes.Count; i < _shadowStates.Length; i++)
+        ShadowPointLightCount = points; ShadowSpotLightCount = spots;
+        ShadowLightIds = passes.Select(p => _activeLights[p.Light].Id ?? "").Distinct().ToArray();
+        for (int i = 0; i < _shadowStates.Length; i++)
         {
+            if (used[i]) continue;
             _shadowStates[i].Valid = false;
             _shadowStates[i].Previous.Clear(); _shadowStates[i].Current.Clear();
         }
@@ -171,30 +235,51 @@ public sealed partial class BasicWorldRenderer
                 .Take(MaxShadowCasters).ToArray();
             ShadowCastersOmitted = originalCount - casters.Count;
         }
-        bool uploadedObjects = false;
+        // Resolve fracture masks once per caster, not once per cube face/light.
+        _shadowGeometry.Clear();
+        for (int c = 0; c < casters.Count; c++)
+        {
+            var caster = casters[c];
+            int first = _shadowGeometry.Count;
+            if (caster.Model != null)
+            {
+                foreach (var part in caster.Model.Parts)
+                    if (!IsModelPartHidden(part, caster.HiddenParts)) _shadowGeometry.Add(new(part, 0, caster.Transform, c));
+            }
+            else _shadowGeometry.Add(new(null, caster.Primitive, caster.Transform, c));
+            _shadowGeometryRanges[c] = (first, _shadowGeometry.Count - first);
+        }
+        var dirtyLayers = new bool[ShadowSlices];
         for (int pass = 0; pass < passes.Count; pass++)
         {
-            var state = _shadowStates[pass];
+            int slice = passes[pass].Slice;
+            var state = _shadowStates[slice];
             state.Current.Clear();
-            var frustum = new ShadowFrustum(matrices[pass]);
+            var frustum = new ShadowFrustum(matrices[slice]);
             var light = _activeLights[passes[pass].Light];
             for (int c = 0; c < casters.Count; c++)
             {
                 var caster = casters[c];
-                if (Vector3.DistanceSquared(caster.Center, light.Position) > MathF.Pow(light.Range + caster.Radius, 2) ||
+                float reach = light.Range + caster.Radius;
+                if (Vector3.DistanceSquared(caster.Center, light.Position) > reach * reach ||
                     (ShadowCullingEnabled && !frustum.IntersectsSphere(caster.Center, caster.Radius)))
                 {
                     ShadowCulledCasters++;
                     continue;
                 }
-                if (caster.Model != null)
-                {
-                    foreach (var part in caster.Model.Parts)
-                        if (!IsModelPartHidden(part, caster.HiddenParts)) state.Current.Add(new(part, 0, caster.Transform, c));
-                }
-                else state.Current.Add(new(null, caster.Primitive, caster.Transform, c));
+                var range = _shadowGeometryRanges[c];
+                for (int d = range.Start; d < range.Start + range.Count; d++) state.Current.Add(_shadowGeometry[d]);
             }
-            if (ShadowCachingEnabled && state.Matches(matrices[pass]))
+            if (!ShadowCachingEnabled || !state.Matches(matrices[slice])) dirtyLayers[Layer(slice)] = true;
+        }
+        bool uploadedObjects = false;
+        var clearedLayers = new bool[ShadowSlices];
+        for (int pass = 0; pass < passes.Count; pass++)
+        {
+            int slice = passes[pass].Slice, layer = Layer(slice);
+            var state = _shadowStates[slice];
+            // Depth clears affect a whole layer: replay every occupied tile sharing a dirty layer.
+            if (!dirtyLayers[layer])
             {
                 ShadowCacheHits++;
                 continue;
@@ -222,12 +307,15 @@ public sealed partial class BasicWorldRenderer
                 }
                 uploadedObjects = true;
             }
-            _gd.UpdateBuffer(_shadowCameraBuffers[pass], 0, ref matrices[pass]);
-            cl.SetFramebuffer(_shadowFrames[pass]);
-            cl.SetViewport(0, new Viewport(0, 0, ShadowSize, ShadowSize, 0, 1));
-            cl.ClearDepthStencil(1);
+            _gd.UpdateBuffer(_shadowCameraBuffers[slice], 0, ref matrices[slice]);
+            cl.SetFramebuffer(_shadowFrames[layer]);
+            if (!clearedLayers[layer]) { cl.ClearDepthStencil(1); clearedLayers[layer] = true; }
+            bool tileFace = slots != null && slice < PointShadowFaces;
+            uint size = tileFace ? ShadowSize / 2 : ShadowSize;
+            int tile = tileFace ? slice % 4 : 0;
+            cl.SetViewport(0, new Viewport((tile % 2) * size, (tile / 2) * size, size, size, 0, 1));
             cl.SetPipeline(_shadowPipeline);
-            cl.SetGraphicsResourceSet(0, _shadowCameras[pass]);
+            cl.SetGraphicsResourceSet(0, _shadowCameras[slice]);
             foreach (var draw in state.Current)
             {
                 cl.SetGraphicsResourceSet(1, _shadowObjectSets[draw.ObjectIndex]);
@@ -239,7 +327,7 @@ public sealed partial class BasicWorldRenderer
                 else if (draw.Primitive == 1) Draw(_cylinderVb, _cylinderIb, _cylinderIndexCount, IndexFormat.UInt16);
                 else Draw(_vb, _ib, _indexCount, IndexFormat.UInt16);
             }
-            state.Matrix = matrices[pass];
+            state.Matrix = matrices[slice];
             state.Valid = true;
             (state.Previous, state.Current) = (state.Current, state.Previous);
             ShadowRenderedPassCount++;
@@ -247,6 +335,8 @@ public sealed partial class BasicWorldRenderer
         ShadowPassCount = passes.Count;
         cl.SetFramebuffer(target);
         cl.SetViewport(0, viewport);
+
+        int Layer(int slice) => slots == null ? slice : slice < PointShadowFaces ? slice / 4 : 24 + slice - PointShadowFaces;
 
         void Draw(DeviceBuffer vb, DeviceBuffer ib, uint count, IndexFormat format)
         {
@@ -266,6 +356,8 @@ public sealed partial class BasicWorldRenderer
 
     private void DisposeShadows()
     {
+        foreach (var resource in _retiredShadowAtlases) resource.Dispose();
+        _retiredShadowAtlases.Clear();
         _shadowPipeline.Dispose(); _shadowShader.Dispose(); _shadowSet.Dispose();
         foreach (var set in _shadowObjectSets) set.Dispose();
         foreach (var set in _shadowCameras) set.Dispose();

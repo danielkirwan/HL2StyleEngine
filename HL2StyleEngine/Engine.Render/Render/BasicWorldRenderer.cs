@@ -40,8 +40,14 @@ public sealed partial class BasicWorldRenderer : IDisposable
 
     private readonly Shader[] _shaders;
     private readonly Pipeline _pipeline;
+    private Pipeline? _boundsOverlayPipeline;
+    private GraphicsPipelineDescription _boundsOverlayDescription;
     private readonly Shader[] _texturedShaders;
     private readonly Pipeline _texturedPipeline;
+    private Pipeline? _multiShadowPipeline;
+    private Shader? _multiShadowShader;
+    private GraphicsPipelineDescription _texturedDescription;
+    private string _shaderDirectory = "";
     private readonly ResourceLayout _textureLayout;
     private readonly Sampler _modelSampler;
     private const int MaxPointLights = 32;
@@ -189,6 +195,7 @@ public sealed partial class BasicWorldRenderer : IDisposable
         // Shaders
         string baseDir = AppContext.BaseDirectory;
         string shaderDir = Path.Combine(baseDir, shaderDirRelativeToApp);
+        _shaderDirectory = shaderDir;
         byte[] vsBytes = File.ReadAllBytes(Path.Combine(shaderDir, "BasicVS.cso"));
         byte[] psBytes = File.ReadAllBytes(Path.Combine(shaderDir, "BasicPS.cso"));
 
@@ -230,6 +237,8 @@ public sealed partial class BasicWorldRenderer : IDisposable
         };
 
         _pipeline = _factory.CreateGraphicsPipeline(pd);
+        pd.DepthStencilState = new DepthStencilStateDescription(false, false, ComparisonKind.Always);
+        _boundsOverlayDescription = pd;
 
         _modelSampler = _factory.CreateSampler(new SamplerDescription(
             SamplerAddressMode.Wrap,
@@ -278,16 +287,19 @@ public sealed partial class BasicWorldRenderer : IDisposable
         };
 
         _texturedPipeline = _factory.CreateGraphicsPipeline(texturedPipelineDescription);
+        _texturedDescription = texturedPipelineDescription;
     }
 
     public void BeginFrame()
     {
-        if (_objectBatchActive)
+        if (_objectBatchActive || _groupCommands != null || _modelDraws.Count != 0)
             throw new InvalidOperationException("End the object upload batch before starting another frame.");
         _objectWriteIndex = 0;
         ObjectUploadCount = 0;
         ViewCulledCount = 0;
         _uploadMilliseconds = 0;
+        MainDrawCalls = InstancedDrawCalls = InstancedObjects = MaterialBindings = PipelineBindings = InstanceUploads = 0;
+        _usedInstances = false;
     }
 
     /// <summary>Dispose before submitting the frame's command list, including on early returns.</summary>
@@ -309,6 +321,8 @@ public sealed partial class BasicWorldRenderer : IDisposable
     private void EndObjectUploadBatch()
     {
         if (!_objectBatchActive) return;
+        FlushModelDraws();
+        UploadInstances();
         _objectBatchActive = false;
         if (ObjectBatchUploadsEnabled && _objectWriteIndex > 0)
         {
@@ -332,6 +346,7 @@ public sealed partial class BasicWorldRenderer : IDisposable
 
     public void UpdatePointLights(IEnumerable<WorldPointLight> lights, Vector3 cameraPosition)
     {
+        _shadowCameraPosition = cameraPosition;
         UpdateReflectionResources();
         Array.Clear(_lightingData);
         int count = 0;
@@ -342,6 +357,7 @@ public sealed partial class BasicWorldRenderer : IDisposable
             .ThenBy(l => Vector3.DistanceSquared(l.Position, cameraPosition))
             .Take(MaxPointLights).ToArray();
         _pointShadowIndex = _pointShadowSelector.Select(_activeLights,cameraPosition,PointShadowHysteresis);
+        if (PointShadowLimit > 1) EnsureMultiShadowResources();
         foreach (var light in _activeLights)
         {
             _lightingData[1 + count * 4] = new Vector4(light.Position, light.Range);
@@ -371,6 +387,14 @@ public sealed partial class BasicWorldRenderer : IDisposable
 
     public void DrawBox(CommandList cl, Matrix4x4 model, Vector4 color)
     { if (ShouldDraw(new(-.5f), new(.5f), model)) DrawMesh(cl, model, color, _vb, _ib, _indexCount); }
+
+    // Opt-in authoring bounds remain legible through opaque room walls without writing depth.
+    public void DrawBoundsOverlayBox(CommandList cl, Matrix4x4 model, Vector4 color)
+    {
+        if (!ShouldDraw(new(-.5f), new(.5f), model)) return;
+        _boundsOverlayPipeline ??= _factory.CreateGraphicsPipeline(_boundsOverlayDescription);
+        DrawMesh(cl, model, color, _vb, _ib, _indexCount, pipeline: _boundsOverlayPipeline);
+    }
 
     public void DrawCylinder(CommandList cl, Matrix4x4 model, Vector4 color)
     { if (ShouldDraw(new(-.5f), new(.5f), model)) DrawMesh(cl, model, color, _cylinderVb, _cylinderIb, _cylinderIndexCount); }
@@ -434,6 +458,9 @@ public sealed partial class BasicWorldRenderer : IDisposable
     public void DrawModel(CommandList cl, RenderModel model, Matrix4x4 transform, Vector4 tint, IReadOnlySet<string>? hiddenPartKeys,
         ModelEmission? emission = null, LightmapBinding? lightmap = null, ProbeIrradiance probe = default)
     {
+        bool invertible = Matrix4x4.Invert(transform, out var inverse);
+        if (!invertible && LightingModel == SurfaceLightingModel.Pbr) inverse = Matrix4x4.Identity;
+        var normalMatrix = Matrix4x4.Transpose(inverse);
         IReadOnlyList<RenderModelPart> parts = model.Parts;
         for (int i = 0; i < parts.Count; i++)
         {
@@ -459,18 +486,18 @@ public sealed partial class BasicWorldRenderer : IDisposable
                 var baked = lightmap.Parts[i];
                 Vector4 material = factors; material.W = 1;
                 DrawTexturedMesh(cl, transform, color, material, glow, baked.Vertices, baked.Indices, baked.Count,
-                    IndexFormat.UInt32, textureSet ?? _lightmapFallbackMaterial!, lightmap.Atlas.Set, reflectionSet: reflectionSet);
+                    IndexFormat.UInt32, textureSet ?? _lightmapFallbackMaterial!, lightmap.Atlas.Set, reflectionSet: reflectionSet, normalMatrix: normalMatrix);
             }
             else if (pbr && part.PbrVertexBuffer != null && textureSet != null)
             {
                 factors.W = probe.HasEnergy ? 2 : 0;
                 DrawTexturedMesh(cl, transform, color, factors, glow, part.PbrVertexBuffer, part.PbrIndexBuffer ?? part.IndexBuffer,
-                    part.PbrIndexCount, part.PbrIndexBuffer != null ? IndexFormat.UInt32 : part.IndexFormat, textureSet, probe: probe, reflectionSet: reflectionSet);
+                    part.PbrIndexCount, part.PbrIndexBuffer != null ? IndexFormat.UInt32 : part.IndexFormat, textureSet, probe: probe, reflectionSet: reflectionSet, normalMatrix: normalMatrix);
             }
             else if (part.IsTextured && part.TexturedVertexBuffer != null && part.TextureSet != null)
             {
                 Vector4 material = part.MaterialFactors; material.W = probe.HasEnergy ? 2 : 0;
-                DrawTexturedMesh(cl, transform, color, material, glow, part.TexturedVertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat, part.TextureSet, probe: probe, reflectionSet: reflectionSet);
+                DrawTexturedMesh(cl, transform, color, material, glow, part.TexturedVertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat, part.TextureSet, probe: probe, reflectionSet: reflectionSet, normalMatrix: normalMatrix);
             }
             else
                 DrawMesh(cl, transform, color, part.VertexBuffer, part.IndexBuffer, part.IndexCount, part.IndexFormat, glow);
@@ -496,32 +523,29 @@ public sealed partial class BasicWorldRenderer : IDisposable
         DeviceBuffer indexBuffer,
         uint indexCount,
         IndexFormat indexFormat,
-        ResourceSet textureSet, ResourceSet? lightmapSet = null, ProbeIrradiance probe = default, ResourceSet? reflectionSet = null)
+        ResourceSet textureSet, ResourceSet? lightmapSet = null, ProbeIrradiance probe = default, ResourceSet? reflectionSet = null, Matrix4x4? normalMatrix = null)
     {
         if (_objectWriteIndex >= MaxObjectsPerFrame)
             return;
 
-        bool invertible = Matrix4x4.Invert(model, out Matrix4x4 inverse);
-        if (!invertible && LightingModel == SurfaceLightingModel.Pbr) inverse = Matrix4x4.Identity;
+        if (!normalMatrix.HasValue)
+        {
+            bool invertible = Matrix4x4.Invert(model, out Matrix4x4 inverse);
+            if (!invertible && LightingModel == SurfaceLightingModel.Pbr) inverse = Matrix4x4.Identity;
+            normalMatrix = Matrix4x4.Transpose(inverse);
+        }
         ObjectData obj = new ObjectData
         {
             Model = model, Color = color, Material = material,
-            NormalMatrix = Matrix4x4.Transpose(inverse), Emission = new Vector4(emission, 0), Probe = probe
+            NormalMatrix = normalMatrix.Value, Emission = new Vector4(emission, 0), Probe = probe
         };
 
         uint slot = WriteObject(obj);
 
-        cl.SetPipeline(_texturedPipeline);
-        cl.SetGraphicsResourceSet(0, _cameraSet);
-        cl.SetGraphicsResourceSet(1, _objectSets[slot]);
-        cl.SetGraphicsResourceSet(2, textureSet);
-        cl.SetGraphicsResourceSet(3, _lightingSet);
-        cl.SetGraphicsResourceSet(4, _shadowSet);
-        cl.SetGraphicsResourceSet(5, lightmapSet ?? _emptyLightmap!.Set);
-        cl.SetGraphicsResourceSet(6, reflectionSet ?? (ReflectionPreviewEnabled ? ActiveReflection ?? _blackReflection : _blackReflection).Set);
-        cl.SetVertexBuffer(0, vertexBuffer);
-        cl.SetIndexBuffer(indexBuffer, indexFormat);
-        cl.DrawIndexed(indexCount, 1, 0, 0, 0);
+        SubmitModelDraw(cl, new(slot, vertexBuffer, indexBuffer, indexCount, indexFormat, textureSet,
+            lightmapSet ?? _emptyLightmap!.Set,
+            reflectionSet ?? (ReflectionPreviewEnabled ? ActiveReflection ?? _blackReflection : _blackReflection).Set,
+            PointShadowLimit > 1 ? _multiShadowPipeline! : _texturedPipeline, _allowInstancing && color.W >= 1));
     }
 
     private void DrawMesh(
@@ -532,17 +556,20 @@ public sealed partial class BasicWorldRenderer : IDisposable
         DeviceBuffer indexBuffer,
         uint indexCount,
         IndexFormat indexFormat = IndexFormat.UInt16,
-        Vector3 emission = default)
+        Vector3 emission = default,
+        Pipeline? pipeline = null)
     {
+        FlushModelDraws();
         if (_objectWriteIndex >= MaxObjectsPerFrame)
             return;
 
-        ObjectData obj = new ObjectData { Model = model, Color = IndirectOnly ? new Vector4(0,0,0,color.W) : color,
+        ObjectData obj = new ObjectData { Model = model, Color = IndirectOnly && pipeline == null ? new Vector4(0,0,0,color.W) : color,
             Material = new Vector4(0f, 1f, 0f, 0f), Emission = new Vector4(IndirectOnly ? Vector3.Zero : emission, 0) };
 
         uint slot = WriteObject(obj);
 
-        cl.SetPipeline(_pipeline);
+        cl.SetPipeline(pipeline ?? _pipeline);
+        PipelineBindings++;
 
         cl.SetGraphicsResourceSet(0, _cameraSet);
         cl.SetGraphicsResourceSet(1, _objectSets[slot]);
@@ -550,10 +577,12 @@ public sealed partial class BasicWorldRenderer : IDisposable
         cl.SetVertexBuffer(0, vertexBuffer);
         cl.SetIndexBuffer(indexBuffer, indexFormat);
         cl.DrawIndexed(indexCount, 1, 0, 0, 0);
+        MainDrawCalls++;
     }
 
     public void Dispose()
     {
+        DisposeSubmission();
         DisposeReflections();
         foreach (var pending in _pendingUploads.Values) pending.Dispose();
         _pendingUploads.Clear();
@@ -561,7 +590,10 @@ public sealed partial class BasicWorldRenderer : IDisposable
         DisposeLightmaps();
         _textures.Dispose();
         _texturedPipeline.Dispose();
+        _multiShadowPipeline?.Dispose();
+        _multiShadowShader?.Dispose();
         _pipeline.Dispose();
+        _boundsOverlayPipeline?.Dispose();
         foreach (var s in _texturedShaders) s.Dispose();
         foreach (var s in _shaders) s.Dispose();
 
