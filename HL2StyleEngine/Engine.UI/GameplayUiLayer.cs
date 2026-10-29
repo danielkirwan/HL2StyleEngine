@@ -21,6 +21,11 @@ public sealed class GameplayUiLayer : IDisposable
     }
 
     public string BackendName => _rmlUiBackend.Name;
+    public UiWorkProfile? Profile
+    {
+        get => _rmlUiBackend.Profile;
+        set { _rmlUiBackend.Profile = value; _previewRenderer.Profile = value; }
+    }
     public Func<string, UiImage>? IconResolver { set => _previewRenderer.IconResolver = value; }
     public string Status => BuildStatus();
     public string RenderStatus => _rmlUiBackend.RenderStatus;
@@ -28,19 +33,28 @@ public sealed class GameplayUiLayer : IDisposable
     public bool UsesNativePresentation => _nativePresentationEnabled && _rmlUiBackend.IsReady;
     public bool NativeFrameVisible => UsesNativePresentation && _rmlUiBackend.HasSubmittedOverlayFrame;
     public bool UsesPreviewPresentation => !NativeFrameVisible;
+    private bool NeedsNativeDocument => (_nativePresentationEnabled && _rmlUiBackend.HasNativeApi) || _rmlUiBackend.TestDocumentEnabled;
 
     public static GameplayUiLayer CreateRmlUi(string contentRoot)
         => new(RmlUiBackend.Probe(contentRoot), NativePresentationOptedIn());
 
     public void Update(RmlUiFrameContext context)
     {
+        if (!NeedsNativeDocument) return;
         _rmlUiBackend.Update(context);
+        if (_latestState.LoadingOverlayVisible && context.Renderer != null)
+            _rmlUiBackend.PrewarmOverlay(context.Renderer);
     }
 
     public void SubmitState(GameplayUiState state)
     {
         _latestState = state;
-        _rmlUiBackend.SubmitState(state);
+        if (NeedsNativeDocument) _rmlUiBackend.SubmitState(state);
+    }
+
+    public void QueuePreloadIcon(string absolutePath, long bytes)
+    {
+        if (_nativePresentationEnabled && _rmlUiBackend.HasNativeApi) _rmlUiBackend.QueuePreloadIcon(absolutePath, bytes);
     }
 
     public bool DrawPreview(out int selectedSlot)
@@ -52,6 +66,7 @@ public sealed class GameplayUiLayer : IDisposable
         if (NativeFrameVisible && !ShouldForcePreviewForState(_latestState))
             return false;
 
+        using var measure = Profile?.Measure("preview-draw");
         return _previewRenderer.Draw(_latestState, out selectedSlot);
     }
 

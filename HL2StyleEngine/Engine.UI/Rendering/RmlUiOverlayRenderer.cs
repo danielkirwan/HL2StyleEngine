@@ -36,8 +36,9 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
     public int LastTexturedCommands { get; private set; }
     public int RegisteredTextureCount => _textureSets.Count(set => set.Key != 0);
     public bool LastRenderSubmitted => LastSubmittedCommands > 0;
+    public bool Prepare(Renderer renderer) => EnsureResources(renderer);
 
-    public void Render(Renderer renderer, RmlUiRenderData renderData)
+    public void Render(Renderer renderer, RmlUiRenderData renderData, bool submit = true)
     {
         LastSubmittedCommands = 0;
         LastSubmittedTriangles = 0;
@@ -115,6 +116,7 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
         EnsureBufferCapacity(renderer, (uint)vertices.Count, (uint)indices.Count);
         renderer.GraphicsDevice.UpdateBuffer(_vertexBuffer, 0, vertices.ToArray());
         renderer.GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices.ToArray());
+        if (!submit) return;
 
         CommandList cl = renderer.CommandList;
         cl.SetPipeline(_pipeline);

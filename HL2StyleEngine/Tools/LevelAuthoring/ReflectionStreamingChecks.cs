@@ -27,6 +27,9 @@ internal static class ReflectionStreamingChecks
         foreach (string shader in new[] { "TexturedModelVS.cso", "TexturedModelInstancedVS.cso", "TexturedModelPS.cso", "TexturedModelMultiShadowPS.cso", "ShadowVS.cso" })
             Same(Path.Combine(AppContext.BaseDirectory,"Shaders",shader),Path.Combine(directory,"Shaders",shader));
         var level = LevelIO.Load(packaged);
+        if(level.PostProcessing?.Active==true)
+            foreach(string shader in new[]{"PresentVS.cso","PresentPS.cso","AtmosphereExtractPS.cso","AtmosphereBlurHorizontalPS.cso","AtmosphereBlurVerticalPS.cso","AtmosphereCompositePS.cso"})
+                Same(Path.Combine(AppContext.BaseDirectory,"Shaders",shader),Path.Combine(directory,"Shaders",shader));
         foreach (string model in level.Entities.Select(e=>e.MeshPath).Where(p=>!string.IsNullOrWhiteSpace(p)).Distinct())
             Same(Resolve(root,model),Path.Combine(directory,model));
         if (level.LightingScenarios is { Count: > 0 })

@@ -28,13 +28,19 @@ public sealed partial class HL2GameModule
     public bool StreamingWaiting => _streamingBlocked;
     public RoomAssetManifest? StreamingManifest => _roomAssets;
 
-    private static void StartModelLoad(string path, WeaponModelCacheEntry entry)
+    private void StartModelLoad(string path, WeaponModelCacheEntry entry)
     {
         if (entry.Failed || entry.LoadedModel != null || entry.LoadTask != null) return;
+        var profile = _ctx?.Loading;
+        var package = _editorEnabled ? null : _assetPackage;
         entry.LoadTask = Task.Run(async () =>
         {
-            await ModelLoadWorkers.WaitAsync();
-            try { return TextureCooker.LoadForRendering(path); }
+            using (profile?.Measure("model-worker-queue")) await ModelLoadWorkers.WaitAsync();
+            try
+            {
+                using var preparation = profile?.Measure("model-cpu-preparation");
+                return package == null ? CookedModelCache.Load(path, profile) : package.Load(path, profile);
+            }
             finally { ModelLoadWorkers.Release(); }
         });
     }

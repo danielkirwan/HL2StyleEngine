@@ -1,5 +1,23 @@
 # World Rendering
 
+## Bounded UI Image Prewarming (2026-10-27)
+
+`ImGuiLayer.TryPreloadImage(path, budget)` reuses the ordinary image decoder/binding cache, refuses images exceeding remaining cached-payload allowance, and keeps missing/rejected paths available to normal on-demand loading. `ImageResidentBytes` reports successful image width x height x 4 payload, not total VRAM/driver overhead. The game admits at most one item icon per existing loading frame; no shader, render quality or readiness change. Existing cached bindings are reused even if a later preload budget is smaller; there is no new eviction or hard frame-time guarantee. [Validation and remaining first-open hitches](../Game/HITCH_STABILITY_GUIDE.md).
+
+## Experimental Texture Mips (2026-10-27)
+
+Explicit `AssetPackage.LoadMipTail` / `TextureCooker.TryReadMipTail` skip unused high-detail compressed payloads; requested mips retain checksum validation and normal `Load` still reads/validates every mip. GPU texture identity includes the mip offset. `MipModelResidency` prepares on workers, keeps the previous model until ready, rejects superseded results/failures, and retires through existing fences. The caller bounds admission; the separate gallery permits one replacement until retirement clears. `MipResidencyBudget` supplies conservative texture-payload targets with pins/hysteresis, not hard total-memory guarantees. No production quality switch or shader change. [API contract, measured results, failed game-stress gates and remaining texture-granularity work](../Game/TEXTURE_MIP_GUIDE.md).
+
+## Packaged Models (2026-10-27)
+
+Lighting follow-up: `AssetPackage.TryGetModelIdentity` supplies declared unchanged model SHA-256 bytes to a per-session `AssetFingerprintReader`. Reflection/diffuse fingerprint layouts are unchanged; shaders and light-cache payloads still validate fully. Unknown/edited dependencies hash source bytes. Normal authoring never opts into these identities; collision hashing is timed but remains strict. No changes to shaders, texture formats, residency or render passes. [Measured savings, unchanged-image checks and total-startup caveat](../Game/LOADING_PACKAGE_GUIDE.md#lighting-dependency-follow-up).
+
+`AssetPackage` is an explicit immutable-snapshot path: validated dependency metadata supplies model source identities, while prepared model/texture payload checks and strict-source fallback remain. Package-local weak texture references reuse disk validation until metadata changes. Default `CookedModelCache.Load`, HS2Editor and authoring do not trust manifest hashes. Optional `LoadProfile` records source bytes and worker preparation; upload timings are CPU submission, not GPU time. No shader, mip-residency or rendering-quality change. [Implementation, measurements and immutable-data limits](../Game/LOADING_PACKAGE_GUIDE.md).
+
+## Atmosphere (2026-10-26)
+
+`Renderer.ConfigurePostProcessing` supplies immutable bounded settings and the actual camera/scene viewport. Optional MSAA-aware fog and colour grading use one presentation composite; HDR bloom adds three half/quarter-resolution passes. Original presentation shaders remain the disabled reference. All effects precede gameplay UI/ImGui and never enter bake/capture energy. Bloom target replacement uses frame-fenced retirement; resize/disposal explicitly drains resources. `PostProcessPasses` and `PostProcessGpuBytes` expose active work/texture payload, not total driver allocation. [Contract, HLSL compile commands, measured cost and limits](../Game/ATMOSPHERE_GUIDE.md).
+
 ## Shared Submission (2026-10-26)
 
 `RenderScene` seals frame-local `RenderInstance` values with borrowed, fence-owned resource handles. Main visibility does not control shadows; reflection captures own separate scenes. `GroupModelDraws` preserves order, reuses consecutive bindings and flushes before primitives. Only explicitly eligible static instances with identical geometry, material/lightmap/reflection and pixel-uniform data merge. Dynamic/held/fractured/scripted gameplay objects remain individual. F2/HS2Editor authoring retains its direct draw path.

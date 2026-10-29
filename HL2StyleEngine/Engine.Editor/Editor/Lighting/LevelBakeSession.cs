@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Numerics;
 using Engine.Editor.Level;
 using Engine.Render;
+using Engine.Core.Assets;
 
 namespace Engine.Editor.Editor;
 
@@ -53,11 +54,13 @@ public sealed class LevelBakeSession : IDisposable
     public float Progress => _progress;
     public bool Ready => _data != null;
     public int ReadyModels => _resources?.Bindings.Values.Count(v => v.Binding.IsReady) ?? 0;
+    public bool BindingsReady => _resources != null && _resources.Bindings.Values.All(v => v.Binding.IsReady);
     public string LastBindingIssue { get; private set; } = "";
     public long ActiveResidentBytes => (_resources?.Atlas.Bytes ?? 0) + (_resources?.Bindings.Values.Sum(v => v.Binding.Bytes) ?? 0);
     public long ResidentBytes => ActiveResidentBytes + (_retained?.Resources.Atlas.Bytes ?? 0) + (_retained?.Resources.Bindings.Values.Sum(v=>v.Binding.Bytes) ?? 0);
 
-    public void Update(LevelEditorController editor, Func<string, string> resolve, BasicWorldRenderer world, Renderer renderer, LevelLightState? state = null)
+    public void Update(LevelEditorController editor, Func<string, string> resolve, BasicWorldRenderer world, Renderer renderer, LevelLightState? state = null,
+        AssetFingerprintReader? fingerprints = null)
     {
         bool scenarios=editor.LevelFile.LightingScenarios is { Count: >0 };
         bool sameScenarioSource=scenarios && _scenarioSource==editor.LevelPath;
@@ -100,9 +103,15 @@ public sealed class LevelBakeSession : IDisposable
             {
                 try
                 {
+                    using var preparation = fingerprints?.Profile?.Measure("diffuse-snapshot");
                     _snapshot = BakeSnapshot.Capture(editor.LevelFile, resolve); _sourceStamp = SourceStamp(_snapshot);
                     var snapshot = _snapshot; string path = LightmapFile.PathFor(_path);
-                    Start(token => LightmapFile.Load(path, snapshot.Key(token)), false);
+                    Start(token =>
+                    {
+                        string key = snapshot.Key(token, fingerprints);
+                        using var payload = fingerprints?.Profile?.Measure("diffuse-cache-read-validate");
+                        return LightmapFile.Load(path, key);
+                    }, false);
                 }
                 catch (Exception ex) { Status = "Bake unavailable: " + ex.Message; }
             }
@@ -125,6 +134,7 @@ public sealed class LevelBakeSession : IDisposable
         }
         if (_data != null && _resources == null)
         {
+            using var upload = fingerprints?.Profile?.Measure("diffuse-atlas-gpu-submission");
             try { _resources = new Resources(world.CreateLightmapAtlas(_data.Size, _data.Pixels)); }
             catch (Exception ex) { _data = null; Status = "Lightmap upload failed: " + ex.Message; }
         }

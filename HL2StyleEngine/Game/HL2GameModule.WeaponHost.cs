@@ -337,6 +337,7 @@ public sealed partial class HL2GameModule
                 entry.Bounds = CalculateModelBounds(entry.LoadedModel);
                 entry.LoadTask = null;
             }
+            using var upload = _ctx?.Loading?.Measure("model-gpu-submission");
             if (!_world.TryCreateRenderModel(entry.LoadedModel, out var ready)) return false;
             entry.Model = ready;
             entry.LoadTask = null;
@@ -405,7 +406,7 @@ public sealed partial class HL2GameModule
     {
         if (_resolvedModelPaths.TryGetValue(modelAssetPath, out var path)) return path;
         path = Path.GetFullPath(Path.IsPathRooted(modelAssetPath) ? modelAssetPath :
-            Path.Combine(AppContext.BaseDirectory, modelAssetPath.Replace('/', Path.DirectorySeparatorChar)));
+            Path.Combine(_assetRoot, modelAssetPath.Replace('/', Path.DirectorySeparatorChar)));
         _resolvedModelPaths[modelAssetPath] = path;
         return path;
     }

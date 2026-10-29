@@ -23,9 +23,9 @@ public sealed class EngineHost : IDisposable
 
     public EngineContext Context { get; }
 
-    public EngineHost(int width, int height, string title)
+    public EngineHost(int width, int height, string title, Engine.Core.Diagnostics.LoadProfile? loading = null)
     {
-        _window = new GameWindow(width, height, title);
+        using (loading?.Measure("host-window")) _window = new GameWindow(width, height, title);
 
         _lastW = _window.Window.Width;
         _lastH = _window.Window.Height;
@@ -35,31 +35,34 @@ public sealed class EngineHost : IDisposable
             swapchainDepthFormat: PixelFormat.R32_Float,
             syncToVerticalBlank: true);
 
-        _graphicsDevice = VeldridStartup.CreateGraphicsDevice(
+        using (loading?.Measure("host-device")) _graphicsDevice = VeldridStartup.CreateGraphicsDevice(
             _window.Window,
             gdOptions,
             GraphicsBackend.Direct3D11);
 
-        _renderer = new Renderer(_graphicsDevice);
+        using (loading?.Measure("host-renderer")) _renderer = new Renderer(_graphicsDevice);
 
-        _imgui = new ImGuiLayer(
+        using (loading?.Measure("host-imgui")) _imgui = new ImGuiLayer(
             _renderer.GraphicsDevice,
             _renderer.GraphicsDevice.MainSwapchain.Framebuffer.OutputDescription,
             _window.Window.Width,
             _window.Window.Height);
 
-        Context = new EngineContext(_window, _renderer, _imgui);
+        Context = new EngineContext(_window, _renderer, _imgui, loading);
+        loading?.Mark("host-ready");
     }
 
     public void Run(IGameModule module)
     {
         module.Initialize(Context);
+        Context.Loading?.Mark("module-initialized");
         FrameProfile? profile = FrameProfile.FromEnvironment();
 
         _prevTime = _sw.Elapsed.TotalSeconds;
 
         while (_window.Window.Exists)
         {
+            profile?.BeginInput();
             InputSnapshot snapshot = _window.PumpEvents();
 
             if (module is IInputConsumer consumer)
@@ -87,27 +90,31 @@ public sealed class EngineHost : IDisposable
             if (!_window.Window.Exists) break;
 
             double t = _sw.Elapsed.TotalSeconds;
-            float dt = (float)(t - _prevTime);
+            double rawSeconds = t - _prevTime;
+            float dt = (float)rawSeconds;
             _prevTime = t;
 
             if (dt > 0.1f) dt = 0.1f;
             Time.DeltaTime = dt;
 
             profile?.Begin();
-            module.Update(dt, snapshot);
+            using (Context.Loading?.Measure("startup-update")) module.Update(dt, snapshot);
             profile?.Mark();
-            _fixed.Update(dt, () => module.FixedUpdate(Time.FixedDeltaTime));
+            using (Context.Loading?.Measure("startup-physics")) _fixed.Update(dt, () => module.FixedUpdate(Time.FixedDeltaTime));
             profile?.Mark();
 
-            _imgui.Update(dt, snapshot);
-            module.DrawImGui();
+            using (Context.Loading?.Measure("startup-imgui"))
+            {
+                _imgui.Update(dt, snapshot);
+                module.DrawImGui();
+            }
             profile?.Mark();
 
             _renderer.BeginFrame();
 
             if (module is IWorldRenderer world)
             {
-                world.RenderWorld(_renderer);
+                using (Context.Loading?.Measure("startup-world")) world.RenderWorld(_renderer);
             }
 
             _renderer.ResolveWorldToSwapchain();
@@ -115,16 +122,33 @@ public sealed class EngineHost : IDisposable
 
             if (module is IOverlayRenderer overlay)
             {
-                overlay.RenderOverlay(_renderer);
+                using (Context.Loading?.Measure("startup-overlay")) overlay.RenderOverlay(_renderer);
             }
 
             _imgui.Render(_renderer.GraphicsDevice, _renderer.CommandList);
             profile?.Mark();
 
-            _renderer.EndFrame();
+            using (Context.Loading?.Measure("startup-submit-present")) _renderer.EndFrame();
+            if (Context.Loading is { Complete: false } loading)
+            {
+                loading.Mark("first-present-returned");
+                var ready = (module as ILoadReadiness)?.GetLoadReadiness();
+                loading.ObserveFrame(rawSeconds, dt, ready?.AssetsReady == true, ready?.LightingReady == true, ready?.InputReady == true);
+                if (ready?.AssetsReady == true) loading.Mark("required-models-ready");
+                if (ready?.LightingReady == true) loading.Mark("lighting-ready");
+                if (ready is { AssetsReady: true, LightingReady: true, InputReady: true, FailedModels: 0 })
+                    loading.Finish("first-playable-presented", ready);
+                else if (ready is { FailedModels: > 0 })
+                    loading.Finish("required-assets-failed", ready);
+                else if (loading.ElapsedMilliseconds > 60000)
+                    loading.Finish("readiness-timeout", ready);
+                if (loading.Complete && loading.ExitWhenComplete) break;
+            }
             profile?.Mark();
             if (profile?.Finish(w, h) == true) break;
         }
+        if (Context.Loading is { Complete: false } unfinished)
+            unfinished.Finish("closed-before-ready", (module as ILoadReadiness)?.GetLoadReadiness());
     }
 
     public void Dispose()

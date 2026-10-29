@@ -16,6 +16,7 @@ internal sealed class ModelTextureCache : IDisposable
     public SharedTexture Acquire(PreparedTexture source)
     {
         string key = source.Key + (source.Compressed ? "-bc" : "-rgba");
+        if (source.FirstMip != 0) key += "-mip" + source.FirstMip;
         if (_textures.TryGetValue(key, out var shared)) { shared.References++; return shared; }
         bool srgb = source.Semantic == TextureSemantic.Color;
         PixelFormat format = source.Compressed

@@ -4,6 +4,8 @@
 
 The gameplay UI supports a native RmlUi bridge and a managed Veldrid overlay renderer, with an ImGui fallback. Combat HUD overlays still deliberately use the stable ImGui path.
 
+Save-menu state follow-up (2026-10-28): the game only populates `SaveSlots` while a save/load panel is visible, avoiding hidden per-frame file reads. Open menus keep fresh metadata and existing missing/corrupt-slot handling. Both presentation paths are covered by the [gameplay stability runner](../Game/GAMEPLAY_STABILITY_GUIDE.md); no backend default or appearance change.
+
 ## Current Setup
 
 - `GameplayUiLayer` is the game-facing UI layer.
@@ -22,7 +24,11 @@ The gameplay UI supports a native RmlUi bridge and a managed Veldrid overlay ren
 
 Combat-facing overlays currently use the ImGui preview renderer by design: health/suit, ammo, fallback crosshair, weapon selector, and loading overlay force preview rendering through `GameplayUiLayer.ShouldForcePreviewForState`. This avoids the native RmlUi text/layout issues seen in the weapon selector while the bridge is still being validated.
 
-RmlUi should still be kept current for generated document coverage, but gameplay-combat HUD polish should be made in `GameplayUiImGuiPreviewRenderer` first until native RmlUi presentation can render the same layout reliably.
+RmlUi documents stay current when native presentation or the explicit diagnostic document is enabled. The fallback-only layer skips unused native document/text generation; direct backend calls retain offline document coverage. Gameplay-combat HUD polish should be made in `GameplayUiImGuiPreviewRenderer` first until native RmlUi presentation can render the same layout reliably.
+
+## First-Open Preparation (2026-10-27)
+
+Existing loading frames now prepare bounded inventory icons in both independent image caches, current inventory/storage title images in a never-shown native resource document, and initial native pipeline/buffers without drawing. Text-image dimensions have a bounded metadata cache with file/font timestamp invalidation. No UI layout, input, default backend, bridge ABI or save-format changes. Optional `UiWorkProfile` is attached only by diagnostics. The populated native first-open failure (204.880 ms) is retained alongside passing 26.293/17.668 ms repeats; prepared/on-demand native pixels match exactly. See [budgets, commands, backend coverage and remaining limits](../Game/INVENTORY_PERFORMANCE_GUIDE.md).
 
 ## Applied Gameplay UI Fixes
 

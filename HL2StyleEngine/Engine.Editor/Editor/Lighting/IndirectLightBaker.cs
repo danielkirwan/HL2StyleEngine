@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using Engine.Core.Serialization;
+using Engine.Core.Assets;
 using Engine.Editor.Level;
 using Engine.Physics.Collision;
 using Engine.Physics.Dynamics;
@@ -19,7 +20,7 @@ public sealed record BakeSnapshot(byte[] Json, Dictionary<string, string> ModelP
     {
         byte[] json = StructuredData.WriteJson(level);
         // The distant specular test rig is not a contributor to this diffuse bake.
-        if (level.ReflectionEnvironment != ReflectionPreset.None || level.ReflectionProbeId != null || level.AutomaticRoomReflections || level.ReflectionStreaming != null || level.RoomVisibility != null || level.Entities.Any(e => e.Type == EntityTypes.ReflectionProbe))
+        if (level.PostProcessing != null || level.ReflectionEnvironment != ReflectionPreset.None || level.ReflectionProbeId != null || level.AutomaticRoomReflections || level.ReflectionStreaming != null || level.RoomVisibility != null || level.Entities.Any(e => e.Type == EntityTypes.ReflectionProbe))
         {
             var diffuse = StructuredData.ReadJson<LevelFile>(json);
             diffuse.ReflectionEnvironment = ReflectionPreset.None;
@@ -27,6 +28,7 @@ public sealed record BakeSnapshot(byte[] Json, Dictionary<string, string> ModelP
             diffuse.AutomaticRoomReflections = false;
             diffuse.ReflectionStreaming = null;
             diffuse.RoomVisibility = null;
+            diffuse.PostProcessing = null;
             diffuse.Entities.RemoveAll(e => e.Type == EntityTypes.ReflectionProbe);
             json = StructuredData.WriteJson(diffuse);
         }
@@ -34,15 +36,16 @@ public sealed record BakeSnapshot(byte[] Json, Dictionary<string, string> ModelP
             .Select(e => e.MeshPath).Distinct(StringComparer.OrdinalIgnoreCase).ToDictionary(p => p, resolve, StringComparer.OrdinalIgnoreCase), level.Bake?.Probes == null ? 1 : 2);
     }
 
-    public string Key(CancellationToken cancel = default)
+    public string Key(CancellationToken cancel = default, AssetFingerprintReader? fingerprints = null)
     {
+        using var timing = fingerprints?.Profile?.Measure("diffuse-key");
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         hash.AppendData(Encoding.UTF8.GetBytes($"HS2-single-bounce-{LightingVersion}")); hash.AppendData(Json);
         foreach (var entry in ModelPaths.OrderBy(p => p.Key, StringComparer.Ordinal))
         {
             cancel.ThrowIfCancellationRequested();
             hash.AppendData(Encoding.UTF8.GetBytes(entry.Key));
-            using var stream = File.OpenRead(entry.Value); hash.AppendData(SHA256.HashData(stream));
+            hash.AppendData(AssetFingerprintReader.ReadHash(entry.Value, "diffuse-dependency", fingerprints, cancel));
         }
         return Convert.ToHexString(hash.GetHashAndReset());
     }

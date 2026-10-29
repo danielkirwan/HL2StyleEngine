@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Numerics;
 using System.Reflection;
+using System.Text.Json;
 using Engine.Input.Devices;
 using Engine.Render;
 using Engine.Runtime.Hosting;
@@ -20,7 +21,7 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
     private bool _residencyRoute;
     private bool _lightingSwitches;
     private bool _referenceRooms;
-    private bool _referenceSubmission, _renderStress;
+    private bool _referenceSubmission, _renderStress, _noAtmosphere;
     private long _hardwareDraws, _materialBindings, _instances, _renderAllocations;
     private double _renderCpu, _prepareCpu;
     private readonly Stopwatch _startup = new();
@@ -29,6 +30,9 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
     private readonly bool _probeTest, _noProbes;
     private double _probeMilliseconds, _maxProbeMilliseconds;
     private readonly List<double> _intervals = new();
+    private readonly List<object> _stressTimings = new();
+    private readonly List<object> _uiTimings = new();
+    private Engine.UI.GameplayUiLayer _ui = null!;
     private SourcePlayerMotor _motor = null!;
     private BasicWorldRenderer _world = null!;
     private int _frames, _ticks;
@@ -43,34 +47,57 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
     private Key? _held;
     private long _previousStamp;
     public InputState InputState => _game.InputState;
-    private GameplayFrameChecks(string level, bool torch, bool individualUploads, bool referenceVisibility, bool stress, bool noProbes)
-    { _game = new(level); _torch = torch; _individualUploads = individualUploads; _referenceVisibility = referenceVisibility; _stress = stress;
+    private GameplayFrameChecks(string level, bool torch, bool individualUploads, bool referenceVisibility, bool stress, bool noProbes, AssetPackage? package = null)
+    { _game = new(level, package?.Root, package); _torch = torch; _individualUploads = individualUploads; _referenceVisibility = referenceVisibility; _stress = stress;
         _probeTest=Path.GetFileName(level)==ProbeLightingRoom.FileName; _noProbes=noProbes; }
 
     internal static void Run(string root, bool torch, bool individualUploads = false, bool referenceVisibility = false, bool stress = false,
         string? levelFile = null, bool noProbes = false, bool residencyRoute = false, bool lightingSwitches = false, bool referenceRooms = false,
-        bool referenceSubmission = false)
+        bool referenceSubmission = false, bool noAtmosphere = false, string? assetPackagePath = null, bool nativeUi = false, bool loadedInventory = false)
     {
         string? prior = Environment.GetEnvironmentVariable("HS2_PROFILE_FRAMES");
         string? priorNative = Environment.GetEnvironmentVariable("HS2_RMLUI_NATIVE_PRESENTATION");
         string? priorPreview = Environment.GetEnvironmentVariable("HS2_RMLUI_FORCE_PREVIEW_MODALS");
+        string? priorReport = Environment.GetEnvironmentVariable("HS2_FRAME_REPORT");
+        string report = priorReport ?? Path.Combine(AppContext.BaseDirectory, "qa", "gameplay-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff") + ".json");
+        Environment.SetEnvironmentVariable("HS2_FRAME_REPORT", report);
         Environment.SetEnvironmentVariable("HS2_PROFILE_FRAMES", "300");
         Environment.SetEnvironmentVariable("HS2_RMLUI_NATIVE_PRESENTATION", "1");
         Environment.SetEnvironmentVariable("HS2_RMLUI_FORCE_PREVIEW_MODALS", "0");
         try
         {
             using var host = new EngineHost(1920, 1080, "Full gameplay flashlight profile");
-            using var probe = new GameplayFrameChecks(Path.Combine(root, "Game/Content/Levels", levelFile ?? SixRoomFlashlightTest.FileName), torch, individualUploads, referenceVisibility, stress, noProbes);
+            var package = assetPackagePath == null ? null : new AssetPackage(assetPackagePath);
+            using var probe = new GameplayFrameChecks(package?.LevelPath ?? Path.Combine(root, "Game/Content/Levels", levelFile ?? SixRoomFlashlightTest.FileName), torch, individualUploads, referenceVisibility, stress, noProbes, package);
             probe._residencyRoute = residencyRoute;
             probe._lightingSwitches = lightingSwitches;
             probe._referenceRooms = referenceRooms;
             probe._referenceSubmission = referenceSubmission;
-            probe._renderStress = levelFile == RenderStressTest.FileName;
+            probe._renderStress = levelFile is RenderStressTest.FileName or AtmosphereChecks.FileName;
+            probe._noAtmosphere = noAtmosphere;
+            probe._explicitNativeUi = nativeUi;
+            probe._loadedInventory = loadedInventory;
             if (residencyRoute) Console.WriteLine("[ResidencyRoute] Five test-only teleports during measured frames exercise loading/eviction with Update, physics and presentation active; not a walking-only benchmark.");
             Console.WriteLine($"[GameplayLevel] {levelFile ?? SixRoomFlashlightTest.FileName}");
             if(probe._probeTest) Console.WriteLine($"[ProbePreview] {(noProbes ? "disabled reference" : "enabled")}; static lightmap remains enabled.");
             Console.WriteLine($"[GameplayProfile] torch={(torch ? "on" : "off")}; uploads={(individualUploads ? "individual reference" : "batched")}; actual host loop, scripted W/S and relative mouse, production HUD and launcher UI settings, physics and VSync/presentation; 120 warmup + 300 measured frames.");
             host.Run(probe);
+            File.WriteAllText(Path.ChangeExtension(report, ".gameplay.json"), JsonSerializer.Serialize(new
+            {
+                Version = 1, Level = levelFile, Torch = torch, Stress = stress, Packaged = package != null,
+                ExplicitNativeUi = nativeUi, LoadedInventory = loadedInventory,
+                Intervals = probe._intervals, Events = probe._stressTimings,
+                UiFrames = probe._uiTimings,
+                probe._streamWaitFrames, probe._stressActions, probe._peakDebris,
+                PackageHits = package?.Hits ?? 0, PackageFallbacks = package?.Fallbacks ?? 0
+            }));
+            for (int i = 0; i < probe._intervals.Count; i++)
+                if (probe._intervals[i] > 33.3) Console.WriteLine($"[GameplayHitch] preceding frame {119+i}: {probe._intervals[i]:F3}ms; details in {report}.");
+            if (package != null)
+            {
+                Console.WriteLine($"[AssetPackage] {package.Hits} hits; {package.Fallbacks} fallbacks");
+                if (package.Hits == 0 || package.Fallbacks != 0) throw new InvalidDataException("Healthy package did not cover this gameplay route.");
+            }
             if (probe._intervals.Count != 300 || probe._distance < .1 || probe._ticks == 0)
                 throw new InvalidDataException("Gameplay profile did not complete with real player movement.");
             probe._intervals.Sort();
@@ -136,7 +163,7 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
             if (stress)
             {
                 if (probe._stressActions != 5 || probe._peakDebris == 0) throw new InvalidDataException("Stress actions did not exercise debris/doors/gravity holding/inventory.");
-                Console.WriteLine($"[GameplayStress] PASS: {(probe._probeTest ? "toggled realtime light" : "opened puzzle shutters")}, broke six crates, gravity-held/released a prop, opened/closed inventory; {probe._peakDebris} peak fragment bodies; {probe._stressActions} event groups.");
+                Console.WriteLine($"[GameplayStress] PASS: {(probe._probeTest ? "toggled realtime light" : probe._renderStress ? "no puzzle shutters in fixture" : "opened puzzle shutters")}, broke six crates, gravity-held/released a prop, opened/closed inventory; {probe._peakDebris} peak fragment bodies; {probe._stressActions} event groups.");
             }
             if (lightingSwitches)
             {
@@ -150,13 +177,39 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
             Environment.SetEnvironmentVariable("HS2_PROFILE_FRAMES", prior);
             Environment.SetEnvironmentVariable("HS2_RMLUI_NATIVE_PRESENTATION", priorNative);
             Environment.SetEnvironmentVariable("HS2_RMLUI_FORCE_PREVIEW_MODALS", priorPreview);
+            Environment.SetEnvironmentVariable("HS2_FRAME_REPORT", priorReport);
         }
     }
 
+    private bool _explicitNativeUi, _loadedInventory;
     public void Initialize(EngineContext context)
     {
         _startup.Start();
         _game.Initialize(context);
+        if (_explicitNativeUi)
+        {
+            ((Engine.UI.GameplayUiLayer)Field("_gameplayUi")).Dispose();
+            var backend = Engine.UI.RmlUiBackend.Probe(Path.Combine(AppContext.BaseDirectory, "Content/UI"),
+                Path.Combine(AppContext.BaseDirectory, "HS2RmlUiBridge.dll"));
+            if (!backend.NativeBridgeFound) throw new InvalidDataException("Explicit native UI bridge not available.");
+            var layer = new Engine.UI.GameplayUiLayer(backend, nativePresentationEnabled: true);
+            layer.IconResolver = path => context.ImGui!.GetImage(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "Content/UI/Runtime", path)));
+            typeof(HL2GameModule).GetField("_gameplayUi", Flags)!.SetValue(_game, layer);
+        }
+        _ui = (Engine.UI.GameplayUiLayer)Field("_gameplayUi");
+        _ui.Profile = new Engine.UI.UiWorkProfile();
+        if (_loadedInventory)
+        {
+            var seeded = new InventoryContainer(8, 4, 4);
+            foreach (var (id, count) in new[] { (ItemCatalog.InkRibbon, 5), (ItemCatalog.MasterKey, 1), (ItemCatalog.Scrap, 78),
+                (ItemCatalog.Gunpowder, 14), (ItemCatalog.CrankHandle, 1), (ItemCatalog.RepairedCable, 1), (ItemCatalog.SpareWire, 1), (ItemCatalog.Fuse, 1) })
+                if (!seeded.Add(id, count)) throw new InvalidDataException("Inventory fixture did not fit.");
+            seeded.MoveStackToSlot(seeded.Stacks.Last().SlotIndex, seeded.PrimarySlotCapacity);
+            byte[] json = Engine.Core.Serialization.StructuredData.WriteJson(seeded.ToSaveData());
+            ((InventoryContainer)Field("_inventory")).LoadFromSave(Engine.Core.Serialization.StructuredData.ReadJson<List<InventoryItemSaveData>>(json));
+            Call("QueueLevelUiImages");
+        }
+        if(_noAtmosphere)((LevelEditorController)Field("_editor")).LevelFile.PostProcessing=null;
         ((LevelBakeSession)Field("_bakedLighting")).PreviewProbes = !_noProbes;
         _motor = (SourcePlayerMotor)typeof(HL2GameModule).GetField("_motor", Flags)!.GetValue(_game)!;
         _world = (BasicWorldRenderer)typeof(HL2GameModule).GetField("_world", Flags)!.GetValue(_game)!;
@@ -172,8 +225,13 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
 
     public void Update(float dt, InputSnapshot actualInput)
     {
+        _ui.Profile!.BeginFrame();
         long stamp = Stopwatch.GetTimestamp();
-        if (_frames >= 120 && _previousStamp != 0) _intervals.Add(Stopwatch.GetElapsedTime(_previousStamp, stamp).TotalMilliseconds);
+        if (_frames >= 120 && _previousStamp != 0)
+        {
+            double elapsed=Stopwatch.GetElapsedTime(_previousStamp,stamp).TotalMilliseconds;
+            _intervals.Add(elapsed);
+        }
         _previousStamp = stamp;
         if (_residencyRoute && _frames >= 150 && (_frames - 150) % 50 == 0 && _frames <= 350)
         {
@@ -183,7 +241,13 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
                 : [new(-24,.1f,-11),new(24,.1f,11),new(0,.1f,26),new(-24,.1f,11),new(-24,.1f,-11)];
             _motor.Position = stops[(_frames - 150) / 50]; _motor.Velocity = Vector3.Zero;
         }
-        if (_stress) StressActions();
+        if (_stress && _frames is 130 or 150 or 170 or 210 or 250)
+        {
+            long actionStart = Stopwatch.GetTimestamp(), allocated = GC.GetAllocatedBytesForCurrentThread();
+            StressActions();
+            _stressTimings.Add(new { Frame = _frames, Milliseconds = Stopwatch.GetElapsedTime(actionStart).TotalMilliseconds,
+                AllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocated });
+        }
         if (_lightingSwitches && _frames is 160 or 230 or 300 or 370)
         {
             if(((LevelEditorController)Field("_editor")).LevelFile.PrewarmLightingStates &&
@@ -243,7 +307,14 @@ internal sealed class GameplayFrameChecks : IGameModule, IWorldRenderer, IOverla
             if (_game.StreamingWaiting) _streamWaitFrames++;
         }
     }
-    public void RenderOverlay(Renderer renderer) { _game.RenderOverlay(renderer); _frames++; }
+    public void RenderOverlay(Renderer renderer)
+    {
+        _game.RenderOverlay(renderer);
+        if (_explicitNativeUi && _frames >= 120 && !_ui.UsesNativePresentation)
+            throw new InvalidDataException("Native UI diagnostic fell back: " + _ui.Status);
+        _uiTimings.Add(new { Frame = _frames, Native = _ui.UsesNativePresentation, Milliseconds = _ui.Profile!.Snapshot() });
+        _frames++;
+    }
     public void Dispose() => _game.Dispose();
 
     private object Field(string name) => typeof(HL2GameModule).GetField(name, Flags)!.GetValue(_game)!;

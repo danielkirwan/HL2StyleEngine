@@ -6,7 +6,7 @@ namespace Engine.UI;
 
 internal static class InventoryPreviewRenderer
 {
-    public static int Draw(GameplayUiState state, ImGuiViewportPtr viewport, Func<string, UiImage>? icons)
+    public static int Draw(GameplayUiState state, ImGuiViewportPtr viewport, Func<string, UiImage>? icons, UiWorkProfile? profile = null)
     {
         var layout = new InventoryLayout((int)viewport.Size.X, (int)viewport.Size.Y,
             state.GridWidth, state.GridHeight, state.PrimaryGridHeight);
@@ -45,7 +45,9 @@ internal static class InventoryPreviewRenderer
             uint border = item.IsValidCombineTarget ? 0xff82cf8d : item.IsCombineSource ? gold : focused ? white : 0xff777777;
             draw.AddRectFilled(min + Vector2.One, max - Vector2.One, 0xcc1d1d1d);
             draw.AddRect(min + Vector2.One, max - Vector2.One, border, 0, ImDrawFlags.None, focused ? 2 : 1);
-            UiImage image = string.IsNullOrWhiteSpace(item.IconPath) ? default : icons?.Invoke(item.IconPath) ?? default;
+            UiImage image;
+            using (profile?.Measure("preview-icon"))
+                image = string.IsNullOrWhiteSpace(item.IconPath) ? default : icons?.Invoke(item.IconPath) ?? default;
             if (image.Id != IntPtr.Zero)
             {
                 Vector2 available = size - new Vector2(10);

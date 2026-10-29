@@ -2,6 +2,13 @@
 
 Implemented: 2026-10-05. This supersedes the adoption recommendation in the October 2 evaluation; that report remains a historical benchmark.
 
+Save-performance follow-up (2026-10-28): closed save/load menus no longer read
+slot files every frame. A small disposable save DTO prepares nested RE:Dox
+serialization contracts during loading, without touching live inventory or disk.
+Real saves retain atomic replacement, backup and durable flush. New gameplay
+tests use isolated QA save directories; ordinary save locations/formats are
+unchanged. [Measurements, failures retained and regression coverage](GAMEPLAY_STABILITY_GUIDE.md).
+
 ## Runtime And Launching
 
 The engine, game, editor and importer now target .NET 10. Package versions are pinned in `Directory.Packages.props`: `CAPCOM.REDox` 1.0.0 and `CAPCOM.REDox.Serialization.SystemTextJson` 1.0.0-preview. The compatibility adapter is still preview, so contract regression tests are required before upgrading it. The core library is Apache-2.0 licensed. [Official RE:Dox repository](https://github.com/CAPCOM-TD-OSS/REDox).

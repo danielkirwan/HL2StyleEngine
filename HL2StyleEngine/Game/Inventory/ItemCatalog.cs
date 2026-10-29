@@ -2,6 +2,7 @@ namespace Game.Inventory;
 
 public static class ItemCatalog
 {
+    public static IEnumerable<InventoryItemDefinition> Definitions => KnownItems.Values;
     public const string InkRibbon = "InkRibbon";
     public const string MasterKey = "MasterKey";
     public const string Scrap = "Scrap";

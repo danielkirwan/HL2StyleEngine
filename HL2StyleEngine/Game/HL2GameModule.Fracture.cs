@@ -1,4 +1,5 @@
 using Engine.Physics.Dynamics;
+using Engine.Physics.Collision;
 using Engine.Render;
 using Engine.Runtime.Entities;
 using Game.Inventory;
@@ -21,6 +22,7 @@ public sealed partial class HL2GameModule
     private const float CrateRewardLowSuitDropBonus = 0.20f;
 
     private readonly List<FractureDebrisPiece> _fractureDebrisPieces = new();
+    private readonly List<Aabb> _fractureSupportBounds = new();
 
     private sealed class FractureDebrisPiece
     {
@@ -266,6 +268,7 @@ public sealed partial class HL2GameModule
         Matrix4x4 baseTransform = CreateBoundsFitTransform(entry.Bounds, entity.Transform.Position, entity.Render.Size, baseRotation);
         Vector3 modelCenter = entry.Bounds.Valid ? entry.Bounds.Center : Vector3.Zero;
         Vector3 modelScale = GetBoundsFitScale(entry.Bounds, entity.Render.Size);
+        SnapshotFractureSupports(entity);
 
         for (int i = 0; i < parts.Count; i++)
         {
@@ -289,7 +292,7 @@ public sealed partial class HL2GameModule
                 Rotation = baseRotation,
                 Velocity = BuildFractureDebrisVelocity(part, modelCenter, rotationMatrix),
                 AngularVelocity = BuildFractureDebrisAngularVelocity(),
-                GroundCenterY = FindFractureDebrisGroundCenterY(entity, worldCenter, worldHalfHeight),
+                GroundCenterY = FindFractureDebrisGroundCenterY(_fractureSupportBounds, worldCenter, worldHalfHeight),
                 Lifetime = FractureDebrisLifetimeSeconds
             };
 
@@ -303,19 +306,25 @@ public sealed partial class HL2GameModule
         }
     }
 
-    private float FindFractureDebrisGroundCenterY(Entity source, Vector3 worldCenter, float worldHalfHeight)
+    private void SnapshotFractureSupports(Entity source)
+    {
+        // No entities move during this synchronous break. Compute each support once,
+        // not once per fragment; rebuild for the next crate after this one is hidden.
+        _fractureSupportBounds.Clear();
+        foreach (Entity candidate in _runtimeEntities)
+            if (!ReferenceEquals(candidate, source) && candidate.Collider.Enabled && candidate.Collider.IsSolid)
+                _fractureSupportBounds.Add(CreateWorldCollider(candidate).GetAabb());
+    }
+
+    private static float FindFractureDebrisGroundCenterY(IReadOnlyList<Aabb> supports, Vector3 worldCenter, float worldHalfHeight)
     {
         float bestTopY = 0f;
         bool foundSupport = false;
         const float horizontalPadding = 0.08f;
 
-        for (int i = 0; i < _runtimeEntities.Count; i++)
+        for (int i = 0; i < supports.Count; i++)
         {
-            Entity candidate = _runtimeEntities[i];
-            if (ReferenceEquals(candidate, source) || !candidate.Collider.Enabled || !candidate.Collider.IsSolid)
-                continue;
-
-            Engine.Physics.Collision.Aabb aabb = CreateWorldCollider(candidate).GetAabb();
+            Aabb aabb = supports[i];
             if (worldCenter.X < aabb.Min.X - horizontalPadding || worldCenter.X > aabb.Max.X + horizontalPadding ||
                 worldCenter.Z < aabb.Min.Z - horizontalPadding || worldCenter.Z > aabb.Max.Z + horizontalPadding)
             {

@@ -10,6 +10,8 @@ public sealed class LevelFile
     public int Version { get; set; } = 2;
     public bool UsePointLights { get; set; }
     public float Exposure { get; set; } = 1f;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Engine.Render.PostProcessSettings? PostProcessing { get; set; }
     public float AmbientLight { get; set; } = .22f;
     public float DirectionalLight { get; set; } = 1f;
     public bool EnableShadows { get; set; } = true;

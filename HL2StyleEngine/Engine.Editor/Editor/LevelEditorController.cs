@@ -1002,6 +1002,7 @@ public sealed partial class LevelEditorController
             ImGui.TreePop();
         }
         DrawBakeToolbar();
+        DrawAtmosphereToolbar();
         DrawReflectionToolbar();
         DrawRoomToolbar();
         ImGui.Checkbox("Show Colliders (OBB)", ref ShowColliders);

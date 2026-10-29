@@ -3,6 +3,7 @@ using System.Numerics;
 using Engine.Core.Serialization;
 using Engine.Editor.Level;
 using Engine.Render;
+using Engine.Core.Assets;
 
 namespace Engine.Editor.Editor;
 
@@ -51,7 +52,8 @@ public sealed class ReflectionProbeSession : IDisposable
     public int ProbeLoads => _rooms?.Loads ?? 0;
     public int ProbeEvictions => _rooms?.Evictions ?? 0;
 
-    public void Update(LevelEditorController editor, Func<string,string> resolve, BasicWorldRenderer world, Renderer renderer, LevelLightState? state = null, string? probeOverride = null, Vector3? position = null, byte[]? sourceJson = null)
+    public void Update(LevelEditorController editor, Func<string,string> resolve, BasicWorldRenderer world, Renderer renderer, LevelLightState? state = null, string? probeOverride = null, Vector3? position = null, byte[]? sourceJson = null,
+        AssetFingerprintReader? fingerprints = null)
     {
         var sourceEditor = editor;
         bool scenarios=editor.LevelFile.LightingScenarios is { Count: >0 };
@@ -99,9 +101,9 @@ public sealed class ReflectionProbeSession : IDisposable
             {
                 _retainedScenarioRooms ??= new();
                 _retainedScenarioPath = alternate.LevelPath;
-                _retainedScenarioRooms.Update(alternate,resolve,world,renderer,null,false,position,PrefetchProbeIds);
+                _retainedScenarioRooms.Update(alternate,resolve,world,renderer,null,false,position,PrefetchProbeIds,fingerprints);
             }
-            _rooms.Update(editor,resolve,world,renderer,state,PreviewEnabled,position,PrefetchProbeIds);
+            _rooms.Update(editor,resolve,world,renderer,state,PreviewEnabled,position,PrefetchProbeIds,fingerprints);
             PeakGpuBytes=Math.Max(PeakGpuBytes,ResidentBytes+CaptureGpuBytes); return;
         }
         if (_rooms != null) { _retire.Add(_rooms); _rooms=null; _revision=-1; }
@@ -125,13 +127,16 @@ public sealed class ReflectionProbeSession : IDisposable
                         string path = _path;
                         Start(token =>
                         {
-                            ValidationWorkers.Wait(token);
+                            using (fingerprints?.Profile?.Measure("reflection-worker-queue")) ValidationWorkers.Wait(token);
                             try
                             {
                                 token.ThrowIfCancellationRequested();
-                                var snapshot = ReflectionSnapshot.CreateOwned(StructuredData.ReadJson<LevelFile>(sourceJson), path, id, resolve);
-                                string stamp = snapshot.Stamp(), key = snapshot.Key(token);
+                                ReflectionSnapshot snapshot;
+                                using (fingerprints?.Profile?.Measure("reflection-snapshot"))
+                                    snapshot = ReflectionSnapshot.CreateOwned(StructuredData.ReadJson<LevelFile>(sourceJson), path, id, resolve);
+                                string stamp = snapshot.Stamp(), key = snapshot.Key(token, fingerprints);
                                 token.ThrowIfCancellationRequested();
+                                using var payload = fingerprints?.Profile?.Measure("reflection-cache-read-validate");
                                 return new Result(key, ReflectionProbeCache.Load(ReflectionProbeCache.PathFor(path,id),key),snapshot,stamp);
                             }
                             finally { ValidationWorkers.Release(); }
@@ -139,9 +144,15 @@ public sealed class ReflectionProbeSession : IDisposable
                     }
                     else
                     {
+                        using var preparation = fingerprints?.Profile?.Measure("reflection-snapshot");
                         _snapshot = ReflectionSnapshot.Create(editor.LevelFile, _path, id, resolve); _stamp = _snapshot.Stamp();
                         var snapshot = _snapshot;
-                        Start(token => { string key = snapshot.Key(token); return new Result(key, ReflectionProbeCache.Load(ReflectionProbeCache.PathFor(snapshot.LevelPath, snapshot.Probe.Id), key)); });
+                        Start(token =>
+                        {
+                            string key = snapshot.Key(token, fingerprints);
+                            using var payload = fingerprints?.Profile?.Measure("reflection-cache-read-validate");
+                            return new Result(key, ReflectionProbeCache.Load(ReflectionProbeCache.PathFor(snapshot.LevelPath, snapshot.Probe.Id), key));
+                        });
                     }
                     Status = "Validating room capture";
                 }
@@ -186,11 +197,14 @@ public sealed class ReflectionProbeSession : IDisposable
                     Status = "Filtering and saving room capture";
                 }
             }
-            if (_data != null && (_ready != null || (_retiringEnvironmentBytes == 0 && !_retire.OfType<ReflectionEnvironment>().Any())) &&
-                world.UploadReflection(_data, ref _pending))
+            if (_data != null && (_ready != null || (_retiringEnvironmentBytes == 0 && !_retire.OfType<ReflectionEnvironment>().Any())))
             {
-                if (_ready != null) _retire.Add(_ready);
-                _ready = _pending; _pending = null; _data = null; _key = _pendingKey; Status = "Room capture ready";
+                using var upload = fingerprints?.Profile?.Measure("reflection-gpu-submission");
+                if (world.UploadReflection(_data, ref _pending))
+                {
+                    if (_ready != null) _retire.Add(_ready);
+                    _ready = _pending; _pending = null; _data = null; _key = _pendingKey; Status = "Room capture ready";
+                }
             }
         }
         catch (Exception ex) { Cancel(); Status = "Room capture failed: " + ex.Message; }

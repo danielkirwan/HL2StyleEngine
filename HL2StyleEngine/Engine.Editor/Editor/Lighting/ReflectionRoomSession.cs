@@ -3,6 +3,7 @@ using System.Numerics;
 using Engine.Core.Serialization;
 using Engine.Render;
 using Engine.Editor.Level;
+using Engine.Core.Assets;
 
 namespace Engine.Editor.Editor;
 
@@ -58,7 +59,8 @@ internal sealed class ReflectionRoomSession : IDisposable
     }
 
     public void Update(LevelEditorController editor, Func<string, string> resolve, BasicWorldRenderer world,
-        Renderer renderer, LevelLightState? state, bool preview, Vector3? position, IReadOnlyList<string>? prefetch = null)
+        Renderer renderer, LevelLightState? state, bool preview, Vector3? position, IReadOnlyList<string>? prefetch = null,
+        AssetFingerprintReader? fingerprints = null)
     {
         Synchronize(editor, resolve);
         if (_layout != null)
@@ -86,7 +88,7 @@ internal sealed class ReflectionRoomSession : IDisposable
             if (_captureRequested && _sessions.TryGetValue(_captureId, out var selected))
             { selected.BeginCapture(editor, _snapshotResolver, _captureId); _captureRequested = false; }
             foreach (string id in _wanted)
-                if (_sessions.TryGetValue(id, out var session)) session.Update(editor, _snapshotResolver, world, renderer, state, id, sourceJson: _sourceJson);
+                if (_sessions.TryGetValue(id, out var session)) session.Update(editor, _snapshotResolver, world, renderer, state, id, sourceJson: _sourceJson, fingerprints: fingerprints);
             if (!_captureRequested && _sessions.TryGetValue(_captureId, out var captured) && !captured.Busy) _captureId = "";
             ReflectionEnvironment? Environment(string id) => _sessions.TryGetValue(id, out var s) ? s.CompatibleEnvironment : null;
             bool changed = _bindings == null;

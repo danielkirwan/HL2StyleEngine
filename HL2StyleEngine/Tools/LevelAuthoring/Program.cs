@@ -3,6 +3,140 @@ using Engine.Render;
 using Engine.Editor.Level;
 
 string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+if (args is ["validate-physics-geometry"] or ["benchmark-physics-startup"] or ["physics-startup-child", _, _, _])
+{
+    try
+    {
+        if (args[0] == "validate-physics-geometry") PhysicsGeometryChecks.Validate();
+        else if (args[0] == "benchmark-physics-startup") PhysicsGeometryChecks.Benchmark(root);
+        else PhysicsGeometryChecks.StartupChild(args[1], args[2], bool.Parse(args[3]));
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["capture-physics-reference", _] or ["validate-physics-replay", _, _])
+{
+    try { PhysicsReplayChecks.Run(root, args[1], args.Length == 3 ? args[2] : null); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args.Length > 0 && args[0] == "soak-gameplay")
+{
+    try
+    {
+        Engine.Physics.Collision.WorldColliderCache.ReuseEnabled = !args.Contains("--rebuild-geometry");
+        GameplaySoakChecks.Run(root, args.Contains("--native-ui"), args.Contains("--quick") ? 1 : 6, args.Contains("--puzzles"));
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-gameplay-stability"])
+{
+    try { GameplayStabilityChecks.Run(root); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-inventory-warmup"])
+{
+    try { InventoryWarmupChecks.Run(); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-hitch-stability"])
+{
+    try { HitchStabilityChecks.Run(); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["profile-gameplay-hitches"])
+{
+    try { GameplayHitchChecks.Run(root); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["profile-gameplay-child", var hitchManifest, var hitchMode, var hitchReport])
+{
+    try
+    {
+        if (hitchMode is not ("source" or "package" or "package-off")) throw new ArgumentException("Unknown comparison mode.");
+        Environment.SetEnvironmentVariable("HS2_FRAME_REPORT", Path.GetFullPath(hitchReport));
+        GameplayFrameChecks.Run(root, hitchMode != "package-off", stress: true, levelFile: AtmosphereChecks.FileName,
+            assetPackagePath: hitchMode == "source" ? null : hitchManifest);
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["launch-texture-mip-lab"] or ["soak-texture-mip-lab"])
+{
+    try { TextureMipLab.Run(root, args[0] == "soak-texture-mip-lab"); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-texture-mips"] or ["check-texture-mip-images"])
+{
+    try { if (args[0] == "validate-texture-mips") TextureMipChecks.Cpu(root); else TextureMipChecks.Gpu(root); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["check-lighting-dependency-images"] or ["check-lighting-dependency-images", "--baked"])
+{
+    try { LightingDependencyImageChecks.Run(root, args.Contains("--baked")); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-lighting-dependencies"])
+{
+    try { LightingDependencyChecks.Run(root); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["check-package-fallback-child", var packageManifest, var packageModel])
+{
+    try { LoadingPackageChecks.FallbackChild(packageManifest, packageModel); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args.Length > 0 && args[0] is "build-loading-package" or "validate-loading-package" or "benchmark-loading" or "launch-loading-test" or "benchmark-packaged-gameplay" or "validate-loading-failures" or "prepare-loading-probe")
+{
+    try
+    {
+        switch (args[0])
+        {
+            case "build-loading-package": LoadingPackageChecks.Build(root); break;
+            case "prepare-loading-probe": LoadingPackageChecks.PrepareProbe(root); break;
+            case "validate-loading-package": LoadingPackageChecks.Validate(root); break;
+            case "benchmark-loading": LoadingPackageChecks.Benchmark(root, args.Contains("--lighting-only")); break;
+            case "validate-loading-failures": LoadingPackageChecks.FailureProbes(root); break;
+            case "benchmark-packaged-gameplay":
+                GameplayFrameChecks.Run(root, !args.Contains("--torch-off"), levelFile: AtmosphereChecks.FileName,
+                    residencyRoute: args.Contains("--route"), stress: args.Contains("--stress"),
+                    assetPackagePath: LoadingPackageChecks.Build(root)); break;
+            default: LoadingPackageChecks.Launch(root, args.Contains("--source-assets"), args.Contains("--source-lighting")); break;
+        }
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if(args.Length>0 && args[0] is "build-atmosphere" or "validate-atmosphere" or "check-atmosphere-pixels" or "benchmark-atmosphere-gpu" or "benchmark-atmosphere" or "capture-atmosphere" or "validate-atmosphere-package")
+{
+    try
+    {
+        switch(args[0])
+        {
+            case "build-atmosphere": AtmosphereChecks.Build(root);break;
+            case "validate-atmosphere": AtmosphereChecks.Validate(root);break;
+            case "check-atmosphere-pixels": AtmosphereChecks.Pixels();break;
+            case "benchmark-atmosphere-gpu": AtmosphereChecks.Gpu(args.Contains("--reverse"));break;
+            case "validate-atmosphere-package": ReflectionStreamingChecks.Package(root,args[1],AtmosphereChecks.FileName);break;
+            case "capture-atmosphere":
+                string folder=Path.Combine(AppContext.BaseDirectory,"qa","atmosphere-views-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"));
+                Directory.CreateDirectory(folder);PbrBaselineChecks.Capture(root,AtmosphereChecks.FileName,folder,false,forceLegacy:false);Console.WriteLine(folder);break;
+            default: GameplayFrameChecks.Run(root,!args.Contains("--torch-off"),levelFile:AtmosphereChecks.FileName,residencyRoute:args.Contains("--route"),noAtmosphere:args.Contains("--effects-off"),stress:args.Contains("--stress"),nativeUi:args.Contains("--native-ui"),loadedInventory:args.Contains("--loaded-inventory"));break;
+        }
+    }
+    catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
+    return;
+}
 if(args.Length>0 && args[0] is "build-render-stress" or "validate-render-stress" or "cook-render-stress" or "check-render-stress-pixels" or "benchmark-submission" or "validate-submission-package" or "capture-render-stress-views")
 {
     try

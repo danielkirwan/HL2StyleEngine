@@ -16,6 +16,17 @@ public sealed record PreparedTexture(string Key, int Width, int Height, TextureS
     bool Compressed, byte[][] Mips)
 {
     public long Bytes => Mips.Sum(m => (long)m.Length);
+    public int FirstMip { get; init; }
+    public PreparedTexture MipTail(int firstMip)
+    {
+        if (firstMip < 0 || firstMip > 14) throw new ArgumentOutOfRangeException(nameof(firstMip));
+        int skip = Math.Clamp(firstMip - FirstMip, 0, Mips.Length - 1);
+        return skip == 0 ? this : this with
+        {
+            Width = Math.Max(1, Width >> skip), Height = Math.Max(1, Height >> skip),
+            Mips = Mips[skip..], FirstMip = FirstMip + skip
+        };
+    }
 }
 
 // Source GLBs remain authoritative. This cache is disposable and content-addressed.
@@ -115,8 +126,16 @@ public static class TextureCooker
     }
 
     public static bool TryRead(string path, string key, TextureSemantic semantic, out PreparedTexture? texture)
+        => TryReadMipTail(path, key, semantic, 0, out texture, out _);
+
+    // Explicit experimental residency path. Skipped payloads are validated when requested,
+    // not decoded just to discard them. Header/length checks still cover the entire file.
+    public static bool TryReadMipTail(string path, string key, TextureSemantic semantic, int firstMip,
+        out PreparedTexture? texture, out long payloadBytesRead)
     {
         texture = null;
+        payloadBytesRead = 0;
+        if (firstMip < 0 || firstMip > 14) throw new ArgumentOutOfRangeException(nameof(firstMip));
         try
         {
             using var file = File.OpenRead(path);
@@ -124,20 +143,26 @@ public static class TextureCooker
             if (reader.ReadUInt32() != 0x58543248 || reader.ReadInt32() != Version || reader.ReadString() != key) return false;
             int w = reader.ReadInt32(), h = reader.ReadInt32(), count = reader.ReadInt32();
             if (w < 1 || h < 1 || w > 16384 || h > 16384 || count != 1 + (int)Math.Floor(Math.Log2(Math.Max(w, h)))) return false;
-            var mips = new byte[count][];
+            int first = Math.Min(firstMip, count - 1);
+            var mips = new byte[count - first][];
             int mw = w, mh = h;
             for (int i = 0; i < count; i++)
             {
                 int length = reader.ReadInt32(), packed = reader.ReadInt32();
                 int expected = checked(((mw + 3) / 4) * ((mh + 3) / 4) * 16);
                 if (length != expected || length > MaxPayload || packed < 1 || packed > LZ4Codec.MaximumOutputSize(length) || packed > file.Length - file.Position - 32) return false;
-                byte[] hash = reader.ReadBytes(32), bytes = reader.ReadBytes(packed);
-                mips[i] = new byte[length];
-                if (LZ4Codec.Decode(bytes, mips[i]) != length || !SHA256.HashData(mips[i]).AsSpan().SequenceEqual(hash)) return false;
+                if (i < first) file.Seek(32L + packed, SeekOrigin.Current);
+                else
+                {
+                    byte[] hash = reader.ReadBytes(32), bytes = reader.ReadBytes(packed);
+                    payloadBytesRead += bytes.Length;
+                    mips[i - first] = new byte[length];
+                    if (LZ4Codec.Decode(bytes, mips[i - first]) != length || !SHA256.HashData(mips[i - first]).AsSpan().SequenceEqual(hash)) return false;
+                }
                 mw = Math.Max(1, mw / 2); mh = Math.Max(1, mh / 2);
             }
             if (file.Position != file.Length) return false;
-            texture = new PreparedTexture(key, w, h, semantic, true, mips);
+            texture = new PreparedTexture(key, Math.Max(1, w >> first), Math.Max(1, h >> first), semantic, true, mips) { FirstMip = first };
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or OverflowException or FormatException) { return false; }

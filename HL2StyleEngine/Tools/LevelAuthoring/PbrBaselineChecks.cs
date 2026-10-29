@@ -111,7 +111,7 @@ internal static class PbrBaselineChecks
             {
                 output.Frame(() => ((IWorldRenderer)module).RenderWorld(renderer), read: false);
                 bool ready = cache.Count > 0;
-                if (file is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName or ShadowStabilityChecks.FileName or RoomVisibilityChecks.FileName)
+                if (file is RoomReflectionChecks.FileName or RoomTransitionChecks.FileName or ReflectionStreamingChecks.FileName or PointLightOnlyChecks.FileName or LightingStabilityChecks.FileName or ShadowStabilityChecks.FileName or RoomVisibilityChecks.FileName or RenderStressTest.FileName or AtmosphereChecks.FileName)
                 {
                     var room = (ReflectionProbeSession)Field(module, "_roomReflections");
                     ready &= room.Ready && !room.Busy;
@@ -178,9 +178,10 @@ internal static class PbrBaselineChecks
             _staging = factory.CreateTexture(TextureDescription.Texture2D(width, height, 1, 1, format, TextureUsage.Staging));
             Framebuffer = factory.CreateFramebuffer(new FramebufferDescription(_depth, _color));
         }
-        public uint[] Frame(Action draw, bool read = true)
+        public uint[] Frame(Action draw, bool read = true, Action? overlay = null)
         {
             _renderer.BeginFrame(); draw(); _renderer.ResolveWorldToSwapchain(Framebuffer);
+            overlay?.Invoke();
             if (read) _renderer.CommandList.CopyTexture(_color, _staging);
             _renderer.EndFrame();
             if (!read) return [];

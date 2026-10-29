@@ -1,5 +1,9 @@
 **Open-source C++ engine research for HL2StyleEngine**
 
+Implementation follow-up (2026-10-27): the research-inspired [loading/package passes](LOADING_PACKAGE_GUIDE.md) are implemented in C#, following atmosphere acceptance. Immutable dependency metadata removes redundant model and lighting-fingerprint GLB reads; normal authoring validation and fallback remain. The original model-only milestone improved local warm first playable 2.8%; the subsequent lighting pass reduces worker/I/O cost but does not demonstrate an additional total-startup gain. No-build probes support later genuine post-restart samples; remaining startup work and mip residency remain next. This is not a new external-engine benchmark or native migration.
+
+Implementation follow-up (2026-10-26): remaining research-derived systems are now explicitly staged in the [approved roadmap backlog](ENGINE_TECHNOLOGY_ROADMAP.md#approved-research-backlog-2026-10-26), with additional horror-game audio, AI and effects clearly separated from source-derived work. [Optional atmosphere first pass](ATMOSPHERE_GUIDE.md) follows room visibility and render submission; loading instrumentation/packaging is recommended next. The research below remains its dated source review, not a new external-engine benchmark or a claim that the whole backlog has shipped.
+
 Researched: 22 October 2026. Target: atmospheric first-person environments inspired by Half-Life 2, BioShock, and Resident Evil Requiem, while retaining C# for gameplay and the runtime programming model.
 
 This is a source and documentation review. The engines were not built or benchmarked against this project. Rankings describe usefulness for learning and applicability to this codebase; they do not establish which engine is fastest. Public development branches and rolling documentation can differ from released SDKs. The snapshot table at the end records the source revisions used for the reading routes.

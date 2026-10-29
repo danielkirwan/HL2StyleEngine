@@ -184,6 +184,8 @@ internal sealed partial class HS2EditorModule
         using var objectUploads = _world.BatchObjectUploads();
         _world.UpdateCamera(viewProj, _cameraPosition);
         renderer.Exposure = _editor.LevelFile.Exposure;
+        renderer.ConfigurePostProcessing(_editor.LevelFile.PostProcessing, viewProj, _cameraPosition,
+            new Viewport(viewportX, viewportY, viewportWidth, viewportHeight, 0, 1));
         LevelLighting.Apply(_world, _editor, _cameraPosition, seconds: _lightingPreviewSeconds);
         _roomReflections.Update(_editor, ResolveContentAssetPath, _world, renderer, position: _cameraPosition);
         DrawSceneShadows(renderer, new Viewport(viewportX, viewportY, viewportWidth, viewportHeight, 0, 1));

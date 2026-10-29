@@ -6,7 +6,7 @@ using Veldrid;
 
 namespace Engine.Render;
 
-public sealed class Renderer : IDisposable
+public sealed partial class Renderer : IDisposable
 {
     public GraphicsDevice GraphicsDevice { get; }
     public ResourceFactory Factory => GraphicsDevice.ResourceFactory;
@@ -79,6 +79,8 @@ public sealed class Renderer : IDisposable
 
     public void Resize(uint w, uint h)
     {
+        DrainRetiredResources();
+        DisposeAtmosphere();
         _w = w;
         _h = h;
 
@@ -109,7 +111,7 @@ public sealed class Renderer : IDisposable
             mipLevels: 1,
             arrayLayers: 1,
             format: colorFormat,
-            usage: TextureUsage.RenderTarget,
+            usage: TextureUsage.RenderTarget | TextureUsage.Sampled,
             sampleCount: MsaaSamples));
 
         _msaaDepth = Factory.CreateTexture(TextureDescription.Texture2D(
@@ -118,7 +120,7 @@ public sealed class Renderer : IDisposable
             mipLevels: 1,
             arrayLayers: 1,
             format: depthFormat,
-            usage: TextureUsage.DepthStencil,
+            usage: TextureUsage.DepthStencil | TextureUsage.Sampled,
             sampleCount: MsaaSamples));
 
         _worldFramebuffer = Factory.CreateFramebuffer(new FramebufferDescription(
@@ -236,6 +238,8 @@ public sealed class Renderer : IDisposable
     public void BeginFrame()
     {
         CollectRetired();
+        _atmosphere = DisabledAtmosphere;
+        PostProcessPasses = 0;
         CommandList.Begin();
 
         CommandList.SetFramebuffer(_worldFramebuffer);
@@ -250,6 +254,12 @@ public sealed class Renderer : IDisposable
         CommandList.ResolveTexture(_msaaColor, _resolveColor);
 
         var scFb = presentationTarget ?? GraphicsDevice.MainSwapchain.Framebuffer;
+        if (_atmosphere.Active)
+        {
+            DrawAtmosphere(scFb);
+            return;
+        }
+        ReleaseBloomTargets();
         CommandList.SetFramebuffer(scFb);
 
         CommandList.SetPipeline(_presentPipeline);
@@ -276,6 +286,7 @@ public sealed class Renderer : IDisposable
     public void Dispose()
     {
         DrainRetiredResources();
+        DisposeAtmosphere();
         _presentPipeline?.Dispose();
         _exposureBuffer?.Dispose();
         _presentSet?.Dispose();

@@ -50,6 +50,8 @@ public sealed class ImGuiLayer : IDisposable
 
     public void Render(GraphicsDevice gd, CommandList cl) => _imgui.Render(gd, cl);
     public UiImage GetImage(string path) => _images.Get(path, _device, _imgui);
+    public long ImageResidentBytes => _images.ResidentBytes;
+    public bool TryPreloadImage(string path, long budget) => _images.TryPreload(path, _device, _imgui, budget);
 
     public void Dispose()
     {

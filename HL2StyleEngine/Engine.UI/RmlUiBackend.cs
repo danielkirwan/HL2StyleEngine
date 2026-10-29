@@ -5,6 +5,7 @@ using Engine.UI.Rml;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Net;
 
 namespace Engine.UI;
 
@@ -25,6 +26,15 @@ public sealed class RmlUiBackend : IDisposable
     private IntPtr _context;
     private IntPtr _gameplayDocument;
     private int _hoveredDataSlot = -1;
+    private bool _overlayPrepared;
+    private IntPtr _resourceDocument;
+    private readonly Queue<string> _pendingIcons = new();
+    private readonly HashSet<string> _queuedIcons = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _preparedNames = new(StringComparer.Ordinal);
+    private long _queuedIconBytes;
+    private long _preparedTitleBytes;
+    private const long IconPreloadBudget = 16 * 1024 * 1024;
+    public long PreloadedIconBytes => _queuedIconBytes;
 
     private RmlUiBackend(string contentRoot, IntPtr nativeBridgeHandle, RmlUiNativeApi? nativeApi, string status)
     {
@@ -36,6 +46,7 @@ public sealed class RmlUiBackend : IDisposable
     }
 
     public string Name => "RmlUi";
+    public UiWorkProfile? Profile { get => _textImageCache.Profile; set => _textImageCache.Profile = value; }
     public string ContentRoot { get; }
     public string Status { get; private set; }
     public string RenderStatus => _overlayRenderer.Status;
@@ -45,6 +56,7 @@ public sealed class RmlUiBackend : IDisposable
     public bool TestDocumentEnabled { get; } = TestDocumentOptedIn();
 
     public bool NativeBridgeFound => _nativeBridgeHandle != IntPtr.Zero;
+    public bool HasNativeApi => _nativeApi != null;
 
     public bool IsReady => _nativeApi != null && _context != IntPtr.Zero;
 
@@ -80,15 +92,15 @@ public sealed class RmlUiBackend : IDisposable
             normalizedRoot,
             IntPtr.Zero,
             null,
-            $"RmlUi native bridge '{nativeBridgeName}' not found. ImGui gameplay UI fallback is active while RmlUi assets are generated.");
+            $"RmlUi native bridge '{nativeBridgeName}' not found. ImGui gameplay UI fallback is available.");
     }
 
     public void SubmitState(GameplayUiState state)
     {
         _state = state;
-        string document = TestDocumentEnabled
-            ? BuildTestDocument(state)
-            : RmlUiDocumentBuilder.Build(state, _textImageCache.TryGetTextImage);
+        string document;
+        using (Profile?.Measure("document-build"))
+            document = TestDocumentEnabled ? BuildTestDocument(state) : RmlUiDocumentBuilder.Build(state, _textImageCache.TryGetTextImage);
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(document)));
         if (hash == _lastDocumentHash)
             return;
@@ -96,10 +108,11 @@ public sealed class RmlUiBackend : IDisposable
         _lastDocumentHash = hash;
         _pendingDocument = document;
         _documentDirty = true;
-        WriteRuntimeDocument(document);
+        using (Profile?.Measure("document-write")) WriteRuntimeDocument(document);
 
         if (_nativeApi != null && _gameplayDocument != IntPtr.Zero)
         {
+            using var refresh = Profile?.Measure("native-refresh");
             if (_nativeApi.TrySetDocumentBody(_gameplayDocument, document))
                 _documentDirty = false;
             else
@@ -109,6 +122,7 @@ public sealed class RmlUiBackend : IDisposable
 
     public void Update(RmlUiFrameContext context)
     {
+        using var measure = Profile?.Measure("native-update");
         if (_nativeApi == null)
             return;
 
@@ -129,11 +143,12 @@ public sealed class RmlUiBackend : IDisposable
 
     public void RenderOverlay(Renderer renderer)
     {
+        using var measure = Profile?.Measure("native-render-upload");
         if (!IsReady)
             return;
 
-        _nativeApi!.Render(_context);
-        UploadDirtyTextures(renderer);
+        using (Profile?.Measure("native-geometry")) _nativeApi!.Render(_context);
+        using (Profile?.Measure("native-texture-upload")) UploadDirtyTextures(renderer);
 
         if (!_nativeApi.TryGetRenderData(_context, out RmlUiRenderData renderData))
         {
@@ -143,7 +158,7 @@ public sealed class RmlUiBackend : IDisposable
 
         try
         {
-            _overlayRenderer.Render(renderer, renderData);
+            using (Profile?.Measure("native-submit")) _overlayRenderer.Render(renderer, renderData);
         }
         finally
         {
@@ -165,6 +180,72 @@ public sealed class RmlUiBackend : IDisposable
 
         _textImageCache.Dispose();
         _overlayRenderer.Dispose();
+    }
+
+    public void PrewarmOverlay(Renderer renderer)
+    {
+        if (!IsReady) return;
+        using var measure = Profile?.Measure("native-prewarm");
+        PrewarmItemResources(renderer);
+        if (_overlayPrepared) return;
+        // Prepare the currently loaded document's resources without drawing it or changing focus.
+        _nativeApi!.Render(_context);
+        UploadDirtyTextures(renderer);
+        _overlayPrepared = _overlayRenderer.Prepare(renderer);
+        if (_nativeApi.TryGetRenderData(_context, out var data))
+        {
+            try { _overlayRenderer.Render(renderer, data, submit: false); }
+            finally { _nativeApi.ReleaseRenderData(_context); }
+        }
+    }
+
+    public void QueuePreloadIcon(string path, long bytes)
+    {
+        try { path = Path.GetFullPath(path); }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return; }
+        if (bytes <= 0 || bytes > IconPreloadBudget - _queuedIconBytes || _queuedIcons.Count >= 64 ||
+            !path.StartsWith(Path.TrimEndingDirectorySeparator(ContentRoot) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !_queuedIcons.Add(path)) return;
+        _queuedIconBytes += bytes;
+        _pendingIcons.Enqueue(path);
+    }
+
+    private void PrewarmItemResources(Renderer renderer)
+    {
+        string images = "";
+        if (_pendingIcons.TryDequeue(out string? icon))
+            images = ImageTag(Path.GetRelativePath(Path.Combine(ContentRoot, "Runtime"), icon).Replace('\\', '/'));
+        // The selected-item title is the only raster text in the main inventory grid.
+        // Warm current/save item names incrementally, not arbitrary dynamic strings.
+        if (_preparedNames.Count < 64)
+        {
+            var item = _state.InventoryItems.Concat(_state.StorageItems).FirstOrDefault(i => i.DisplayName.Length <= 256 && !_preparedNames.Contains(i.DisplayName));
+            if (item != null)
+            {
+                _preparedNames.Add(item.DisplayName);
+                if (_textImageCache.TryGetTextImage(item.DisplayName, "subtitle", 16, out var text))
+                {
+                    long bytes = (long)text.Width * text.Height * 4;
+                    if (bytes <= 4 * 1024 * 1024 - _preparedTitleBytes)
+                    {
+                        images += ImageTag(text.Source);
+                        _preparedTitleBytes += bytes;
+                    }
+                }
+            }
+        }
+        if (images.Length == 0) return;
+        const string resourcePath = "Runtime/preload_ui_resources.rml";
+        if (_resourceDocument == IntPtr.Zero)
+        {
+            Directory.CreateDirectory(Path.Combine(ContentRoot, "Runtime"));
+            File.WriteAllText(Path.Combine(ContentRoot, resourcePath), "<rml><head></head><body></body></rml>");
+            if (!_nativeApi!.LoadDocument(_context, resourcePath, out _resourceDocument)) return;
+        }
+        // Never shown or focused. Loading each resource here populates RmlUi's own
+        // texture cache; ImGui's image cache cannot satisfy native texture requests.
+        if (_nativeApi!.TrySetDocumentBody(_resourceDocument, "<rml><head></head><body>" + images + "</body></rml>"))
+            UploadDirtyTextures(renderer);
+        static string ImageTag(string path) => "<img src='" + WebUtility.HtmlEncode(path) + "' width='1' height='1'/>";
     }
 
     private void EnsureContext(RmlUiFrameContext frameContext)

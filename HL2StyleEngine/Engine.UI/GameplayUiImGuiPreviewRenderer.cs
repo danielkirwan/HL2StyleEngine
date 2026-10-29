@@ -5,6 +5,7 @@ namespace Engine.UI;
 
 internal sealed class GameplayUiImGuiPreviewRenderer
 {
+    public UiWorkProfile? Profile { get; set; }
     public Func<string, Engine.Render.UiImage>? IconResolver { get; set; }
     public bool Draw(GameplayUiState state, out int selectedSlot)
     {
@@ -46,7 +47,7 @@ internal sealed class GameplayUiImGuiPreviewRenderer
         if (state.InventoryOpen)
             selectedSlot = state.UsingInventoryItem
                 ? DrawUseItemPanel(state, viewport)
-                : InventoryPreviewRenderer.Draw(state, viewport, IconResolver);
+                : InventoryPreviewRenderer.Draw(state, viewport, IconResolver, Profile);
 
         DrawLoadingOverlay(state, viewport);
         return true;

@@ -10,6 +10,20 @@ public readonly record struct UiImage(IntPtr Id, int Width, int Height);
 internal sealed class ImGuiImageCache : IDisposable
 {
     private readonly Dictionary<string, (UiImage Image, Texture? Texture, TextureView? View)> _images = new(StringComparer.OrdinalIgnoreCase);
+    public long ResidentBytes { get; private set; }
+
+    public bool TryPreload(string path, GraphicsDevice device, ImGuiRenderer renderer, long budget)
+    {
+        if (_images.TryGetValue(path, out var cached)) return cached.Image.Id != IntPtr.Zero;
+        if (!OperatingSystem.IsWindows() || !File.Exists(path) || budget <= ResidentBytes) return false;
+        try
+        {
+            using var image = new Bitmap(path);
+            if ((long)image.Width * image.Height * 4 > budget - ResidentBytes) return false;
+            return Get(path, device, renderer).Id != IntPtr.Zero;
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or ExternalException) { return false; }
+    }
 
     public UiImage Get(string path, GraphicsDevice device, ImGuiRenderer renderer)
     {
@@ -37,6 +51,7 @@ internal sealed class ImGuiImageCache : IDisposable
             view = device.ResourceFactory.CreateTextureView(texture);
             var image = new UiImage(renderer.GetOrCreateImGuiBinding(device.ResourceFactory, view), bitmap.Width, bitmap.Height);
             _images[path] = (image, texture, view);
+            ResidentBytes += (long)bitmap.Width * bitmap.Height * 4;
             return image;
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or ExternalException)
@@ -51,5 +66,6 @@ internal sealed class ImGuiImageCache : IDisposable
     {
         foreach (var item in _images.Values) { item.View?.Dispose(); item.Texture?.Dispose(); }
         _images.Clear();
+        ResidentBytes = 0;
     }
 }

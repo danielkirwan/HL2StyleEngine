@@ -17,6 +17,10 @@ internal sealed class RmlUiTextImageCache : IDisposable
     private readonly string _outputDirectory;
     private readonly PrivateFontCollection _fonts = new();
     private readonly bool _available;
+    private readonly Dictionary<(string Text, string Role, int Height, long FontStamp), CachedImage> _metadata = new();
+    private readonly record struct CachedImage(RmlUiTextImage Image, string Path, long Length, long Stamp);
+    private const int MaxMetadataEntries = 1024;
+    public UiWorkProfile? Profile { get; set; }
 
     public RmlUiTextImageCache(string contentRoot)
     {
@@ -39,15 +43,28 @@ internal sealed class RmlUiTextImageCache : IDisposable
 
     public bool TryGetTextImage(string text, string role, int pixelHeight, out RmlUiTextImage image)
     {
+        using var measure = Profile?.Measure("text-image");
         image = default;
         if (!_available || string.IsNullOrWhiteSpace(text) || pixelHeight <= 0 || !OperatingSystem.IsWindows())
             return false;
 
         try
         {
+            long fontStamp = File.Exists(_fontPath) ? File.GetLastWriteTimeUtc(_fontPath).Ticks : 0;
+            var metadataKey = (text, role, pixelHeight, fontStamp);
+            if (_metadata.TryGetValue(metadataKey, out var cached))
+            {
+                var file = new FileInfo(cached.Path);
+                if (file.Exists && file.Length == cached.Length && file.LastWriteTimeUtc.Ticks == cached.Stamp)
+                {
+                    image = cached.Image;
+                    return true;
+                }
+                _metadata.Remove(metadataKey);
+            }
             Directory.CreateDirectory(_outputDirectory);
 
-            string key = BuildKey(text, role, pixelHeight);
+            string key = BuildKey(text, role, pixelHeight, fontStamp);
             string fileName = $"{key}.png";
             string path = Path.Combine(_outputDirectory, fileName);
 
@@ -56,6 +73,9 @@ internal sealed class RmlUiTextImageCache : IDisposable
 
             using Bitmap bitmap = new(path);
             image = new RmlUiTextImage($"Text/{fileName}", bitmap.Width, bitmap.Height);
+            var info = new FileInfo(path);
+            if (_metadata.Count >= MaxMetadataEntries) _metadata.Clear();
+            _metadata[metadataKey] = new(image, path, info.Length, info.LastWriteTimeUtc.Ticks);
             return true;
         }
         catch
@@ -68,9 +88,8 @@ internal sealed class RmlUiTextImageCache : IDisposable
     public void Dispose()
         => _fonts.Dispose();
 
-    private string BuildKey(string text, string role, int pixelHeight)
+    private static string BuildKey(string text, string role, int pixelHeight, long fontStamp)
     {
-        long fontStamp = File.Exists(_fontPath) ? File.GetLastWriteTimeUtc(_fontPath).Ticks : 0;
         string raw = $"{role}\n{pixelHeight}\n{fontStamp}\n{text}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant()[..16];
     }

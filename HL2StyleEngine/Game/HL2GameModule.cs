@@ -170,6 +170,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private int _playerHealth = 100;
     private int _playerSuit = 75;
     private float _loadingOverlayTimer;
+    private bool _saveSerializationPrepared;
     private readonly InventoryContainer _inventory = new(gridWidth: 8, gridHeight: 4, overflowRows: 4);
     private readonly InventoryContainer _storage = new(gridWidth: 8, gridHeight: 6);
     private readonly HashSet<string> _collectedInteractables = new(StringComparer.OrdinalIgnoreCase);
@@ -285,9 +286,12 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private const string InteractionPuzzleLever = "PuzzleLever";
     private const string InteractionPuzzleDoor = "PuzzleDoor";
 
-    public HL2GameModule(string? initialLevelPath = null)
+    public HL2GameModule(string? initialLevelPath = null, string? assetRoot = null, AssetPackage? package = null, string? saveDirectory = null)
     {
         _initialLevelPath = string.IsNullOrWhiteSpace(initialLevelPath) ? null : initialLevelPath;
+        _assetRoot = Path.GetFullPath(assetRoot ?? package?.Root ?? AppContext.BaseDirectory);
+        _assetPackage = package;
+        SaveDirectory = Path.GetFullPath(saveDirectory ?? Path.Combine(AppContext.BaseDirectory, "Saves"));
     }
     public InputState InputState => _inputState;
     private bool GameplayModalOpen => !_editorEnabled && (_inventoryOpen || _storageOpen || _itemCollectedOpen || _spawnCommandOpen || _saveSlotPanelOpen || _pauseMenuOpen || _loadSlotPanelOpen);
@@ -304,12 +308,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     private const float PlayerCharacterYawOffsetRadians = 0f;
     private static readonly Vector4 PlayerCharacterTint = Vector4.One;
     private static readonly Vector4 PlayerCharacterFallbackColor = new(0.35f, 0.48f, 0.62f, 0.78f);
-    private string SaveDirectory => Path.Combine(AppContext.BaseDirectory, "Saves");
+    private string SaveDirectory { get; }
     private string PrototypeSavePath => Path.Combine(SaveDirectory, "prototype_save.json");
 
     public void Initialize(EngineContext context)
     {
         _ctx = context;
+        InitializeFingerprintReaders();
+        using var initialize = context.Loading?.Measure("game-initialize");
 
         _world = new BasicWorldRenderer(
             _ctx.Renderer.GraphicsDevice,
@@ -335,8 +341,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         string levelsDirectory = GetPracticeLevelsDirectory();
         EnsurePracticeLevelTemplates(levelsDirectory);
         string levelPath = ResolveInitialLevelPath(_initialLevelPath) ?? Path.Combine(levelsDirectory, MeshedPracticeLevelFileName);
-        _editor.LoadOrCreate(levelPath, GetDefaultLevelFactoryForPath(levelPath));
-        RebuildRuntimeWorld();
+        using (context.Loading?.Measure("level-read"))
+            _editor.LoadOrCreate(levelPath, GetDefaultLevelFactoryForPath(levelPath));
+        using (context.Loading?.Measure("world-and-physics-create"))
+            RebuildRuntimeWorld();
         if (!string.IsNullOrWhiteSpace(_initialLevelPath) || !TryLoadPrototypeSave())
         {
             ApplySpawnFromEditor(forceResetVelocity: true);
@@ -444,6 +452,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             _interactionPromptGraceTimer = MathF.Max(0f, _interactionPromptGraceTimer - dt);
         if (_loadingOverlayTimer > 0f)
             _loadingOverlayTimer = MathF.Max(0f, _loadingOverlayTimer - dt);
+        PrewarmNextUiImage();
+        PrepareSaveSerialization();
         _weaponSystem.Update(dt);
         UpdateFractureDebris(dt);
         UpdatePendingReplacements();
@@ -677,11 +687,16 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     }
 
     private void ShowLoadingOverlay()
-        => _loadingOverlayTimer = LoadingOverlaySeconds;
+    {
+        _loadingOverlayTimer = LoadingOverlaySeconds;
+        QueueLevelUiImages();
+    }
 
     private void UpdateGameplayUi(float dt)
     {
-        _gameplayUi.SubmitState(BuildGameplayUiState());
+        GameplayUiState state;
+        using (_gameplayUi.Profile?.Measure("game-state")) state = BuildGameplayUiState();
+        using (_gameplayUi.Profile?.Measure("submit-state")) _gameplayUi.SubmitState(state);
         _gameplayUi.Update(new RmlUiFrameContext(
             _ctx.Renderer,
             _inputState,
@@ -790,7 +805,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             SelectedLoadSlotIndex = _selectedLoadSlotIndex,
             SelectedPauseMenuIndex = _selectedPauseMenuIndex,
             SaveOverwriteConfirmOpen = _saveOverwriteConfirmOpen,
-            SaveSlots = BuildSaveSlotUiItems(),
+            SaveSlots = !_editorEnabled && (_saveSlotPanelOpen || _loadSlotPanelOpen) ? BuildSaveSlotUiItems() : [],
             InventoryItems = items,
             StorageItems = storageItems,
             CollectedItem = BuildCollectedItemUiState()
@@ -983,6 +998,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private List<GameplayUiSaveSlot> BuildSaveSlotUiItems()
     {
+        using var measure = _gameplayUi?.Profile?.Measure("save-slot-summaries");
         List<GameplayUiSaveSlot> slots = new(SaveSlotCount);
         for (int i = 0; i < SaveSlotCount; i++)
         {
@@ -1501,6 +1517,27 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         }
     }
 
+    private void PrepareSaveSerialization()
+    {
+        if (_saveSerializationPrepared || _editorEnabled || _loadingOverlayTimer <= 0f) return;
+        _saveSerializationPrepared = true;
+        using var timing = _ctx?.Loading?.Measure("startup-save-serialization");
+        // Exercise nested save contracts once during loading without capturing live
+        // state or touching disk. The real save still uses the same durable writer.
+        var sample = new PrototypeSaveData
+        {
+            InventoryItems = [new() { ItemId = ItemCatalog.InkRibbon, Count = 1 }],
+            StorageItems = [new() { ItemId = ItemCatalog.Fuse, Count = 1 }],
+            DroppedItems = [new() { ItemId = ItemCatalog.Fuse, Count = 1 }],
+            BrokenObjects = [new()], LightStates = [new()], WeaponStates = [new()]
+        };
+        try { _ = Engine.Core.Serialization.StructuredData.WriteJson(sample); }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or ArgumentException)
+        {
+            Console.Error.WriteLine("[Save] Serializer preparation skipped: " + ex.Message);
+        }
+    }
+
     private bool SavePrototypeGame(string savePointName, int slotIndex)
     {
         try
@@ -1553,7 +1590,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
             Directory.CreateDirectory(SaveDirectory);
 
-            Engine.Core.Serialization.StructuredData.Save(GetSaveSlotPath(safeSlot), data);
+            using (_gameplayUi?.Profile?.Measure("save-persistence"))
+                Engine.Core.Serialization.StructuredData.Save(GetSaveSlotPath(safeSlot), data);
             ShowGameMessage($"Saved to Slot {safeSlot + 1} at {savePointDisplayName}. Ink ribbons left: {_inventory.GetCount(ItemCatalog.InkRibbon)}.");
             return true;
         }
@@ -3892,10 +3930,10 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     {
         return collider.Shape switch
         {
-            RuntimeShapeKind.Sphere => WorldCollider.Sphere(position, collider.Radius),
-            RuntimeShapeKind.Capsule => WorldCollider.Capsule(position, collider.Radius, collider.Height, rotation),
-            RuntimeShapeKind.Mesh when collider.Mesh != null => WorldCollider.Mesh(collider.Mesh),
-            _ => WorldCollider.Box(position, collider.HalfExtents, rotation)
+            RuntimeShapeKind.Sphere => collider.Geometry.Sphere(position, collider.Radius),
+            RuntimeShapeKind.Capsule => collider.Geometry.Capsule(position, collider.Radius, collider.Height, rotation),
+            RuntimeShapeKind.Mesh when collider.Mesh != null => collider.Geometry.Mesh(collider.Mesh),
+            _ => collider.Geometry.Box(position, collider.HalfExtents, rotation)
         };
     }
 
@@ -3906,22 +3944,23 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
     {
         if (entity.Physics.BoxBody != null)
         {
-            collider = WorldCollider.Box(entity.Physics.BoxBody.Center, entity.Physics.BoxBody.HalfExtents, entity.Physics.Rotation);
+            collider = entity.Physics.Geometry.Box(entity.Physics.BoxBody.Center, entity.Physics.BoxBody.HalfExtents, entity.Physics.Rotation);
             return true;
         }
 
         if (entity.Physics.SphereBody != null)
         {
-            collider = WorldCollider.Sphere(entity.Physics.SphereBody.Center, entity.Physics.SphereBody.Radius);
+            collider = entity.Physics.Geometry.Sphere(entity.Physics.SphereBody.Center, entity.Physics.SphereBody.Radius);
             return true;
         }
 
         if (entity.Physics.CapsuleBody != null)
         {
-            collider = WorldCollider.Capsule(entity.Physics.CapsuleBody.Center, entity.Physics.CapsuleBody.Radius, entity.Physics.CapsuleBody.Height, entity.Physics.Rotation);
+            collider = entity.Physics.Geometry.Capsule(entity.Physics.CapsuleBody.Center, entity.Physics.CapsuleBody.Radius, entity.Physics.CapsuleBody.Height, entity.Physics.Rotation);
             return true;
         }
 
+        entity.Physics.Geometry.Clear();
         collider = default;
         return false;
     }
@@ -4989,6 +5028,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private bool TryGetSupportState(Entity entity, bool requireStableSupport, out BoxSupportState supportState, out Aabb supportAabb)
     {
+        using var timing = _ctx?.Loading?.Measure("startup-physics-support");
         supportState = default;
         supportAabb = default;
 
@@ -5036,13 +5076,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         return segmentSupportCenter - Vector3.UnitY * collider.Radius;
     }
 
-    private bool TryApplyGravityToppleTorque(Entity entity, float dt, ref Vector3 angularVelocity)
+    private bool TryApplyGravityToppleTorque(Entity entity, float dt, ref Vector3 angularVelocity, BoxSupportState supportState)
     {
-        if (!TryGetSupportState(entity, requireStableSupport: false, out BoxSupportState supportState, out _))
-        {
-            return false;
-        }
-
         Vector3 lever = supportState.Lever;
 
         float leverLenSq = lever.LengthSquared();
@@ -5068,21 +5103,14 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         return true;
     }
 
-    private bool TryApplyBoxSupportToppleTorque(Entity entity, float dt, ref Vector3 angularVelocity, out BoxSupportState supportState)
+    private bool TryApplyBoxSupportToppleTorque(Entity entity, float dt, ref Vector3 angularVelocity, BoxSupportState supportState)
     {
-        supportState = default;
-
         if (GetPhysicsBodyShape(entity) != RuntimeShapeKind.Box)
         {
             return false;
         }
 
         Vector3 halfExtents = entity.Physics.BoxBody?.HalfExtents ?? entity.Render.Size * 0.5f;
-
-        if (!TryGetSupportState(entity, requireStableSupport: false, out supportState, out _))
-        {
-            return false;
-        }
 
         float leverLenSq = supportState.Lever.LengthSquared();
         bool faceSupported = supportState.PolygonCount >= 3 && supportState.CornerCount >= 3;
@@ -5309,12 +5337,15 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private void IntegrateEntityRotation(Entity entity, float dt)
     {
+        using var timing = _ctx?.Loading?.Measure("startup-physics-rotation");
         if (!HasPhysicsBody(entity))
             return;
 
         Vector3 angularVelocity = entity.Physics.AngularVelocity;
         RuntimeShapeKind shape = GetPhysicsBodyShape(entity);
-        bool touchingSupport = TryGetSupportState(entity, requireStableSupport: false, out _, out _);
+        // No pose/contact mutation occurs before the torque calls below. Reuse only
+        // within this integration, never across bodies, substeps, or corrections.
+        bool touchingSupport = TryGetSupportState(entity, requireStableSupport: false, out BoxSupportState supportState, out _);
         float damping = MathF.Max(0f, 1f - entity.Physics.AngularDamping * dt);
         angularVelocity *= damping;
 
@@ -5355,11 +5386,11 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         {
             if (shape == RuntimeShapeKind.Box)
             {
-                TryApplyBoxSupportToppleTorque(entity, dt, ref angularVelocity, out _);
+                TryApplyBoxSupportToppleTorque(entity, dt, ref angularVelocity, supportState);
             }
             else
             {
-                TryApplyGravityToppleTorque(entity, dt, ref angularVelocity);
+                TryApplyGravityToppleTorque(entity, dt, ref angularVelocity, supportState);
             }
         }
 
@@ -5394,6 +5425,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private void StepPhysicsBody(Entity entity, float dt)
     {
+        using var timing = _ctx?.Loading?.Measure("startup-physics-body");
         if (entity.Physics.BoxBody != null)
         {
             Vector3 predictedVelocity = PredictVelocityWithoutCollision(
@@ -5969,13 +6001,17 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private void BuildRuntimeCollidersThisFrame(bool includeDynamicBodies, bool includeHeldBodies)
     {
+        using var timing = _ctx?.Loading?.Measure("startup-physics-colliders");
         _runtimeWorldColliders.Clear();
 
         for (int i = 0; i < _runtimeEntities.Count; i++)
         {
             var e = _runtimeEntities[i];
             if (!e.Collider.Enabled || !e.Collider.IsSolid)
+            {
+                e.Collider.Geometry.Clear();
                 continue;
+            }
 
             bool isDynamic = (e.Physics.MotionType == MotionType.Dynamic);
 
@@ -6275,7 +6311,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         // 7) Player collides with EVERYTHING (STATIC + KINEMATIC + DYNAMIC), except held
         BuildRuntimeCollidersThisFrame(includeDynamicBodies: true, includeHeldBodies: false);
 
-        _motor.Step(fixedDt, _wishDir, _wishSpeed, _runtimeWorldColliders);
+        using (_ctx?.Loading?.Measure("startup-physics-player"))
+            _motor.Step(fixedDt, _wishDir, _wishSpeed, _runtimeWorldColliders);
 
         // 8) Push dynamic boxes Half-Life style
         PushDynamicBodiesFromPlayer(fixedDt);
@@ -6989,18 +7026,20 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         var viewProj = view * proj;
 
         _world.BeginFrame();
-        _bakedLighting.Update(_editor, ResolveModelAssetPath, _world, renderer, _editorEnabled ? null : _lightState);
+        _bakedLighting.Update(_editor, ResolveModelAssetPath, _world, renderer, _editorEnabled ? null : _lightState, LightingFingerprints);
         using var objectUploads = _world.BatchObjectUploads();
         _world.UpdateCamera(viewProj, _camera.Position);
         UpdateRoomVisibility(viewProj);
         renderer.Exposure = _editor.LevelFile.Exposure;
+        renderer.ConfigurePostProcessing(_editor.LevelFile.PostProcessing, viewProj, _camera.Position,
+            new Viewport(0, 0, _ctx.Window.Window.Width, _ctx.Window.Window.Height, 0, 1));
         WorldPointLight? flashlight = !_editorEnabled && _flashlightOn
             ? CreateFlashlight()
             : null;
         LevelLighting.Apply(_world, _editor, _camera.Position, flashlight, _editorEnabled ? null : _lightState,
             _editorEnabled ? _editorLightingSeconds : _playTimeSeconds);
         PlanModelResidency();
-        _roomReflections.Update(_editor, ResolveModelAssetPath, _world, renderer, _editorEnabled ? null : _lightState, position: _camera.Position);
+        _roomReflections.Update(_editor, ResolveModelAssetPath, _world, renderer, _editorEnabled ? null : _lightState, position: _camera.Position, fingerprints: LightingFingerprints);
         PumpModelUploads();
         EvictDistantModels();
         if (RenderPreparationEnabled && !_editorEnabled) PrepareRenderScene(renderer);
@@ -9885,6 +9924,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     private void ResolveDynamicDynamic(int iterations = 3)
     {
+        using var timing = _ctx?.Loading?.Measure("startup-physics-dynamic-pairs");
         // gather indices for dynamic bodies (skip held)
         Span<int> dyn = stackalloc int[_runtimeEntities.Count];
         int dynCount = 0;

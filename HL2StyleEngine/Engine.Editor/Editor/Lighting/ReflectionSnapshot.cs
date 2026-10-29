@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
 using Engine.Core.Serialization;
+using Engine.Core.Assets;
 using Engine.Editor.Level;
 using Engine.Physics.Dynamics;
 using Engine.Render;
@@ -53,6 +54,7 @@ public sealed class ReflectionSnapshot
         level.AutomaticRoomReflections = false;
         level.ReflectionStreaming = null;
         level.RoomVisibility = null;
+        level.PostProcessing = null;
         // Sampling links do not contribute energy to the capture.
         foreach (var entity in level.Entities)
             if (entity.ReflectionProbe != null) entity.ReflectionProbe.Doorway = null;
@@ -97,15 +99,16 @@ public sealed class ReflectionSnapshot
         return false;
     }
 
-    public string Key(CancellationToken cancel = default)
+    public string Key(CancellationToken cancel = default, AssetFingerprintReader? fingerprints = null)
     {
+        using var timing = fingerprints?.Profile?.Measure("reflection-key");
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         hash.AppendData(Encoding.UTF8.GetBytes("HS2-room-capture-1/filter-" + ReflectionEnvironmentData.Version)); hash.AppendData(Json);
         foreach (var entry in Dependencies.OrderBy(e => e.Key, StringComparer.Ordinal))
         {
             cancel.ThrowIfCancellationRequested();
             hash.AppendData(Encoding.UTF8.GetBytes(entry.Key));
-            using var stream = File.OpenRead(entry.Value); hash.AppendData(SHA256.HashData(stream));
+            hash.AppendData(AssetFingerprintReader.ReadHash(entry.Value, "reflection-dependency", fingerprints, cancel));
         }
         return Convert.ToHexString(hash.GetHashAndReset());
     }

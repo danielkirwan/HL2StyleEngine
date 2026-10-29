@@ -1,5 +1,16 @@
 # Physics
 
+## Geometry Reuse (2026-10-28)
+
+Game collider/body states now each own a one-entry `WorldColliderCache`. Exact
+shape/pose/dimension keys and immutable mesh identity prevent stale geometry,
+including within contact resolution; no support/manifold results persist between
+steps. Rotation reuses its support query locally before pose changes. Solver
+ordering/settings and authored mesh shapes remain unchanged. Diagnostic reuse
+bypass/counters assume the existing single simulation thread. See the
+[physics startup guide](../Game/PHYSICS_STARTUP_GUIDE.md) for exact replay tests,
+same-binary startup evidence, gameplay acceptance and remaining limits.
+
 ## Mesh Query Acceleration (2026-10-06)
 
 `MeshCollisionMesh` builds a bounding-volume hierarchy once from its immutable triangles. Sphere, box and capsule mesh contacts, plus mesh raycasts, query nearby triangles through this tree instead of scanning every triangle. Triangle order remains unchanged in the mesh and returned candidate indices are sorted into the original order to preserve contact/ray tie-breaking. Collision skin expands contact queries conservatively. Existing solver, gravity, friction, sleeping and collider transforms are unchanged.

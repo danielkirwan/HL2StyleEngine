@@ -3,6 +3,7 @@ using Engine.Physics.Collision;
 using Engine.Render;
 using System.Numerics;
 using System.Security.Cryptography;
+using Engine.Core.Assets;
 
 namespace Game;
 
@@ -35,8 +36,7 @@ public sealed partial class HL2GameModule
                 string path = ResolveModelAssetPath(def.MeshPath);
                 if (!_collisionSourceHashes.TryGetValue(path, out var hash))
                 {
-                    using var source = File.OpenRead(path);
-                    _collisionSourceHashes[path] = hash = SHA256.HashData(source);
+                    _collisionSourceHashes[path] = hash = AssetFingerprintReader.ReadHash(path, "collision-dependency", _strictFingerprints);
                 }
                 key = CreateCollisionCacheKey(hash, position, size, rotation);
                 directory = Path.Combine(Path.GetDirectoryName(TextureCooker.CacheDirectory(path))!, "collision");

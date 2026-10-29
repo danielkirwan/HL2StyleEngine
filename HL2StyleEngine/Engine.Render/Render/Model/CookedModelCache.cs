@@ -2,6 +2,8 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Diagnostics;
+using Engine.Core.Diagnostics;
 using K4os.Compression.LZ4;
 
 namespace Engine.Render;
@@ -13,6 +15,7 @@ public static class CookedModelCache
     private const int Version = 3, MaxPayload = 512 * 1024 * 1024, MaxParts = 65536, MaxStringBytes = 4096;
     public static bool Enabled { get; set; } = Environment.GetEnvironmentVariable("HS2_MODEL_CACHE") != "0";
     public static long CacheHits, FallbackLoads, CookedModels;
+    public static int FormatVersion => Version;
 
     public static string CacheDirectory(string source)
         => Path.Combine(Path.GetDirectoryName(TextureCooker.CacheDirectory(source))!, "models");
@@ -20,15 +23,20 @@ public static class CookedModelCache
     public static string CachePath(string source)
         => PathForHash(source, SHA256.HashData(File.ReadAllBytes(source)));
 
-    private static string PathForHash(string source, byte[] hash)
+    public static string PathForHash(string source, byte[] hash)
         => Path.Combine(CacheDirectory(source), $"v{Version}-{Convert.ToHexString(hash)}.hs2model");
 
-    public static LoadedModel Load(string source)
+    public static LoadedModel Load(string source, LoadProfile? profile = null)
     {
+        long start = Stopwatch.GetTimestamp();
         byte[] bytes = File.ReadAllBytes(source);
+        profile?.Record("model-source-read", Stopwatch.GetTimestamp() - start, bytes.Length);
         if (Enabled)
         {
+            start = Stopwatch.GetTimestamp();
             byte[] hash = SHA256.HashData(bytes);
+            profile?.Record("model-source-hash", Stopwatch.GetTimestamp() - start);
+            using var scope = profile?.Measure("cooked-model-and-textures");
             if (TryRead(PathForHash(source, hash), hash, TextureCooker.CacheDirectory(source), out var cached))
             {
                 Interlocked.Increment(ref CacheHits);
@@ -36,10 +44,16 @@ public static class CookedModelCache
             }
         }
         Interlocked.Increment(ref FallbackLoads);
+        using var fallback = profile?.Measure("source-parse-and-textures");
         LoadedModel model = GlbModelLoader.Load(bytes);
         TextureCooker.Prepare(model, TextureCooker.CacheDirectory(source), cook: false);
         return model;
     }
+
+    // Only explicit immutable packages may supply a precomputed source identity.
+    internal static bool TryLoadPackaged(string source, byte[] hash, Func<string, TextureSemantic, PreparedTexture?> textureResolver, out LoadedModel? model)
+        => TryRead(PathForHash(source, hash), hash, TextureCooker.CacheDirectory(source), out model,
+            textureResolver: textureResolver);
 
     public static void Cook(string source)
     {
@@ -54,7 +68,7 @@ public static class CookedModelCache
     }
 
     private static bool TryRead(string path, byte[] sourceHash, string textureDirectory, out LoadedModel? model,
-        bool validateTextureFiles = false)
+        bool validateTextureFiles = false, Func<string, TextureSemantic, PreparedTexture?>? textureResolver = null)
     {
         model = null;
         try
@@ -113,6 +127,8 @@ public static class CookedModelCache
             {
                 string key = ReadString(data);
                 if (key.Length == 0) return null;
+                if (textureResolver != null)
+                    return textureResolver(key, semantic) ?? throw new InvalidDataException("Invalid package texture dependency.");
                 if (!TextureCooker.TryLoadPrepared(textureDirectory, key, semantic, out var texture))
                     throw new InvalidDataException("Cooked texture dependency is missing or invalid.");
                 if (validateTextureFiles && !TextureCooker.TryRead(Path.Combine(textureDirectory, key + ".hs2tex"), key, semantic, out _))

@@ -129,7 +129,7 @@ internal static class ModelCookingChecks
         Require(process.ExitCode == 0, output.GetAwaiter().GetResult() + error.GetAwaiter().GetResult());
     }
 
-    private static void Equivalent(LoadedModel reference, LoadedModel cooked)
+    internal static void Equivalent(LoadedModel reference, LoadedModel cooked)
     {
         Require(reference.Parts.Count == cooked.Parts.Count, "Part count changed.");
         foreach (var (a, b) in reference.Parts.Zip(cooked.Parts))

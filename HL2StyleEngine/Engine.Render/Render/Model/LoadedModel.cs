@@ -10,6 +10,21 @@ public sealed class LoadedModel
     }
 
     public IReadOnlyList<LoadedModelPart> Parts { get; }
+
+    public LoadedModel MipTail(int firstMip)
+    {
+        if (firstMip < 0 || firstMip > 14) throw new ArgumentOutOfRangeException(nameof(firstMip));
+        if (firstMip == 0) return this;
+        return new(Parts.Select(p => new LoadedModelPart(p.Positions, p.Normals, p.TexCoords, p.Indices, p.Color,
+            p.BaseColorPng, p.MetallicRoughnessPng, p.MetallicFactor, p.RoughnessFactor, p.NodeName, p.MeshName,
+            p.NodeIndex, p.MeshIndex, p.PrimitiveIndex)
+        {
+            PbrNormals = p.PbrNormals, NormalPng = p.NormalPng, EmissivePng = p.EmissivePng,
+            EmissiveFactor = p.EmissiveFactor, EmissiveTexCoords = p.EmissiveTexCoords,
+            BaseColorTexture = p.BaseColorTexture?.MipTail(firstMip), MaterialTexture = p.MaterialTexture?.MipTail(firstMip),
+            NormalTexture = p.NormalTexture?.MipTail(firstMip), EmissiveTexture = p.EmissiveTexture?.MipTail(firstMip)
+        }).ToArray());
+    }
 }
 
 public sealed class LoadedModelPart

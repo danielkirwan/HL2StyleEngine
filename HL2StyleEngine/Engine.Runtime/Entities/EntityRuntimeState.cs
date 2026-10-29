@@ -36,6 +36,7 @@ public sealed class EntityColliderState
     public Vector3 PreviousPosition;
     public Vector3 Delta;
     public MeshCollisionMesh? Mesh;
+    public WorldColliderCache Geometry;
 
     public bool Enabled => Shape != RuntimeShapeKind.None;
 
@@ -56,6 +57,8 @@ public sealed class EntityColliderState
 
 public sealed class EntityPhysicsState
 {
+    // Body centers can differ from the authored transform during collision resolution.
+    public WorldColliderCache Geometry;
     public bool UseAuthoredStaticPose;
     public MotionType MotionType = MotionType.Static;
     public BoxBody? BoxBody;
