@@ -22,6 +22,8 @@ public sealed class EngineHost : IDisposable
     private int _lastH;
 
     public EngineContext Context { get; }
+    public bool GraphicsDebug { get; }
+    public bool VSync { get; }
 
     public EngineHost(int width, int height, string title, Engine.Core.Diagnostics.LoadProfile? loading = null)
     {
@@ -30,10 +32,19 @@ public sealed class EngineHost : IDisposable
         _lastW = _window.Window.Width;
         _lastH = _window.Window.Height;
 
+        bool diagnostic = int.TryParse(Environment.GetEnvironmentVariable("HS2_PROFILE_FRAMES"), out int frames) && frames > 0;
+#if DEBUG
+        const bool defaultGraphicsDebug = true;
+#else
+        const bool defaultGraphicsDebug = false;
+#endif
+        GraphicsDebug = diagnostic ? Environment.GetEnvironmentVariable("HS2_PROFILE_DEBUG") switch
+        { "0" => false, "1" => true, _ => defaultGraphicsDebug } : defaultGraphicsDebug;
+        VSync = !diagnostic || Environment.GetEnvironmentVariable("HS2_PROFILE_VSYNC") != "0";
         var gdOptions = new GraphicsDeviceOptions(
-            debug: true,
+            debug: GraphicsDebug,
             swapchainDepthFormat: PixelFormat.R32_Float,
-            syncToVerticalBlank: true);
+            syncToVerticalBlank: VSync);
 
         using (loading?.Measure("host-device")) _graphicsDevice = VeldridStartup.CreateGraphicsDevice(
             _window.Window,
@@ -57,12 +68,19 @@ public sealed class EngineHost : IDisposable
         module.Initialize(Context);
         Context.Loading?.Mark("module-initialized");
         FrameProfile? profile = FrameProfile.FromEnvironment();
+        _renderer.CpuProfile.Enabled = profile != null;
+        Context.PhysicsProfile.Enabled = profile != null;
+        _renderer.ConfigureGpuProfile(profile != null && Environment.GetEnvironmentVariable("HS2_GPU_PROFILE") == "1"
+            ? profile.TotalFrames : 0);
 
         _prevTime = _sw.Elapsed.TotalSeconds;
 
         while (_window.Window.Exists)
         {
             profile?.BeginInput();
+            _renderer.CpuProfile.Reset();
+            Context.PhysicsProfile.Reset();
+            _renderer.ProfileFrame = profile?.Frame ?? 0;
             InputSnapshot snapshot = _window.PumpEvents();
 
             if (module is IInputConsumer consumer)
@@ -145,7 +163,8 @@ public sealed class EngineHost : IDisposable
                 if (loading.Complete && loading.ExitWhenComplete) break;
             }
             profile?.Mark();
-            if (profile?.Finish(w, h) == true) break;
+            if (profile?.Finish(w, h, _renderer, Context.PhysicsProfile, rawSeconds, dt,
+                _fixed.LastStepCount, _fixed.AccumulatorSeconds, GraphicsDebug, VSync, _window.Window.Focused) == true) break;
         }
         if (Context.Loading is { Complete: false } unfinished)
             unfinished.Finish("closed-before-ready", (module as ILoadReadiness)?.GetLoadReadiness());

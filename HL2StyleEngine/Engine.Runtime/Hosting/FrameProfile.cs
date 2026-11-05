@@ -18,13 +18,18 @@ internal sealed class FrameProfile
     private long _inputStart, _allocated, _stageAllocated;
     private double _inputMilliseconds;
     private long[] _allocations = new long[Stages.Length];
+    private readonly double?[] _cpuMilliseconds = new double?[Stages.Length];
+    private readonly ulong?[] _cpuCycles = new ulong?[Stages.Length];
+    private ThreadCpuClock.Sample? _frameCpuStart, _stageCpuStart, _cpuEnd;
     private int _gen0, _gen1, _gen2;
     private TimeSpan _pause;
     private int _frame;
+    public int Frame => _frame;
+    public int TotalFrames => _target + 120;
 
     public static FrameProfile? FromEnvironment()
         => int.TryParse(Environment.GetEnvironmentVariable("HS2_PROFILE_FRAMES"), out int frames) && frames > 0
-            ? new FrameProfile(Math.Clamp(frames, 1, 10000)) : null;
+            ? new FrameProfile(Math.Clamp(frames, 1, 36000)) : null;
 
     private FrameProfile(int target)
     {
@@ -39,6 +44,7 @@ internal sealed class FrameProfile
     {
         _inputStart = Stopwatch.GetTimestamp();
         if (_report == null) return;
+        _frameCpuStart = ThreadCpuClock.Read();
         _allocated = GC.GetAllocatedBytesForCurrentThread();
         _gen0 = GC.CollectionCount(0); _gen1 = GC.CollectionCount(1); _gen2 = GC.CollectionCount(2);
         _pause = GC.GetTotalPauseDuration();
@@ -48,7 +54,11 @@ internal sealed class FrameProfile
     {
         _start = Stopwatch.GetTimestamp();
         _inputMilliseconds = Stopwatch.GetElapsedTime(_inputStart, _start).TotalMilliseconds;
-        if (_report != null) _stageAllocated = GC.GetAllocatedBytesForCurrentThread();
+        if (_report != null)
+        {
+            _stageAllocated = GC.GetAllocatedBytesForCurrentThread();
+            _stageCpuStart = ThreadCpuClock.Read();
+        }
         _stage = 0;
     }
 
@@ -58,6 +68,11 @@ internal sealed class FrameProfile
         _current[_stage] = Stopwatch.GetElapsedTime(_start, now).TotalMilliseconds;
         if (_report != null)
         {
+            _cpuEnd = ThreadCpuClock.Read();
+            var cpu = ThreadCpuClock.Elapsed(_stageCpuStart, _cpuEnd);
+            _cpuMilliseconds[_stage] = cpu?.Milliseconds;
+            _cpuCycles[_stage] = cpu?.Cycles;
+            _stageCpuStart = _cpuEnd;
             long allocated = GC.GetAllocatedBytesForCurrentThread();
             _allocations[_stage] = allocated - _stageAllocated;
             _stageAllocated = allocated;
@@ -66,7 +81,8 @@ internal sealed class FrameProfile
         _start = now;
     }
 
-    public bool Finish(int width, int height)
+    public bool Finish(int width, int height, Engine.Render.Renderer renderer, Engine.Physics.PhysicsCpuProfile physics,
+        double rawSeconds, float simulationSeconds, int fixedSteps, float accumulatorSeconds, bool graphicsDebug, bool vsync, bool windowFocused)
     {
         if (_report != null)
         {
@@ -74,6 +90,13 @@ internal sealed class FrameProfile
             {
                 Frame = _frame, Warmup = _warmup > 0, InputMilliseconds = _inputMilliseconds,
                 Milliseconds = _current.ToArray(), AllocatedByStage = _allocations.ToArray(),
+                ThreadCpuMilliseconds = _cpuMilliseconds.ToArray(), ThreadCycles = _cpuCycles.ToArray(),
+                MainThreadCpuMilliseconds = ThreadCpuClock.Elapsed(_frameCpuStart, _cpuEnd)?.Milliseconds,
+                RenderMilliseconds = renderer.CpuProfile.Snapshot(),
+                PhysicsMilliseconds = physics.Snapshot(), PhysicsCalls = physics.Calls(),
+                PreviousFrameIntervalMilliseconds = rawSeconds * 1000, SimulationDeltaMilliseconds = simulationSeconds * 1000,
+                FixedSteps = fixedSteps, FixedRemainderMilliseconds = accumulatorSeconds * 1000,
+                WindowFocused = windowFocused,
                 MainThreadAllocatedBytes = GC.GetAllocatedBytesForCurrentThread() - _allocated,
                 Collections = new[] { GC.CollectionCount(0) - _gen0, GC.CollectionCount(1) - _gen1, GC.CollectionCount(2) - _gen2 },
                 GcPauseMilliseconds = (GC.GetTotalPauseDuration() - _pause).TotalMilliseconds
@@ -97,12 +120,18 @@ internal sealed class FrameProfile
         Engine.Physics.Collision.MeshCollisionMesh.CollectStatistics = false;
         if (_report != null)
         {
+            renderer.GpuProfile?.Poll(_frame);
             string path = Path.GetFullPath(_report);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, JsonSerializer.Serialize(new
             {
-                Version = 1, Width = width, Height = height, WarmupFrames = 120, Samples = _target,
-                Stages, Frames = _trace
+                Version = 4, Width = width, Height = height, WarmupFrames = 120, Samples = _target,
+                GraphicsDebugRequested = graphicsDebug, VSync = vsync, GpuDeviceFlags = renderer.GpuProfile?.DeviceFlags,
+                Stages, RenderStages = Engine.Render.RenderCpuProfile.Stages, PhysicsStages = Engine.Physics.PhysicsCpuProfile.Stages,
+                Frames = _trace, GpuFrames = renderer.GpuProfile?.Samples,
+                GpuPending = renderer.GpuProfile?.Pending, GpuSkipped = renderer.GpuProfile?.Skipped,
+                GpuScope = "D3D11 submitted command list only, excluding earlier immediate uploads and Present. Nonblocking/disjoint-checked; join by Frame, not result arrival.",
+                CpuScope = "Current-thread kernel+user time (quantized) and raw cycles at host stage boundaries. Null if unavailable. Cycles are not milliseconds; wall-minus-CPU is not an exact scheduler-wait measurement."
             }));
             Console.WriteLine("[FrameTrace] " + path);
         }

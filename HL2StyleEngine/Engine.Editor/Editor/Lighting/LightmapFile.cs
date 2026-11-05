@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -31,11 +32,15 @@ public static class LightmapFile
 {
     public const int Version = 2;
     private const int MaxBytes = 64 * 1024 * 1024;
+    // One exact-sized idle buffer per role avoids rounding a 36 MiB bake up to 64 MiB.
+    // Concurrent readers own separate buffers; published data never references scratch.
+    private static byte[]? _compressedScratch, _decodedScratch;
     private static readonly JsonSerializerOptions Options = new() { IncludeFields = true };
     public static string PathFor(string levelPath) => Path.ChangeExtension(Path.GetFullPath(levelPath), ".hs2lightmap");
 
     public static LightmapData? Load(string path, string key)
     {
+        byte[]? compressed = null, decoded = null;
         try
         {
             using var file = File.OpenRead(path);
@@ -45,19 +50,25 @@ public static class LightmapFile
             if (version is < 1 or > Version) return null;
             int length = reader.ReadInt32(), packed = reader.ReadInt32();
             if (length < 16 || length > MaxBytes || packed < 1 || packed != file.Length - 48) return null;
-            byte[] hash = reader.ReadBytes(32), data = new byte[length];
-            if (LZ4Codec.Decode(reader.ReadBytes(packed), data) != length || !SHA256.HashData(data).AsSpan().SequenceEqual(hash)) return null;
-            using var payload = new MemoryStream(data); using var binary = new BinaryReader(payload);
-            int metadataLength = binary.ReadInt32();
+            Span<byte> hash = stackalloc byte[32], actualHash = stackalloc byte[32];
+            file.ReadExactly(hash);
+            compressed = RentScratch(ref _compressedScratch, packed);
+            decoded = RentScratch(ref _decodedScratch, length);
+            file.ReadExactly(compressed.AsSpan(0, packed));
+            var data = decoded.AsSpan(0, length);
+            if (LZ4Codec.Decode(compressed.AsSpan(0, packed), data) != length) return null;
+            SHA256.HashData(data, actualHash);
+            if (!actualHash.SequenceEqual(hash)) return null;
+            int metadataLength = BinaryPrimitives.ReadInt32LittleEndian(data);
             if (metadataLength < 1 || metadataLength > 16 * 1024 * 1024 || metadataLength > length - 4) return null;
-            var result = JsonSerializer.Deserialize<LightmapData>(binary.ReadBytes(metadataLength), Options);
+            var result = JsonSerializer.Deserialize<LightmapData>(data.Slice(4, metadataLength), Options);
             if (result == null || result.Key != key || result.Size < 32 || result.Size > 2048 ||
                 (result.Size & (result.Size - 1)) != 0 || result.Texels is < 4 or > 32 || result.Records == null ||
                 result.LightIds == null || result.LightIds.Count is < 1 or > 32 || result.Records.Count is < 1 or > 4096) return null;
             if (result.LightIds.Any(string.IsNullOrWhiteSpace) ||
                 result.LightIds.Distinct(StringComparer.OrdinalIgnoreCase).Count() != result.LightIds.Count) return null;
             int bytes = checked(result.Size * result.Size * 8);
-            if (payload.Length - payload.Position != bytes) return null;
+            if (length - 4 - metadataLength != bytes) return null;
             int next = 0, columns = result.Size / (result.Texels + 4);
             var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var record in result.Records)
@@ -70,7 +81,7 @@ public static class LightmapFile
                 if (MemoryMarshal.Cast<Matrix4x4, float>(MemoryMarshal.CreateReadOnlySpan(ref matrix, 1)).ContainsAnyExceptFinite()) return null;
             }
             if (next > columns * columns) return null;
-            result.Pixels = binary.ReadBytes(bytes);
+            result.Pixels = data.Slice(4 + metadataLength, bytes).ToArray();
             foreach (Half value in MemoryMarshal.Cast<byte, Half>(result.Pixels))
                 if (!Half.IsFinite(value) || value < (Half)0 || value > (Half)60000) return null;
             if (result.Probes != null)
@@ -82,6 +93,17 @@ public static class LightmapFile
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException or OverflowException)
         { return null; }
+        finally
+        {
+            if (decoded != null) Interlocked.CompareExchange(ref _decodedScratch, decoded, null);
+            if (compressed != null) Interlocked.CompareExchange(ref _compressedScratch, compressed, null);
+        }
+    }
+
+    private static byte[] RentScratch(ref byte[]? idle, int length)
+    {
+        var buffer = Interlocked.Exchange(ref idle, null);
+        return buffer != null && buffer.Length >= length ? buffer : new byte[length];
     }
 
     public static void Save(string path, LightmapData data, CancellationToken cancel = default)

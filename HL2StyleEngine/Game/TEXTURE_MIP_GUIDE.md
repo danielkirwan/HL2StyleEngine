@@ -1,5 +1,7 @@
 # Texture Mip Residency Experiment
 
+Current follow-up (2026-11-01): [texture-only shared ownership and a room-aware real-level trial](TEXTURE_STREAMING_TRIAL_GUIDE.md) are now implemented in a separate launcher. This document retains the earlier model-replacement gallery and its historical results. Normal launchers remain full detail; the extended memory diagnostic still fails, so neither prototype is promoted to production.
+
 Current follow-up (2026-10-28): inventory/save preparation and longer gameplay tests are covered by the [stability pass](GAMEPLAY_STABILITY_GUIDE.md); behaviour-preserving geometry/support reuse now reduces measured startup physics work in the [physics follow-up](PHYSICS_STARTUP_GUIDE.md). The next feature work is texture-granularity ownership and room/projected-size demand, with a separately gated real-level trial. This gallery remains isolated; normal gameplay/editor textures stay full resolution. Earlier failures/results below remain historical evidence.
 
 Later follow-up (2026-10-27): [gameplay hitch tracing and targeted fixes](HITCH_STABILITY_GUIDE.md) now separate source/package runs into fresh processes. Crate-break work is reduced and seven post-change trials pass; the fresh-process baseline also passes. The earlier failures below remain evidence, not proven package/mip defects. First inventory-opening work, long acceptance and texture-granularity integration remain open. This gallery is still isolated from production gameplay.

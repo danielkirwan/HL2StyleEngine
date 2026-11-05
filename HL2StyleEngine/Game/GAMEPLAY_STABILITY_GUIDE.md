@@ -1,5 +1,18 @@
 # Gameplay Stability And Startup Follow-Up
 
+Acceptance refresh (2026-11-04): [lighting handover and current baseline results](LIGHTING_ACCEPTANCE_HANDOVER.md). The earlier gameplay BAT passes all three six-cycle routes, while its subsequent long controls fail. In the later clean repeat, all three six-cycle routes pass timing and finish 72 actions, but the puzzle route fails private-memory growth at **142.51 MiB** against the 128 MiB guard (zero model growth). The frame-pacing BAT and long full-detail package control pass this repeat. Historical severe stalls and six-room memory excess remain open; zero old tracked entities/meshes after diagnostic collection is not proof of leak freedom. Gate B stays pending. No solver, timestep, quality or acceptance limits changed; follow the handover for the remaining long results.
+
+Follow-up (2026-11-02): lighting-cache temporary allocations are reduced, and memory samples now include diffuse/reflection GPU payload and pending reflection work. [Current allocation and long-run evidence](LIGHTING_MEMORY_GUIDE.md). The existing memory/frame limits and post-timing-only diagnostic collection remain unchanged.
+
+Final 2026-11-04 repeat: the long six-room route completes 216 actions and
+passes timing but fails memory at **153.75 MiB** growth. Long full-detail and
+streaming package routes pass at 73.18/52.72 MiB, both with zero gameplay
+intervals over 33.3 ms. These later passes do not erase the earlier stalls or
+the short/long six-room memory failures. Reports and configurations are in the
+handover's fresh-run table; native continuous input acceptance remains separate.
+
+Follow-up (2026-11-01): `--long --memory-trace` adds an opt-in 18-cycle diagnostic, per-cycle allocation/retention evidence and post-timing collection. Its process-memory guard still fails; no threshold was relaxed. [Results, incomplete first attempt and remaining investigation](TEXTURE_STREAMING_TRIAL_GUIDE.md#memory-investigation). Normal gameplay does not force GC or enable mip streaming.
+
 Implemented 28 October 2026. This is the next acceptance/profiling pass after
 [inventory preparation](INVENTORY_PERFORMANCE_GUIDE.md), not an engine rewrite
 or a rollout of adaptive texture streaming. C# remains the runtime. Normal

@@ -247,6 +247,11 @@ float3 DiffuseIrradiance(VSOutput input, float3 n)
 float4 ShadePbr(VSOutput input, float4 base, float metal, float roughness)
 {
     float3 n = PbrNormal(input), v = SafeNormal(CameraPosition.xyz-input.WorldPosition,n);
+#ifdef MULTI_POINT_SHADOWS
+    // Receiver depth lies on the rasterized triangle, not its smoothed lighting normal.
+    // Evaluate derivatives before per-light branches so each pixel quad remains coherent.
+    float3 receiverNormal = SafeNormal(cross(ddx(input.WorldPosition),ddy(input.WorldPosition)),normalize(input.Normal));
+#endif
     int diagnostic = (int)ShadingSettings.y;
     bool full = diagnostic == 0, direct = diagnostic == 1;
     float3 lit = 0;
@@ -265,7 +270,7 @@ float4 ShadePbr(VSOutput input, float4 base, float metal, float roughness)
                 cone = smoothstep(Lights[i].DirectionCone.w,Lights[i].Shadow.x,dot(-l,Lights[i].DirectionCone.xyz));
             if (cone <= 0 || dot(n,l) <= 0) continue;
 #ifdef MULTI_POINT_SHADOWS
-            float visibility = ShadowVisibility(Lights[i],input.WorldPosition,normalize(input.Normal),l);
+            float visibility = ShadowVisibility(Lights[i],input.WorldPosition,receiverNormal,l);
 #else
             float visibility = ShadowVisibility(Lights[i],input.WorldPosition,n,l);
 #endif

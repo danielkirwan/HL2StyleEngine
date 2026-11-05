@@ -11,9 +11,18 @@ public sealed partial class Renderer : IDisposable
     public GraphicsDevice GraphicsDevice { get; }
     public ResourceFactory Factory => GraphicsDevice.ResourceFactory;
     public CommandList CommandList { get; }
+    public RenderCpuProfile CpuProfile { get; } = new();
+    public GpuFrameProfile? GpuProfile { get; private set; }
+    public int ProfileFrame { get; set; }
+    public void ConfigureGpuProfile(int sampleLimit)
+    {
+        GpuProfile?.Dispose();
+        GpuProfile = sampleLimit > 0 ? new(GraphicsDevice, sampleLimit) : null;
+    }
     private readonly List<IDisposable> _retireNext = new();
     private readonly Queue<(Fence Fence, IDisposable[] Resources)> _retiring = new();
     public int PendingRetirementBatches => _retiring.Count;
+    public bool HasPendingRetirements => _retiring.Count != 0 || _retireNext.Count != 0;
 
     public void RetireAfterFrame(IDisposable resource) => _retireNext.Add(resource);
 
@@ -237,10 +246,11 @@ public sealed partial class Renderer : IDisposable
 
     public void BeginFrame()
     {
-        CollectRetired();
+        GpuProfile?.Poll(ProfileFrame);
+        using (CpuProfile.Measure(RenderWork.Retirement)) CollectRetired();
         _atmosphere = DisabledAtmosphere;
         PostProcessPasses = 0;
-        CommandList.Begin();
+        using (CpuProfile.Measure(RenderWork.CommandBegin)) CommandList.Begin();
 
         CommandList.SetFramebuffer(_worldFramebuffer);
         CommandList.ClearColorTarget(0, RgbaFloat.Black);
@@ -249,6 +259,7 @@ public sealed partial class Renderer : IDisposable
 
     public void ResolveWorldToSwapchain(Framebuffer? presentationTarget = null)
     {
+        using var timing = CpuProfile.Measure(RenderWork.Resolve);
         Vector4 presentation = new(float.IsFinite(Exposure) ? Math.Clamp(Exposure, .05f, 8f) : 1f, 0, 0, 0);
         GraphicsDevice.UpdateBuffer(_exposureBuffer!, 0, ref presentation);
         CommandList.ResolveTexture(_msaaColor, _resolveColor);
@@ -271,20 +282,29 @@ public sealed partial class Renderer : IDisposable
 
     public void EndFrame()
     {
-        CommandList.End();
-        if (_retireNext.Count == 0) GraphicsDevice.SubmitCommands(CommandList);
-        else
+        using (CpuProfile.Measure(RenderWork.CommandEnd)) CommandList.End();
+        using (CpuProfile.Measure(RenderWork.Submit))
         {
-            var fence = Factory.CreateFence(false);
-            GraphicsDevice.SubmitCommands(CommandList, fence);
-            _retiring.Enqueue((fence, _retireNext.ToArray()));
-            _retireNext.Clear();
+            GpuProfile?.Begin(ProfileFrame);
+            try
+            {
+                if (_retireNext.Count == 0) GraphicsDevice.SubmitCommands(CommandList);
+                else
+                {
+                    var fence = Factory.CreateFence(false);
+                    GraphicsDevice.SubmitCommands(CommandList, fence);
+                    _retiring.Enqueue((fence, _retireNext.ToArray()));
+                    _retireNext.Clear();
+                }
+            }
+            finally { GpuProfile?.End(); }
         }
-        GraphicsDevice.SwapBuffers(GraphicsDevice.MainSwapchain);
+        using (CpuProfile.Measure(RenderWork.Present)) GraphicsDevice.SwapBuffers(GraphicsDevice.MainSwapchain);
     }
 
     public void Dispose()
     {
+        GpuProfile?.Dispose();
         DrainRetiredResources();
         DisposeAtmosphere();
         _presentPipeline?.Dispose();

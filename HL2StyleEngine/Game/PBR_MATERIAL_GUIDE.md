@@ -1,5 +1,7 @@
 # PBR Lighting: Staged Implementation
 
+Floor acceptance correction (2026-11-02): the six-room shadow test now uses a normal-only floor variant with half-strength tangent slopes, retaining geometry and colour. A separate multi-shadow fix derives receiver planes from actual triangles instead of smoothed normals; this removes the remaining grazing-angle bands without ambient fill or increased bias. [Diagnosis, material preservation and GPU/performance evidence](FLOOR_LIGHTING_GUIDE.md). Original imported floor assets and legacy shader binaries are preserved.
+
 Current follow-up (2026-10-25): authored room capture, automatic transitions and bounded reflection residency are now available. LaunchSixRoomPbrTest.bat opens the isolated real-level copy; it uses the corrected wood variant and preserves its fracture behaviour. [Residency guide](REFLECTION_STREAMING_GUIDE.md). The baseline discussion below is historical; old levels/defaults remain unchanged.
 
 Started 2026-10-22 under [ENGINE_UPGRADE_PLAN.md](ENGINE_UPGRADE_PLAN.md), units A then B. Unit C followed on 2026-10-23: a controlled prefiltered HDR environment and BRDF LUT, documented in [REFLECTION_LIGHTING_GUIDE.md](REFLECTION_LIGHTING_GUIDE.md). C#/.NET 10 owns the runtime; this is not a native rewrite. Authored room captures, bloom and wider migration remain later work. The measurements below retain the original A/B baseline.

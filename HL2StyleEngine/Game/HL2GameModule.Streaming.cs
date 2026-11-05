@@ -53,6 +53,8 @@ public sealed partial class HL2GameModule
             _roomAssets = new RoomAssetManifest(Placements(), zoneSize);
         _wantedModels.Clear(); _requiredModels.Clear();
         _requiredModels.UnionWith(_residentPins);
+        ValidateTextureDestination();
+        _requiredModels.UnionWith(_textureDestinationModels);
         bool stream = AssetStreamingEnabled && settings.Enabled && !_editorEnabled;
         bool rooms = stream && RoomVisibilityEnabled && _roomVisibility is { Active: true };
         if (stream && !rooms) _roomAssets.Gather(_camera.Position, settings.PreloadNeighbours, _wantedModels);

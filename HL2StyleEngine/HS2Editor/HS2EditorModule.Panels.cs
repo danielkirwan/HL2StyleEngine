@@ -64,7 +64,7 @@ internal sealed partial class HS2EditorModule
         ImGui.PopStyleVar(3);
 
         uint dockspaceId = ImGui.GetID("HS2EditorDockspaceId");
-        ImGui.DockSpace(dockspaceId, Vector2.Zero, ImGuiDockNodeFlags.None);
+        ImGui.DockSpace(dockspaceId, Vector2.Zero, ImGuiDockNodeFlags.PassthruCentralNode);
         if (_resetDockLayoutNextFrame)
         {
             _defaultLayoutFrames = Math.Max(_defaultLayoutFrames, DefaultLayoutFrameCount);

@@ -1,5 +1,9 @@
 # Shadow Stability And Flashlight Test
 
+Acceptance refresh (2026-11-04): [current handover, images and gate verdicts](LIGHTING_ACCEPTANCE_HANDOVER.md). The 14-owner fixture, approach/retreat, flashlight orbit/mount and uncached contact comparisons are retested. Whole-system acceptance and frame-pacing status are recorded separately; no new shadow feature is introduced in this pass.
+
+Floor follow-up (2026-11-02): the flashlight-only black patches had two causes: excessive floor normal-map slopes and receiver-plane correction using smoothed rather than actual triangle normals. Both are corrected; light intensity, 2mm bias, shadow filtering and real occluders are retained. The six-room fixture now uses a normal-only floor variant and rebuilt lighting; affected multi-shadow reflection caches must match the new CSO. [Current diagnosis, evidence and reproduction](FLOOR_LIGHTING_GUIDE.md). Earlier entries below describe their historical changes.
+
 Implemented 2026-10-26. Launch **`LaunchSixRoomShadowTest.bat`** from the repository root. It builds Release and opens the new `Content/Levels/sixRoomShadowTest.json`, a copy of the fourteen-fixture lighting-stability level with three optional settings enabled. Original levels, launch defaults, source models/materials, physics and inventory are unchanged. Runtime remains C#.
 
 Acceptance correction (2026-10-26): the initial four-slot implementation did **not** eliminate the reported pop-in. This same test level now uses 16 point slots, covering all 14 fixtures simultaneously. Fixed perspective-depth bias and filtering keep flashlight shadows attached at distance. No additional level copy is needed. Older launchers deliberately retain their old lighting settings.

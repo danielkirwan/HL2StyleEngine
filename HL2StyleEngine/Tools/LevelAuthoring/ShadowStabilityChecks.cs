@@ -12,6 +12,23 @@ using Engine.Runtime.Hosting;
 internal static class ShadowStabilityChecks
 {
     public const string FileName = "sixRoomShadowTest.json";
+    internal static void RefreshReflectionCaches(string root, string file, string state)
+    {
+        if(!new[]{FileName,RoomVisibilityChecks.FileName,RenderStressTest.FileName,AtmosphereChecks.FileName}.Contains(file))
+            throw new ArgumentException("Specify an existing multi-shadow fixture filename.");
+        string path=Path.Combine(root,"Game/Content/Levels",file);
+        var level=LevelIO.Load(path);
+        if(level.PointShadowLimit<=1)throw new InvalidDataException("Expected the multi-shadow variant: "+file);
+        if(level.LightingScenarios is {Count:>0})
+        {
+            var scenario=level.LightingScenarios.Single(s=>s.Id==state);
+            RoomReflectionChecks.CaptureFixture(root,Path.GetFileName(LightingScenarioResolver.PathFor(path,scenario.Id)),
+                LightingScenarioResolver.CreateView(level,scenario));
+        }
+        else if(state=="default")RoomReflectionChecks.CaptureFixture(root,file);
+        else throw new ArgumentException("This fixture has only a default reflection state.");
+    }
+
     internal static void Build(string root)
     {
         string path=Path.Combine(root,"Game/Content/Levels",FileName);
@@ -31,6 +48,9 @@ internal static class ShadowStabilityChecks
         var original=LevelIO.Load(Path.Combine(root,"Game/Content/Levels",LightingStabilityChecks.FileName));
         var copy=StructuredData.ReadJson<LevelFile>(StructuredData.WriteJson(level));
         copy.PointShadowLimit=original.PointShadowLimit;copy.OffsetFlashlight=original.OffsetFlashlight;copy.PrewarmLightingStates=original.PrewarmLightingStates;
+        // The shadow fixture has one intentional normal-only floor material correction.
+        foreach(var entity in copy.Entities)
+            if(entity.MeshPath==FloorMaterial.Corrected)entity.MeshPath=FloorMaterial.Original;
         Check(StructuredData.WriteJson(copy).SequenceEqual(StructuredData.WriteJson(original)),"Existing geometry/gameplay changed.");
         var pool=new PointShadowPool();
         var lights=Enumerable.Range(0,5).Select(i=>new WorldPointLight(new(i*2,3,0),Vector3.One,1,12,CastShadows:true,Id:i.ToString())).ToArray();
@@ -138,6 +158,19 @@ internal static class ShadowStabilityChecks
             world.ShadowCachingEnabled=world.ShadowCullingEnabled=true;
             SamePixels(orbit,reference,"Flashlight orbit "+step);
         }
+        Check(editor.LevelFile.Entities.Any(e=>e.MeshPath==FloorMaterial.Corrected),"Floor material correction missing from the played fixture.");
+        for(int step=0;step<3;step++)
+        {
+            camera.Position=new(4+step*2,1.7f,-8-step);Aim(new(13,0,-15));
+            var lit=Frame("floor-corner-"+step+"-torch");
+            Check(world.ShadowSpotLightCount==1 && world.ShadowPointLightCount==0,"Floor view is not flashlight-only.");
+            editor.LevelFile.EnableShadows=false;Frame("floor-corner-"+step+"-no-shadow");editor.LevelFile.EnableShadows=true;
+            PbrBaselineChecks.Set(game,"_flashlightOn",false);
+            var dark=Frame("floor-corner-"+step+"-dark");
+            Check(lit.Zip(dark).Count(p=>Energy(p.First)>Energy(p.Second)+15)>10000,"Floor did not receive the flashlight.");
+            PbrBaselineChecks.Set(game,"_flashlightOn",true);
+        }
+        Switch();Frame("floor-corner-fixtures-on");Switch();
         var saved=entities.ToArray();entities.Clear();camera.Position=Vector3.Zero;camera.Yaw=camera.Pitch=0;
         try
         {

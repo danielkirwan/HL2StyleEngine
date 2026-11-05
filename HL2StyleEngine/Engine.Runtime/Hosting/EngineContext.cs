@@ -9,6 +9,7 @@ public sealed class EngineContext
     public Renderer Renderer { get; }
     public ImGuiLayer? ImGui { get; }
     public Engine.Core.Diagnostics.LoadProfile? Loading { get; }
+    public Engine.Physics.PhysicsCpuProfile PhysicsProfile { get; } = new();
 
     public EngineContext(GameWindow window, Renderer renderer, ImGuiLayer? imGui = null,
         Engine.Core.Diagnostics.LoadProfile? loading = null)

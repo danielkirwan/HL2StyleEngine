@@ -140,7 +140,9 @@ public sealed partial class BasicWorldRenderer
     private void UploadInstances()
     {
         if (!_usedInstances) return;
-        _gd.UpdateBuffer(_instanceBuffer!, 0, _instanceData.AsSpan(0,(int)_objectWriteIndex)); InstanceUploads++;
+        if (FullDynamicBufferUploads) _gd.UpdateBuffer(_instanceBuffer!, 0, _instanceData);
+        else _gd.UpdateBuffer(_instanceBuffer!, 0, _instanceData.AsSpan(0,(int)_objectWriteIndex));
+        InstanceUploads++;
     }
     private void DisposeSubmission()
     {

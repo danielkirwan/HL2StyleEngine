@@ -2,6 +2,38 @@
 
 This file tracks completed gameplay-facing systems and the current implementation shape.
 
+Design philosophy adopted (2026-11-05): [Immersive-Sim Design Philosophy](IMMERSIVE_SIM_DESIGN_PHILOSOPHY.md)
+applies the supplied research to future levels: connected exploration, different
+viable objective solutions, consistent rules, meaningful tradeoffs and recovery.
+It includes an authoring review card and playtest criteria. This is design
+guidance; no new gameplay system or level has been introduced.
+
+Memory investigation (2026-11-05): [tests, heap comparisons and next corrections](RELOAD_MEMORY_INVESTIGATION.md)
+reproduce 154.34 MiB six-room reload growth. Evidence points toward managed
+allocation churn/fragmentation, with diagnostic-history retention also measured,
+not growing asset payloads. A probe-disabled repeat also fails at 134.27 MiB
+without matching GC-commit growth, so native/driver attribution remains open.
+This is a diagnosis pass, not a completed fix; the existing gates remain pending
+and no rebake or migration is needed.
+
+Lighting acceptance (2026-11-04): [handover, test reports, images and remaining gates](LIGHTING_ACCEPTANCE_HANDOVER.md). **Gate L pending; Gate B pending; new system upgrades blocked.** The current authored fog look is preserved. A GPU-validation harness defect is corrected without changing gameplay lighting/physics. No rebake, migration or save reset is needed for this acceptance pass; use the existing launchers. Frame-pacing failures remain visible separately.
+
+Upgrade order clarified (2026-11-04): **finish and accept the current lighting implementation before any new engine system upgrade or prototype.** The existing baseline frame-pacing/stability gate also remains required. The [prioritised plan](ENGINE_SYSTEM_UPGRADE_PLAN.md) links each future C# milestone to reference source and acceptance checks while preserving accepted lighting and existing physics. No system implementation or gate completion is included in this documentation update.
+
+Creative objective updated (2026-11-04): [Game Style Objective](GAME_STYLE_OBJECTIVE.md) records the BioShock art direction, immersive-sim gameplay, sound references and existing HL2-style physics. [Engine systems research](ENGINE_SYSTEMS_RESEARCH.md) compares C++ engines, including CRYENGINE, Lumberyard and O3DE, and maps relevant source to proposed C# systems. This is research and planning; lighting/visual-horror research is excluded and current implementation status below still applies.
+
+Frame-pacing follow-up (2026-11-04): Release removes always-on D3D API validation overhead while Debug retains it. Normal play still uses VSync, full texture detail and unchanged lighting/physics. `RunFramePacingTests.bat` runs isolated full-detail/streaming diagnostics with GPU timestamps, physics substages and thread CPU/cycle reports; ordinary launchers do not enable these captures. Refreshed streaming runs pass, but a full-detail long run reproduces a severe hitch, so pacing acceptance remains open. [Results and remaining investigation](FRAME_PACING_GUIDE.md). No reimport, rebake or save reset is needed. Audio is not part of this pass.
+
+Render/destination follow-up (2026-11-02): normal Game/F2/HS2Editor now use whole dynamic-buffer uploads to avoid the measured partial-update stalls; textures and lighting are unchanged. No reimport or rebake is needed. `LaunchTextureStreamingLevelTest.bat` adds F7 / Prepare distant room: it holds the current position until the target's models/textures are ready, then moves. F6 still compares full detail and F2 restores full detail for editing. The long full-detail control passes; streaming's long control and a later short full-detail control still fail frame gates. Streaming remains experimental and broader pacing work remains open. [Results, controls and remaining work](RENDER_UPLOAD_STABILITY_GUIDE.md). Spatial audio is not implemented in this pass.
+
+Texture transition follow-up (2026-11-02): `LaunchTextureStreamingLevelTest.bat` now retains detail during quick turns, prioritizes important texture upgrades and prefetches connected rooms at full detail. Adjacent-room images and F2/F6 restoration pass. Long controls expose frame stalls in both full-detail and streaming modes, so this remains an experiment; normal launchers, lighting and levels are unchanged. [Tests, controls and limitations](TEXTURE_STREAMING_TRIAL_GUIDE.md). [Audio workflow notes](AUDIO_WORKFLOW.md) locate the requested music/MIDI/stems and jsfxr scripts in **2DSpaceShooterRemix**, with no files copied or edited there.
+
+Flashlight floor correction (2026-11-02): use `LaunchSixRoomShadowTest.bat` to test reduced black speckling and corrected shallow-angle shadow bands. The source floor is preserved as a separate normal-only variant, and the multi-shadow receiver uses actual triangle planes. No fill light or physics changes. [Cause, scope, validation and authoring workflow](FLOOR_LIGHTING_GUIDE.md). Normal launchers remain full detail; the wider texture-streaming acceptance is still next.
+
+Lighting-cache memory follow-up (2026-11-02): duplicate temporary lightmap/reflection payload buffers are reduced while preserving identical lighting data, formats and fallbacks. Use the same `LaunchSixRoomShadowTest.bat` or `LaunchAtmosphereTest.bat`; no reimport/rebake/reset is needed. [Measurements, validation and remaining acceptance](LIGHTING_MEMORY_GUIDE.md). Normal launchers remain full detail; adaptive texture streaming is still a separate trial.
+
+Texture streaming trial (2026-11-01): `LaunchTextureStreamingLevelTest.bat` opens the existing atmosphere level in an isolated package/save area, with texture-only replacements and F6 full-detail comparison. Normal launchers stay unchanged. Initial GPU/material and near-60-FPS route checks pass; longer process-memory growth still fails its guard and blocks production rollout. [Controls, ownership contract, evidence and remaining work](TEXTURE_STREAMING_TRIAL_GUIDE.md).
+
 Physics follow-up (2026-10-28): unchanged collider geometry is reused and duplicate support work removed, preserving stacking, held objects, mesh shapes and doors. Pre-change replay results match exactly. Warm-cache startup comparison improves about 9% in the measured sample; no cold-load guarantee. Test using the same `LaunchAtmosphereTest.bat` or `LaunchSixRoomShadowTest.bat`; no reimport or rebake. [Tests, timing results and next milestone](PHYSICS_STARTUP_GUIDE.md).
 
 Stability/startup follow-up (2026-10-28): repeated real-game inventory/gravity/destruction/save-load tests and a six-room door route are available in `RunGameplayStabilityTests.bat`, using isolated test saves. Hidden save/load menus no longer read saves every frame, and the save serializer prepares during loading to reduce first-save work. Atomic persistence is unchanged. Startup reports now show per-frame host work and physics substage timings. Use `LaunchAtmosphereTest.bat` for normal playtesting as before; visuals, texture quality and physics behaviour are unchanged. [Results, commands and remaining work](GAMEPLAY_STABILITY_GUIDE.md).

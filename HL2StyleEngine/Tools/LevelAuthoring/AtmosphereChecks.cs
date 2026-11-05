@@ -15,13 +15,16 @@ internal static class AtmosphereChecks
     internal const string FileName="atmosphereTest.json";
     internal static readonly PostProcessSettings Preset=new() {BloomEnabled=true,GradingEnabled=true,FogEnabled=true,
         Contrast=1.03f,Saturation=.95f,ColorFilter=new Vector3(.95f,1,1.03f),FogDensity=.015f,FogStart=5,FogHeightFalloff=.25f,FogMaxOpacity=.65f};
+    // Authored fixture values approved for acceptance on 2026-11-04; keep the original numerical test preset above.
+    internal static readonly PostProcessSettings AuthoredPreset=Preset with
+        {FogDensity=.1f,FogStart=3.102f,FogHeightFalloff=.034f,FogMaxOpacity=.744f};
     private static void Require(bool condition,string message){if(!condition)throw new InvalidDataException(message);}
 
     internal static void Build(string root)
     {
         string source=Path.Combine(root,"Game/Content/Levels",RenderStressTest.FileName),destination=Path.Combine(root,"Game/Content/Levels",FileName);
         if(File.Exists(destination))throw new IOException("Preserve existing atmosphere-level edits.");
-        var level=LevelIO.Load(source);level.PostProcessing=Preset;
+        var level=LevelIO.Load(source);level.PostProcessing=AuthoredPreset;
         LevelIO.Save(destination,level);
         foreach(var probe in level.Entities.Where(e=>e.ReflectionProbe!=null))
             File.Copy(ReflectionProbeCache.PathFor(source,probe.Id),ReflectionProbeCache.PathFor(destination,probe.Id));
@@ -56,7 +59,7 @@ internal static class AtmosphereChecks
         foreach(var pair in reflections)
             Check(pair.Value==ReflectionSnapshot.Create(level,path,pair.Key,resolve).Key(),"Postprocessing changed HDR reflection energy/key.");
         string testPath=Path.Combine(root,"Game/Content/Levels",FileName);var fixture=LevelIO.Load(testPath);
-        Check(fixture.PostProcessing==Preset,"Fixture settings changed.");
+        Check(fixture.PostProcessing==AuthoredPreset,"Fixture settings changed from the approved authored baseline.");
         fixture.PostProcessing=null;level.PostProcessing=null;
         Check(StructuredData.WriteJson(fixture).SequenceEqual(StructuredData.WriteJson(level)),"Atmosphere copy changed scene geometry/lighting.");
         foreach(var pair in reflections)
@@ -66,7 +69,7 @@ internal static class AtmosphereChecks
 
     internal static void Pixels()
     {
-        using var host=new EngineHost(640,480,"Atmosphere image checks");var renderer=host.Context.Renderer;var device=renderer.GraphicsDevice;
+        using var host=GraphicsValidationHost.Create(640,480,"Atmosphere image checks");var renderer=host.Context.Renderer;var device=renderer.GraphicsDevice;
         Marshal.AddRef(device.GetD3D11Info().Device);using var native=new ID3D11Device(device.GetD3D11Info().Device);
         using var messages=native.QueryInterface<Vortice.Direct3D11.Debug.ID3D11InfoQueue>();
         using var world=new BasicWorldRenderer(device,renderer.WorldOutputDescription,"Shaders");int checks=0;

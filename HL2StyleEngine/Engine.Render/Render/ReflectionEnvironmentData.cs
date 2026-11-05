@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 
 namespace Engine.Render;
@@ -59,17 +60,33 @@ public sealed record ReflectionEnvironmentData(int Size, int MipCount, int LutSi
         if (reader.ReadInt32()!=0x45533248 || reader.ReadInt32()!=Version) throw new InvalidDataException("Reflection filter version mismatch.");
         int length=reader.ReadInt32();
         if (length is < 12 or > 5*1024*1024) throw new InvalidDataException("Reflection payload exceeds bounds.");
-        byte[] hash=reader.ReadBytes(32), bytes=reader.ReadBytes(length);
-        if (bytes.Length!=length || !SHA256.HashData(bytes).AsSpan().SequenceEqual(hash) || stream.ReadByte()!=-1)
-            throw new InvalidDataException("Reflection payload checksum/length mismatch.");
-        using var data=new BinaryReader(new MemoryStream(bytes));
-        int size=data.ReadInt32(), mips=data.ReadInt32(), lutSize=data.ReadInt32();
+        Span<byte> expectedHash = stackalloc byte[32], dimensions = stackalloc byte[12];
+        stream.ReadExactly(expectedHash);
+        stream.ReadExactly(dimensions);
+        int size = BinaryPrimitives.ReadInt32LittleEndian(dimensions),
+            mips = BinaryPrimitives.ReadInt32LittleEndian(dimensions[4..]),
+            lutSize = BinaryPrimitives.ReadInt32LittleEndian(dimensions[8..]);
         if (size is < 1 or > 256 || (size & (size-1))!=0 || mips!=1+(int)Math.Log2(size) || lutSize is < 1 or > 256)
             throw new InvalidDataException("Unsupported reflection dimensions.");
+        int expectedLength = 12 + lutSize * lutSize * 4;
+        for (int mip = 0; mip < mips; mip++) expectedLength += 6 * Math.Max(1, size >> mip) * Math.Max(1, size >> mip) * 8;
+        if (length != expectedLength) throw new InvalidDataException("Reflection payload length mismatch.");
+        // Hash directly into the final face arrays, avoiding a second full cubemap buffer.
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        hash.AppendData(dimensions);
         var faces=new byte[mips*6][];
-        for(int mip=0;mip<mips;mip++) for(int face=0;face<6;face++) faces[mip*6+face]=data.ReadBytes(Math.Max(1,size>>mip)*Math.Max(1,size>>mip)*8);
-        var result=new ReflectionEnvironmentData(size,mips,lutSize,faces,data.ReadBytes(lutSize*lutSize*4));
-        if(data.BaseStream.Position!=length) throw new InvalidDataException("Reflection payload trailing data.");
+        for (int mip = 0; mip < mips; mip++) for (int face = 0; face < 6; face++)
+        {
+            byte[] bytes = new byte[Math.Max(1, size >> mip) * Math.Max(1, size >> mip) * 8];
+            stream.ReadExactly(bytes); hash.AppendData(bytes); faces[mip * 6 + face] = bytes;
+        }
+        byte[] lut = new byte[lutSize * lutSize * 4];
+        stream.ReadExactly(lut); hash.AppendData(lut);
+        Span<byte> actualHash = stackalloc byte[32];
+        hash.GetHashAndReset(actualHash);
+        if (!actualHash.SequenceEqual(expectedHash) || stream.ReadByte() != -1)
+            throw new InvalidDataException("Reflection payload checksum/length mismatch.");
+        var result=new ReflectionEnvironmentData(size,mips,lutSize,faces,lut);
         result.Validate(); return result;
     }
 }

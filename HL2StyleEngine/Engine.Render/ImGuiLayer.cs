@@ -9,6 +9,7 @@ public sealed class ImGuiLayer : IDisposable
 {
     private readonly ImGuiRenderer _imgui;
     private readonly GraphicsDevice _device;
+    private readonly IntPtr _context;
     private readonly ImGuiImageCache _images = new();
 
     private readonly string _iniPath;
@@ -19,19 +20,30 @@ public sealed class ImGuiLayer : IDisposable
         _device = gd;
         _iniPath = Path.Combine(AppContext.BaseDirectory, "imgui.ini");
 
-        if (ImGui.GetCurrentContext() == IntPtr.Zero)
-            ImGui.CreateContext();
-
+        // This backend starts a frame in its constructor. Replace its bootstrap context
+        // so docking and the saved layout are configured before our first NewFrame.
+        _imgui = new ImGuiRenderer(gd, output, width, height);
+        var backendFlags = ImGui.GetIO().BackendFlags;
+        IntPtr bootstrap = ImGui.GetCurrentContext();
+        ImGui.EndFrame();
+        ImGui.DestroyContext(bootstrap);
+        _context = ImGui.CreateContext();
         var io = ImGui.GetIO();
+        io.BackendFlags = backendFlags;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        TryLoadUiFont(io);
+        unsafe { io.NativePtr->IniFilename = null; }
+        io.Fonts.AddFontDefault();
 
         if (File.Exists(_iniPath))
         {
             try { ImGui.LoadIniSettingsFromDisk(_iniPath); }
             catch { }
         }
-        _imgui = new ImGuiRenderer(gd, output, width, height);
+        _imgui.RecreateFontDeviceTexture(gd);
+        io.DisplaySize = new System.Numerics.Vector2(width, height);
+        io.DisplayFramebufferScale = System.Numerics.Vector2.One;
+        io.DeltaTime = 1f / 60f;
+        ImGui.NewFrame();
     }
 
     public void WindowResized(int width, int height) => _imgui.WindowResized(width, height);
@@ -58,6 +70,7 @@ public sealed class ImGuiLayer : IDisposable
         TrySaveIni();
         _imgui.Dispose();
         _images.Dispose();
+        ImGui.DestroyContext(_context);
     }
 
     private void TrySaveIni()
@@ -66,18 +79,4 @@ public sealed class ImGuiLayer : IDisposable
         catch {  }
     }
 
-    private static void TryLoadUiFont(ImGuiIOPtr io)
-    {
-        string fontPath = Path.Combine(AppContext.BaseDirectory, "Content", "UI", "Fonts", "AurelDeco-Regular.ttf");
-        if (!File.Exists(fontPath))
-            return;
-
-        try
-        {
-            io.Fonts.AddFontFromFileTTF(fontPath, 18f);
-        }
-        catch
-        {
-        }
-    }
 }

@@ -13,7 +13,7 @@ using Game.Inventory;
 using Veldrid;
 
 // Diagnostic wrapper only. All mutations use the existing gameplay operations.
-internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlayRenderer, IInputConsumer
+internal sealed partial class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlayRenderer, IInputConsumer
 {
     private const int CycleFrames = 1200;
     private const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -21,11 +21,18 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
     private readonly string _folder;
     private readonly bool _native;
     private readonly bool _puzzles;
+    private readonly AssetPackage? _package;
+    private readonly bool _textureTrial, _textureReference;
+    private long _minimumTextureBytes = long.MaxValue;
     private Vector3 _spawn;
     private readonly List<Interval> _intervals = new();
     private readonly List<object> _events = new(), _memory = new();
     private readonly List<double> _slotTimes = new();
     private readonly List<object> _saveTimes = new();
+    private readonly List<WeakReference<object>> _oldEntities = new(), _oldMeshes = new();
+    private bool _memoryTrace;
+    private bool _partialUploads;
+    private object? _retentionAfterRun;
     private GameplayUiLayer _ui = null!;
     private SourcePlayerMotor _motor = null!;
     private int _frame, _actions, _completedCycles, _peakDebris, _transitions;
@@ -40,28 +47,41 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
     private long _firstSettledPrivate, _lastSettledPrivate, _firstSettledModels, _lastSettledModels;
     private readonly record struct Interval(int Frame, string Phase, double Milliseconds);
     public InputState InputState => _game.InputState;
-    private GameplaySoakChecks(string root, string folder, bool native, bool puzzles)
+    private GameplaySoakChecks(string root, string folder, bool native, bool puzzles, bool textureTrial, bool textureReference)
     {
         _folder = folder; _native = native; _puzzles = puzzles;
-        _game = new(Path.Combine(root, "Game/Content/Levels", puzzles ? "sixRoomShadowTest.json" : "atmosphereTest.json"),
-            saveDirectory: Path.Combine(folder, "Saves"));
+        _textureTrial = textureTrial; _textureReference = textureReference;
+        string file = puzzles ? "sixRoomShadowTest.json" : "atmosphereTest.json";
+        if (textureTrial) _package = new(LoadingPackageChecks.Build(root, file));
+        _game = new(_package?.LevelPath ?? Path.Combine(root, "Game/Content/Levels", file), _package?.Root, _package,
+            saveDirectory: Path.Combine(folder, "Saves"))
+        { TextureStreamingTrialEnabled = textureTrial, TextureStreamingFullResolution = textureReference || textureTrial };
     }
 
-    internal static void Run(string root, bool native, int cycles = 6, bool puzzles = false)
+    internal static void Run(string root, bool native, int cycles = 6, bool puzzles = false, bool memoryTrace = false,
+        bool textureTrial = false, bool textureReference = false, bool partialUploads = false,
+        bool memoryStages = false, bool noReload = false, bool heapSnapshots = false)
     {
-        if (cycles is < 1 or > 8) throw new ArgumentOutOfRangeException(nameof(cycles));
+        if (cycles is < 1 or > 24) throw new ArgumentOutOfRangeException(nameof(cycles));
         string folder = Path.Combine(AppContext.BaseDirectory, "qa", "gameplay-soak-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff") + (native ? "-native" : "-fallback"));
         Directory.CreateDirectory(folder);
         string? previousFrames = Environment.GetEnvironmentVariable("HS2_PROFILE_FRAMES"), previousReport = Environment.GetEnvironmentVariable("HS2_FRAME_REPORT");
         Environment.SetEnvironmentVariable("HS2_PROFILE_FRAMES", (cycles * CycleFrames).ToString());
         Environment.SetEnvironmentVariable("HS2_FRAME_REPORT", Path.Combine(folder, "frames.json"));
-        using var probe = new GameplaySoakChecks(root, folder, native, puzzles);
+        using var probe = new GameplaySoakChecks(root, folder, native, puzzles, textureTrial, textureReference);
+        probe._memoryTrace = memoryTrace;
+        probe._partialUploads = partialUploads;
+        probe._noReload = noReload;
+        probe._heapSnapshots = heapSnapshots;
+        probe._requestedCycles = cycles;
+        probe._diagnosticTool = Path.Combine(root, ".dotnet/diagnostics/dotnet-gcdump.exe");
+        if (memoryStages || heapSnapshots) probe.EnableMemoryStages();
         Exception? failure = null;
         try
         {
             using var host = new EngineHost(1920, 1080, "Gameplay stability: " + (native ? "native inventory" : "fallback inventory"));
-            host.Run(probe);
-            probe.Validate(cycles);
+            try { host.Run(probe); probe.Validate(cycles); }
+            finally { if (memoryTrace) probe.CapturePostRunRetention(); }
         }
         catch (Exception ex) { failure = ex; }
         finally
@@ -69,6 +89,10 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
             File.WriteAllText(Path.Combine(folder, "summary.json"), JsonSerializer.Serialize(new
             {
                 Version = 1, Native = native, Puzzles = puzzles, GeometryReuse = Engine.Physics.Collision.WorldColliderCache.ReuseEnabled,
+                TextureTrial = textureTrial, TextureReference = textureReference,
+                FullDynamicBufferUploads = !partialUploads,
+                MinimumTextureBytes = probe._minimumTextureBytes, TextureReplacements = probe._game.TextureTrialReplacements,
+                PackageFallbacks = probe._package?.Fallbacks ?? 0,
                 Cycles = cycles, Frames = probe._frame, Failure = failure?.ToString(),
                 Actions = probe._actions, CompletedCycles = probe._completedCycles, PeakDebris = probe._peakDebris,
                 Distance = probe._distance, SimulationSeconds = probe._simulation,
@@ -77,6 +101,10 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
                 Intervals = probe._intervals, Events = probe._events, Memory = probe._memory,
                 SaveSlotSummaryMilliseconds = probe._slotTimes,
                 SaveTimings = probe._saveTimes,
+                MemoryTrace = memoryTrace, RetentionAfterRun = probe._retentionAfterRun,
+                DiagnosticOnly = memoryStages || noReload || heapSnapshots, NoReload = noReload, HeapSnapshots = heapSnapshots,
+                MemoryStages = probe._stageSamples, StageAllocations = probe.StageAllocationReport(),
+                ObserverAllocatedBytes = probe._observerAllocated,
                 Notes = "Scripted room teleports plus real W/S movement; real save/load in isolated QA folder. Explicit loading intervals retained separately. OS cache uncontrolled; CPU/host timings, not GPU timestamps."
             }, new JsonSerializerOptions { WriteIndented = true }));
             Environment.SetEnvironmentVariable("HS2_PROFILE_FRAMES", previousFrames);
@@ -89,6 +117,7 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
     public void Initialize(EngineContext context)
     {
         _game.Initialize(context);
+        ((BasicWorldRenderer)Field("_world")).FullDynamicBufferUploads = !_partialUploads;
         ((GameplayUiLayer)Field("_gameplayUi")).Dispose();
         var backend = RmlUiBackend.Probe(Path.Combine(AppContext.BaseDirectory, "Content/UI"),
             _native ? Path.Combine(AppContext.BaseDirectory, "HS2RmlUiBridge.dll") : "HS2_missing_soak_bridge");
@@ -121,6 +150,8 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
         _previousStamp = stamp;
         _phase = _loading ? "loading" : "gameplay";
         int elapsed = _frame - 120, local = elapsed < 0 ? -1 : elapsed % CycleFrames, cycle = Math.Max(0, elapsed / CycleFrames);
+        // Compare memory at the same full-detail state after each reload, without waiting or forcing GC.
+        if (_textureTrial) _game.TextureStreamingFullResolution = _textureReference || local < 20 || local >= 780;
         var keys = new List<KeyEvent>();
         if (local is 20 or 60 or 120 or 180 or 240 or 300 or 360 or 480 or 540 or 780 or 1000 or 1100)
         {
@@ -186,13 +217,24 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
                     AssertionSnapshotMilliseconds = Stopwatch.GetElapsedTime(checksStart).TotalMilliseconds });
                 break;
             case 540:
+                if (_noReload) break;
+                SampleMemoryStage("save-load-before");
                 inventory.Clear(); Set("_playerHealth", 12);
                 BeginTransition();
                 Check((bool)typeof(HL2GameModule).GetMethod("TryLoadPrototypeSave", Flags, [typeof(string)])!.Invoke(_game, [Path.Combine(_folder, "Saves/slot_1.json")])!, "Load failed.");
                 Check(JsonSerializer.Serialize(inventory.ToSaveData()) == _savedInventory && (int)Field("_playerHealth") == _savedHealth, "Inventory/health did not survive save/load.");
                 Check(JsonSerializer.Serialize(Call("CaptureDroppedItems")) == _savedDrops, "Dropped item state did not survive load.");
+                SampleMemoryStage("save-load-returned");
                 break;
             case 780:
+                if (_noReload) break;
+                if (_memoryTrace)
+                {
+                    _oldEntities.AddRange(entities.Select(e => new WeakReference<object>(e)));
+                    _oldMeshes.AddRange(entities.Select(e => e.Collider.Mesh).OfType<Engine.Physics.Collision.MeshCollisionMesh>()
+                        .Distinct().Select(m => new WeakReference<object>(m)));
+                }
+                SampleMemoryStage("reload-before");
                 BeginTransition(); keys.Add(new(Key.F5, true, ModifierKeys.None)); keys.Add(new(Key.F5, false, ModifierKeys.None)); break;
             case 1000:
                 Check(JsonSerializer.Serialize(inventory.ToSaveData()) == _savedInventory, "Inventory changed after level reload.");
@@ -202,21 +244,51 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
                 _motor.Velocity = Vector3.Zero;
                 break;
             case 1100:
+                SampleMemoryStage("settled");
                 Check(((ICollection)Field("_fractureDebrisPieces")).Count == 0, "Debris did not expire.");
+                if (_textureTrial) Check(_game.TextureTrialFullDetail && !_game.TextureTrialErrors.Any(), "Full texture quality not restored at settled memory checkpoint.");
                 using (var process = Process.GetCurrentProcess())
                 {
                     process.Refresh(); long bytes = process.PrivateMemorySize64;
                     if (_completedCycles == 0) { _firstSettledPrivate = bytes; _firstSettledModels = _game.StreamingResidentBytes; }
                     _lastSettledPrivate = bytes; _lastSettledModels = _game.StreamingResidentBytes;
                     _memory.Add(new { Frame = _frame, PrivateBytes = bytes, WorkingSet = process.WorkingSet64, ManagedBytes = GC.GetTotalMemory(false),
-                        HeapBytes = GC.GetGCMemoryInfo().HeapSizeBytes, ModelBytes = _game.StreamingResidentBytes, Models = _game.StreamingResidentModels,
+                        HeapBytes = GC.GetGCMemoryInfo().HeapSizeBytes, FragmentedBytes = GC.GetGCMemoryInfo().FragmentedBytes,
+                        CommittedBytes = GC.GetGCMemoryInfo().TotalCommittedBytes, TotalAllocatedBytes = GC.GetTotalAllocatedBytes(false),
+                        OldEntitiesAlive = Alive(_oldEntities), OldMeshesAlive = Alive(_oldMeshes),
+                        LightmapGpuBytes = ((Engine.Editor.Editor.LevelBakeSession)Field("_bakedLighting")).ResidentBytes,
+                        ReflectionGpuBytes = ((Engine.Editor.Editor.ReflectionProbeSession)Field("_roomReflections")).ResidentBytes,
+                        ReflectionPendingCpuBytes = ((Engine.Editor.Editor.ReflectionProbeSession)Field("_roomReflections")).PendingCpuBytes,
+                        ReflectionCaptureGpuBytes = ((Engine.Editor.Editor.ReflectionProbeSession)Field("_roomReflections")).CaptureGpuBytes,
+                        TextureBytes = ((BasicWorldRenderer)Field("_world")).TextureResidentBytes,
+                        TextureReplacements = _game.TextureTrialReplacements, TextureFullDetail = _game.TextureTrialFullDetail,
+                        TextureCount = ((BasicWorldRenderer)Field("_world")).ResidentTextureCount,
+                        ModelBytes = _game.StreamingResidentBytes, Models = _game.StreamingResidentModels,
                         RuntimeEntities = entities.Count, Collections = new[] { GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2) } });
                 }
-                _completedCycles++; break;
+                _completedCycles++;
+                if (_heapSnapshots && (_completedCycles == 1 || _completedCycles == _requestedCycles)) CaptureHeapSnapshot();
+                break;
         }
     }
 
-    private void BeginTransition() { _loading = true; _phase = "loading"; _transitionStart = Stopwatch.GetTimestamp(); _transitions++; }
+    private static int Alive(List<WeakReference<object>> items) => items.Count(w => w.TryGetTarget(out _));
+
+    // Diagnostic only, after timing and every acceptance gate. Never use this
+    // collection to improve the ordinary memory-growth result or gameplay pacing.
+    private void CapturePostRunRetention()
+    {
+        long before = GC.GetTotalMemory(false);
+        GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+        GC.WaitForPendingFinalizers();
+        GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+        _retentionAfterRun = new { BeforeManagedBytes = before, AfterManagedBytes = GC.GetTotalMemory(false),
+            OldEntitiesTracked = _oldEntities.Count, OldEntitiesAlive = Alive(_oldEntities),
+            OldMeshesTracked = _oldMeshes.Count, OldMeshesAlive = Alive(_oldMeshes),
+            CommittedBytes = GC.GetGCMemoryInfo().TotalCommittedBytes, FragmentedBytes = GC.GetGCMemoryInfo().FragmentedBytes };
+    }
+
+    private void BeginTransition() { _loading = true; _phase = "loading"; _transitionStart = Stopwatch.GetTimestamp(); _transitions++; _sampledStages.Clear(); _assetsObserved = _lightingObserved = false; }
     public void FixedUpdate(float dt)
     {
         Vector3 before = _motor.Position; _game.FixedUpdate(dt);
@@ -228,7 +300,12 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
         }
     }
     public void DrawImGui() => _game.DrawImGui();
-    public void RenderWorld(Renderer renderer) => _game.RenderWorld(renderer);
+    public void RenderWorld(Renderer renderer)
+    {
+        _game.RenderWorld(renderer);
+        if (_textureTrial && _frame >= 120 && !_loading)
+            _minimumTextureBytes = Math.Min(_minimumTextureBytes, _game.TextureTrialResidentBytes);
+    }
     public void RenderOverlay(Renderer renderer)
     {
         _game.RenderOverlay(renderer);
@@ -236,10 +313,13 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
         if (_loading)
         {
             var readiness = _game.GetLoadReadiness();
+            if (readiness.AssetsReady && !_assetsObserved) { SampleMemoryStage("assets-ready"); _assetsObserved = true; }
+            if (readiness.LightingReady && !_lightingObserved) { SampleMemoryStage("lighting-ready"); _lightingObserved = true; }
             Check(readiness.FailedModels == 0, "Required model failed.");
             if (readiness.AssetsReady && readiness.LightingReady && readiness.InputReady)
             {
                 _loading = false;
+                SampleMemoryStage("input-ready");
                 _events.Add(new { Frame = _frame, ReadyMilliseconds = Stopwatch.GetElapsedTime(_transitionStart).TotalMilliseconds });
             }
         }
@@ -249,10 +329,18 @@ internal sealed class GameplaySoakChecks : IGameModule, IWorldRenderer, IOverlay
     }
     private void Validate(int cycles)
     {
-        Check(_frame == 120 + cycles * CycleFrames && _completedCycles == cycles && _transitions == cycles * 2 && _actions == cycles * 12, "Soak was incomplete.");
+        Check(_frame == 120 + cycles * CycleFrames && _completedCycles == cycles && _transitions == (_noReload ? 0 : cycles * 2) && _actions == cycles * 12, "Soak was incomplete.");
         Check(_intervals.Count == cycles * CycleFrames - 1 && _intervals[0].Frame == 120, "Wall intervals included warmup or missed an intermediate frame.");
         Check(_distance > 1 && _simulation > 1 && _peakDebris > 0, "Gameplay simulation was not exercised.");
         Check(!_loading, "Final reload was not ready.");
+        if (_textureTrial)
+        {
+            Check(_package!.Fallbacks == 0 && !_game.TextureTrialErrors.Any() && _game.TextureTrialFullDetail,
+                "Texture/package error or final quality restoration failed.");
+            Check(_textureReference || _game.TextureTrialReplacements > cycles * 4 && _minimumTextureBytes < _game.TextureTrialResidentBytes,
+                "Long trial did not exercise texture replacement/reduced residency.");
+            Check(!_textureReference || _game.TextureTrialReplacements == 0, "Full-detail control changed texture residency.");
+        }
         var steady = _intervals.Where(i => i.Phase == "gameplay").Select(i => i.Milliseconds).Order().ToArray();
         Check(steady.Length > cycles * 800, "Too little steady gameplay measured.");
         Console.WriteLine($"[SoakFrames] {steady.Length} gameplay intervals; mean {steady.Average():F3}ms, P95 {steady[(int)((steady.Length - 1) * .95)]:F3}ms, >33.3 {steady.Count(x => x > 33.3)}, >100 {steady.Count(x => x > 100)}. Loading intervals are retained separately.");

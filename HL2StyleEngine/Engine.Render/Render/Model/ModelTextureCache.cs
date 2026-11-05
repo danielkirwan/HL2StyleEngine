@@ -4,7 +4,7 @@ using Veldrid;
 
 namespace Engine.Render;
 
-internal sealed class ModelTextureCache : IDisposable
+internal sealed partial class ModelTextureCache : IDisposable
 {
     private readonly GraphicsDevice _device;
     private readonly Dictionary<string, SharedTexture> _textures = new(StringComparer.Ordinal);
@@ -43,7 +43,8 @@ internal sealed class ModelTextureCache : IDisposable
             for (uint mip = 0; mip < mips.Length; mip++)
                 _device.UpdateTexture(texture, mips[mip], 0, 0, 0,
                     (uint)Math.Max(1, source.Width >> (int)mip), (uint)Math.Max(1, source.Height >> (int)mip), 1, mip, 0);
-            shared = new SharedTexture(key, texture, _device.ResourceFactory.CreateTextureView(texture), mips.Sum(m => (long)m.Length));
+            shared = new SharedTexture(key, texture, _device.ResourceFactory.CreateTextureView(texture), mips.Sum(m => (long)m.Length),
+                new(source.Key, source.Semantic, source.Compressed, source.Width, source.Height, source.FirstMip, source.Mips.Length));
             _textures.Add(key, shared); ResidentBytes += shared.Bytes; Uploads++;
             return shared;
         }
@@ -63,12 +64,13 @@ internal sealed class ModelTextureCache : IDisposable
         _textures.Clear(); ResidentBytes = 0;
     }
 
-    internal sealed class SharedTexture(string key, Texture texture, TextureView view, long bytes)
+    internal sealed class SharedTexture(string key, Texture texture, TextureView view, long bytes, TextureResidencyInfo info)
     {
         public string Key { get; } = key;
         public Texture Texture { get; } = texture;
         public TextureView View { get; } = view;
         public long Bytes { get; } = bytes;
+        public TextureResidencyInfo Info { get; } = info;
         public int References = 1;
     }
 }

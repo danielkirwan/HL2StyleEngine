@@ -43,6 +43,9 @@ internal static class RoomVisibilityChecks
         void Assert(bool pass,string why) { Check(pass,why); checks++; }
         var level = LevelIO.Load(Path.Combine(root,"Game/Content/Levels",FileName));
         var original = LevelIO.Load(Path.Combine(root,"Game/Content/Levels",ShadowStabilityChecks.FileName));
+        // This earlier fixture retains the source floor; only the later shadow fixture uses the normal-only variant.
+        foreach(var entity in original.Entities)
+            if(entity.MeshPath==FloorMaterial.Corrected)entity.MeshPath=FloorMaterial.Original;
         var copy = Clone(level); copy.RoomVisibility = null;
         Assert(StructuredData.WriteJson(copy).SequenceEqual(StructuredData.WriteJson(original)),"Visibility fixture changed gameplay/geometry.");
         var settings = level.RoomVisibility!;
@@ -116,18 +119,18 @@ internal static class RoomVisibilityChecks
             var previous=LightingScenarioResolver.CreateView(original,scenario);
             Assert(BakeSnapshot.Capture(next,Resolve).Key()==BakeSnapshot.Capture(previous,Resolve).Key(),"Room metadata invalidated diffuse bake.");
             string newPath=LightingScenarioResolver.PathFor(Path.Combine(root,"Game/Content/Levels",FileName),scenario.Id);
-            string oldPath=LightingScenarioResolver.PathFor(Path.Combine(root,"Game/Content/Levels",ShadowStabilityChecks.FileName),scenario.Id);
             foreach(var probe in next.Entities.Where(e=>e.ReflectionProbe!=null))
             {
                 string key=ReflectionSnapshot.Create(next,newPath,probe.Id,Resolve).Key();
-                Assert(key==ReflectionSnapshot.Create(previous,oldPath,probe.Id,Resolve).Key(),"Room metadata changed reflection content.");
+                // Hold the diffuse-cache dependency fixed: the source fixture now has a separate material revision.
+                Assert(key==ReflectionSnapshot.Create(previous,newPath,probe.Id,Resolve).Key(),"Room metadata changed reflection content.");
                 Assert(ReflectionProbeCache.Load(ReflectionProbeCache.PathFor(newPath,probe.Id),key)!=null,"Copied capture is invalid.");
             }
         }
         Console.WriteLine($"PASS: {checks} room graph, boundary, prefetch, editor undo/JSON and cache compatibility checks.");
     }
 
-    internal static void Pixels(string root, bool submission = false)
+    internal static void Pixels(string root, bool submission = false, bool uploads = false)
     {
         using var host=new EngineHost(1280,720,"Room visibility references");
         var renderer=host.Context.Renderer;
@@ -136,12 +139,13 @@ internal static class RoomVisibilityChecks
         game.AssetStreamingEnabled=false; game.Initialize(host.Context);
         var camera=(Game.FpsCamera)PbrBaselineChecks.Field(game,"_camera");
         var world=(BasicWorldRenderer)PbrBaselineChecks.Field(game,"_world");
+        if(uploads) world.ShadowCachingEnabled=false; // Exercise both upload paths, not a cached second shadow image.
         var editor=(LevelEditorController)PbrBaselineChecks.Field(game,"_editor");
         var rooms=(ReflectionProbeSession)PbrBaselineChecks.Field(game,"_roomReflections");
         var bake=(LevelBakeSession)PbrBaselineChecks.Field(game,"_bakedLighting");
         var models=(IDictionary)PbrBaselineChecks.Field(game,"_weaponModelCache");
         var entities=(List<Entity>)PbrBaselineChecks.Field(game,"_runtimeEntities");
-        string folder=Path.Combine(AppContext.BaseDirectory,"qa",(submission?"scene-submission-":"room-visibility-")+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")); Directory.CreateDirectory(folder);
+        string folder=Path.Combine(AppContext.BaseDirectory,"qa",(uploads?"buffer-uploads-":submission?"scene-submission-":"room-visibility-")+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")); Directory.CreateDirectory(folder);
         byte[] authored=StructuredData.WriteJson(editor.LevelFile);
         var ids=entities.Select(e=>e.Id).ToArray();
         world.ViewCullingEnabled=false; game.RoomVisibilityEnabled=false;
@@ -193,7 +197,7 @@ internal static class RoomVisibilityChecks
             Aim(held.Transform.Position); Compare("held-crossing-"+cases);
         }
         held.IsHeld=wasHeld; held.Transform.Position=heldPosition;
-        Check(submission || saved>0,"No draw reduction observed.");
+        Check(uploads || submission || saved>0,"No draw reduction observed.");
         Check(entities.Select(e=>e.Id).SequenceEqual(ids),"Visibility changed entity ownership.");
         Check(StructuredData.WriteJson(editor.LevelFile).SequenceEqual(authored),"Checks changed authored scene.");
         PbrBaselineChecks.Set(game,"_editorEnabled",true);
@@ -203,16 +207,19 @@ internal static class RoomVisibilityChecks
         var withBounds=target.Frame(()=>game.RenderWorld(renderer));
         Check(withBounds.Zip(withoutBounds).Count(p=>p.First!=p.Second)>100,"Room/doorway outlines were not drawn in F2.");
         RenderPipelineChecks.SavePng(withBounds,target.Width,target.Height,Path.Combine(folder,"f2-room-bounds.png"));
-        Console.WriteLine($"PASS: {cases} {(submission?"submission":"all-visible")} pixel references, {saved} total draws avoided; entities and source unchanged. {folder}");
+        Console.WriteLine($"PASS: {cases} {(uploads?"buffer upload":submission?"submission":"all-visible")} pixel references, {saved} total draws avoided; entities and source unchanged. {folder}");
 
         void Aim(Vector3 to){var d=Vector3.Normalize(to-camera.Position);camera.Yaw=MathF.Atan2(d.X,d.Z);camera.Pitch=MathF.Asin(d.Y);}
         void Compare(string name)
         {
+            world.FullDynamicBufferUploads=true;
             game.RenderPreparationEnabled=true; world.DrawGroupingEnabled=true;
             game.RoomVisibilityEnabled=true; var actual=target.Frame(()=>game.RenderWorld(renderer)); int draws=submission?world.MainDrawCalls:(int)world.ObjectDrawCount, culled=game.RoomCulledEntities;
             var shadows=world.ShadowLightIds.ToArray();
-            game.RoomVisibilityEnabled=submission; game.RenderPreparationEnabled=!submission; world.DrawGroupingEnabled=!submission;
+            game.RoomVisibilityEnabled=uploads || submission; game.RenderPreparationEnabled=uploads || !submission; world.DrawGroupingEnabled=uploads || !submission;
+            if(uploads) world.FullDynamicBufferUploads=false;
             var reference=target.Frame(()=>game.RenderWorld(renderer)); int referenceDraws=submission?world.MainDrawCalls:(int)world.ObjectDrawCount;
+            world.FullDynamicBufferUploads=true;
             int max=actual.Zip(reference).Max(p=>Enumerable.Range(0,3).Max(c=>Math.Abs((int)((p.First>>(8*c))&255)-(int)((p.Second>>(8*c))&255))));
             if(cases<2 || max>1){RenderPipelineChecks.SavePng(actual,target.Width,target.Height,Path.Combine(folder,name+".png"));RenderPipelineChecks.SavePng(reference,target.Width,target.Height,Path.Combine(folder,name+"-reference.png"));}
             Check(max<=1,name+" differs: "+max+"/255"); Check(shadows.SequenceEqual(world.ShadowLightIds),"Camera visibility changed light owners.");

@@ -1,8 +1,15 @@
 # Level Design Guide
 
-This project is aiming for slower to medium paced horror/action exploration: closer to Half-Life 2 pacing and immersive environmental storytelling than arena shooter speed.
+This project targets slower to medium paced first-person exploration and action, with BioShock-inspired architectural art direction, immersive-sim choices inspired by Prey, Dishonored, System Shock and Deus Ex, expressive physical sound, and the existing Half-Life 2-style physics. Resident Evil Requiem and Dead Space remake remain the atmosphere/lighting references in their ongoing implementation track. See the current [Game Style Objective](GAME_STYLE_OBJECTIVE.md) and [engine systems research](ENGINE_SYSTEMS_RESEARCH.md) for the full reference mix and proposed development sequence.
 
 ## Current Larger Test
+
+Future level work must also use the [immersive-sim design philosophy](IMMERSIVE_SIM_DESIGN_PHILOSOPHY.md),
+adopted 5 November 2026. Review each major objective for multiple meaningful
+methods, routes that reconnect, readable opportunities and recovery after
+failure. Existing single-solution regression puzzles remain unchanged; their
+layout is not the final campaign template. The pacing ranges below are initial
+playtest hypotheses, not rigid encounter timers.
 
 `sixRoomTest.json` applies this guide at a larger scale: one central landmark space and five branches, approximately five times the `interaction_test.json` floor footprint. The accepted puzzle pass now gates the branches with keyed override, gravity-gun retrieval, inventory cable repair, crate pressure plate and a final three-feed circuit. Freight, Workshop and Utility have independent hall-accessible solutions; Workshop enables Medical, and Freight/Medical/Utility provide the final feeds. Doors latch open to keep return journeys short. Required items are deterministic and protected from discard, with a non-breakable fallback crate for the plate. There are no enemies. Different floor finishes, proportions, lighting and equipment retain each room's identity, and existing physics activities remain after unlocking. See `SIX_ROOM_TEST.md` for solutions, dimensions, verification and the next manual review criteria.
 

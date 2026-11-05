@@ -108,6 +108,17 @@ public sealed class AssetPackage
         }
     }
 
+    // Experimental texture-only requests never parse/rebuild model geometry. A stale
+    // or corrupt snapshot fails this request so the caller can retain its current texture.
+    public PreparedTexture LoadTextureMipTail(string modelPath, string key, TextureSemantic semantic, int firstMip)
+    {
+        if (firstMip is < 0 or > 14) throw new ArgumentOutOfRangeException(nameof(firstMip));
+        modelPath = Path.GetFullPath(modelPath);
+        if (TryGetModelIdentity(modelPath) == null || !_models[modelPath].Textures.Contains(key, StringComparer.Ordinal))
+            throw new InvalidDataException("Texture is not declared by an unchanged package model.");
+        return LoadTexture(modelPath, key, semantic, firstMip) ?? throw new InvalidDataException("Texture mip payload unavailable or invalid: " + key);
+    }
+
     public static string Resolve(string root, string relative)
     {
         if (string.IsNullOrWhiteSpace(relative) || relative.Length > 1024 || Path.IsPathRooted(relative) ||

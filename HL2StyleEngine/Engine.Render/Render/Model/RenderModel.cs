@@ -39,6 +39,9 @@ public sealed class RenderModel : IDisposable
 internal sealed partial class RenderModelPart : IDisposable
 {
     private readonly ModelTextureCache _textures;
+    private readonly GraphicsDevice _textureDevice;
+    private readonly ResourceLayout _textureLayout;
+    private readonly Sampler _textureSampler;
     private ModelTextureCache.SharedTexture? _color, _material, _normal, _emissive;
     private static readonly PreparedTexture DefaultWhite = new("default-white", 1, 1, TextureSemantic.Color, false, [[255, 255, 255, 255]]);
     private static readonly PreparedTexture DefaultMaterial = new("default-material", 1, 1, TextureSemantic.Material, false, [[0, 255, 0, 255]]);
@@ -48,6 +51,9 @@ internal sealed partial class RenderModelPart : IDisposable
         ModelTextureCache textures, bool loadTextures = true)
     {
         _textures = textures;
+        _textureDevice = graphicsDevice;
+        _textureLayout = textureLayout;
+        _textureSampler = sampler;
         BoundsMin = new Vector3(float.PositiveInfinity);
         BoundsMax = new Vector3(float.NegativeInfinity);
         foreach (Vector3 position in source.Positions)
@@ -136,6 +142,7 @@ internal sealed partial class RenderModelPart : IDisposable
                     _emissive.View));
             }
             if (loadTextures) CreatePbrResources(graphicsDevice, source, textureLayout, sampler, textures);
+            if (TextureSet != null || PbrTextureSet != null) textures.Track(this);
         }
         catch { Dispose(); throw; }
     }
@@ -153,11 +160,12 @@ internal sealed partial class RenderModelPart : IDisposable
     public Vector4 Color { get; }
     public Vector4 MaterialFactors { get; }
     public Vector3 EmissiveFactor { get; }
-    public ResourceSet? TextureSet { get; }
+    public ResourceSet? TextureSet { get; private set; }
     public bool IsTextured => TexturedVertexBuffer != null && TextureSet != null;
 
     public void Dispose()
     {
+        _textures.Untrack(this);
         DisposePbrResources();
         TextureSet?.Dispose();
         _textures.Release(_emissive); _emissive = null;

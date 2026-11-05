@@ -68,6 +68,7 @@ public sealed partial class BasicWorldRenderer : IDisposable
     private readonly PaddedObjectData[] _objectData = new PaddedObjectData[MaxObjectsPerFrame];
     private bool _objectBatchActive;
     public bool ObjectBatchUploadsEnabled { get; set; } = true;
+    public bool FullDynamicBufferUploads { get; set; } = true;
     public int ObjectUploadCount { get; private set; }
     public bool ViewCullingEnabled { get; set; } = true;
     public int ViewCulledCount { get; private set; }
@@ -303,30 +304,36 @@ public sealed partial class BasicWorldRenderer : IDisposable
     }
 
     /// <summary>Dispose before submitting the frame's command list, including on early returns.</summary>
-    public ObjectUploadBatch BatchObjectUploads()
+    public ObjectUploadBatch BatchObjectUploads(RenderCpuProfile? profile = null)
     {
         if (_objectBatchActive || _objectWriteIndex != 0)
             throw new InvalidOperationException("Start one object upload batch before the frame's first draw.");
         _objectBatchActive = true;
-        return new ObjectUploadBatch(this);
+        return new ObjectUploadBatch(this, profile);
     }
 
     public readonly struct ObjectUploadBatch : IDisposable
     {
         private readonly BasicWorldRenderer _owner;
-        internal ObjectUploadBatch(BasicWorldRenderer owner) => _owner = owner;
-        public void Dispose() => _owner.EndObjectUploadBatch();
+        private readonly RenderCpuProfile? _profile;
+        internal ObjectUploadBatch(BasicWorldRenderer owner, RenderCpuProfile? profile)
+        { _owner = owner; _profile = profile; }
+        public void Dispose() => _owner.EndObjectUploadBatch(_profile);
     }
 
-    private void EndObjectUploadBatch()
+    private void EndObjectUploadBatch(RenderCpuProfile? profile)
     {
         if (!_objectBatchActive) return;
-        FlushModelDraws();
+        using (profile?.Measure(RenderWork.FlushDraws) ?? default) FlushModelDraws();
+        using var timing = profile?.Measure(RenderWork.ObjectUploads) ?? default;
         UploadInstances();
         _objectBatchActive = false;
         if (ObjectBatchUploadsEnabled && _objectWriteIndex > 0)
         {
-            _gd.UpdateBuffer(_objectRingBuffer, 0, _objectData.AsSpan(0, (int)_objectWriteIndex));
+            // A partial D3D11 dynamic update takes Veldrid's staging-copy path. A whole
+            // update permits write-discard; only the active slots are consumed by draws.
+            if (FullDynamicBufferUploads) _gd.UpdateBuffer(_objectRingBuffer, 0, _objectData);
+            else _gd.UpdateBuffer(_objectRingBuffer, 0, _objectData.AsSpan(0, (int)_objectWriteIndex));
             ObjectUploadCount++;
         }
     }

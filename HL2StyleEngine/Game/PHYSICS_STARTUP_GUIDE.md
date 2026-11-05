@@ -1,5 +1,7 @@
 # Physics Geometry Reuse And Startup
 
+Follow-up (2026-11-01): the extended 18-cycle memory diagnostic reproduces the private-memory guard failure (+146.32 MiB), with flat model/texture payload and no retained old tracked entities/meshes after collection. See [current evidence and the isolated texture-only trial](TEXTURE_STREAMING_TRIAL_GUIDE.md). No solver/cache or normal-launcher changes are made by that follow-up; the physics results below remain historical evidence.
+
 Implemented 2026-10-28, following the save/load stability pass. C# remains the
 runtime. This reduces repeated work without changing the solver or the scene.
 

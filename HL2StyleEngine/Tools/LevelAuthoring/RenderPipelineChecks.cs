@@ -9,7 +9,7 @@ internal static class RenderPipelineChecks
 {
     public static void Run(bool pbr = false, bool multi = false)
     {
-        using var host = new EngineHost(640, 480, "Rendering QA");
+        using var host = GraphicsValidationHost.Create(640, 480, "Rendering QA");
         var renderer = host.Context.Renderer;
         var device = renderer.GraphicsDevice;
         System.Runtime.InteropServices.Marshal.AddRef(device.GetD3D11Info().Device);

@@ -129,7 +129,7 @@ public sealed partial class BasicWorldRenderer
 
     public void RenderShadows(Renderer renderer, IReadOnlyList<ShadowCaster> casters, Viewport viewport)
     {
-        RenderShadows(renderer.CommandList, renderer.WorldFramebuffer, casters, viewport);
+        RenderShadows(renderer.CommandList, renderer.WorldFramebuffer, casters, viewport, renderer.CpuProfile);
         foreach (var resource in _retiredShadowAtlases) renderer.RetireAfterFrame(resource);
         _retiredShadowAtlases.Clear();
     }
@@ -165,10 +165,10 @@ public sealed partial class BasicWorldRenderer
 
     private sealed class ShadowRetirement(Action release) : IDisposable { public void Dispose() => release(); }
 
-    public void RenderShadows(CommandList commandList, Framebuffer target, IReadOnlyList<ShadowCaster> casters, Viewport viewport)
+    public void RenderShadows(CommandList commandList, Framebuffer target, IReadOnlyList<ShadowCaster> casters, Viewport viewport, RenderCpuProfile? profile = null)
     {
         long start = MeasureShadowCpuTime ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
-        try { RenderShadowsCore(commandList, target, casters, viewport); }
+        try { RenderShadowsCore(commandList, target, casters, viewport, profile); }
         finally
         {
             ShadowCpuMilliseconds = MeasureShadowCpuTime
@@ -176,7 +176,7 @@ public sealed partial class BasicWorldRenderer
         }
     }
 
-    private void RenderShadowsCore(CommandList cl, Framebuffer target, IReadOnlyList<ShadowCaster> casters, Viewport viewport)
+    private void RenderShadowsCore(CommandList cl, Framebuffer target, IReadOnlyList<ShadowCaster> casters, Viewport viewport, RenderCpuProfile? profile)
     {
         bool tiled = PointShadowLimit > 1;
         if (_shadowTilesActive != tiled)
@@ -286,13 +286,15 @@ public sealed partial class BasicWorldRenderer
             }
             if (!uploadedObjects)
             {
+                using var uploadTiming = profile?.Measure(RenderWork.ShadowObjectUpload) ?? default;
                 // One upload preserves the 256-byte resource-set offsets without hundreds of driver calls.
                 if (ShadowBatchUploadsEnabled)
                 {
                     for (int i = 0; i < casters.Count; i++) _shadowObjectData[i].Model = casters[i].Transform;
                     if (casters.Count > 0)
                     {
-                        _gd.UpdateBuffer<ShadowObjectData>(_shadowObjects, 0, _shadowObjectData.AsSpan(0, casters.Count));
+                        if (FullDynamicBufferUploads) _gd.UpdateBuffer(_shadowObjects, 0, _shadowObjectData);
+                        else _gd.UpdateBuffer<ShadowObjectData>(_shadowObjects, 0, _shadowObjectData.AsSpan(0, casters.Count));
                         ShadowObjectUploadCount++;
                     }
                 }

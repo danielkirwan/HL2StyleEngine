@@ -3,6 +3,70 @@ using Engine.Render;
 using Engine.Editor.Level;
 
 string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+if (args is ["check-imgui-layout"])
+{
+    try { ImGuiLayoutChecks.Run(); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["check-gpu-frame-profile"])
+{
+    try { GpuFrameProfileChecks.Run(); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args.Length > 0 && args[0] == "profile-frame-pacing")
+{
+    try { FramePacingChecks.Run(root, args); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["analyze-frame-pacing", var frameTrace])
+{
+    try { FramePacingChecks.Analyze(frameTrace); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-render-profile"])
+{
+    try { RenderProfileChecks.Run(); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["check-texture-destination"])
+{
+    try { TextureDestinationChecks.Run(root); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["validate-texture-demand"] or ["check-texture-transitions"])
+{
+    try { if (args[0] == "validate-texture-demand") TextureTransitionChecks.Demand(); else TextureTransitionChecks.Images(root); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["refresh-shadow-reflections", var reflectionFile, var reflectionState])
+{
+    try { ShadowStabilityChecks.RefreshReflectionCaches(root, reflectionFile, reflectionState); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["prepare-floor-material"] or ["check-floor-lighting"] or ["diagnose-floor-lighting"])
+{
+    try
+    {
+        if (args[0] == "prepare-floor-material") FloorMaterial.Prepare(root);
+        else FloorLightingChecks.Run(root, args[0] == "check-floor-lighting");
+    }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["check-lighting-allocations"])
+{
+    try { LightingAllocationChecks.Run(root); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
 if (args is ["validate-physics-geometry"] or ["benchmark-physics-startup"] or ["physics-startup-child", _, _, _])
 {
     try
@@ -25,7 +89,10 @@ if (args.Length > 0 && args[0] == "soak-gameplay")
     try
     {
         Engine.Physics.Collision.WorldColliderCache.ReuseEnabled = !args.Contains("--rebuild-geometry");
-        GameplaySoakChecks.Run(root, args.Contains("--native-ui"), args.Contains("--quick") ? 1 : 6, args.Contains("--puzzles"));
+        GameplaySoakChecks.Run(root, args.Contains("--native-ui"), args.Contains("--long") ? 18 : args.Contains("--quick") ? 1 : 6,
+            args.Contains("--puzzles"), args.Contains("--memory-trace"),
+            args.Contains("--texture-streaming") || args.Contains("--texture-reference"), args.Contains("--texture-reference"), args.Contains("--partial-object-uploads"),
+            args.Contains("--memory-stages"), args.Contains("--no-reload"), args.Contains("--heap-snapshots"));
     }
     catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
     return;
@@ -63,6 +130,18 @@ if (args is ["profile-gameplay-child", var hitchManifest, var hitchMode, var hit
         GameplayFrameChecks.Run(root, hitchMode != "package-off", stress: true, levelFile: AtmosphereChecks.FileName,
             assetPackagePath: hitchMode == "source" ? null : hitchManifest);
     }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["check-texture-bindings"])
+{
+    try { TextureBindingChecks.Run(root); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args.Length > 0 && args[0] is "launch-texture-level" or "soak-texture-level" or "check-texture-editor")
+{
+    try { TextureStreamingTrial.Run(root, args[0] != "launch-texture-level", args.Contains("--reference"), args[0] == "check-texture-editor"); }
     catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
     return;
 }
@@ -164,9 +243,9 @@ if(args is ["validate-submission"] or ["validate-submission-capture"])
     catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
     return;
 }
-if(args is ["check-submission-pixels"])
+if(args is ["check-submission-pixels"] or ["check-buffer-upload-pixels"])
 {
-    try { RoomVisibilityChecks.Pixels(root, submission:true); }
+    try { RoomVisibilityChecks.Pixels(root, submission:args[0] == "check-submission-pixels", uploads:args[0] == "check-buffer-upload-pixels"); }
     catch(Exception ex){Console.Error.WriteLine(ex);Environment.ExitCode=1;}
     return;
 }

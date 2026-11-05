@@ -1,5 +1,119 @@
 # Compression, Lighting And Physics Validation
 
+## Reload Memory Investigation (2026-11-05)
+
+[Full results and reproducible commands](RELOAD_MEMORY_INVESTIGATION.md): six
+sequential controls plus a separate early/late heap diagnostic. All short
+controls pass; long no-reload/native and reload/fallback pass at 36.81/120.17
+MiB. Long native reload **fails at 154.34 MiB** with flat asset payloads and zero
+gameplay intervals over 33.3 ms. Managed commitment/fragmentation account for
+much of the observed rise; overlapping counters are not an exact attribution.
+Heap captures show stable level/reflection/lightmap counts and retained test
+history. Their GC pauses invalidate performance acceptance for that run.
+
+A final normal-desktop six-cycle repeat with new probes disabled also fails
+memory at **134.27 MiB**, with zero gameplay intervals over 33.3 ms. Reported
+managed commitment falls in this repeat, so the earlier GC correlation is not
+complete process-memory attribution. A separate restricted launch fails pacing
+with slow presentation; both reports are retained in the investigation guide.
+
+Release builds: zero warnings/errors. With the observer disabled, 24 gameplay
+checks, all 600 historical six-room physics replay hashes and three exact
+strict/package lighting image pairs pass. Protected inputs are unchanged.
+No production allocation optimization, rebake, migration or new system upgrade
+is included. **Gate L pending; Gate B pending; upgrades blocked.**
+
+## Lighting Handover Acceptance (2026-11-04)
+
+The [current handover](LIGHTING_ACCEPTANCE_HANDOVER.md) records sequential lighting suites, the exact gameplay/frame-pacing BATs, longer controls, protected-input hashes and separate image/native review. It retains original failed runs and their corrected retests. Approved authored atmosphere values are now the fixture expectation, without rewriting the level or historical image references. GPU correctness suites explicitly request debug validation; normal Release gameplay does not.
+
+**Gate L pending; Gate B pending; new system upgrades blocked.** A fresh full lighting run passes all 32 commands (including build and rendered ImGui layout lifetime). Native editor review found and corrected a lost-context layout regression; lighting off/undo/redo/save/reopen now works in the private review copy. Continuous native gameplay/F2 input remains unverified. The clean repeat passes the frame-pacing BAT and long full-detail control, but the gameplay BAT fails six-room memory growth at **142.51 MiB** against its 128 MiB guard. Earlier severe full-detail stalls, up to 270.911 ms, remain unexplained. Failed and invalid attempts are retained separately. See the handover for current long-control results and all report paths; no new systems are started.
+
+## Frame Pacing Investigation (2026-11-04)
+
+Final follow-up: both long package controls pass with zero gameplay intervals
+over 33.3 ms, but the long six-room memory run fails at **153.75 MiB** growth.
+All finish 216 actions. Native layout regression passes in Release and Debug;
+both builds have zero warnings/errors. Full-detail severe stalls were not
+reproduced in this repeat, not explained or declared fixed. See the handover's
+fresh-run table; all gate verdicts above remain pending/blocked.
+
+Version 4 frame traces retain bounded nonblocking D3D11 queries, source-frame correlation, physics stages/call counts, fixed ticks/remainder, raw/clamped delta and window focus, adding host-stage thread CPU time/raw cycles. Physics support/rotation timings may overlap body timing. GPU intervals are elapsed command-timeline time, not pure busy time, and cannot simply be subtracted from Present; thread CPU time is quantized and cycles are not converted to time. Release now omits D3D debug validation; Debug retains it. VSync, shaders, lighting, source scenes, physics integration and C# are unchanged. [Full evidence, commands and limits](FRAME_PACING_GUIDE.md).
+
+- Render/physics disabled scopes allocate nothing; attribution/reset/snapshot and fixed-tick accounting checks pass in Release/Debug. GPU query ring saturation skips without waiting; identity, valid results, reuse, bounded capture, pending disposal and reconfiguration pass in Release/Debug. Actual graphics device flags match each build's validation policy.
+- All **1,200** saved physics replay frames match exactly, including state, contacts and collider bounds (`qa/physics-replay-20261104-104712-907`, `104732-603`). All **15** historical Game/F2/HS2Editor image references pass within **1/255** without replacing baselines. Release solution and Release/Debug authoring builds pass with zero warnings/errors.
+- Three short diagnostic routes pass. An uncapped control is explicitly not comparable gameplay throughput: fewer physics ticks/time elapse per rendered frame. It is not justification to disable VSync in normal play.
+- Validation-on long streaming control: **18 cycles / 216 actions**, **16.667/17.859ms gameplay mean/P95**, **1 >33.3ms / 0 >100ms**, **+78.91 MiB** private growth. Original gates pass (`qa/gameplay-soak-20261104-102935-016-native`). The captured smaller hitch coincides with 31.528ms Present and a 34.446ms GPU interval; physics is 1.566ms, one fixed tick, no GC pause, window focused. This narrows that instance, not the historical larger failures.
+- Validation-off long streaming control: **16.666/17.437ms gameplay mean/P95**, **0 >33.3ms / 0 >100ms**, **+101.25 MiB**, 18 cycles / 216 actions; original gates pass (`qa/gameplay-soak-20261104-103920-587-native`). Host World mean is **3.83 -> 3.29ms** in this pair. GPU query coverage is complete; no invalid/pending/skipped samples. Focus differs during portions of the run, so this is not a fully controlled proof that debug validation caused the old stalls. No forced collections or weakened gates.
+
+- Subsequent validation-off full-detail long control **fails**: **16.683/17.772ms**, **7 >33.3ms / 1 >100ms**, **+98.98 MiB**, all 18 cycles/216 actions (`qa/gameplay-soak-20261104-105022-176-native`). Worst host frame is 104.970ms, with 75.084ms physics, two ticks, only 4.453ms GPU interval and no GC pause. All measured GPU queries are valid. Scattered late CPU-stage stalls require execution-time counters to distinguish computation from waiting/descheduling; focus loss alone is not a diagnosis.
+- Version 4 full-detail repeat **fails**: **16.689/17.364ms**, **9 >33.3ms / 1 >100ms**, **+109.17 MiB**, all 18 cycles/216 actions (`qa/gameplay-soak-20261104-110534-300-native`). All 21,600 measured GPU results valid, zero pending/skipped/invalid. Focused frame 3384 has 30.370ms physics wall time but 9,008,660 CPU cycles, versus 2.182ms/8,263,100 cycles on the preceding one-tick frame. Worst frame 3385 is 119.779ms, with four ticks/77.100ms physics wall time/34,048,380 physics cycles, 5.859ms GPU interval and no GC pause. This supports waiting/descheduling, not proportional physics computation, without identifying its source. Current-thread CPU counters are quantized and cannot be treated as exact per-stage wall time.
+- Final CPU-counter sleep/work, difference, unavailable/cross-thread/reversed-sample tests pass in Release/Debug. Version 3/4 analysis succeeds; final Release solution and Debug/Release authoring builds are warning/error-free.
+
+Adaptive streaming stays opt-in and original failed reports are retained. The severe hitch is reproduced in full detail, not solved by disabling graphics validation. Next is a bounded OS scheduling/wait trace, then a targeted correction and unchanged repeat/manual acceptance. No solver/timestep changes or claim of locked minimum 60 FPS is made. Audio is not included in this pass.
+
+## Render Upload And Destination Follow-Up (2026-11-02)
+
+Host render substage traces exposed partial dynamic-buffer update blocking. Main object, instance and shadow-object batches now upload their complete existing arrays; active draw ranges, shader layouts, lighting, physics, source scenes, save formats and C# are unchanged. The trace is opt-in, bounded and records host wall time, not GPU timestamps. [Diagnosis, commands, retained failures and limitations](RENDER_UPLOAD_STABILITY_GUIDE.md).
+
+- **151** old/new upload comparisons are exact (**0/255**), with shadow caching disabled to exercise both shadow update paths. Entity identities/draw counts are preserved and F2 outlines remain visible (`qa/buffer-uploads-20261102-133818`). All **15** historical Game/F2/HS2Editor images pass within **1/255**, without replacing reference baselines.
+- Explicit destination preparation pins model/texture dependencies without moving the player. Three distant-room first reveals match full detail exactly; cancel/supersede, invalid input, disabled trial, model failure, editor entry and revision invalidation checks pass (`qa/texture-destination-20261102-140252-551`). Model/reflection arrival is held ready in this texture-only test; arbitrary whole-level readiness is not claimed. F7 / Prepare distant room is available in the trial; physical input acceptance remains open.
+- **25** binding/lifetime checks and scripted F2/F6 restoration pass. Disabled timing scopes allocate nothing; enabled attribution/reset/snapshot tests pass.
+- Final full-detail native long control: **18 cycles / 216 actions**, **16.604/18.046ms gameplay mean/P95**, **0 >33.3ms / 0 >100ms**, **+64.36 MiB** private growth. Original gates **pass** (`qa/gameplay-soak-20261102-134101-848-native`).
+- Matched streaming long control: **17.495/18.810ms**, **423 >33.3ms / 5 >100ms**, **+32.08 MiB**. **Frame gate fails** (`qa/gameplay-soak-20261102-134825-508-native`), despite 216 completed actions, full-detail checkpoints, 232 replacements and zero package fallbacks. Object/shadow uploads and texture pumping no longer have >33.3ms calls; the remaining largest waits occur in Present (maximum **106.211ms**). This does not identify GPU/driver/external causation. No forced GC or relaxed limits.
+- Short adaptive route passes 3,600 wall intervals at **16.672/17.203ms mean/P95**, zero hitches, 68 replacements and zero waits/fallbacks (`qa/texture-level-20261102-140358-809`). The following full-detail control **fails** with two >33.3ms / zero >100ms intervals, **16.694/17.250ms** (`qa/texture-level-20261102-140558-054`); sampled waits are in Physics and Present, not uploads/GC. Neither short nor long passes erase retained failures. Normal launchers remain full detail; adaptive streaming stays opt-in. Next: presentation/GPU pacing and physics spike isolation, repeated matched acceptance, then the separate spatial-audio milestone.
+- Final **48** demand and **483** mip/cache regressions pass; Release solution and Release/Debug authoring builds pass with zero warnings/errors. The prepared room-3 first image was visually inspected. No reimport/rebake is needed; no audio software was launched or music imported in this pass.
+
+## Texture Transition Follow-Up (2026-11-02)
+
+Opt-in changes only: retain finer detail for 1.5 seconds before stable demotion, prioritize promotions by importance, and request mip 0 for connected-room prefetch. Lighting/shaders, physics, source scenes and full-detail normal launchers are unchanged. [Full procedure, reports and limitations](TEXTURE_STREAMING_TRIAL_GUIDE.md#transition-acceptance-2026-11-02).
+
+- **48** deterministic demand checks, **25** GPU binding/lifetime assertions, **483** existing mip/cache checks and the scripted F2/F6 restoration workflow pass.
+- Twelve first/early/settled connected-room comparisons match full detail exactly, with real reduced residency and zero package fallbacks. An earlier unprefetched 66m teleport failed first-frame quality (4.908/255 mean, 12.846% significantly changed pixels); its report is retained. Adjacent-room preparation is not a solution for unannounced teleports.
+- Matched package-backed 18-cycle native runs complete all **216 actions** and full-detail checkpoints. Full-detail: **17.303/18.419 ms mean/P95**, 240 >33.3ms / 32 >100ms, **+112.21 MiB** private memory. Streaming: **17.659/20.180 ms**, 424 / 17, **+104.83 MiB**. Memory samples are within the guard, but **both runs fail frame acceptance**. No forced collection or gate relaxation.
+- Short 3,600-interval full-detail route passes at **16.661/17.265 ms**, zero hitches. Streaming averages **16.707/17.593 ms** but fails with four >33.3ms intervals. Full restoration, zero fallbacks/waits and reduced texture payload pass; 42 replacements. Two stalls predate reduced-detail streaming. Host World/presentation tracing needs refinement before blaming or clearing mip replacement.
+- Release solution and Release/Debug authoring builds pass with zero warnings/errors. Production rollout remains blocked on performance and wider manual quality acceptance; a near-60-FPS average is not a minimum-FPS guarantee.
+
+The requested audio-source investigation was read-only. Scripts, MIDI, stems and approved-track history were found in `F:/DangryGames/Games/2DSpaceShooterRemix`, not under this engine's `Game/Content`. No native Waveform project was created in that workflow; Surge/Pedalboard performed the renders. Installed app registrations were checked, but apps/plugins were not launched and audio was not auditioned in this pass. See [AUDIO_WORKFLOW.md](AUDIO_WORKFLOW.md) for paths, licensing cautions and the following audio milestone.
+
+## Flashlight Floor Correction (2026-11-02)
+
+Two independently isolated causes: grazing normal-map speckles and false self-shadow bands from using smoothed normals as receiver planes. The first material-only stage did not resolve the bands; full-scene shadow-disabled captures exposed that remaining issue. Final changes: a source-preserving 0.5-strength normal variant for 101 six-room shadow-test floor assignments, plus true triangle-plane receiver correction in the PBR multi-shadow shader. No global ambient fill, larger depth bias, geometry, collision or light-intensity changes. [Complete diagnosis, reproduction and scope](FLOOR_LIGHTING_GUIDE.md).
+
+Final controlled GPU test (`floor-lighting-20261102-101642-500`): original normal-induced black counts **616/532/452 -> 8/2/4** at 4/8/12m aims; false self-shadow counts **32/81/41 -> 0/0/0**. Detail remains and torch-off controls stay black. Asset reproduction, raw/cooked geometry/UV/key/colour/material preservation and BC5 checks pass; re-preparing reports zero further scene changes.
+
+All **64** analytic point/spot contact views pass unchanged limits (`contact-20261102-095937`). Full-level `shadow-stability-20261102-101206` passes light-state restoration with **0/255** difference, nine approach/retreat views and eight flashlight orbits exactly matching uncached/unculled references, three new floor-corner torch/dark views, real crate-shadow coverage and edit/undo. Final corner captures were visually inspected: the previous shallow-angle band is absent. **69** shadow-fixture and **347** room visibility/cache checks pass. The visibility regression now holds its diffuse-cache input fixed when testing room-metadata invariance, because the later shadow fixture intentionally has a different floor material. Geometry/gameplay equality remains checked after normalizing only that known asset path.
+
+All **36** reflection captures across shadow on/off, visibility on/off, render-stress and atmosphere fixtures were refreshed and verified against current keys; the modified shadow fixture's diffuse bake was rebuilt. No dependency checks were bypassed. An initial multi-session authoring refresh stopped after its first disposed window; the final command uses one GPU session per process. Runtime loading was not changed to work around that tooling issue.
+
+Three sequential Release gameplay runs, RTX 3060 / Direct3D 11 / **1920x1009**, real host/physics/HUD/presentation, 120 warmup + 300 measured intervals each:
+
+| Run | Wall mean / P95 | >33.3ms | >100ms / streaming waits | Result |
+| --- | --- | ---: | ---: | --- |
+| Torch on, destruction/inventory/gravity stress | 16.661 / 16.927 ms | 0 | 0 / 0 | Pass |
+| Torch on, four ceiling-light switches | 16.661 / 16.825 ms | 0 | 0 / 0 | Pass |
+| Torch off, destruction/inventory/gravity stress | 16.663 / 17.338 ms | 0 | 0 / 0 | Pass |
+
+Reports under the authoring Release `qa/` output: `gameplay-20261102-101319-933.json`, `gameplay-20261102-101401-234.json`, `gameplay-20261102-101445-455.json`. All retain the unchanged near-60-FPS gates, **104 MiB** shadow atlas, ready alternate reflections and zero texture fallback decodes. These are short, VSync-limited acceptance runs, not a minimum-60-FPS guarantee on every machine or proof of uncapped GPU headroom. Release solution and authoring builds pass with zero warnings/errors. All **15 historical Game/F2/HS2Editor image comparisons** pass within the existing 1/255 tolerance without replacing references; final diff whitespace validation passes.
+
+Next: fast-transition texture quality and longer streaming-enabled/full-detail controls; adaptive streaming remains opt-in. Spatial audio follows as a separate milestone.
+
+## Lighting Cache Memory (2026-11-02)
+
+Warm per-load allocations fall **97,588,317 -> 50,594,234 bytes** for the six-room lightmap and **2,234,776 -> 1,120,544 bytes** for a reflection. Both dependency keys, scene/snapshot hashes, lightmap pixels, all reflection faces and LUT remain byte-identical. 39 new reader/ownership checks, 282 existing indirect-bake checks and 98 reflection checks pass. These are allocation reductions, not proof of faster loading or leak freedom. [Full evidence, long gameplay results and remaining gates](LIGHTING_MEMORY_GUIDE.md). Earlier failed runs below remain historical evidence, not removed or reclassified.
+
+The initial rounded-buffer 18-cycle native-UI run passes gameplay frame gates (**16.670 ms mean / 17.125 ms P95**) but fails memory growth at **+165.69 MiB**. The final exact-sized implementation's first native repeat passes both unchanged gates: **16.650 ms mean / 18.401 ms P95**, two >33.3 ms in separate accepted windows, none >100 ms, and **+37.49 MiB** private growth. Lower allocations alone did not fix the initial failure; the exact-sized change avoids 27.54 MiB of unnecessary decoded-buffer capacity. All 15 historical Game/F2/HS2Editor image comparisons pass without replacing references. Production streaming rollout is still separate from this local reload acceptance.
+
+An unchanged final native repeat also passes: **16.660 ms mean / 18.098 ms P95**, one >33.3 ms, none >100 ms and **+52.02 MiB** private growth. Both final runs complete 18 cycles / 216 actions with the original 128 MiB guard. Release solution and Release/Debug authoring builds pass with zero warnings/errors; 24 texture-binding and 24 gameplay/startup regressions pass. Next acceptance is fast-transition texture quality and longer streaming-enabled/full-detail controls, not automatic promotion of the trial to all launchers.
+
+## Texture-Only Trial (2026-11-01)
+
+Shared legacy/PBR texture binding replacement now preserves model geometry and retires old resource sets/textures through GPU fences. The initial 24 checks pass, including exact full-detail image restoration and zero texture payload after retirement. Initial matched 3,600-frame real-level routes pass: full reference **16.661/17.827 ms** mean/P95; streaming **16.661/17.811 ms**, no >33.3 ms, streaming waits or package fallbacks. Minimum texture payload falls **82,626,208 -> 52,020,896 bytes**; this is not total VRAM/RAM or a startup result. [Full methodology, final repeats and limitations](TEXTURE_STREAMING_TRIAL_GUIDE.md).
+
+The extended 18-cycle six-room memory diagnostic completes 21,600 frames / 216 actions, but **fails** the unchanged 128 MiB process-private growth guard at **+146.32 MiB**. Texture/model payload is flat; old tracked entities/meshes are reclaimed and managed fragmentation is substantial. Root cause and long memory acceptance remain open. A post-test diagnostic collection does not improve the acceptance result. The prior cap-limited attempt remains recorded as incomplete. Existing launchers and normal editor/game texture quality stay unchanged.
+
+Final scheduler repeat: **16.661/16.936 ms** mean/P95 across 3,600 intervals, zero >33.3 ms/waits/fallbacks, 405 replacements, unchanged payload savings and complete full-detail restoration. Separate F2/F6 snapshot workflow passes; actual BAT level rendering is visually checked, but physical-keyboard interaction remains a manual acceptance item because desktop injection was unreliable. All 15 historical renderer images, 483 old mip assertions, previous GPU mip lifetime tests, 54,497 geometry/contact checks, five puzzle/door routes and 392 persistence/inventory assertions pass. The latter required an unrestricted rerun after sandbox temporary-cache creation failed. No image references or acceptance limits were relaxed.
+
 ## Physics Geometry Reuse (2026-10-28)
 
 One-entry caches retain collider geometry by exact pose/dimensions/shape and immutable mesh identity. Body and authored-transform geometry have separate owners. Support state is reused only inside one rotation integration before pose/contact mutation. Solver ordering, simulation/readiness settings, source assets, shaders, texture quality and C# are unchanged.
