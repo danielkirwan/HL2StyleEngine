@@ -52,6 +52,7 @@ public sealed class LightmapBinding : IDisposable
     private int _triangle;
     private readonly bool _pbr;
     public bool IsReady => Parts.Count == _source.Parts.Count;
+    public bool UsesSource(LoadedModel source) => ReferenceEquals(_source, source);
     public long Bytes => Parts.Sum(p => (long)p.Vertices.SizeInBytes + p.Indices.SizeInBytes);
     public LightmapBinding(LoadedModel source, LightmapAtlas atlas, int firstTriangle, int texels, int size, bool pbr = false)
     { _source = source; Atlas = atlas; _triangle = firstTriangle; _texels = texels; _size = size; _pbr = pbr; }

@@ -13,20 +13,24 @@ public sealed class LevelBakeSession : IDisposable
 {
     private readonly LightingScenarioResolver _scenarios = new();
     public string ScenarioStatus => _scenarios.Status;
-    private sealed class Resources(LightmapAtlas atlas) : IDisposable
+    private sealed class Resources(LightmapAtlas atlas, LightmapData data) : IDisposable
     {
         public LightmapAtlas Atlas = atlas;
+        public LightmapData Data = data;
         public readonly Dictionary<string, (LightmapBinding Binding, long Frame)> Bindings = new(StringComparer.OrdinalIgnoreCase);
+        public void RetireBindings(Renderer renderer)
+        { foreach (var entry in Bindings.Values) renderer.RetireAfterFrame(entry.Binding); Bindings.Clear(); }
         public void Dispose() { foreach (var entry in Bindings.Values) entry.Binding.Dispose(); Bindings.Clear(); Atlas.Dispose(); }
     }
     private Resources? _resources;
     private sealed record RetainedBake(string Path, long Revision, Resources Resources, LightmapData Data,
-        Dictionary<string,LightmapRecord> Records, BakeSnapshot Snapshot, string Stamp);
+        Dictionary<string,LightmapRecord> Records, BakeSnapshot Snapshot, string Stamp, LightmapFile.ValidatedRead? Validated);
     private RetainedBake? _retained;
     private string _scenarioSource = "";
     private LightmapData? _data;
     private Dictionary<string, LightmapRecord> _records = new(StringComparer.OrdinalIgnoreCase);
-    private Task<LightmapData?>? _job;
+    private LightmapFile.ValidatedRead? _validated;
+    private Task<LightmapFile.ValidatedRead?>? _job;
     private CancellationTokenSource? _cancel;
     private BakeSnapshot? _snapshot;
     private long _revision = -1, _frame;
@@ -77,67 +81,81 @@ public sealed class LevelBakeSession : IDisposable
         if (!changed && _snapshot != null && Stopwatch.GetTimestamp() > _nextSourceCheck)
         {
             _nextSourceCheck = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 2;
-            changed = SourceStamp(_snapshot) != _sourceStamp;
+            changed = SourceStamp(_snapshot, _path) != _sourceStamp;
         }
         if (changed)
         {
             RetainedBake? restore=_retained;
-            if(restore!=null && (restore.Path!=editor.LevelPath || restore.Revision!=editor.Revision || SourceStamp(restore.Snapshot)!=restore.Stamp)) restore=null;
+            if(restore!=null && (restore.Revision!=editor.Revision || SourceStamp(restore.Snapshot, restore.Path)!=restore.Stamp))
+            { renderer.RetireAfterFrame(restore.Resources); _retained=null; restore=null; }
+            if(restore!=null && restore.Path!=editor.LevelPath) restore=null;
             if(restore!=null)_retained=null;
+            var previous = restore?.Validated ?? (_path == editor.LevelPath ? _validated : null);
             if (sameScenarioSource && _path!=editor.LevelPath && _revision==editor.Revision && _resources!=null && _data!=null && _snapshot!=null)
             {
                 if(_retained!=null)renderer.RetireAfterFrame(_retained.Resources);
-                _retained=new(_path,_revision,_resources,_data,_records,_snapshot,_sourceStamp);_resources=null;
+                _retained=new(_path,_revision,_resources,_data,_records,_snapshot,_sourceStamp,_validated);_resources=null;
             }
             else if(_revision!=editor.Revision && _retained!=null) {renderer.RetireAfterFrame(_retained.Resources);_retained=null;}
-            Cancel(); Retire(renderer); _revision = editor.Revision; _path = editor.LevelPath;
-            _data = null; _records = new(StringComparer.OrdinalIgnoreCase); _snapshot = null;
+            Cancel();
+            if (previous == null || editor.LevelFile.Bake?.Enabled != true) Retire(renderer);
+            else if (_revision != editor.Revision) _resources?.RetireBindings(renderer);
+            _revision = editor.Revision; _path = editor.LevelPath;
+            _data = null; _validated = null; _records = new(StringComparer.OrdinalIgnoreCase); _snapshot = null;
             _probeCache.Clear();
             if(restore!=null)
             {
-                _resources=restore.Resources;_data=restore.Data;_records=restore.Records;_snapshot=restore.Snapshot;_sourceStamp=restore.Stamp;
+                _resources=restore.Resources;
                 foreach(var key in _resources.Bindings.Keys.ToArray())_resources.Bindings[key]=(_resources.Bindings[key].Binding,_frame);
-                Status="Ready: retained lighting-state bake";
+                // A runtime state switch is not a new authored revision or reload. This
+                // resident bank is already validated; reloading it would flash indirect light off.
+                _data=restore.Data; _validated=restore.Validated; _records=restore.Records;
+                _snapshot=restore.Snapshot; _sourceStamp=restore.Stamp;
+                _nextSourceCheck=Stopwatch.GetTimestamp()+Stopwatch.Frequency*2;
+                Status="Restored validated lighting state";
             }
             else if (editor.LevelFile.Bake?.Enabled == true)
             {
                 try
                 {
                     using var preparation = fingerprints?.Profile?.Measure("diffuse-snapshot");
-                    _snapshot = BakeSnapshot.Capture(editor.LevelFile, resolve); _sourceStamp = SourceStamp(_snapshot);
+                    _snapshot = BakeSnapshot.Capture(editor.LevelFile, resolve); _sourceStamp = SourceStamp(_snapshot, _path);
+                    _nextSourceCheck = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 2;
                     var snapshot = _snapshot; string path = LightmapFile.PathFor(_path);
                     Start(token =>
                     {
                         string key = snapshot.Key(token, fingerprints);
                         using var payload = fingerprints?.Profile?.Measure("diffuse-cache-read-validate");
-                        return LightmapFile.Load(path, key);
+                        return LightmapFile.LoadValidated(path, key, previous, token);
                     }, false);
                 }
-                catch (Exception ex) { Status = "Bake unavailable: " + ex.Message; }
+                catch (Exception ex) { Retire(renderer); Status = "Bake unavailable: " + ex.Message; }
             }
-            else Status = "Indirect bake disabled";
+            else { Retire(renderer); Status = "Indirect bake disabled"; }
         }
         if (_job?.IsCompleted == true)
         {
             try
             {
-                _data = _job.GetAwaiter().GetResult();
+                _validated = _job.GetAwaiter().GetResult();
+                _data = _validated?.Data;
                 _probeCache.Clear();
                 _records = _data?.Records.ToDictionary(r => r.EntityId, StringComparer.OrdinalIgnoreCase) ?? new(StringComparer.OrdinalIgnoreCase);
                 Status = _data == null ? "Missing, stale or invalid bake; realtime fallback" : $"Ready: {_data.Size} x {_data.Size}, {_records.Count} static models";
-                // The previous valid GPU resources survive failed/cancelled rebakes; changed inputs already retired them.
-                if (_data != null) Retire(renderer);
+                // Reuse only the atlas for the exact validated payload. Invalid data never lights a new scene.
+                if (_data == null || !ReferenceEquals(_resources?.Data, _data)) Retire(renderer);
             }
             catch (OperationCanceledException) { Status = "Bake cancelled"; }
             catch (Exception ex) { Status = "Bake failed: " + ex.Message; }
-            finally { _job = null; _cancel?.Dispose(); _cancel = null; }
+            finally { if (_data == null) Retire(renderer); _job = null; _cancel?.Dispose(); _cancel = null; }
         }
         if (_data != null && _resources == null)
         {
             using var upload = fingerprints?.Profile?.Measure("diffuse-atlas-gpu-submission");
-            try { _resources = new Resources(world.CreateLightmapAtlas(_data.Size, _data.Pixels)); }
+            try { _resources = new Resources(world.CreateLightmapAtlas(_data.Size, _data.Pixels), _data); }
             catch (Exception ex) { _data = null; Status = "Lightmap upload failed: " + ex.Message; }
         }
+        if (_job == null && _data == null) Retire(renderer);
         if (_resources != null)
             foreach (var pair in _resources.Bindings.Where(p => _frame - p.Value.Frame > 120).ToArray())
             { renderer.RetireAfterFrame(pair.Value.Binding); _resources.Bindings.Remove(pair.Key); }
@@ -160,7 +178,7 @@ public sealed class LevelBakeSession : IDisposable
         try
         {
             var snapshot = BakeSnapshot.Capture(editor.LevelFile, resolve);
-            string stamp = SourceStamp(snapshot);
+            string stamp = SourceStamp(snapshot, editor.LevelPath);
             if (_snapshot == null || !_snapshot.Json.AsSpan().SequenceEqual(snapshot.Json) || stamp != _sourceStamp)
             { _data = null; _records.Clear(); _probeCache.Clear(); _retireRequested = true; }
             _snapshot = snapshot; _sourceStamp = stamp;
@@ -173,13 +191,13 @@ public sealed class LevelBakeSession : IDisposable
                 {
                     if (generation == Volatile.Read(ref _generation)) _progress = p;
                 }, token);
-                LightmapFile.Save(path, data, token); return data;
+                LightmapFile.Save(path, data, token); return new LightmapFile.ValidatedRead(data, null);
             }, true);
         }
         catch (Exception ex) { Status = "Bake failed: " + ex.Message; }
     }
 
-    private void Start(Func<CancellationToken, LightmapData?> action, bool baking)
+    private void Start(Func<CancellationToken, LightmapFile.ValidatedRead?> action, bool baking)
     {
         Interlocked.Increment(ref _generation);
         _cancel = new CancellationTokenSource(); var token = _cancel.Token; _baking = baking; _progress = 0;
@@ -207,7 +225,9 @@ public sealed class LevelBakeSession : IDisposable
         { LastBindingIssue = $"{entity.Name}: model transform differs from the bake. Expected {record.Transform}; actual {transform}"; return null; }
         if (record.PartTriangles.Length != source.Parts.Count || source.Parts.Where((p, i) => p.Indices.Length / 3 != record.PartTriangles[i]).Any())
         { LastBindingIssue = $"{entity.Name}: model topology differs from the bake"; return null; }
-        if (!_resources.Bindings.TryGetValue(entity.Id, out var entry))
+        if (_resources.Bindings.TryGetValue(entity.Id, out var entry) && !entry.Binding.UsesSource(source))
+        { renderer.RetireAfterFrame(entry.Binding); _resources.Bindings.Remove(entity.Id); entry = default; }
+        if (entry.Binding == null)
             entry = (new LightmapBinding(source, _resources.Atlas, record.FirstTriangle, _data.Texels, _data.Size,
                 world.LightingModel == SurfaceLightingModel.Pbr), _frame);
         _resources.Bindings[entity.Id] = (entry.Binding, _frame);
@@ -230,16 +250,16 @@ public sealed class LevelBakeSession : IDisposable
         for (int i=0;i<av.Length;i++) if (!float.IsFinite(bv[i]) || MathF.Abs(av[i]-bv[i]) > .0001f) return false;
         return true;
     }
-    private static string SourceStamp(BakeSnapshot snapshot)
+    private static string SourceStamp(BakeSnapshot snapshot, string path)
     {
-        try { return string.Join('|', snapshot.ModelPaths.Values.Select(path => { var f = new FileInfo(path); return $"{f.Length}:{f.LastWriteTimeUtc.Ticks}"; })); }
+        try { return string.Join('|', snapshot.ModelPaths.Values.Append(LightmapFile.PathFor(path)).Select(p => { var f = new FileInfo(p); return $"{f.Length}:{f.LastWriteTimeUtc.Ticks}"; })); }
         catch (IOException) { return "missing"; }
         catch (UnauthorizedAccessException) { return "unavailable"; }
     }
     private void Retire(Renderer renderer)
     { if (_resources != null) renderer.RetireAfterFrame(_resources); _resources = null; }
     public void Dispose()
-    { Cancel(); _resources?.Dispose(); _retained?.Resources.Dispose(); _retained=null; _resources = null; _data = null; _probeCache.Clear(); }
+    { Cancel(); _resources?.Dispose(); _retained?.Resources.Dispose(); _retained=null; _resources = null; _data = null; _validated = null; _records.Clear(); _snapshot = null; _probeCache.Clear(); }
 
     public ProbeIrradiance SampleProbe(object key, Vector3 position, LevelEntityDef? entity = null)
     {

@@ -108,7 +108,7 @@ internal static class ShadowStabilityChecks
         Switch();var restored=Frame("on-first-frame");
         int max=initial.Zip(restored).Max(p=>Enumerable.Range(0,3).Max(c=>Math.Abs((int)((p.First>>(c*8))&255)-(int)((p.Second>>(c*8))&255))));
         Console.WriteLine($"Restore: {rooms.Status}; alternate={rooms.AlternateStateReady}; {bake.Status}; bindings={bake.ReadyModels}; changed={initial.Zip(restored).Count(p=>p.First!=p.Second)}, max={max}/255");
-        Check(rooms.Ready && !rooms.Busy && max<=1,"Immediate restored state changed pixels.");
+        Check(rooms.Ready && !rooms.Busy && bake.Ready && !bake.Busy && max<=1,"Immediate restored state changed pixels or revalidated a warm bank.");
         Check(rooms.ResidentBytes<13*1048576 && rooms.CaptureGpuBytes==0,"Prewarm exceeded two-bank residency or captured at runtime.");
         string crateLight=editor.LevelFile.Entities.Single(e=>e.Name=="Hall Side 9 -10 Point Light").Id;
         for(int step=0;step<3;step++)

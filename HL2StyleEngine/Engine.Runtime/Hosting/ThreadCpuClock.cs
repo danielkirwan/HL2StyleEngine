@@ -5,6 +5,7 @@ namespace Engine.Runtime.Hosting;
 // Diagnostic-only counters. CPU time is quantized; cycles are never converted to time.
 public static class ThreadCpuClock
 {
+    internal static int NativeThreadId => OperatingSystem.IsWindows() ? unchecked((int)GetCurrentThreadId()) : 0;
     public readonly record struct Sample(int ThreadId, ulong Ticks, ulong Cycles);
     public readonly record struct Delta(double Milliseconds, ulong Cycles);
 
@@ -33,6 +34,9 @@ public static class ThreadCpuClock
 
     [DllImport("kernel32.dll")]
     private static extern nint GetCurrentThread();
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
 
     [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

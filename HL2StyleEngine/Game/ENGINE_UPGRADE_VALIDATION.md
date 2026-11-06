@@ -1,5 +1,132 @@
 # Compression, Lighting And Physics Validation
 
+## Latest Acceptance Recheck (2026-11-06)
+
+[Consolidated commands, configurations, reports, native coverage and baseline hashes](LIGHTING_ACCEPTANCE_RECHECK.md).
+Both final exact BATs and three post-correction untraced long controls pass.
+The warm-state restore regression is corrected; 78 reload/lifetime assertions,
+32/32 lighting commands and final targeted graphics validation pass. Long private
+growth is 60.68/90.93/106.91 MiB, with zero gameplay intervals >33.3 ms. Original
+failed reports remain retained. The approved scheduling trace is diagnostic and
+did not reproduce historical severe stalls. Native user review and reopen checks
+are recorded separately. **Gate L complete; Gate B complete with explicit user
+acceptance of that unresolved risk; next systems ready.** No audio code or
+preparatory refactor has started; future milestones must rerun the same gates.
+
+## Diffuse Reload Reuse (2026-11-06)
+
+First targeted production correction from [the memory plan](MEMORY_GROWTH_FIX_PLAN.md).
+C# remains the runtime. Source levels, shaders, physics, normal VSync, quality,
+cache formats and original acceptance limits are unchanged. No forced gameplay GC.
+Reflection allocation correction is not included. UI staging follows as a
+separately measured second step below.
+
+Commands use `.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll`
+followed by the argument below. Reports are under
+`Tools/LevelAuthoring/bin/Release/net10.0/qa/`:
+
+| Check | Result / report |
+| --- | --- |
+| Release build, `--no-restore` | 0 warnings/errors |
+| `check-lighting-allocations`, before | 50,594,234 bytes per diffuse read; `lighting-allocations-20261106-101745-646` |
+| `check-lighting-allocations`, after | Validated reuse 384 bytes / 4.13 ms vs full read 50,594,504 bytes / 281.06 ms; 63 checks; `lighting-allocations-20261106-102349-081` |
+| `check-lighting-reload` | 60 checks: exact payload/atlas reuse, same-size/time corruption and model invalidation, changed valid cache, source replacement, cancellation, missing cache, level change, disposal; `lighting-reload-20261106-102358-884` |
+| `validate-indirect-bake` | 282 checks, including real GPU sampling and Bake/Cancel |
+| `check-lighting-switch-pixels` | Exact on/off/on, idle and authored edit/undo restore; saved overrides and rapid cancellation pass; `lighting-switch-20261106-102443` |
+| `check-lighting-dependency-images --baked` | Three exact strict/package/F2 pairs; `lighting-images-20261106-102541` |
+
+The allocation row measures a warm reader operation, not whole-level startup
+or frame time. `lighting-reload-20261106-102358-884/before.png` and `after.png`
+are pixel-identical isolated diffuse fixtures, not a new artistic baseline.
+All checks above are automated; no new manual Game/F2/standalone acceptance is
+claimed. Whole-process controls follow separately. Gates remain pending.
+
+### UI Staging Reuse
+
+The diffuse-only unpaused long run (`gameplay-soak-20261106-103337-843-native`)
+completes 18 cycles/216 actions but **fails memory at 128.05078125 MiB**, with
+zero asset growth. Gameplay mean/P95 16.666/16.811 ms and zero >33.3 ms pass;
+loading intervals are retained separately. No memory probes or forced GC.
+This is not rounded to a pass. UI staging is corrected only after that result.
+
+| Check | Result / report |
+| --- | --- |
+| `check-ui-geometry` before UI edit | 72,976 bytes/frame; 26 checks; `ui-geometry-20261106-104453-322` |
+| `check-ui-geometry <before-folder>` after | 653 bytes/frame; 36 checks; exact reference pixels; `ui-geometry-20261106-104847-216` |
+| `validate-inventory-warmup` before/after | 1,053 assertions each; `inventory-warmup-20261106-104107` / `inventory-warmup-20261106-104854` |
+| Inventory PNG file comparison | Both prepared/on-demand PNGs exactly match before/after: SHA-256 `C8F4B7FE084791392A7D935E5289A52A43B057E6786110C3F624C6510E126801` |
+| `validate-inventory-visuals` | Native backgrounds/borders/tiles pass at 1300x775, 1920x1080, 800x600 |
+| `validate-inventory-input` | Mouse/keyboard/controller combine, cancellation, crafting, overflow and fallback regressions pass |
+| `validate-gameplay-stability` | 24 checks; `stability-checks-20261106-103312-452` |
+| `validate-physics-replay sixRoomShadowTest <historical-folder>` | 600 exact state/contact/bounds hashes vs `physics-replay-20261028-111902-477`; `physics-replay-20261106-103330-623` |
+
+Synthetic UI checks cover signed/out-of-range indices, nonfinite positions/UVs,
+per-command/aggregate limits, empty/invalid recovery, grow/shrink, viewport
+changes, fallback textures, pointer-free retained commands and disposal. The
+allocation guard remains at least 90% improvement against the old capture.
+An initial staging-only implementation failed this new target because the
+marshalling calls still allocated; local bounded native spans corrected it.
+No quality, gameplay, acceptance-limit or GC-policy workaround was used.
+
+### Whole-Process Retest
+
+Both stages repeat the same sequential three-control address-space matrix;
+all protected input hashes match. [Full matrix and attribution](RELOAD_MEMORY_INVESTIGATION.md)
+retains the deliberately timing-failing diagnostic captures, including the two
+additional >33.3 ms intervals in the second no-reload control. They are not
+used as frame-pacing acceptance. Native six-cycle UI drawing allocations fall
+from 405.626 MiB to 0.625 MiB; these are temporary allocations, not retained data.
+
+Normal-desktop command, with both fixes and without address/heap/stage probes,
+weak-reference tracking or forced GC:
+
+```powershell
+.\.dotnet\dotnet.exe Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll soak-gameplay --native-ui --puzzles --long
+```
+
+**PASS:** `gameplay-soak-20261106-105655-761-native`, 18 cycles/216 actions;
+80.5546875 MiB settled process growth (original limit 128 MiB), zero model
+payload growth. Gameplay mean/P95 **16.666/17.990 ms**, zero intervals >33.3 ms
+or >100 ms. Host mean 16.73 ms includes loading; this is not a minimum-FPS
+guarantee. Normal VSync/full detail and the existing frame recorder remain on.
+Earlier failed reports remain evidence; this run is not proof of leak freedom.
+
+Final combined-build regressions also pass: 60 lighting reload checks
+(`lighting-reload-20261106-110338-706`), three exact Game/F2 lighting pairs
+(`lighting-images-20261106-110345`), 24 gameplay/startup checks
+(`stability-checks-20261106-110353-292`) and 600 historical physics hashes
+(`physics-replay-20261106-110358-142`). All 62 protected input hashes still match.
+
+A fresh unpaused short repeat also **passes** with `soak-gameplay --native-ui --puzzles`:
+`gameplay-soak-20261106-110421-568-native`, six cycles/72 actions, **50.46 MiB**
+growth, zero asset growth, **16.661/17.769 ms** gameplay mean/P95 and zero
+intervals >33.3 ms or >100 ms. No new probes or forced collection. Both passes
+retain loading intervals and the normal frame recorder; neither replaces earlier
+failed evidence or relaxes the 128 MiB / 8 MiB or original pacing limits.
+
+Remaining acceptance: full BAT/repeated full-detail and streaming controls,
+outstanding manual Game/F2/standalone coverage and the separate historical
+stall investigation. No new manual acceptance or whole-BAT completion is
+claimed here. **Gate L pending; Gate B pending; new system upgrades blocked.**
+
+## Address-Space Attribution (2026-11-06)
+
+[Reports, commands and methodology](RELOAD_MEMORY_INVESTIGATION.md): three
+six-cycle controls plus an 18-cycle native reload, all sequential, normal
+desktop/full detail/VSync. Paused Windows/CLR mapping identifies active/free CLR
+capacity as the dominant measured growth; the long repeat exceeds the guard
+at 139.52 MiB while unknown-private and GPU usage fall. Captures deliberately
+fail timing and are not acceptance passes. Zero invalid objects; category sums
+checked against committed private regions. Protected inputs unchanged.
+
+The helper passes known managed/native allocation, overlap accounting, resume
+and release checks. Release builds have zero warnings/errors. Probe-disabled
+regressions pass: 24 gameplay/startup checks, 600 historical physics hashes and
+three exact lighting/F2 image comparisons. Final clean six-cycle control passes:
+101 MiB growth, 16.667/16.793 ms gameplay mean/P95, zero >33.3 ms. This is not a
+fix or clearance of the earlier variability/stalls. [Correction plan](MEMORY_GROWTH_FIX_PLAN.md).
+**Gate L pending; Gate B pending; new system upgrades blocked.**
+
 ## Reload Memory Investigation (2026-11-05)
 
 [Full results and reproducible commands](RELOAD_MEMORY_INVESTIGATION.md): six

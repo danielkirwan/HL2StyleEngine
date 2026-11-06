@@ -1,9 +1,95 @@
 # Reload Memory Investigation
 
 Started 5 November 2026. Scope: attribute the existing six-room memory failure,
-not new systems or a change to acceptance limits. Gate L and Gate B remain
-pending. C#, physics, source levels, shaders, VSync and full-detail quality stay
-unchanged. See [the acceptance handover](LIGHTING_ACCEPTANCE_HANDOVER.md).
+not new systems or a change to acceptance limits. The investigation below is
+historical evidence. The [final 6 November recheck](LIGHTING_ACCEPTANCE_RECHECK.md)
+accepts the subsequent diffuse/UI allocation corrections: both BATs and all three
+post-correction long controls pass. Gates L/B are accepted with an explicitly
+monitored historical stall risk, not a proven stall fix. C#, physics, source
+levels, shaders, VSync and full-detail quality remain unchanged.
+
+Attribution-only follow-up 6 November 2026: synchronized address-space attribution below adds
+evidence for CLR reusable/free-region capacity. The proposed correction order
+is in [Memory Growth Correction Plan](MEMORY_GROWTH_FIX_PLAN.md). No production
+allocation fix or acceptance-limit change is included in this diagnostic work.
+
+## Allocation Correction Follow-Up (6 November)
+
+The [first two targeted corrections](MEMORY_GROWTH_FIX_PLAN.md) are now
+implemented: validated diffuse payload/atlas reuse, followed independently by
+bounded UI geometry reuse. The earlier diagnostic-only results below remain
+historical evidence. No C++ migration, forced gameplay GC, physics, shader, level,
+quality, cache-format or acceptance-limit change was used.
+
+Commands and component/pixel checks are in [validation](ENGINE_UPGRADE_VALIDATION.md).
+Both correction stages repeat the original six-cycle address-space matrix:
+
+```powershell
+& ./Tools/LevelAuthoring/RunReloadMemoryInvestigation.ps1 -AddressSpace
+& ./Tools/LevelAuthoring/SummarizeReloadAddressSpace.ps1 -ReportFolder <soak-folder>
+```
+
+All paths below are relative to `Tools/LevelAuthoring/bin/Release/net10.0/qa/`.
+Runner folders: diffuse only `reload-memory-20261106-102609-717`; both fixes
+`reload-memory-20261106-104954-519`. Commands/logs/hashes and original failures
+are retained. Every control completes six cycles/72 actions. Protected inputs
+are unchanged, asset payloads stay flat, all address category sums/heap walks
+validate, and post-timing collection leaves zero tracked old entities/meshes.
+
+| Stage / control | Settled private growth MiB | Soak folder |
+| --- | ---: | --- |
+| Diffuse only: native/no reload | 66.75 | `gameplay-soak-20261106-102609-902-native` |
+| Diffuse only: fallback/reload | 54.36 | `gameplay-soak-20261106-102819-086-fallback` |
+| Diffuse only: native/reload | 89.19 | `gameplay-soak-20261106-103029-021-native` |
+| Both fixes: native/no reload | 6.86 | `gameplay-soak-20261106-104954-705-native` |
+| Both fixes: fallback/reload | -12.00 | `gameplay-soak-20261106-105204-452-fallback` |
+| Both fixes: native/reload | 53.72 | `gameplay-soak-20261106-105415-498-native` |
+
+These are **diagnostic, timing-failing runs**, not acceptance passes: each
+contains three intrusive capture stalls over 100 ms. The second matrix's
+native/no-reload control also has two additional intervals over 33.3 ms; they
+are retained, not filtered or explained away. Use the original settled samples,
+not the paused or collected values, for the memory guard.
+
+Native/reload paused growth after diffuse-only is 87.05 MiB (active GC +58.09,
+other CLR +33.16, unknown-private -4.31); after both fixes it is 53.78 MiB
+(active GC +29.02, other CLR +27.08, unknown-private -2.39). Residual/stack
+categories account for the rest; consult each `address-comparison.json`.
+These repeated samples still indicate CLR capacity, not a growing asset set.
+
+The component improvement is stronger evidence than a single process delta:
+for native six-cycle routes, UI drawing allocations are **405.626 MiB** both
+before and after the diffuse-only fix, then **0.625 MiB** after UI reuse.
+Total allocations between settled samples are 2,313.25 MiB originally,
+2,066.92 MiB after diffuse-only, and 1,738.49 MiB after both. These are temporary
+allocation totals, not retained memory. The source runs are respectively
+`094640-238-native`, `103029-021-native`, `105415-498-native` on 20261106.
+Heap capacity still varies: the diffuse-only process delta is higher than the
+earlier 46.23 MiB short sample despite lower allocations. No monotonic process
+improvement or universal leak freedom is claimed.
+
+An unpaused diffuse-only 18-cycle control completes all 216 actions but
+**fails memory at 128.05078125 MiB**, with zero asset growth and passing
+16.666/16.811 ms gameplay mean/P95, zero intervals >33.3 ms:
+`gameplay-soak-20261106-103337-843-native`. No forced collection or new memory
+probes are enabled. The unchanged limit is 128 MiB; this is not rounded to a
+pass. See validation for the subsequent unpaused result with both fixes.
+
+The unpaused combined-fix long repeat **passes**:
+`gameplay-soak-20261106-105655-761-native`, 18 cycles/216 actions,
+**80.5546875 MiB** process growth, zero model-payload growth and
+16.666/17.990 ms gameplay mean/P95 with zero intervals >33.3 ms.
+It uses `soak-gameplay --native-ui --puzzles --long` with no new memory probes
+or forced collection. All 62 protected inputs still match. This is a measured
+passing repeat, not proof of universal leak freedom or resolution of the
+independent historical full-detail stalls. Gates remain pending.
+
+A fresh unpaused six-cycle repeat also passes: `gameplay-soak-20261106-110421-568-native`,
+72 actions, **50.46 MiB** process growth, zero asset growth,
+**16.661/17.769 ms** gameplay mean/P95, zero intervals >33.3 ms. Command:
+`soak-gameplay --native-ui --puzzles`. As with the long repeat, no new memory
+probes or forced GC. The remaining work is unchanged broader/manual acceptance
+and the separate stall investigation, not a new engine-system milestone.
 
 ## Method
 
@@ -218,7 +304,161 @@ process counters differ in timing; native heaps, graphics-driver reservations
 and contemporaneous GC segments still need attribution. Do not call the issue
 a managed-only leak, or assume removing UI churn will necessarily close it.
 
-## Status
+## Address-Space Attribution (2026-11-06)
+
+`Tools/MemoryProbe` is a separate .NET 10 diagnostic executable using Microsoft's
+ClrMD 4.2.751201 package. It is not referenced by Game, HS2Editor or the engine
+libraries. Its self-test verifies overlapping ownership precedence, a known
+64 MiB managed array, a known 24 MiB native allocation, target resume and release.
+Report: `Tools/MemoryProbe/bin/Release/net10.0/qa/self-test-20261106-094031/`.
+Both helper and authoring Release builds pass with zero warnings/errors.
+
+The helper attaches only to the owned QA process and pauses it while reading
+current CLR segments/native ranges and Windows `VirtualQueryEx` regions. It
+then resumes the process before writing the report. No collection, trimming,
+memory write or GPU flush is performed by the helper. Committed private ranges
+are partitioned with precedence, never counted twice. CLR free-region pools
+are distinguished from active heap segments and from unattributed private pages.
+See [ClrMD native-heap enumeration](https://github.com/microsoft/clrmd/blob/main/src/Microsoft.Diagnostics.Runtime/ClrRuntime.cs)
+and [Windows address-space queries](https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-virtualqueryex).
+
+The soak additionally samples DXGI local/nonlocal budget usage before each
+capture, with all temporary COM references released. These are video-memory
+usage measurements, not an extra amount to add to process private bytes. They
+are not synchronized with the paused OS snapshot and can reflect eviction or
+residency changes. The existing model/texture/lightmap/reflection payload counts
+remain recorded separately.
+
+Commands, sequential normal-desktop execution, no concurrent builds:
+
+```powershell
+.\.dotnet\dotnet.exe build Tools/MemoryProbe/MemoryProbe.csproj -c Release
+.\.dotnet\dotnet.exe Tools/MemoryProbe/bin/Release/net10.0/MemoryProbe.dll self-test
+.\.dotnet\dotnet.exe build Tools/LevelAuthoring/LevelAuthoring.csproj -c Release --no-restore
+& .\Tools\LevelAuthoring\RunReloadMemoryInvestigation.ps1 -AddressSpace
+& .\Tools\LevelAuthoring\RunReloadMemoryInvestigation.ps1 -AddressSpace -Long -Control native-reload
+& .\Tools\LevelAuthoring\SummarizeReloadAddressSpace.ps1 <individual-soak-report-folder>
+```
+
+Captures occur after cycles 1, midpoint and last. A separate `post-run-collected`
+capture follows the existing post-timing diagnostic collection, after frame
+report serialization. It is not substituted for a normal settled sample. All
+capture runs remain `DiagnosticOnly`; their three intentional pauses fail the
+unchanged frame guard. The runner preserves those failures and isolated saves.
+No post-hoc removal of the pauses is used to claim performance acceptance.
+
+Short matrix: `qa/reload-memory-20261106-094212-536/`. Each run completes 6 cycles /
+72 action slots. Protected inputs unchanged; all heap walks consistent with zero
+invalid objects. `address-comparison.json` verifies category sums against the
+private-commit region total and retains GPU usage, counters and raw paths.
+
+| Control / soak suffix | Original settled growth | Paused private growth | Active GC regions | Other CLR regions | Unattributed private |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Native no reload, `20261106-094213-755-native` | 31.51 MiB | 28.14 MiB | +11.38 MiB | +20.22 MiB | -3.47 MiB |
+| Fallback reload, `20261106-094429-351-fallback` | 86.04 MiB | 82.40 MiB | +80.39 MiB | +5.24 MiB | -3.55 MiB |
+| Native reload, `20261106-094640-238-native` | 46.23 MiB | 43.55 MiB | -27.20 MiB | +73.04 MiB | -2.49 MiB |
+
+Original settled checkpoints precede collector startup and GPU diagnostic warmup;
+paused comparisons are separate observations, not replacement acceptance metrics.
+Small managed-stack and process-versus-private-region accounting differences are
+retained in the JSON rather than silently assigned to a category. Mapped/image
+regions can contain private copy-on-write pages; the full residual is not VRAM.
+
+In the short native reload, **71.61 MiB** of the other-CLR increase is explicitly
+`GCFreeRegion` plus `GCFreeGlobalHugeRegion`: reusable capacity still committed
+to the process, not live textures or active managed objects. Remaining CLR
+growth is mostly bookkeeping. Local GPU usage stays about 440 MiB (440.04 to
+440.02), nonlocal usage falls 13.88 to 12.76 MiB, and asset payloads stay flat.
+This explains why looking only at active objects or last-GC heap statistics
+misses part of current process commitment. It does not establish that every
+historical spike has the same attribution or that a native leak is impossible.
+
+Object tables in these snapshots include unreachable objects awaiting collection,
+unlike a rooted-live-object analysis. They must not be treated as retained-object
+proof. A read-only heap walk also does not attribute allocation call stacks.
+
+### Long Attribution Repeat
+
+Runner: `qa/reload-memory-20261106-094925-742/`; soak:
+`qa/gameplay-soak-20261106-094925-941-native/`. All 18 cycles / 216 actions
+complete. Protected inputs unchanged; zero invalid objects in all four walks.
+The original settled comparison is **139.52 MiB**, over the unchanged 128 MiB
+guard. The three intentional capture pauses trip the earlier frame assertion;
+this is not an automated memory or timing pass.
+
+| Paused comparison to cycle 1 | Cycle 9 | Cycle 18 |
+| --- | ---: | ---: |
+| Process private | +153.98 MiB | **+139.52 MiB** |
+| Active GC regions | +125.66 MiB | **+143.125 MiB** |
+| Other CLR-owned regions | +29.22 MiB | -2.375 MiB |
+| Unattributed private pages | -1.27 MiB | -1.477 MiB |
+| Managed-thread stacks | -0.023 MiB | -0.098 MiB |
+| Process/private-region accounting residual | +0.38 MiB | +0.348 MiB |
+
+At cycle 18, 103.27 MiB of the active-region increase is large-object-heap
+commitment. Local GPU usage falls **440.04 -> 395.19 MiB**, nonlocal usage falls
+**13.91 -> 12.76 MiB**; model/texture payload growth is zero. The additional
+process commitment is accounted for by CLR regions in this reproduced failure,
+not an increasing unknown-private or video-memory category. The residual delta
+is small and retained explicitly; this is not universal proof of driver leak
+freedom across workloads.
+
+The active heap contains both current objects and uncollected previous reload
+objects: LevelFile counts are 38/19/59 at cycles 1/9/18, then **19** after the
+post-run collection. That is not 59 permanently retained levels. Post-timing
+collection leaves **zero of 13,852 tracked old entities and 90 old meshes** alive.
+It still leaves **247.80 MiB of free holes inside active segments**, alongside
+unused CLR regions. The 127.49 MiB post-collection private increase is not
+substituted into the failing normal checkpoint. It also follows frame-report
+serialization and collection, so it is not a clean experiment changing GC alone.
+
+Native UI drawing allocates **1,275,856,528 bytes cumulatively** in this route;
+diffuse/reflection main-thread updates allocate 264,104,416 / 583,317,104 bytes,
+with worker allocations additional. Stage counters identify code regions, not
+allocation call-stack samples. Source inspection finds repeated geometry copies,
+large owned diffuse pixels and revision-triggered snapshot/cache reloads. These
+are concrete correction candidates; the effect of each must be measured, not
+assumed from cumulative allocation alone.
+
+Fresh observer-disabled automated regressions also pass:
+
+- 24 gameplay/startup checks: `qa/stability-checks-20261106-095639-936/`.
+- All 600 historical physics state/contact/bounds hashes:
+  `qa/physics-replay-20261106-095715-257/`.
+- Three exact strict/package lighting image comparisons, including F2:
+  `qa/lighting-images-20261106-095736/`.
+
+No new manual Game/F2 acceptance is claimed. No source level, solver/timestep,
+shader, lighting quality, normal GC policy, cache format or save format changed.
+No reimport, rebake or migration is required.
+
+Final normal-desktop control, with memory stages, weak-reference tracking,
+address/heap snapshots and forced collection disabled:
+`soak-gameplay --native-ui --puzzles`,
+`qa/gameplay-soak-20261106-095755-199-native/`. All six cycles / 72 actions pass,
+with **101.00 MiB** private growth, **16.667/16.793 ms** gameplay mean/P95,
+zero intervals over 33.3 ms and flat model payload. Its ordinary frame recorder
+remains enabled as before. This demonstrates variability and disabled-probe
+compatibility, not a production fix or reversal of the earlier failures.
+
+### Current Conclusion And Plan
+
+The new synchronized snapshots resolve the broad ownership ambiguity in these
+runs: **CLR active/free-region capacity dominates measured growth**. Allocation
+churn, delayed collection and fragmentation explain why a smaller active/live
+heap is not equivalent to less process-private memory. A permanently growing
+texture cache or native-UI leak is not supported by these captures.
+
+Next: [the staged correction plan](MEMORY_GROWTH_FIX_PLAN.md), beginning with
+unnecessary large lighting reload allocations, followed by bounded UI staging
+reuse, one independently verified change at a time. No production optimization
+has yet been applied. **Gate L pending; Gate B pending; new upgrades blocked.**
+Historical full-detail stalls remain a separate unresolved issue.
+
+## Status After The First Round (2026-11-05)
+
+Historical status below is retained for the evidence trail. The 6 November
+attribution and correction plan above supersede its proposed next diagnostic.
 
 The initial controlled round and early/late heap comparison are complete; exact
 ownership of all process growth is not. Temporary managed allocation churn,

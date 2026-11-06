@@ -47,6 +47,13 @@ internal static class LightingAllocationChecks
         Measure("diffuse-snapshot", () => BakeSnapshot.Capture(view, Resolve));
         Measure("reflection-snapshot", () => ReflectionSnapshot.Create(view, viewPath, probe.Id, Resolve));
         Measure("lightmap-read", () => LightmapFile.Load(bakePath, bakeKey) ?? throw new InvalidDataException("Bake read failed."));
+        var validated = LightmapFile.LoadValidated(bakePath, bakeKey)!;
+        Measure("lightmap-validated-reuse", () =>
+        {
+            var reused = LightmapFile.LoadValidated(bakePath, bakeKey, validated);
+            if (!ReferenceEquals(reused, validated)) throw new InvalidDataException("Unchanged bake was decoded again.");
+            return reused!;
+        });
         Measure("reflection-read", () => ReflectionProbeCache.Load(reflectionPath, reflectionKey) ?? throw new InvalidDataException("Reflection read failed."));
         if (!StructuredData.WriteJson(level).AsSpan().SequenceEqual(original)) throw new InvalidDataException("Snapshot preparation mutated the source level.");
         int checks = ValidateReaders(folder);
@@ -79,6 +86,17 @@ internal static class LightingAllocationChecks
         LightmapFile.Save(path, data);
         byte[] valid = File.ReadAllBytes(path);
         var retained = LightmapFile.Load(path, data.Key)!;
+        var receipt = LightmapFile.LoadValidated(path, data.Key)!;
+        Check(ReferenceEquals(receipt, LightmapFile.LoadValidated(path, data.Key, receipt)), "Unchanged cache did not reuse its validated data.");
+        Check(LightmapFile.LoadValidated(path, "wrong-key", receipt) == null, "Reuse bypassed the dependency key.");
+        using (var cancellation = new CancellationTokenSource())
+        {
+            cancellation.Cancel();
+            bool cancelled = false;
+            try { LightmapFile.LoadValidated(path, data.Key, receipt, cancellation.Token); }
+            catch (OperationCanceledException) { cancelled = true; }
+            Check(cancelled, "Reuse ignored cancellation.");
+        }
         Check(retained.Pixels.AsSpan().SequenceEqual(data.Pixels), "Lightmap round trip changed pixels.");
         Check(LightmapFile.Load(path, "wrong-key") == null, "Stale lightmap accepted.");
         foreach (int length in new[] { 0, 4, 16, 47, valid.Length - 1 })
@@ -89,6 +107,14 @@ internal static class LightingAllocationChecks
         byte[] bad = (byte[])valid.Clone(); bad[16] ^= 1;
         File.WriteAllBytes(path, bad);
         Check(LightmapFile.Load(path, data.Key) == null, "Corrupt lightmap checksum accepted.");
+        DateTime timestamp = File.GetLastWriteTimeUtc(path);
+        Check(LightmapFile.LoadValidated(path, data.Key, receipt) == null, "Reuse accepted a corrupt checksum.");
+        bad = (byte[])valid.Clone(); bad[^1] ^= 0x40;
+        File.WriteAllBytes(path, bad); File.SetLastWriteTimeUtc(path, timestamp);
+        Check(LightmapFile.LoadValidated(path, data.Key, receipt) == null, "Same-size/timestamp corrupt payload reused the old result.");
+        bad = (byte[])valid.Clone(); BinaryPrimitives.WriteInt32LittleEndian(bad.AsSpan(4), LightmapFile.Version + 1);
+        File.WriteAllBytes(path, bad);
+        Check(LightmapFile.LoadValidated(path, data.Key, receipt) == null, "Reuse bypassed format version validation.");
         bad = (byte[])valid.Clone(); BinaryPrimitives.WriteInt32LittleEndian(bad.AsSpan(8), int.MaxValue);
         File.WriteAllBytes(path, bad);
         Check(LightmapFile.Load(path, data.Key) == null, "Unbounded lightmap accepted.");
@@ -99,12 +125,21 @@ internal static class LightingAllocationChecks
         string otherPath = Path.Combine(folder, "other.hs2lightmap");
         data.Size = 64; data.Pixels = Enumerable.Repeat((byte)0x3c, 64 * 64 * 8).ToArray();
         LightmapFile.Save(otherPath, data); File.WriteAllBytes(path, valid);
+        var replacement = LightmapFile.LoadValidated(otherPath, data.Key, receipt);
+        Check(replacement != null && !ReferenceEquals(replacement, receipt) && replacement.Data.Size == 64,
+            "Changed valid cache with the same source key was not decoded.");
+        File.Delete(path);
+        Check(LightmapFile.LoadValidated(path, data.Key, receipt) == null, "Missing cache reused old data.");
+        File.WriteAllBytes(path, valid);
         Parallel.For(0, 16, new ParallelOptions { MaxDegreeOfParallelism = 2 }, i =>
         {
             bool other = i % 2 == 0;
             var loaded = LightmapFile.Load(other ? otherPath : path, data.Key);
             Check(loaded != null && loaded.Size == (other ? 64 : 32) && loaded.Pixels.All(b => b == (other ? 0x3c : 0)),
                 "Concurrent lightmap load reused another result's memory.");
+            var reused = LightmapFile.LoadValidated(other ? otherPath : path, data.Key, receipt);
+            Check(reused != null && reused.Data.Size == (other ? 64 : 32) && (other || ReferenceEquals(reused, receipt)),
+                "Concurrent validation reused a different payload.");
         });
         Check(retained.Pixels.All(b => b == 0), "Pooled lightmap scratch escaped into a published result.");
         var faces = Enumerable.Range(0, 12).Select(i => Enumerable.Repeat((byte)0x3c, i < 6 ? 32 : 8).ToArray()).ToArray();

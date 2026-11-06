@@ -28,6 +28,9 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
     private Shader[]? _shaders;
     private uint _vertexCapacity;
     private uint _indexCapacity;
+    private readonly List<UiVertex> _vertices = new((int)InitialVertexCapacity);
+    private readonly List<uint> _indices = new((int)InitialIndexCapacity);
+    private readonly List<PreparedCommand> _preparedCommands = new();
 
     public string Status { get; private set; } = "RmlUi overlay renderer waiting for native render data.";
     public int LastSubmittedCommands { get; private set; }
@@ -38,12 +41,15 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
     public bool LastRenderSubmitted => LastSubmittedCommands > 0;
     public bool Prepare(Renderer renderer) => EnsureResources(renderer);
 
-    public void Render(Renderer renderer, RmlUiRenderData renderData, bool submit = true)
+    public unsafe void Render(Renderer renderer, RmlUiRenderData renderData, bool submit = true)
     {
         LastSubmittedCommands = 0;
         LastSubmittedTriangles = 0;
         LastFallbackTextureCommands = 0;
         LastTexturedCommands = 0;
+        _vertices.Clear();
+        _indices.Clear();
+        _preparedCommands.Clear();
 
         if (renderData.CommandCount <= 0 || renderData.Commands == IntPtr.Zero)
         {
@@ -60,17 +66,16 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
             return;
         }
 
-        int commandSize = Marshal.SizeOf<RmlUiRenderCommand>();
+        var commands = new ReadOnlySpan<RmlUiRenderCommand>((void*)renderData.Commands, renderData.CommandCount);
 
         int fallbackTextureCommands = 0;
-        List<UiVertex> vertices = new();
-        List<uint> indices = new();
-        List<PreparedCommand> preparedCommands = new();
+        var vertices = _vertices;
+        var indices = _indices;
+        var preparedCommands = _preparedCommands;
 
         for (int i = 0; i < renderData.CommandCount; i++)
         {
-            IntPtr commandPtr = IntPtr.Add(renderData.Commands, i * commandSize);
-            RmlUiRenderCommand command = Marshal.PtrToStructure<RmlUiRenderCommand>(commandPtr);
+            RmlUiRenderCommand command = commands[i];
             if (command.VertexCount <= 0 ||
                 command.IndexCount <= 0 ||
                 command.Vertices == IntPtr.Zero ||
@@ -95,15 +100,21 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
 
             int vertexStart = vertices.Count;
             int indexStart = indices.Count;
-            if (!TryBuildVertices(command, renderData, out UiVertex[] commandVertices) ||
-                !TryBuildIndices(command, out uint[] commandIndices))
+            // Grow only after the existing aggregate limits pass. Every used element is
+            // overwritten; the lists retain bounded capacity, never native pointers.
+            if (vertices.Capacity < vertexStart + command.VertexCount)
+                vertices.Capacity = (int)NextCapacity((uint)(vertexStart + command.VertexCount));
+            if (indices.Capacity < indexStart + command.IndexCount)
+                indices.Capacity = (int)NextCapacity((uint)(indexStart + command.IndexCount));
+            CollectionsMarshal.SetCount(vertices, vertexStart + command.VertexCount);
+            CollectionsMarshal.SetCount(indices, indexStart + command.IndexCount);
+            if (!TryBuildVertices(command, renderData, CollectionsMarshal.AsSpan(vertices).Slice(vertexStart, command.VertexCount)) ||
+                !TryBuildIndices(command, CollectionsMarshal.AsSpan(indices).Slice(indexStart, command.IndexCount)))
             {
                 Status = $"RmlUi frame rejected: command {i} contained invalid vertex or index data.";
                 return;
             }
 
-            vertices.AddRange(commandVertices);
-            indices.AddRange(commandIndices);
             preparedCommands.Add(new PreparedCommand(command, vertexStart, indexStart, command.IndexCount));
         }
 
@@ -114,8 +125,8 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
         }
 
         EnsureBufferCapacity(renderer, (uint)vertices.Count, (uint)indices.Count);
-        renderer.GraphicsDevice.UpdateBuffer(_vertexBuffer, 0, vertices.ToArray());
-        renderer.GraphicsDevice.UpdateBuffer(_indexBuffer, 0, indices.ToArray());
+        renderer.GraphicsDevice.UpdateBuffer(_vertexBuffer, 0, CollectionsMarshal.AsSpan(vertices));
+        renderer.GraphicsDevice.UpdateBuffer(_indexBuffer, 0, CollectionsMarshal.AsSpan(indices));
         if (!submit) return;
 
         CommandList cl = renderer.CommandList;
@@ -128,16 +139,14 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
 
         foreach (PreparedCommand prepared in preparedCommands)
         {
-            RmlUiRenderCommand command = prepared.Command;
-
-            ResourceSet textureSet = GetTextureSet(command.TextureId, out bool usedFallbackTexture);
-            if (command.TextureId != 0)
+            ResourceSet textureSet = GetTextureSet(prepared.TextureId, out bool usedFallbackTexture);
+            if (prepared.TextureId != 0)
                 LastTexturedCommands++;
             if (usedFallbackTexture)
                 fallbackTextureCommands++;
 
             cl.SetGraphicsResourceSet(0, textureSet);
-            ApplyScissor(cl, command, renderData);
+            ApplyScissor(cl, prepared, renderData);
             cl.DrawIndexed((uint)prepared.IndexCount, 1, (uint)prepared.IndexStart, prepared.VertexStart, 0);
 
             submittedCommands++;
@@ -160,6 +169,9 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
 
     public void Dispose()
     {
+        _vertices.Clear(); _vertices.Capacity = 0;
+        _indices.Clear(); _indices.Capacity = 0;
+        _preparedCommands.Clear(); _preparedCommands.Capacity = 0;
         _pipeline?.Dispose();
         _textureLayout?.Dispose();
         _fallbackTextureSet?.Dispose();
@@ -387,17 +399,15 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
         return capacity;
     }
 
-    private static bool TryBuildVertices(RmlUiRenderCommand command, RmlUiRenderData renderData, out UiVertex[] vertices)
+    private static unsafe bool TryBuildVertices(RmlUiRenderCommand command, RmlUiRenderData renderData, Span<UiVertex> vertices)
     {
-        vertices = new UiVertex[command.VertexCount];
-        int vertexSize = Marshal.SizeOf<RmlUiVertex>();
+        var sources = new ReadOnlySpan<RmlUiVertex>((void*)command.Vertices, command.VertexCount);
         float width = Math.Max(1f, renderData.ViewportWidth);
         float height = Math.Max(1f, renderData.ViewportHeight);
 
         for (int i = 0; i < command.VertexCount; i++)
         {
-            IntPtr vertexPtr = IntPtr.Add(command.Vertices, i * vertexSize);
-            RmlUiVertex source = Marshal.PtrToStructure<RmlUiVertex>(vertexPtr);
+            RmlUiVertex source = sources[i];
             float x = source.X + command.TranslateX;
             float y = source.Y + command.TranslateY;
             Vector4 color = UnpackColor(source.ColorRgba);
@@ -408,7 +418,6 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
                 !float.IsFinite(source.V) ||
                 !Vector4IsFinite(color))
             {
-                vertices = Array.Empty<UiVertex>();
                 return false;
             }
 
@@ -443,21 +452,18 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
             ((rgba >> 24) & 0x000000ff) * inv);
     }
 
-    private static bool TryBuildIndices(RmlUiRenderCommand command, out uint[] indices)
+    private static unsafe bool TryBuildIndices(RmlUiRenderCommand command, Span<uint> indices)
     {
-        indices = new uint[command.IndexCount];
-        int[] signedIndices = new int[command.IndexCount];
-        Marshal.Copy(command.Indices, signedIndices, 0, command.IndexCount);
-
-        for (int i = 0; i < signedIndices.Length; i++)
+        var sources = new ReadOnlySpan<int>((void*)command.Indices, command.IndexCount);
+        for (int i = 0; i < indices.Length; i++)
         {
-            if (signedIndices[i] < 0 || signedIndices[i] >= command.VertexCount)
+            int index = sources[i];
+            if (index < 0 || index >= command.VertexCount)
             {
-                indices = Array.Empty<uint>();
                 return false;
             }
 
-            indices[i] = unchecked((uint)signedIndices[i]);
+            indices[i] = (uint)index;
         }
 
         return true;
@@ -469,7 +475,7 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
            float.IsFinite(value.Z) &&
            float.IsFinite(value.W);
 
-    private static void ApplyScissor(CommandList cl, RmlUiRenderCommand command, RmlUiRenderData renderData)
+    private static void ApplyScissor(CommandList cl, PreparedCommand command, RmlUiRenderData renderData)
     {
         if (command.ScissorEnabled == 0)
         {
@@ -513,14 +519,18 @@ internal sealed class RmlUiOverlayRenderer : IDisposable
 
     private readonly struct PreparedCommand
     {
-        public readonly RmlUiRenderCommand Command;
+        public readonly ulong TextureId;
+        public readonly int ScissorEnabled, ScissorX, ScissorY, ScissorWidth, ScissorHeight;
         public readonly int VertexStart;
         public readonly int IndexStart;
         public readonly int IndexCount;
 
         public PreparedCommand(RmlUiRenderCommand command, int vertexStart, int indexStart, int indexCount)
         {
-            Command = command;
+            TextureId = command.TextureId;
+            ScissorEnabled = command.ScissorEnabled;
+            ScissorX = command.ScissorX; ScissorY = command.ScissorY;
+            ScissorWidth = command.ScissorWidth; ScissorHeight = command.ScissorHeight;
             VertexStart = vertexStart;
             IndexStart = indexStart;
             IndexCount = indexCount;

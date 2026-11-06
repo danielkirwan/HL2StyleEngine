@@ -18,6 +18,8 @@ Copy-Item -LiteralPath (Join-Path $root 'HL2StyleEngine.sln') -Destination $revi
 
 # Share model inputs without duplicating the asset library; all editable documents/layouts are private copies.
 New-Item -ItemType Junction -Path (Join-Path $content 'Models') -Target (Join-Path $root 'Game/Content/Models') | Out-Null
+# Game resolves runtime content from its executable directory; editor uses the private project root.
+New-Item -ItemType Junction -Path (Join-Path $app 'Content') -Target $content | Out-Null
 foreach ($folder in @('Prefabs', 'UI', 'Materials', 'Scripts', 'Animations')) {
     $original = Join-Path $root ('Game/Content/' + $folder)
     if (Test-Path -LiteralPath $original) { Copy-Item -LiteralPath $original -Destination $content -Recurse }

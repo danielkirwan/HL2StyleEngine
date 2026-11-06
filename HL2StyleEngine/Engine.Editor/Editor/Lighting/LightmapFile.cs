@@ -30,6 +30,15 @@ public sealed class LightmapData
 
 public static class LightmapFile
 {
+    // Session-owned receipt, not a global cache. Data must remain immutable while retained.
+    public sealed class ValidatedRead
+    {
+        public LightmapData Data { get; }
+        internal byte[]? ContentHash { get; }
+        internal ValidatedRead(LightmapData data, byte[]? contentHash)
+        { Data = data; ContentHash = contentHash; }
+    }
+
     public const int Version = 2;
     private const int MaxBytes = 64 * 1024 * 1024;
     // One exact-sized idle buffer per role avoids rounding a 36 MiB bake up to 64 MiB.
@@ -39,13 +48,26 @@ public static class LightmapFile
     public static string PathFor(string levelPath) => Path.ChangeExtension(Path.GetFullPath(levelPath), ".hs2lightmap");
 
     public static LightmapData? Load(string path, string key)
+        => LoadValidated(path, key)?.Data;
+
+    public static ValidatedRead? LoadValidated(string path, string key, ValidatedRead? previous = null,
+        CancellationToken cancel = default)
     {
         byte[]? compressed = null, decoded = null;
         try
         {
+            cancel.ThrowIfCancellationRequested();
             using var file = File.OpenRead(path);
             using var reader = new BinaryReader(file);
-            if (file.Length > MaxBytes || reader.ReadUInt32() != 0x4C325348) return null;
+            if (file.Length < 48 || file.Length > MaxBytes) return null;
+            // Hash the complete file, including header and compressed bytes. A timestamp,
+            // embedded checksum or matching source key alone cannot certify unchanged content.
+            byte[] contentHash = SHA256.HashData(file);
+            cancel.ThrowIfCancellationRequested();
+            if (previous?.Data.Key == key && previous.ContentHash != null &&
+                contentHash.AsSpan().SequenceEqual(previous.ContentHash)) return previous;
+            file.Position = 0;
+            if (reader.ReadUInt32() != 0x4C325348) return null;
             int version = reader.ReadInt32();
             if (version is < 1 or > Version) return null;
             int length = reader.ReadInt32(), packed = reader.ReadInt32();
@@ -57,6 +79,7 @@ public static class LightmapFile
             file.ReadExactly(compressed.AsSpan(0, packed));
             var data = decoded.AsSpan(0, length);
             if (LZ4Codec.Decode(compressed.AsSpan(0, packed), data) != length) return null;
+            cancel.ThrowIfCancellationRequested();
             SHA256.HashData(data, actualHash);
             if (!actualHash.SequenceEqual(hash)) return null;
             int metadataLength = BinaryPrimitives.ReadInt32LittleEndian(data);
@@ -89,7 +112,8 @@ public static class LightmapFile
                 if (!result.Probes.IsValid()) return null;
                 result.PreparedProbes = new LightProbeSampler(result.Probes);
             }
-            return result;
+            cancel.ThrowIfCancellationRequested();
+            return new ValidatedRead(result, contentHash);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException or OverflowException)
         { return null; }

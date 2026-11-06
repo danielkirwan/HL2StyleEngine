@@ -60,7 +60,7 @@ internal sealed partial class GameplaySoakChecks : IGameModule, IWorldRenderer, 
 
     internal static void Run(string root, bool native, int cycles = 6, bool puzzles = false, bool memoryTrace = false,
         bool textureTrial = false, bool textureReference = false, bool partialUploads = false,
-        bool memoryStages = false, bool noReload = false, bool heapSnapshots = false)
+        bool memoryStages = false, bool noReload = false, bool heapSnapshots = false, bool addressSnapshots = false)
     {
         if (cycles is < 1 or > 24) throw new ArgumentOutOfRangeException(nameof(cycles));
         string folder = Path.Combine(AppContext.BaseDirectory, "qa", "gameplay-soak-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff") + (native ? "-native" : "-fallback"));
@@ -73,6 +73,8 @@ internal sealed partial class GameplaySoakChecks : IGameModule, IWorldRenderer, 
         probe._partialUploads = partialUploads;
         probe._noReload = noReload;
         probe._heapSnapshots = heapSnapshots;
+        probe._addressSnapshots = addressSnapshots;
+        probe._addressProbe = Path.Combine(root, "Tools/MemoryProbe/bin/Release/net10.0/MemoryProbe.exe");
         probe._requestedCycles = cycles;
         probe._diagnosticTool = Path.Combine(root, ".dotnet/diagnostics/dotnet-gcdump.exe");
         if (memoryStages || heapSnapshots) probe.EnableMemoryStages();
@@ -81,7 +83,11 @@ internal sealed partial class GameplaySoakChecks : IGameModule, IWorldRenderer, 
         {
             using var host = new EngineHost(1920, 1080, "Gameplay stability: " + (native ? "native inventory" : "fallback inventory"));
             try { host.Run(probe); probe.Validate(cycles); }
-            finally { if (memoryTrace) probe.CapturePostRunRetention(); }
+            finally
+            {
+                if (memoryTrace) probe.CapturePostRunRetention();
+                if (addressSnapshots && memoryTrace) probe.CaptureAddressSpace("post-run-collected");
+            }
         }
         catch (Exception ex) { failure = ex; }
         finally
@@ -102,7 +108,8 @@ internal sealed partial class GameplaySoakChecks : IGameModule, IWorldRenderer, 
                 SaveSlotSummaryMilliseconds = probe._slotTimes,
                 SaveTimings = probe._saveTimes,
                 MemoryTrace = memoryTrace, RetentionAfterRun = probe._retentionAfterRun,
-                DiagnosticOnly = memoryStages || noReload || heapSnapshots, NoReload = noReload, HeapSnapshots = heapSnapshots,
+                DiagnosticOnly = memoryStages || noReload || heapSnapshots || addressSnapshots, NoReload = noReload, HeapSnapshots = heapSnapshots,
+                AddressSnapshots = addressSnapshots, AddressCheckpoints = probe._addressCheckpoints,
                 MemoryStages = probe._stageSamples, StageAllocations = probe.StageAllocationReport(),
                 ObserverAllocatedBytes = probe._observerAllocated,
                 Notes = "Scripted room teleports plus real W/S movement; real save/load in isolated QA folder. Explicit loading intervals retained separately. OS cache uncontrolled; CPU/host timings, not GPU timestamps."
@@ -267,6 +274,8 @@ internal sealed partial class GameplaySoakChecks : IGameModule, IWorldRenderer, 
                         RuntimeEntities = entities.Count, Collections = new[] { GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2) } });
                 }
                 _completedCycles++;
+                if (_addressSnapshots && (_completedCycles == 1 || _completedCycles == _requestedCycles / 2 || _completedCycles == _requestedCycles))
+                    CaptureAddressSpace("cycle-" + _completedCycles.ToString("D2"));
                 if (_heapSnapshots && (_completedCycles == 1 || _completedCycles == _requestedCycles)) CaptureHeapSnapshot();
                 break;
         }

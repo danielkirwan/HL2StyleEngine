@@ -2,6 +2,34 @@
 
 This file tracks completed gameplay-facing systems and the current implementation shape.
 
+Accepted baseline (2026-11-06): [recheck, reports and source/binary manifest](LIGHTING_ACCEPTANCE_RECHECK.md).
+Both final stability BATs, all three post-correction long controls, 32 lighting
+commands and final graphics validation pass. Native gameplay/editor checks are
+recorded separately. **Gate L complete; Gate B complete with user-accepted
+historical stall risk; audio is ready as the next milestone.** The old severe
+stall remains open/not reproduced, not fixed; regression checks must continue.
+No rebake, migration, audio code or preparatory refactor in this handover.
+Earlier pending statuses below describe prior rounds, not the current decision.
+
+Allocation corrections (2026-11-06, after attribution): [the first two fixes](MEMORY_GROWTH_FIX_PLAN.md)
+are implemented in C#: full-content-validated diffuse payload/atlas reuse and
+bounded native-UI staging reuse. Lighting and inventory reference pixels remain
+unchanged. No rebake, migration, quality or physics change. Combined unpaused
+18-/6-cycle repeats pass at 80.55/50.46 MiB growth with zero gameplay intervals
+over 33.3 ms; [validation](ENGINE_UPGRADE_VALIDATION.md) also retains the
+diffuse-only 128.05 MiB failure. Gates L/B remain pending and new
+system upgrades remain blocked. Earlier "no production fix" entries below
+describe the preceding diagnostic-only rounds, not the current implementation.
+
+Memory attribution (2026-11-06): [synchronized address-space tests](RELOAD_MEMORY_INVESTIGATION.md)
+reproduce 139.52 MiB long-reload growth and account for it in CLR-owned active/
+free-region capacity; unattributed private pages and GPU usage do not grow in
+that repeat. [The proposed fix plan](MEMORY_GROWTH_FIX_PLAN.md) starts with
+redundant large lighting reload allocations, then bounded UI geometry staging.
+Only opt-in test tools changed, not production allocation policy. A final
+probe-disabled control passes at 101 MiB, but earlier failures and gates remain
+open. No rebake, migration, physics change or new system upgrade is included.
+
 Design philosophy adopted (2026-11-05): [Immersive-Sim Design Philosophy](IMMERSIVE_SIM_DESIGN_PHILOSOPHY.md)
 applies the supplied research to future levels: connected exploration, different
 viable objective solutions, consistent rules, meaningful tradeoffs and recovery.

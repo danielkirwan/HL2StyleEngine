@@ -1,16 +1,84 @@
 # Lighting Acceptance Handover
 
-Date: 2026-11-04; memory investigation updated 2026-11-05. Acceptance pass recorded with outstanding items; this document does not authorize new systems.
+Date: 2026-11-04; accepted baseline recorded 2026-11-06. The latest verdicts below supersede historical pending statuses. The old severe gameplay stall remains a user-accepted monitored risk, not a demonstrated fix.
 
 | Gate | Verdict | Reason |
 | --- | --- | --- |
-| L: Existing lighting | Pending | Fresh automated lighting checks and native editor lighting edit/save/reopen checks pass; continuous gameplay/F2 input acceptance remains outstanding. |
-| B: Baseline stability | Pending | Diagnostic 18-cycle six-room repeat grows 154.34 MiB; a later six-cycle repeat without the new probes grows 134.27 MiB. Both exceed the unchanged 128 MiB guard. Historical severe full-detail stalls remain unexplained. |
-| New system upgrades | Blocked | Both gates must be complete under [ENGINE_SYSTEM_UPGRADE_PLAN.md](ENGINE_SYSTEM_UPGRADE_PLAN.md). |
+| L: Existing lighting | Complete | All 32 lighting commands and final graphics-validation checks pass; native gameplay/editor review and persistence evidence recorded. Existing limitations retained. |
+| B: Baseline stability | Complete with accepted residual risk | Both final BATs and three post-correction untraced long controls pass. User explicitly accepts the non-reproduced historical stall risk while requiring continued regression checks. Cause remains unresolved. |
+| New system upgrades | Ready | Both gates accepted under the recorded user disposition. Next: small C# contracts and runtime audio in the existing plan, not implemented in this handover. |
 
 No audio, interaction, editor-feature, navigation, AI prototype or preparatory system refactor is included. C# remains the runtime. Solver, timestep, physical parameters, shaders, source levels and lighting-cache formats are unchanged in this acceptance pass.
 
+## Latest Recheck (2026-11-06)
+
+[Current commands, results, native coverage and acceptance](LIGHTING_ACCEPTANCE_RECHECK.md)
+supersede older "rerun pending" statements below. Both original stability BATs
+and all three final sequential untraced long controls pass, with 60.68-106.91 MiB
+long-run growth and no long-run gameplay intervals over 33.3 ms. A full lighting
+rerun then caught an immediate warm-state restore regression; that was corrected
+and all 32 lighting commands now pass. The expanded reload/lifetime check has
+78 passing assertions. No rebake/cache migration is required.
+
+The approved local WPR capture completed with zero lost events but did not
+reproduce the old 100-270 ms stalls. It is diagnostic, not baseline acceptance.
+No solver/driver root cause is inferred. The user confirms F/F2 and continuous
+movement/flashlight/crate manipulation work normally, and performs the native
+editor edit/Undo/Redo/Save check. Its reflection-streaming edit persists on reopen.
+Automation injection is not counted as successful input. The user explicitly
+allows advancement with the historical stall retained as a monitored risk.
+Final reports, 227 source/binary hashes and protected-input hashes are linked in
+the recheck. Loading/save frames remain separately reported (up to 364.56 ms in
+the final six-room run); gameplay acceptance is not hitch-free loading.
+
+Earlier sections are retained evidence, including invalid runs and failures;
+they are not current instructions to repeat already completed work.
+
 ## Scope And Completion Work
+
+### Allocation Corrections (2026-11-06)
+
+[Implementation and remaining work](MEMORY_GROWTH_FIX_PLAN.md),
+[commands, images and results](ENGINE_UPGRADE_VALIDATION.md). Two existing
+allocation paths are corrected: unchanged diffuse payload/atlas reuse following
+fresh dependency/full-cache identity checks, then bounded UI staging and
+non-allocating native geometry reads. No native pointers are retained by UI
+draw metadata. Existing caches require no rebake or migration. No reflection,
+shader, physics, inventory-behavior or authored-level change is included.
+
+Automated exact-image/lifetime/cache/cancellation checks pass. The first
+diffuse-only unpaused 18-cycle route passes gameplay pacing but fails memory
+at 128.05 MiB, so the UI correction is measured separately afterward. Normal
+full-detail/VSync limits are unchanged. No new manual Game/F2 acceptance or
+whole-BAT completion is claimed for this focused correction pass. Older sections
+below are historical; their "no production fix" statements describe those rounds.
+
+Combined-build unpaused long result: **PASS**, 18 cycles/216 actions, 80.55 MiB
+growth, zero asset growth, 16.666/17.990 ms gameplay mean/P95 and zero >33.3 ms.
+Final automated lighting/Game/F2/gameplay/physics regressions also pass. All
+62 protected inputs match. See validation for exact command/report paths.
+The fresh unpaused six-cycle repeat also passes: 50.46 MiB growth, zero asset
+growth, 16.661/17.769 ms gameplay mean/P95 and zero intervals >33.3 ms.
+Full BAT/long controls and outstanding manual acceptance remain to be completed;
+the historical severe full-detail stalls still need their own investigation.
+
+### Address-Space Follow-Up (2026-11-06)
+
+[The next attribution tests](RELOAD_MEMORY_INVESTIGATION.md) are complete: three
+short controls and one long native reload, plus a separate probe-disabled
+control. ClrMD/Windows address maps find active/free CLR region growth rather
+than rising unknown-private or GPU usage in these repeats. The long route
+completes 216 actions with 139.52 MiB settled growth; capture pauses deliberately
+fail unchanged timing gates, so it is not an acceptance pass. The clean short
+repeat passes at 101 MiB and 16.667/16.793 ms gameplay mean/P95, zero >33.3 ms.
+
+Helper self-tests, 24 gameplay/startup checks, 600 historical physics hashes
+and three exact lighting/F2 image pairs pass; protected inputs are unchanged.
+No fresh manual acceptance or whole-BAT rerun is claimed in this focused pass.
+Only isolated opt-in QA tooling changed. [The fix plan](MEMORY_GROWTH_FIX_PLAN.md)
+proposes lighting allocation correction, then UI staging reuse, with independent
+tests and repeated uninstrumented acceptance. No production fix, rebake, cache
+migration, quality change or new system upgrade has been implemented.
 
 ### Memory Investigation (2026-11-05)
 
@@ -221,7 +289,7 @@ The private copy initially lacked the `runtimes` native-dependency folder and fa
 - Texture streaming stays opt-in. Normal play retains full detail. Prepared transitions cover their declared dependencies, not arbitrary world readiness or geometry/physics streaming.
 - Cache-reader scratch reuse is bounded but is not a cap on total process memory or proof of leak freedom. No forced gameplay GC is added.
 
-**No rebake, cache migration, import or save reset is required for this pass.** It changes validation tooling/expectations and corrects the existing ImGui context/layout lifecycle, not lighting inputs. Rebuild the editor/game to use the UI correction; do not reset a working user layout. Existing authoring rules remain: changing fixed geometry/material/light inputs requires matching diffuse/reflection regeneration; a changed shadow shader invalidates its dependent captures. Build after legitimate cooking to refresh outputs; never recook merely to hide a failed comparison.
+**No rebake, cache migration, import or save reset is required for this pass.** It corrects existing diffuse/UI allocation, warm lighting-state restoration and ImGui context/layout lifetime, not authored lighting inputs. Rebuild the editor/game to use the corrections; do not reset a working user layout. Existing authoring rules remain: changing fixed geometry/material/light inputs requires matching diffuse/reflection regeneration; a changed shadow shader invalidates its dependent captures. Build after legitimate cooking to refresh outputs; never recook merely to hide a failed comparison.
 
 ## Reproduce And Remaining Acceptance
 
@@ -243,15 +311,14 @@ Offline analysis after all performance runs:
 & .\.dotnet\dotnet.exe .\Tools\LevelAuthoring\bin\Release\net10.0\LevelAuthoring.dll analyze-frame-pacing .\Tools\LevelAuthoring\bin\Release\net10.0\qa\gameplay-soak-20261104-144300-366-native\frames.json
 ```
 
-Remaining acceptance, in order:
+Follow-up after acceptance:
 
-1. Complete uninterrupted native Game/F2 input and continuous close/distant/grazing, carry/throw/break, doorway and repeated fixture/torch checks. Complete dock/resize and prefab-instance reference authoring checks. Standalone lighting edit/undo/redo/save/reopen is now observed passing; do not repeat it as if it were still untested. Keep normal full detail separate from streaming.
-2. Investigate the reproducible six-room reload private-memory growth using allocation/heap and native-reservation evidence. Preserve the 128 MiB/8 MiB guards and normal GC policy; do not use forced gameplay collection to manufacture a pass.
-3. Correlate a bounded OS scheduling/wait trace with a renewed severe full-detail stall. The clean repeat is good evidence, not a demonstrated fix for prior failures. Repeat unchanged BATs/long controls after any correction, without changing physics or quality.
-4. Record explicit acceptance before freezing the lighting baseline and clearing either gate. New system work remains blocked.
+1. Preserve the [accepted baseline manifest and limits](LIGHTING_ACCEPTANCE_RECHECK.md#accepted-baseline-to-preserve), source/reference images, C# runtime and physics behavior.
+2. Re-run the unchanged BATs and applicable long full-detail/native controls for audio upgrades. Memory now passes, but the final six-room run has only about 21 MiB guard margin; do not increase the limit or force GC to fit audio.
+3. Keep the historical severe gameplay stall open as a user-accepted residual risk. If it recurs, retain the failure, pause advancement and correlate an approved bounded scheduling capture with the actual frame before choosing a correction. No always-on desktop watcher is running.
+4. Keep loading/save delays visible separately; a good gameplay average does not establish instant or hitch-free loading.
 
-Do not freeze an accepted lighting baseline or begin new systems while either gate remains pending. After acceptance, preserve the recorded shader/source hashes, reference images, runtime settings, cache validation/fallback rules and physics replay results for subsequent upgrades.
-
-Only after both gates clear, start Priority 1 of the systems plan (small C#
-contracts and validated asset definitions), then Priority 2 (spatial audio).
-Neither implementation nor preparatory refactoring is part of this handover.
+Both gates are now accepted under the explicit user risk disposition. Start
+Priority 1 (minimal C# contracts/validated definitions), then Priority 2 (runtime
+spatial audio) as the next milestone. Neither implementation nor preparatory
+refactoring is part of this lighting handover.

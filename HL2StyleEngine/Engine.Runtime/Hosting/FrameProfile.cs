@@ -16,6 +16,8 @@ internal sealed class FrameProfile
     private readonly string? _report = Environment.GetEnvironmentVariable("HS2_FRAME_REPORT");
     private readonly List<object> _trace = new();
     private long _inputStart, _allocated, _stageAllocated;
+    private long _hostStart;
+    private readonly int _nativeThreadId = ThreadCpuClock.NativeThreadId;
     private double _inputMilliseconds;
     private long[] _allocations = new long[Stages.Length];
     private readonly double?[] _cpuMilliseconds = new double?[Stages.Length];
@@ -53,6 +55,7 @@ internal sealed class FrameProfile
     public void Begin()
     {
         _start = Stopwatch.GetTimestamp();
+        _hostStart = _start;
         _inputMilliseconds = Stopwatch.GetElapsedTime(_inputStart, _start).TotalMilliseconds;
         if (_report != null)
         {
@@ -89,6 +92,7 @@ internal sealed class FrameProfile
             _trace.Add(new
             {
                 Frame = _frame, Warmup = _warmup > 0, InputMilliseconds = _inputMilliseconds,
+                InputTimestampQpc = _inputStart, HostTimestampQpc = _hostStart, EndTimestampQpc = _start,
                 Milliseconds = _current.ToArray(), AllocatedByStage = _allocations.ToArray(),
                 ThreadCpuMilliseconds = _cpuMilliseconds.ToArray(), ThreadCycles = _cpuCycles.ToArray(),
                 MainThreadCpuMilliseconds = ThreadCpuClock.Elapsed(_frameCpuStart, _cpuEnd)?.Milliseconds,
@@ -125,7 +129,8 @@ internal sealed class FrameProfile
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, JsonSerializer.Serialize(new
             {
-                Version = 4, Width = width, Height = height, WarmupFrames = 120, Samples = _target,
+                Version = 5, Width = width, Height = height, WarmupFrames = 120, Samples = _target,
+                ProcessId = Environment.ProcessId, NativeThreadId = _nativeThreadId, QpcFrequency = Stopwatch.Frequency,
                 GraphicsDebugRequested = graphicsDebug, VSync = vsync, GpuDeviceFlags = renderer.GpuProfile?.DeviceFlags,
                 Stages, RenderStages = Engine.Render.RenderCpuProfile.Stages, PhysicsStages = Engine.Physics.PhysicsCpuProfile.Stages,
                 Frames = _trace, GpuFrames = renderer.GpuProfile?.Samples,

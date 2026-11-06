@@ -67,6 +67,18 @@ if (args is ["check-lighting-allocations"])
     catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
     return;
 }
+if (args is ["check-lighting-reload"])
+{
+    try { IndirectBakeChecks.RunReload(); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["check-ui-geometry"] or ["check-ui-geometry", _])
+{
+    try { UiGeometryChecks.Run(args.Length == 2 ? args[1] : null); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
 if (args is ["validate-physics-geometry"] or ["benchmark-physics-startup"] or ["physics-startup-child", _, _, _])
 {
     try
@@ -92,7 +104,7 @@ if (args.Length > 0 && args[0] == "soak-gameplay")
         GameplaySoakChecks.Run(root, args.Contains("--native-ui"), args.Contains("--long") ? 18 : args.Contains("--quick") ? 1 : 6,
             args.Contains("--puzzles"), args.Contains("--memory-trace"),
             args.Contains("--texture-streaming") || args.Contains("--texture-reference"), args.Contains("--texture-reference"), args.Contains("--partial-object-uploads"),
-            args.Contains("--memory-stages"), args.Contains("--no-reload"), args.Contains("--heap-snapshots"));
+            args.Contains("--memory-stages"), args.Contains("--no-reload"), args.Contains("--heap-snapshots"), args.Contains("--address-snapshots"));
     }
     catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
     return;

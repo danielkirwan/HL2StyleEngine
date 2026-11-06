@@ -1,8 +1,63 @@
 # Frame Pacing Investigation
 
-Updated 2026-11-05. This follows the measured dynamic-buffer upload fix. C#, accepted lighting, texture quality, solver integration, fixed timestep and original acceptance limits are preserved. Adaptive streaming remains opt-in.
+Updated 2026-11-06. This follows the measured dynamic-buffer upload fix. C#, accepted lighting, texture quality, solver integration, fixed timestep and original acceptance limits are preserved. Adaptive streaming remains opt-in.
+
+## Latest Acceptance And Trace
+
+[The final recheck](LIGHTING_ACCEPTANCE_RECHECK.md) records passing exact BATs
+and three post-correction sequential untraced long controls (zero long-run gameplay
+intervals over 33.3 ms, 60.68-106.91 MiB growth). The warm lighting-state correction
+also passes all 32 lighting checks and final targeted graphics validation.
+
+Version 5 opt-in profiles add QPC boundaries and native process/thread identity.
+The [approved scheduling capture](SCHEDULING_TRACE_GUIDE.md) has zero lost events,
+complete selected-frame coverage and no recurrence of severe gameplay stalls.
+Its largest physics wait matches a loading-phase GC pause, not the historical
+no-GC stall. Raw ETL is retained locally. It is not an untraced performance pass
+or proof of a driver/solver cause. **Gate B is accepted with explicit residual
+risk**, following the user's 6 November decision to move on while keeping the
+old issue under observation. The historical severe stall remains open/not
+reproduced, not fixed. Re-run the same BATs/long controls for audio changes; if
+it returns, retain the failure and correlate a new bounded trace with that
+event before advancing. No always-on recorder or relaxed limits. Loading/save
+frames remain separate (up to 364.56 ms in the last six-room run). Older pending
+statuses, memory failures and stall reports below describe their original rounds.
 
 ## New Diagnostics
+
+### Allocation Correction Pass (2026-11-06)
+
+Diffuse payload/atlas reuse and UI staging are implemented in C# without
+changing GPU shaders, full-detail quality, VSync, physics or acceptance limits.
+[Validation](ENGINE_UPGRADE_VALIDATION.md) records each stage independently.
+The diffuse-only unpaused 18-cycle route passes gameplay pacing at
+16.666/16.811 ms mean/P95, zero >33.3 ms, but fails memory at 128.05 MiB.
+This does not solve the historical severe intermittent full-detail stalls.
+Paused address-space matrices remain diagnostics, not pacing acceptance.
+
+With both fixes, the unpaused 18-cycle repeat passes at **80.55 MiB** process
+growth, zero asset growth, **16.666/17.990 ms** gameplay mean/P95 and zero
+intervals >33.3 ms (`qa/gameplay-soak-20261106-105655-761-native`). No forced
+GC or intrusive probes, normal full-detail/VSync. This does not erase or
+explain earlier rare full-detail stalls; broader and repeated controls remain.
+
+The fresh six-cycle repeat also passes with **50.46 MiB** growth, zero asset
+growth and **16.661/17.769 ms** gameplay mean/P95, zero >33.3 ms:
+`qa/gameplay-soak-20261106-110421-568-native`. It uses the same unpaused full-detail
+configuration without `--long`. Both runs preserve the normal frame recorder
+and loading intervals. Full BAT/manual acceptance is not claimed in this pass.
+
+### Address-Space Follow-Up (2026-11-06)
+
+The [memory attribution round](RELOAD_MEMORY_INVESTIGATION.md) uses three paused
+checkpoints per diagnostic run. These intentionally fail the original frame
+guard; they cannot be counted as pacing acceptance or silently filtered out.
+The subsequent normal-desktop six-cycle control disables those probes and
+passes at **16.667/16.793 ms** gameplay mean/P95, zero >33.3 ms, **101 MiB** private
+growth (`qa/gameplay-soak-20261106-095755-199-native`). No production correction
+was made, so this pass demonstrates variability, not a stall or memory fix.
+The long diagnostic still exceeds memory at 139.52 MiB. Historical severe
+full-detail stalls remain unresolved, independently of the new CLR attribution.
 
 ### Reload Investigation Follow-Up (2026-11-05)
 

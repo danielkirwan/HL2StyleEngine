@@ -1,5 +1,34 @@
 # Engine Technology Roadmap
 
+Acceptance complete (2026-11-06): [final recheck](LIGHTING_ACCEPTANCE_RECHECK.md)
+records both final BATs, three post-correction untraced long controls, 32/32
+lighting commands and targeted graphics validation passing, plus human native
+gameplay/editor review and persistence checks. Long growth is 60.68-106.91 MiB,
+with zero gameplay intervals >33.3 ms. **Gate L complete; Gate B complete with
+user-accepted residual risk; new systems ready.** Historical severe stalls are
+not reproduced or causally fixed; the user explicitly chooses advancement with
+continued regression checks and renewed tracing on recurrence. Next: minimal C#
+contracts/validated cue definitions, then runtime audio using the existing plan.
+No audio code or preparatory refactor was started. This current status supersedes
+earlier pending entries below, which preserve their original measurements/failures.
+
+Allocation correction update (2026-11-06): the diffuse-reload and native-UI
+staging portions of [the fix plan](MEMORY_GROWTH_FIX_PLAN.md) are implemented,
+with independent allocation, lifetime and exact-image checks. C# remains the
+runtime; there is no C++ migration or new system feature. Combined unpaused
+18-/6-cycle controls pass at 80.55/50.46 MiB, zero gameplay intervals >33.3 ms.
+Those results and the diffuse-only 128.05 MiB failure are retained in
+[validation](ENGINE_UPGRADE_VALIDATION.md). Gate L and Gate B remain pending;
+new systems remain blocked. This supersedes the "next correction" status below.
+
+Memory attribution (2026-11-06): [new OS/CLR/GPU evidence](RELOAD_MEMORY_INVESTIGATION.md)
+accounts for reproduced 139.52 MiB long-reload growth in CLR-owned active/free
+regions. Unknown-private and GPU usage do not grow in that repeat. The next
+work is the [staged allocation correction plan](MEMORY_GROWTH_FIX_PLAN.md), not
+a native renderer rewrite or new system upgrade. A clean short control passes
+at 101 MiB, but prior failures and historical stalls remain; both gates pending.
+This supersedes the earlier proposed broad native/driver attribution step below.
+
 Reload memory investigation (2026-11-05): [short/long controls and managed heap evidence](RELOAD_MEMORY_INVESTIGATION.md)
 reproduce the six-room memory failure at 154.34 MiB. GC commitment/fragmentation
 and temporary UI/lighting allocations are measured contributors; model and

@@ -1,5 +1,38 @@
 # Lighting Cache Memory Follow-Up
 
+Final acceptance (2026-11-06): [full recheck](LIGHTING_ACCEPTANCE_RECHECK.md).
+Both final BATs and all three post-correction untraced long controls pass; long
+private growth is 60.68/90.93/106.91 MiB against the unchanged 128 MiB guard.
+78 reload/lifetime checks, all 32 lighting commands, final graphics validation
+and native review support acceptance. **Gates L/B complete**, with the user's
+explicit acceptance of the separate historical, non-reproduced stall risk.
+Memory correction is accepted for these workloads, not unlimited-session leak
+freedom. Preserve the approximately 21 MiB remaining guard margin in the native
+long route when adding audio; no raised limits or forced GC. Earlier pending
+statuses below are historical.
+
+Correction update (2026-11-06): [diffuse reuse and UI staging](MEMORY_GROWTH_FIX_PLAN.md)
+are now implemented and measured separately. Unchanged diffuse reads allocate
+384 bytes instead of approximately 50.6 MB; the 64-command UI fixture falls
+from 72,976 to 653 bytes/frame. Cache invalidation/cancellation, GPU lifetime,
+lighting states and original inventory pixels remain checked. These are
+component allocation results, not proof that total process growth is fixed.
+The diffuse-only unpaused long run still fails the 128 MiB guard at 128.05 MiB.
+Combined unpaused 18-/6-cycle repeats pass at 80.55/50.46 MiB growth, zero asset
+growth and zero gameplay intervals >33.3 ms. See [latest whole-process results](ENGINE_UPGRADE_VALIDATION.md);
+broader/repeated/manual acceptance and historical stalls remain open, so Gate B
+is pending. Historical diagnostic-only statements below precede these fixes.
+
+Attribution follow-up (2026-11-06): [paused OS/CLR snapshots and GPU usage](RELOAD_MEMORY_INVESTIGATION.md)
+account for the reproduced **139.52 MiB** long-run growth in CLR-owned capacity:
+active regions +143.125 MiB, other CLR regions -2.375 MiB, unattributed private
+pages -1.477 MiB. Short controls also identify reusable CLR free-region pools.
+No tracked old entities/meshes survive post-timing collection. This narrows
+the earlier native/driver ambiguity without claiming universal leak freedom.
+[Proposed correction order and acceptance](MEMORY_GROWTH_FIX_PLAN.md): large
+lighting reload allocation first, UI staging reuse separately, unchanged tests.
+No production fix was applied in that attribution-only round; Gate B remains pending.
+
 Investigation refresh (2026-11-05): [controlled runs and heap comparisons](RELOAD_MEMORY_INVESTIGATION.md)
 reproduce **154.34 MiB** native six-room private-memory growth. Managed commitment
 grows **151.57 MiB** and fragmentation **125.86 MiB**, with flat asset payloads.

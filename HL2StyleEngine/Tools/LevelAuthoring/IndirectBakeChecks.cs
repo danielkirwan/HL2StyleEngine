@@ -11,7 +11,7 @@ using Engine.Runtime.Hosting;
 using ImGuiNET;
 using Veldrid;
 
-internal static class IndirectBakeChecks
+internal static partial class IndirectBakeChecks
 {
     private static int _checks;
     private static void Check(bool condition, string message)

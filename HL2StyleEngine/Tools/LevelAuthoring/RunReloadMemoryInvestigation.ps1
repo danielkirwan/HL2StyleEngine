@@ -1,10 +1,18 @@
-param([switch]$Long)
+param(
+    [switch]$Long,
+    [switch]$AddressSpace,
+    [ValidateSet('all','native-no-reload','fallback-reload','native-reload')]
+    [string]$Control = 'all'
+)
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 Set-Location -LiteralPath $root
 $dotnet = Join-Path $root '.dotnet/dotnet.exe'
 $dll = Join-Path $root 'Tools/LevelAuthoring/bin/Release/net10.0/LevelAuthoring.dll'
+if ($AddressSpace -and -not (Test-Path (Join-Path $root 'Tools/MemoryProbe/bin/Release/net10.0/MemoryProbe.exe'))) {
+    throw 'Build Tools/MemoryProbe in Release before address-space diagnostics.'
+}
 $qa = Join-Path $root 'Tools/LevelAuthoring/bin/Release/net10.0/qa'
 $folder = Join-Path $qa ('reload-memory-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $folder | Out-Null
@@ -26,8 +34,10 @@ $runs = @(
     @{Name='native-reload'; Options=@('--native-ui')}
 )
 foreach ($run in $runs) {
+    if ($Control -ne 'all' -and $Control -ne $run.Name) { continue }
     $arguments = @($dll,'soak-gameplay','--puzzles','--memory-trace','--memory-stages') + $run.Options
     if ($Long) { $arguments += '--long' }
+    if ($AddressSpace) { $arguments += '--address-snapshots' }
     $start = [DateTime]::UtcNow
     Write-Host "[Memory] Starting $($run.Name)"
     $log = Join-Path $folder ($run.Name + '.log')
@@ -46,7 +56,7 @@ foreach ($run in $runs) {
 $after = ProtectedHashes
 $after | ConvertTo-Json | Set-Content (Join-Path $folder 'protected-after.json')
 $changed = @(Compare-Object $before $after -Property Path,Hash)
-[pscustomobject]@{ DiagnosticOnly=$true; Long=[bool]$Long; Results=$results; ProtectedInputsUnchanged=($changed.Count -eq 0); Changed=$changed } |
+[pscustomobject]@{ DiagnosticOnly=$true; Long=[bool]$Long; AddressSpace=[bool]$AddressSpace; Control=$Control; Results=$results; ProtectedInputsUnchanged=($changed.Count -eq 0); Changed=$changed } |
     ConvertTo-Json -Depth 5 | Set-Content (Join-Path $folder 'summary.json')
 Write-Host "[Memory] Reports: $folder"
 if ($changed.Count -ne 0 -or @($results | Where-Object ExitCode -NE 0).Count -ne 0) { exit 1 }

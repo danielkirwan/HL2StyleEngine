@@ -1,14 +1,22 @@
 # Prioritised Engine Systems Upgrade Plan
 
-Updated: 5 November 2026. Status: planning only. This is the implementation order for the systems identified in [Engine Systems Research](ENGINE_SYSTEMS_RESEARCH.md), under the current [Game Style Objective](GAME_STYLE_OBJECTIVE.md).
+Updated: 6 November 2026. Status: lighting/baseline gates accepted; new systems ready to start, not yet implemented. This is the implementation order for the systems identified in [Engine Systems Research](ENGINE_SYSTEMS_RESEARCH.md), under the current [Game Style Objective](GAME_STYLE_OBJECTIVE.md).
 
 ## Mandatory Starting Gate: Finish Lighting First
 
-Current acceptance evidence (2026-11-04): [Lighting Acceptance Handover](LIGHTING_ACCEPTANCE_HANDOVER.md). **Gate L pending; Gate B pending; new system upgrades blocked.** The handover separates automated lighting checks, visual/native review and retained frame-pacing failures. Passing lighting images or an average near 60 FPS does not clear the baseline gate.
+Current acceptance evidence (2026-11-06): [Lighting Acceptance Handover](LIGHTING_ACCEPTANCE_HANDOVER.md) and [final recheck](LIGHTING_ACCEPTANCE_RECHECK.md). **Gate L complete; Gate B complete with explicitly accepted residual risk; new system upgrades ready.** Both final BATs, three post-correction long controls, all 32 lighting commands and targeted graphics validation pass. Native gameplay/editor review and save/reopen evidence are recorded. The historical 100-270 ms gameplay stalls remain unresolved/not reproduced; the user explicitly chose to advance while retaining them as a monitored risk. This is not a claim of a stall fix or acceptance based solely on average FPS. Re-run unchanged regression gates for audio work and reopen investigation on recurrence. No audio implementation or preparatory refactor is included in this handover.
 
 Memory follow-up (2026-11-05): [controlled investigation](RELOAD_MEMORY_INVESTIGATION.md)
 reproduces the 128 MiB guard failure and narrows it toward temporary managed
 allocation/heap fragmentation. This is diagnosis, not clearance of either gate.
+
+Address-space follow-up (2026-11-06) accounts for reproduced long-run growth in
+CLR active/free-region capacity. The [allocation correction plan](MEMORY_GROWTH_FIX_PLAN.md)
+now has its diffuse-reload and native-UI staging fixes implemented and measured
+independently. Earlier combined unpaused 18-/6-cycle repeats pass at 80.55/50.46 MiB
+growth with zero gameplay intervals >33.3 ms. Those focused results alone did
+not clear either gate; the final broader/manual acceptance above supersedes that
+earlier status. No new-system work was included in the allocation correction.
 
 **The existing lighting implementation must be finished and accepted before any work starts on the new engine system upgrades.**
 
@@ -18,9 +26,9 @@ Record completion against the current lighting requirements and their existing v
 
 | Gate | Required evidence | Current planning status |
 | --- | --- | --- |
-| L: Existing lighting complete | Required lighting behavior is finished; current fixtures and normal play are reviewed; remaining issues and acceptance are recorded in the lighting guides. | Not cleared by this planning task. |
-| B: Existing baseline stable | Remaining frame-pacing investigation and the existing gameplay/memory acceptance gates are closed for the normal full-detail path. | Open in the current roadmap. |
-| Start new systems | Gates L and B both complete; capture the accepted baseline and begin Priority 1 below. | Pending both gates. |
+| L: Existing lighting complete | Required lighting behavior is finished; current fixtures and normal play are reviewed; limitations and acceptance are recorded. | Complete, 6 November 2026. |
+| B: Existing baseline stable | Existing gameplay/memory limits pass on the normal full-detail path; outstanding incidents have an explicit disposition. | Complete with user-accepted monitored historical stall risk; not a proven root-cause fix. |
+| Start new systems | Gates L and B both accepted; preserve the captured baseline and begin Priority 1 below. | Ready for minimal C# contracts followed by audio. |
 
 Use the current [lighting authoring guide](LIGHTING_GUIDE.md), [lighting-state stability](LIGHTING_STABILITY_GUIDE.md), [shadow stability](SHADOW_STABILITY_GUIDE.md), [floor correction](FLOOR_LIGHTING_GUIDE.md), [room transitions](ROOM_TRANSITION_GUIDE.md) and [lighting memory evidence](LIGHTING_MEMORY_GUIDE.md) to establish lighting completion. Existing checks cover different parts of the system; their historical pass records are not a new blanket acceptance claim.
 
