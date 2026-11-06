@@ -2,6 +2,17 @@
 
 This file tracks completed gameplay-facing systems and the current implementation shape.
 
+Audio foundation (2026-11-06): [runtime/editor guide](AUDIO_IMPLEMENTATION.md),
+[test evidence](AUDIO_VALIDATION.md), root `LaunchAudioTest.bat`. C# owns cues,
+positional emitters, bounded voices/streams, buses, variation and saved loop
+intent. HS2Editor's Audio tab and shared F2 Inspector provide assignment/editing
+and audition. Original Surge XT/jsfxr sounds are included; Audacity and native
+playback were checked. Focused audio, baseline BAT/long, lighting and repeated
+audio long regressions pass; hardware QA and timing-risk monitoring remain open. Existing
+lighting/physics/source levels remain the baseline; no rebake for audio-only
+edits. The older handover's "no audio code" statement describes that handover,
+not this subsequent implementation.
+
 Accepted baseline (2026-11-06): [recheck, reports and source/binary manifest](LIGHTING_ACCEPTANCE_RECHECK.md).
 Both final stability BATs, all three post-correction long controls, 32 lighting
 commands and final graphics validation pass. Native gameplay/editor checks are

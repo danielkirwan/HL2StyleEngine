@@ -141,6 +141,8 @@ public sealed class LevelInteractionDef
 public sealed class LevelEntityDef
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Engine.Runtime.Audio.AudioEmitterDef? AudioEmitter { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ReflectionProbeSettings? ReflectionProbe { get; set; }
     public string Id { get; set; } = "";
     public string Type { get; set; } = "";

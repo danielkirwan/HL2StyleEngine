@@ -1,5 +1,18 @@
 # Compression, Lighting And Physics Validation
 
+## Audio Foundation (2026-11-06)
+
+[Current audio commands, evidence, retained failures and limits](AUDIO_VALIDATION.md).
+The final audio suite passes 48 checks including native output, capacity/lifetimes,
+authoring persistence, device-preserving sample reload and lighting cache independence.
+Both unchanged baseline BATs, three existing long controls and all 32 lighting
+commands pass. Two post-correction audio 18-cycle/216-action soaks pass at
+16.661 ms gameplay mean, 16.889/16.898 ms P95, zero gameplay intervals >33.3 ms
+and 65.96/54.89 MiB private growth. Earlier failed runs are retained; their
+input-stage delay cause is not proven fixed. Published startup and user-confirmed
+audibility pass; physical-device/acoustic QA remains open. This follows, rather
+than replaces, the accepted lighting handover. Historical stall risk stays monitored.
+
 ## Latest Acceptance Recheck (2026-11-06)
 
 [Consolidated commands, configurations, reports, native coverage and baseline hashes](LIGHTING_ACCEPTANCE_RECHECK.md).

@@ -21,6 +21,7 @@ public sealed partial class LevelEditorController
     public bool Dirty { get; private set; }
     public int SelectedEntityIndex { get; private set; } = -1;
     public Action? SaveActionOverride { get; set; }
+    public AudioAuthoringPanel? AudioAuthoring { get; set; }
     public Func<string, IReadOnlyList<string>>? ModelPartNames { get; set; }
     public long Revision { get; private set; }
     public LevelBakeSession? LightingBake { get; set; }
@@ -1428,6 +1429,7 @@ public sealed partial class LevelEditorController
         DrawBakeEntityInspector(ent);
         DrawReflectionInspector(ent);
         DrawInteractionInspector(ent);
+        DrawAudioInspector(ent);
 
         DrawDamageableInspector(ent);
 

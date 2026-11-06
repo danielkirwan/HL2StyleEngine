@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="opticfluorine.Veldrid" />
+    <None Include="..\Native\runtimes\win-x64\HS2AudioBridge.dll" Link="HS2AudioBridge.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\Native\HS2AudioBridge\*-LICENSE.txt" Link="Licenses\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 

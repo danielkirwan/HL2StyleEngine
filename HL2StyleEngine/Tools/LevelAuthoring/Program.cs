@@ -3,6 +3,18 @@ using Engine.Render;
 using Engine.Editor.Level;
 
 string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+if (args is ["soak-audio"] or ["soak-audio", "--long"])
+{
+    try { GameplaySoakChecks.Run(root, native: true, puzzles: true, cycles: args.Length == 2 ? 18 : 6, audio: true); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
+if (args is ["check-audio"] or ["check-audio", "--device"])
+{
+    try { AudioChecks.Run(root, args.Length == 2); }
+    catch (Exception ex) { Console.Error.WriteLine(ex); Environment.ExitCode = 1; }
+    return;
+}
 if (args is ["check-imgui-layout"])
 {
     try { ImGuiLayoutChecks.Run(); }

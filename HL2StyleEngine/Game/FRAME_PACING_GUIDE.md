@@ -4,6 +4,18 @@ Updated 2026-11-06. This follows the measured dynamic-buffer upload fix. C#, acc
 
 ## Latest Acceptance And Trace
 
+Audio follow-up (6 November): [audio validation](AUDIO_VALIDATION.md) records
+fresh unchanged BATs/three existing long controls and 32 lighting commands passing.
+Two initial audio long runs failed the clustered-hitch guard with 35-91 ms
+intervals concentrated in host input/window processing, without nearby GC pauses.
+The audio service now preserves its healthy output device across same-root level
+reloads while still releasing voices and rereading cue/sample contents. Two
+subsequent 18-cycle audio runs pass with zero gameplay intervals >33.3 ms and
+65.96/54.89 MiB private growth. This removes unnecessary device churn but does
+not prove a Windows scheduling cause. Keep both failures, distinguish them from
+the historical 100-270 ms incident, and resume bounded tracing if either recurs.
+No physics/input/render timing or acceptance limits were changed to mask audio.
+
 [The final recheck](LIGHTING_ACCEPTANCE_RECHECK.md) records passing exact BATs
 and three post-correction sequential untraced long controls (zero long-run gameplay
 intervals over 33.3 ms, 60.68-106.91 MiB growth). The warm lighting-state correction

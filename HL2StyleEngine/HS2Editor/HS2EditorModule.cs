@@ -85,6 +85,7 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
         _levelsRoot = Path.Combine(_contentRoot, "Levels");
         _prefabsRoot = Path.Combine(_contentRoot, "Prefabs");
         _uiRoot = Path.Combine(_contentRoot, "UI");
+        _editor.AudioAuthoring = new AudioAuthoringPanel(Path.Combine(_contentRoot, "Audio"));
         string imguiIniPath = GetImGuiIniPath();
         bool hasSavedLayout = File.Exists(imguiIniPath);
         bool savedLayoutBroken = hasSavedLayout && SavedEditorLayoutLooksBroken(imguiIniPath);
@@ -184,6 +185,7 @@ internal sealed partial class HS2EditorModule : IGameModule, IWorldRenderer, IIn
 
     public void Dispose()
     {
+        _editor.AudioAuthoring?.Dispose();
         _bakedLighting.Dispose();
         _context?.Renderer.DrainRetiredResources();
         _roomReflections.Dispose();

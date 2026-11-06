@@ -29,6 +29,8 @@ public sealed class ReflectionSnapshot
 
     internal static ReflectionSnapshot CreateOwned(LevelFile level, string levelPath, string probeId, Func<string,string> resolve)
     {
+        // This is an owned snapshot, not the editor scene. Audio never contributes to captures.
+        foreach (var entity in level.Entities) entity.AudioEmitter = null;
         var probe = level.Entities.SingleOrDefault(e => e.Id == probeId && e.Type == EntityTypes.ReflectionProbe)
             ?? throw new InvalidDataException("Select a reflection probe.");
         var settings = probe.ReflectionProbe ?? throw new InvalidDataException("Probe settings missing.");

@@ -20,7 +20,7 @@ public sealed record BakeSnapshot(byte[] Json, Dictionary<string, string> ModelP
     {
         byte[] json = StructuredData.WriteJson(level);
         // The distant specular test rig is not a contributor to this diffuse bake.
-        if (level.PostProcessing != null || level.ReflectionEnvironment != ReflectionPreset.None || level.ReflectionProbeId != null || level.AutomaticRoomReflections || level.ReflectionStreaming != null || level.RoomVisibility != null || level.Entities.Any(e => e.Type == EntityTypes.ReflectionProbe))
+        if (level.PostProcessing != null || level.ReflectionEnvironment != ReflectionPreset.None || level.ReflectionProbeId != null || level.AutomaticRoomReflections || level.ReflectionStreaming != null || level.RoomVisibility != null || level.Entities.Any(e => e.Type == EntityTypes.ReflectionProbe || e.AudioEmitter != null))
         {
             var diffuse = StructuredData.ReadJson<LevelFile>(json);
             diffuse.ReflectionEnvironment = ReflectionPreset.None;
@@ -29,6 +29,8 @@ public sealed record BakeSnapshot(byte[] Json, Dictionary<string, string> ModelP
             diffuse.ReflectionStreaming = null;
             diffuse.RoomVisibility = null;
             diffuse.PostProcessing = null;
+            // Playback metadata has no effect on lighting; preserve pre-audio cache keys.
+            foreach (var entity in diffuse.Entities) entity.AudioEmitter = null;
             diffuse.Entities.RemoveAll(e => e.Type == EntityTypes.ReflectionProbe);
             json = StructuredData.WriteJson(diffuse);
         }

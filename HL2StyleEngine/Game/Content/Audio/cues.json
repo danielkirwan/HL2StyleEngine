@@ -1,0 +1,13 @@
+{
+  "Version": 1,
+  "Cues": [
+    { "Id": "relay_click", "Bus": "Effects", "Spatial": true, "Gain": 0.8, "MinPitch": 0.95, "MaxPitch": 1.05, "MaxDistance": 18, "MaxVoices": 4,
+      "Variants": [ { "File": "relay_01.wav", "Weight": 1 }, { "File": "relay_02.wav", "Weight": 1 }, { "File": "relay_03.wav", "Weight": 1 } ] },
+    { "Id": "panel_confirm", "Bus": "UI", "Spatial": false, "Gain": 0.6, "Priority": 90, "MaxVoices": 2,
+      "Variants": [ { "File": "panel_confirm.wav", "Weight": 1 } ] },
+    { "Id": "machine_hum", "Bus": "Effects", "Spatial": true, "Loop": true, "Stream": true, "Gain": 0.7, "MinDistance": 1, "MaxDistance": 12, "MaxVoices": 2,
+      "Variants": [ { "File": "machine_hum.wav", "Weight": 1 } ] },
+    { "Id": "basement_drone", "Bus": "Ambience", "Spatial": false, "Loop": true, "Stream": true, "Gain": 0.35, "Priority": 20, "MaxVoices": 1,
+      "Variants": [ { "File": "basement_drone.wav", "Weight": 1 } ] }
+  ]
+}

@@ -1,5 +1,18 @@
 # Engine Technology Roadmap
 
+Audio implementation (2026-11-06): Priorities 1/2 now provide C# cue/voice
+contracts, bounded positional playback/streaming, buses/variation, emitter
+save/load and shared editor authoring/audition. Original Surge XT/jsfxr sounds
+and a separate LaunchAudioTest.bat are available. Audacity/native editor review
+and user-confirmed game output are recorded. See [implementation](AUDIO_IMPLEMENTATION.md)
+and [current validation](AUDIO_VALIDATION.md). The 48 focused checks, unchanged
+baseline BATs/long controls, 32 lighting commands and two post-correction audio
+long runs pass. Hardware/acoustic QA and timing-risk monitoring remain open.
+C# runtime/physics and accepted rendering are retained; audio-only
+metadata no longer invalidates lighting caches. Next:
+surface-based action/impact feedback, not acoustics/AI or a renderer migration.
+This supersedes the pre-audio implementation status in the historical notes below.
+
 Acceptance complete (2026-11-06): [final recheck](LIGHTING_ACCEPTANCE_RECHECK.md)
 records both final BATs, three post-correction untraced long controls, 32/32
 lighting commands and targeted graphics validation passing, plus human native

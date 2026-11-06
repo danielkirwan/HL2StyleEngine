@@ -205,6 +205,7 @@ internal sealed partial class HS2EditorModule
             if (ImGui.BeginTabItem("Models")) { DrawAssetList(Path.Combine(_contentRoot, "Models"), "*.glb", true); ImGui.EndTabItem(); }
             if (ImGui.BeginTabItem("Animations")) { DrawAssetList(Path.Combine(_contentRoot, "Animations"), "*.glb", false); ImGui.EndTabItem(); }
             if (ImGui.BeginTabItem("Prefabs")) { DrawPrefabAssetList(); ImGui.EndTabItem(); }
+            if (ImGui.BeginTabItem("Audio")) { _editor.AudioAuthoring?.Draw(_editor); ImGui.EndTabItem(); }
             if (ImGui.BeginTabItem("All Content")) { DrawAssetList(_contentRoot, "*.*", false); ImGui.EndTabItem(); }
             ImGui.EndTabBar();
         }

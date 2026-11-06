@@ -1,5 +1,15 @@
 # HS2Editor
 
+Audio authoring (2026-11-06): Content Browser > Audio and the shared Inspector's
+Audio Emitter/Cue Library support cue selection, assignment, validated atomic
+cue saving and audition/Stop. Entity emitter changes participate in existing
+undo/redo, save/reopen and prefabs. Cue-library edits have their own Save/Reload
+and do not yet use level undo. Original Surge XT/jsfxr test sounds are included.
+Audio metadata is excluded from lighting snapshots, so audio-only edits do not
+require rebaking. Docking, texture quality, transforms and input are unchanged.
+[Controls and limitations](../Game/AUDIO_IMPLEMENTATION.md),
+[automated/native evidence](../Game/AUDIO_VALIDATION.md).
+
 Mip-residency experiment (2026-10-27): the new texture gallery is an isolated authoring-test application. Neither standalone nor F2 viewport quality, strict-source preparation, docking, transforms or save workflow changes. Normal editor model requests still load full texture chains. [Experiment, validation and pending gameplay performance gates](../Game/TEXTURE_MIP_GUIDE.md).
 
 Loading packages (2026-10-27): standalone editing, offline baking and new/reloaded F2 asset/lighting preparation remain strict-source. Only the explicit Game package path reuses immutable model identities for lighting; entering F2 does not discard ready resources merely to switch validation policy. The optional launcher builds disposable snapshots, not editable projects; author original `Game/Content/Levels` files. Existing scene textures, controls, docking and save behaviour are unchanged. `LevelBakeSession.BindingsReady` exposes requested binding readiness for opt-in startup telemetry. [Package/authoring separation and current tests](../Game/LOADING_PACKAGE_GUIDE.md).

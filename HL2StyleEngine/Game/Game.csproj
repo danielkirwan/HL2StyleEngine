@@ -16,6 +16,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Content\Audio\**\*.wav" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Content\Audio\**\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="Content\.hs2cache\textures\*.hs2tex" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="Content\.hs2cache\models\*.hs2model" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="Content\.hs2cache\collision\*.hs2collision" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

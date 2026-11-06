@@ -47,20 +47,22 @@ internal sealed partial class GameplaySoakChecks : IGameModule, IWorldRenderer, 
     private long _firstSettledPrivate, _lastSettledPrivate, _firstSettledModels, _lastSettledModels;
     private readonly record struct Interval(int Frame, string Phase, double Milliseconds);
     public InputState InputState => _game.InputState;
-    private GameplaySoakChecks(string root, string folder, bool native, bool puzzles, bool textureTrial, bool textureReference)
+    private GameplaySoakChecks(string root, string folder, bool native, bool puzzles, bool textureTrial, bool textureReference, bool audio)
     {
         _folder = folder; _native = native; _puzzles = puzzles;
         _textureTrial = textureTrial; _textureReference = textureReference;
         string file = puzzles ? "sixRoomShadowTest.json" : "atmosphereTest.json";
         if (textureTrial) _package = new(LoadingPackageChecks.Build(root, file));
-        _game = new(_package?.LevelPath ?? Path.Combine(root, "Game/Content/Levels", file), _package?.Root, _package,
+        _audioCheck = audio;
+        string levelPath = audio ? PrepareAudioCopy(root, folder, file) : _package?.LevelPath ?? Path.Combine(root, "Game/Content/Levels", file);
+        _game = new(levelPath, _package?.Root, _package,
             saveDirectory: Path.Combine(folder, "Saves"))
         { TextureStreamingTrialEnabled = textureTrial, TextureStreamingFullResolution = textureReference || textureTrial };
     }
 
     internal static void Run(string root, bool native, int cycles = 6, bool puzzles = false, bool memoryTrace = false,
         bool textureTrial = false, bool textureReference = false, bool partialUploads = false,
-        bool memoryStages = false, bool noReload = false, bool heapSnapshots = false, bool addressSnapshots = false)
+        bool memoryStages = false, bool noReload = false, bool heapSnapshots = false, bool addressSnapshots = false, bool audio = false)
     {
         if (cycles is < 1 or > 24) throw new ArgumentOutOfRangeException(nameof(cycles));
         string folder = Path.Combine(AppContext.BaseDirectory, "qa", "gameplay-soak-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff") + (native ? "-native" : "-fallback"));
@@ -68,7 +70,7 @@ internal sealed partial class GameplaySoakChecks : IGameModule, IWorldRenderer, 
         string? previousFrames = Environment.GetEnvironmentVariable("HS2_PROFILE_FRAMES"), previousReport = Environment.GetEnvironmentVariable("HS2_FRAME_REPORT");
         Environment.SetEnvironmentVariable("HS2_PROFILE_FRAMES", (cycles * CycleFrames).ToString());
         Environment.SetEnvironmentVariable("HS2_FRAME_REPORT", Path.Combine(folder, "frames.json"));
-        using var probe = new GameplaySoakChecks(root, folder, native, puzzles, textureTrial, textureReference);
+        using var probe = new GameplaySoakChecks(root, folder, native, puzzles, textureTrial, textureReference, audio);
         probe._memoryTrace = memoryTrace;
         probe._partialUploads = partialUploads;
         probe._noReload = noReload;
@@ -94,7 +96,7 @@ internal sealed partial class GameplaySoakChecks : IGameModule, IWorldRenderer, 
         {
             File.WriteAllText(Path.Combine(folder, "summary.json"), JsonSerializer.Serialize(new
             {
-                Version = 1, Native = native, Puzzles = puzzles, GeometryReuse = Engine.Physics.Collision.WorldColliderCache.ReuseEnabled,
+                Version = 1, Native = native, Puzzles = puzzles, Audio = audio, AudioSamples = probe._audioSamples, GeometryReuse = Engine.Physics.Collision.WorldColliderCache.ReuseEnabled,
                 TextureTrial = textureTrial, TextureReference = textureReference,
                 FullDynamicBufferUploads = !partialUploads,
                 MinimumTextureBytes = probe._minimumTextureBytes, TextureReplacements = probe._game.TextureTrialReplacements,
@@ -164,6 +166,7 @@ internal sealed partial class GameplaySoakChecks : IGameModule, IWorldRenderer, 
         {
             long start = Stopwatch.GetTimestamp();
             Action(local, cycle, keys);
+            if (_audioCheck) AudioAction(local, cycle);
             _events.Add(new { Frame = _frame, Cycle = cycle, Action = local, Milliseconds = Stopwatch.GetElapsedTime(start).TotalMilliseconds });
             _actions++;
         }

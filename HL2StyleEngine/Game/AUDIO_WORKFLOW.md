@@ -1,5 +1,24 @@
 # Audio Tools And Next Audio Milestone
 
+## Current Implementation (6 November 2026)
+
+Priorities 1/2 are implemented after lighting/baseline acceptance. See
+[Audio Foundation](AUDIO_IMPLEMENTATION.md) and [validation](AUDIO_VALIDATION.md).
+Original horror test loops were rendered using installed Surge XT 1.3.4 through
+Python/Pedalboard; jsfxr 1.4.0 generated original relay/UI effects. The other
+project's helper/dependencies were used read-only, not its soundtrack or samples.
+Audacity 3.6.3 played the drone and saved a native .aup3 project. HS2Editor
+audition and user-confirmed game playback were checked. Waveform was not used
+to render these files and no native Waveform project exists for this pass.
+
+Exports: `Game/Content/Audio`. Reproducible scripts, MIDI, Surge presets, jsfxr
+parameters, manifests and native review evidence: `Tools/AudioAuthoring`.
+Run `LaunchAudioTest.bat`; F7 clicks, F8 toggles loops. See the foundation guide
+for PCM format restrictions, editor cue assignment and deferred acoustics.
+
+The entries below retain the earlier inventory/research history, not the current
+claim that no engine audio exists.
+
 Tool inventory updated 2026-11-02. These tools are the required starting point when audio work begins. Execution order clarified 2026-11-04: **finish and accept the current lighting implementation before any new audio system work or backend prototype.** Close the existing baseline frame-pacing/stability gate as well. The [prioritised systems upgrade plan](ENGINE_SYSTEM_UPGRADE_PLAN.md) defines the subsequent work; this planning update changes no music or audio files.
 
 Research addition (2026-11-04): [Game Style Objective](GAME_STYLE_OBJECTIVE.md) records the updated sound references. [Engine systems research](ENGINE_SYSTEMS_RESEARCH.md) compares runtime audio designs and candidate libraries, with a proposed C# ownership model and acceptance sequence. This adds research only; the inventory date, asset provenance and implementation status below remain unchanged. The current [frame-pacing acceptance](FRAME_PACING_GUIDE.md) precedes runtime audio implementation.

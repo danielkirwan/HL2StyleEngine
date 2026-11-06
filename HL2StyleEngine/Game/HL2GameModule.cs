@@ -88,6 +88,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         public List<string> OpenedDoors { get; set; } = new();
         public List<string> SolvedPuzzles { get; set; } = new();
         public List<LightStateOverride> LightStates { get; set; } = new();
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public Dictionary<string, bool>? AudioLoops { get; set; }
         public List<BrokenObjectSaveData> BrokenObjects { get; set; } = new();
         public List<WeaponSaveData> WeaponStates { get; set; } = new();
         public int PlayerHealth { get; set; } = 100;
@@ -445,6 +447,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
         _inventoryActionHandledThisFrame = false;
 
         _inputState.Update(snapshot);
+        UpdateAudio();
         if (!_editorEnabled && !GameplayModalOpen && _inputState.WasPressed(Key.F))
             _flashlightOn = !_flashlightOn;
         _inputSystem.Update();
@@ -1504,6 +1507,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             _camera.Pitch = data.CameraPitch;
             _camera.Position = _motor.Position + new Vector3(0f, _movement.EyeHeight, 0f);
             RestoreDroppedItems(data.DroppedItems);
+            RestoreAudioIntent(string.Equals(Path.GetFileName(_editor.LevelPath), data.LevelName, StringComparison.OrdinalIgnoreCase) ? data.AudioLoops : null);
             ReturnOverflowToWorld();
             string loadedSlot = Path.GetFileNameWithoutExtension(path).StartsWith("slot_", StringComparison.OrdinalIgnoreCase)
                 ? $"Loaded {PrettifyToken(Path.GetFileNameWithoutExtension(path))}."
@@ -1554,6 +1558,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
             {
                 SaveVersion = 1,
                 DroppedItems = CaptureDroppedItems(),
+                AudioLoops = _audioEmitters.Count > 0 ? CaptureAudioIntent() : null,
                 SaveSlot = safeSlot + 1,
                 SavedAtUtc = DateTime.UtcNow.ToString("O"),
                 LevelName = Path.GetFileName(_editor.LevelPath),
@@ -5983,6 +5988,7 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
         RegisterPuzzleMechanisms();
         ApplyPersistentInteractionStateToRuntime();
+        BindLevelAudio();
     }
 
     private static void ConfigureWorldPickupPhysics(Entity entity)
@@ -10099,6 +10105,8 @@ public sealed partial class HL2GameModule : IGameModule, IWorldRenderer, IOverla
 
     public void Dispose()
     {
+        _audio?.Dispose();
+        _editor.AudioAuthoring?.Dispose();
         _textureTrial?.Dispose();
         _textureTrialModels.Clear();
         _bakedLighting.Dispose();

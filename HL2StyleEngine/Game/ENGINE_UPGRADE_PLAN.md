@@ -1,5 +1,19 @@
 **HL2StyleEngine: step-by-step upgrade plan**
 
+Current status (2026-11-06): Gates L/B were accepted in the
+[final lighting recheck](LIGHTING_ACCEPTANCE_RECHECK.md), with the historical
+intermittent-stall risk explicitly retained. The subsequent
+[systems plan](ENGINE_SYSTEM_UPGRADE_PLAN.md) Priorities 1/2 now provide the
+[audio foundation](AUDIO_IMPLEMENTATION.md): C# contracts, positional playback,
+bounded PCM streaming, saved loop intent and editor cue authoring/audition.
+Original Surge XT/jsfxr sounds and `LaunchAudioTest.bat` are included. Both
+existing baseline BATs, three existing long controls, 32 lighting commands and
+two post-correction audio long runs pass; 48 focused audio checks pass. Retained
+failures and outstanding hardware QA are in [audio validation](AUDIO_VALIDATION.md).
+No physics/shader/reference-scene
+changes; audio-only metadata does not require lighting rebakes. The pending
+gate entries below are historical and do not override this current status.
+
 Lighting handover (2026-11-04): [current acceptance evidence and explicit gate verdicts](LIGHTING_ACCEPTANCE_HANDOVER.md). **Gate L pending; Gate B pending; new system upgrades blocked.** Approved authored fog is preserved; automated, visual/native and baseline results are recorded separately. No lighting-scope expansion, physics changes or new-system implementation is included.
 
 Execution order update (2026-11-04): **the current lighting implementation must be finished and accepted before any new engine system upgrade or prototype starts.** The [prioritised systems upgrade plan](ENGINE_SYSTEM_UPGRADE_PLAN.md) defines the subsequent audio/gameplay/editor/AI order and retains the current baseline stability gate. C# stays; accepted lighting and existing physics are preserved during those later phases. The older stages and implementation history below are reference material, not approval to bypass this prerequisite.

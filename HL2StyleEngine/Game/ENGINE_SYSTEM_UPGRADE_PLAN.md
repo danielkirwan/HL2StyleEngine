@@ -1,6 +1,6 @@
 # Prioritised Engine Systems Upgrade Plan
 
-Updated: 6 November 2026. Status: lighting/baseline gates accepted; new systems ready to start, not yet implemented. This is the implementation order for the systems identified in [Engine Systems Research](ENGINE_SYSTEMS_RESEARCH.md), under the current [Game Style Objective](GAME_STYLE_OBJECTIVE.md).
+Updated: 6 November 2026. Status: lighting/baseline gates accepted; Priorities 1/2 implemented with focused, baseline, lighting and repeated audio long regressions passing. Physical-device/acoustic QA remains open; earlier timing failures remain monitored. See [Audio Foundation](AUDIO_IMPLEMENTATION.md) and [audio evidence](AUDIO_VALIDATION.md). This is the implementation order for the systems identified in [Engine Systems Research](ENGINE_SYSTEMS_RESEARCH.md), under the current [Game Style Objective](GAME_STYLE_OBJECTIVE.md).
 
 ## Mandatory Starting Gate: Finish Lighting First
 
@@ -28,7 +28,7 @@ Record completion against the current lighting requirements and their existing v
 | --- | --- | --- |
 | L: Existing lighting complete | Required lighting behavior is finished; current fixtures and normal play are reviewed; limitations and acceptance are recorded. | Complete, 6 November 2026. |
 | B: Existing baseline stable | Existing gameplay/memory limits pass on the normal full-detail path; outstanding incidents have an explicit disposition. | Complete with user-accepted monitored historical stall risk; not a proven root-cause fix. |
-| Start new systems | Gates L and B both accepted; preserve the captured baseline and begin Priority 1 below. | Ready for minimal C# contracts followed by audio. |
+| Start new systems | Gates L and B both accepted; preserve the captured baseline and begin Priority 1 below. | Priorities 1/2 implemented and local regressions pass; Priority 3 is next, not started. Retain hardware QA and timing-risk monitoring. |
 
 Use the current [lighting authoring guide](LIGHTING_GUIDE.md), [lighting-state stability](LIGHTING_STABILITY_GUIDE.md), [shadow stability](SHADOW_STABILITY_GUIDE.md), [floor correction](FLOOR_LIGHTING_GUIDE.md), [room transitions](ROOM_TRANSITION_GUIDE.md) and [lighting memory evidence](LIGHTING_MEMORY_GUIDE.md) to establish lighting completion. Existing checks cover different parts of the system; their historical pass records are not a new blanket acceptance claim.
 
@@ -77,7 +77,7 @@ The order below is sequential after both starting gates. Priority is based on de
 
 **Implement:** a C# `IAudioService`, listener/emitter updates, one-shot and looping cues, adjustable buses, weighted variants with repeat prevention, basic distance attenuation, voice/concurrency limits, pause/resume and level teardown. Add cue audition and missing-asset feedback using the existing editor. Treat music/ambience streaming separately from short positional effects.
 
-Evaluate one backend with a small representative prototype before committing to a dependency. **SoLoud is a candidate**, not a selected or integrated package. Verify .NET 10/x64 binding, native deployment, output-device recovery, disposal and sample/stream ownership. Follow the installed [audio authoring workflow](AUDIO_WORKFLOW.md) for original test sounds.
+Backend evaluation completed for this first pass: **SoLoud core plus its bundled miniaudio WASAPI output is selected**, behind an instance-owned narrow C ABI. .NET 10/x64 playback, bounded PCM streams, teardown and simulated output suspension/recovery are tested. Physical unplug/default-device switching remains hardware QA. Follow the installed [audio authoring workflow](AUDIO_WORKFLOW.md) for original test sounds.
 
 **Read first:** Godot [AudioStreamPlayer3D](https://github.com/godotengine/godot/blob/fefec82d74b46f5e6cc31f373071058f80a5cbee/scene/3d/audio_stream_player_3d.cpp), [AudioServer](https://github.com/godotengine/godot/blob/fefec82d74b46f5e6cc31f373071058f80a5cbee/servers/audio/audio_server.cpp) and [AudioStreamRandomizer](https://github.com/godotengine/godot/blob/fefec82d74b46f5e6cc31f373071058f80a5cbee/scene/resources/audio/audio_stream_randomizer.cpp). For the candidate backend, inspect SoLoud [bus playback](https://github.com/jarikomppa/soloud/blob/e82fd32c1f62183922f08c14c814a02b58db1873/src/core/soloud_bus.cpp) and [C# wrapper generation](https://github.com/jarikomppa/soloud/blob/e82fd32c1f62183922f08c14c814a02b58db1873/scripts/gen_cs.py).
 
@@ -141,7 +141,7 @@ Add authored machine/ambience layers, readable action transients, mix transition
 
 Set new subsystem budgets from the accepted Gate B workload and target hardware before implementation acceptance. Record whole-frame changes as well as audio callback duration/underruns, active/virtual voices, command queue peaks, sample/stream memory, acoustic query work, pathfinding and AI update time. Do not substitute a good average for failed hitch/memory limits.
 
-Each milestone delivers one separate fixture, reproducible checks and a short status note covering what works, measured cost and remaining limitations. Keep optional features disabled until their own acceptance passes. Re-run broader checks when a relevant change or regression justifies them. The current task updates documentation only and clears no gate.
+Each milestone delivers one separate fixture, reproducible checks and a short status note covering what works, measured cost and remaining limitations. Keep optional features disabled until their own acceptance passes. Re-run broader checks when a relevant change or regression justifies them. The audio implementation does not waive the historical stall risk or any existing acceptance limit.
 
 ## Reference Use And Deferred Work
 
@@ -151,4 +151,4 @@ O3DE, ezEngine and Godot are the practical production references; The Dark Mod a
 
 Defer a C++ runtime migration, wholesale ECS/editor replacement, a physics replacement, new lighting/rendering work, broad AI/combat, full world simulation and mandatory advanced acoustic middleware. Optional branching narrative with ink can follow a demonstrated story requirement after the slice; ordinary logs and captions do not need a narrative framework.
 
-**Immediate next work remains finishing the current lighting implementation and its acceptance, followed by closing the existing baseline stability gate. Priority 1 is the first new-system task only after both are complete.**
+**Immediate work is completing Priority 1/2 audio regression evidence and playtesting audioTest. Priority 3 surface feedback is next after acceptance; it has not been implemented. Lighting remains the accepted baseline, with audio-only metadata excluded from its cache dependencies.**

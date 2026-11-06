@@ -1,0 +1,39 @@
+{
+  "tool": "jsfxr",
+  "version": "1.4.0",
+  "sourceSha256": "21ee0d642adf0bb07736851db6db71cbf6df289aff18aa72b6598ac987f4af4c",
+  "sounds": [
+    {
+      "name": "relay_01",
+      "seed": 7301,
+      "seconds": 0.05950113378684807,
+      "peakDbfs": -9.085228605952935,
+      "rmsDbfs": -19.55885344009456,
+      "sha256": "b1893c9aa7e4337e70ba2355f2b5663039ecea9f48cd4c602eac48f713f5e689"
+    },
+    {
+      "name": "relay_02",
+      "seed": 7302,
+      "seconds": 0.07555555555555556,
+      "peakDbfs": -8.693583762379923,
+      "rmsDbfs": -19.203114292595725,
+      "sha256": "eb40833b1841c1a43da38f9f1cffb128672664dab775fd2913e17f77ecccea1e"
+    },
+    {
+      "name": "relay_03",
+      "seed": 7303,
+      "seconds": 0.08281179138321995,
+      "peakDbfs": -8.94231243684927,
+      "rmsDbfs": -19.427933320432583,
+      "sha256": "d3a0e76e75ab535d090c03b11499996a5416535bbda7032a7e83583bc1706bd2"
+    },
+    {
+      "name": "panel_confirm",
+      "seed": 7304,
+      "seconds": 0.18126984126984128,
+      "peakDbfs": -9.786508364285353,
+      "rmsDbfs": -16.931621387877435,
+      "sha256": "75263be7668319b3ebd9dfa8c022066c7120feaa1752b6ac3742ab384683467a"
+    }
+  ]
+}
